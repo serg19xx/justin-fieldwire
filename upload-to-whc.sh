@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# WHC.ca Upload Script
-# This script builds and uploads the FieldWire application to WHC.ca hosting
+# FieldWire Deployment Script for WHC.ca
+# This script builds the project and uploads it to WHC.ca via FTP
 
 set -e  # Exit on any error
 
-echo "🚀 Building and uploading to WHC.ca..."
+echo "🚀 Starting FieldWire deployment to WHC.ca..."
 
 # Colors for output
 RED='\033[0;31m'
@@ -13,84 +13,97 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Function to print colored output
-print_status() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# Check if we're in the right directory
-if [ ! -f "package.json" ]; then
-    print_error "package.json not found. Please run this script from the project root."
-    exit 1
-fi
-
 # Check if lftp is installed
 if ! command -v lftp &> /dev/null; then
-    print_error "lftp is not installed. Please install it first:"
+    echo -e "${RED}❌ Error: lftp is not installed${NC}"
+    echo "Please install lftp:"
     echo "  macOS: brew install lftp"
-    echo "  Ubuntu: sudo apt install lftp"
-    echo "  CentOS: sudo yum install lftp"
+    echo "  Ubuntu/Debian: sudo apt-get install lftp"
     exit 1
 fi
 
-# Configuration (update these values)
-FTP_HOST="ftp.your-domain.com"
-FTP_USER="your-username"
-FTP_PASS="your-password"
-FTP_PATH="public_html"
+# Check if .env file exists with FTP credentials
+if [ ! -f .env ]; then
+    echo -e "${YELLOW}⚠️  Warning: .env file not found${NC}"
+    echo "Please create .env file with your FTP credentials:"
+    echo "FTP_SERVER=your-ftp-server.com"
+    echo "FTP_USERNAME=your-username"
+    echo "FTP_PASSWORD=your-password"
+    echo ""
+    read -p "Do you want to continue with manual input? (y/n): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
 
-print_status "Configuration:"
-echo "  Host: $FTP_HOST"
-echo "  User: $FTP_USER"
-echo "  Path: $FTP_PATH"
+# Load environment variables if .env exists
+if [ -f .env ]; then
+    source .env
+fi
 
-# Build application
-print_status "Building application..."
+# Get FTP credentials
+if [ -z "$FTP_SERVER" ]; then
+    read -p "Enter FTP server: " FTP_SERVER
+fi
+
+if [ -z "$FTP_USERNAME" ]; then
+    read -p "Enter FTP username: " FTP_USERNAME
+fi
+
+if [ -z "$FTP_PASSWORD" ]; then
+    read -s -p "Enter FTP password: " FTP_PASSWORD
+    echo
+fi
+
+echo -e "${YELLOW}📦 Building project...${NC}"
 npm run build
 
-# Check if build was successful
-if [ ! -d "dist" ]; then
-    print_error "Build failed! dist directory not found."
-    exit 1
-fi
+echo -e "${YELLOW}📋 Copying .htaccess...${NC}"
+cp .htaccess dist/
 
-print_status "Build completed successfully!"
+echo -e "${YELLOW}📤 Uploading to WHC.ca...${NC}"
+echo "Server: $FTP_SERVER"
+echo "Username: $FTP_USERNAME"
 
-# Copy .htaccess to dist folder
-if [ -f ".htaccess" ]; then
-    print_status "Copying .htaccess to dist folder..."
-    cp .htaccess dist/
-else
-    print_warning ".htaccess file not found. SPA routing may not work properly."
-fi
+# Create lftp script for upload
+cat > /tmp/lftp_upload.txt << EOF
+set ssl:verify-certificate no
+set ftp:ssl-allow no
+set net:timeout 60
+set net:max-retries 3
+set net:reconnect-interval-base 5
+set net:reconnect-interval-multiplier 1
 
-# Upload to WHC.ca
-print_status "Uploading to WHC.ca..."
-
-# Create lftp script
-cat > upload.lftp << EOF
-open $FTP_HOST
-user $FTP_USER $FTP_PASS
-mirror --reverse --delete dist/ $FTP_PATH/
+open -u $FTP_USERNAME,$FTP_PASSWORD $FTP_SERVER
+cd public_html
+mirror --reverse --delete --verbose ./dist/ ./
 bye
 EOF
 
-# Execute lftp script
-lftp -f upload.lftp
+# Execute lftp upload
+if lftp -f /tmp/lftp_upload.txt; then
+    echo -e "${GREEN}✅ Deployment successful!${NC}"
+    echo ""
+    echo "🌐 Your application should be available at:"
+    echo "   https://yourdomain.com"
+    echo ""
+    echo "📋 Test these URLs:"
+    echo "   - https://yourdomain.com/ (Dashboard)"
+    echo "   - https://yourdomain.com/login (Login)"
+    echo "   - https://yourdomain.com/projects (Projects)"
+else
+    echo -e "${RED}❌ Deployment failed!${NC}"
+    echo ""
+    echo "🔧 Troubleshooting tips:"
+    echo "1. Check your FTP credentials"
+    echo "2. Verify WHC.ca server is accessible"
+    echo "3. Try uploading manually via FTP client"
+    echo "4. Check FTP_TROUBLESHOOTING.md for more help"
+    exit 1
+fi
 
 # Clean up
-rm upload.lftp
+rm -f /tmp/lftp_upload.txt
 
-print_status "✅ Upload completed successfully!"
-print_status "Your application should now be available at: https://your-domain.com"
-
-echo ""
-print_status "Upload finished at $(date)"
+echo -e "${GREEN}🎉 Deployment completed!${NC}"

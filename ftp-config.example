@@ -1,0 +1,14 @@
+# FTP Configuration for WHC.ca deployment
+# Copy this file to .env and fill in your actual credentials
+
+# Your WHC.ca FTP server (usually ftp.yourdomain.com)
+FTP_SERVER=ftp.medicalcontractor.ca
+
+# Your WHC.ca FTP username
+FTP_USERNAME=fieldwire@medicalcontractor.ca
+
+# Your WHC.ca FTP password
+FTP_PASSWORD=carespace2025
+
+# Optional: Custom FTP port (default is 21)
+# FTP_PORT=21
