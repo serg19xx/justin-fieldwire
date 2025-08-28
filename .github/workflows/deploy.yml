@@ -48,3 +48,6 @@ jobs:
             **/.git*/**
             **/node_modules/**
             **/.env*
+          dangerous-clean-slate: false
+          log-level: verbose
+          timeout: 60000
