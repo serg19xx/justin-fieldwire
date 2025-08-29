@@ -1,14 +1,83 @@
-# FTP Configuration for WHC.ca deployment
-# Copy this file to .env and fill in your actual credentials
+#!/bin/bash
 
-# Your WHC.ca FTP server (usually ftp.yourdomain.com)
-FTP_SERVER=ftp.medicalcontractor.ca
+# FieldWire Deployment Script for fieldwire.medicalcontractor.ca
+# This script builds the project and uploads it directly to the fieldwire subdomain folder
 
-# Your WHC.ca FTP username
-FTP_USERNAME=fieldwire@medicalcontractor.ca
+set -e  # Exit on any error
 
-# Your WHC.ca FTP password
-FTP_PASSWORD=carespace2025
+echo "�� Starting FieldWire deployment to fieldwire.medicalcontractor.ca..."
 
-# Optional: Custom FTP port (default is 21)
-# FTP_PORT=21
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Check if lftp is installed
+if ! command -v lftp &> /dev/null; then
+    echo -e "${RED}❌ Error: lftp is not installed${NC}"
+    echo "Please install lftp:"
+    echo "  macOS: brew install lftp"
+    echo "  Ubuntu/Debian: sudo apt-get install lftp"
+    exit 1
+fi
+
+# Load environment variables if .env exists
+if [ -f .env ]; then
+    source .env
+else
+    echo -e "${RED}❌ Error: .env file not found${NC}"
+    echo "Please create .env file with your FTP credentials"
+    exit 1
+fi
+
+echo -e "${YELLOW}📦 Building project...${NC}"
+npm run build
+
+echo -e "${YELLOW}📋 Copying .htaccess...${NC}"
+cp .htaccess dist/
+
+echo -e "${YELLOW}�� Uploading to fieldwire.medicalcontractor.ca...${NC}"
+echo "Server: $FTP_SERVER"
+echo "Username: $FTP_USERNAME"
+
+# Create lftp script for upload - upload directly to fieldwire.medicalcontractor.ca folder
+cat > /tmp/lftp_upload.txt << EOF
+set ssl:verify-certificate no
+set ftp:ssl-allow no
+set net:timeout 60
+set net:max-retries 3
+set net:reconnect-interval-base 5
+set net:reconnect-interval-multiplier 1
+
+open -u $FTP_USERNAME,$FTP_PASSWORD $FTP_SERVER
+cd fieldwire.medicalcontractor.ca
+mirror --reverse --delete --verbose ./dist/ ./
+bye
+EOF
+
+# Execute lftp upload
+if lftp -f /tmp/lftp_upload.txt; then
+    echo -e "${GREEN}✅ Deployment successful!${NC}"
+    echo ""
+    echo "🌐 Your application should be available at:"
+    echo "   https://fieldwire.medicalcontractor.ca"
+    echo ""
+    echo "�� Test these URLs:"
+    echo "   - https://fieldwire.medicalcontractor.ca/ (Dashboard)"
+    echo "   - https://fieldwire.medicalcontractor.ca/login (Login)"
+    echo "   - https://fieldwire.medicalcontractor.ca/projects (Projects)"
+else
+    echo -e "${RED}❌ Deployment failed!${NC}"
+    echo ""
+    echo "🔧 Troubleshooting tips:"
+    echo "1. Check your FTP credentials"
+    echo "2. Verify the folder fieldwire.medicalcontractor.ca exists"
+    echo "3. Try uploading manually via FTP client"
+    exit 1
+fi
+
+# Clean up
+rm -f /tmp/lftp_upload.txt
+
+echo -e "${GREEN}🎉 Deployment completed!${NC}"

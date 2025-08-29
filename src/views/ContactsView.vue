@@ -1,10 +1,11 @@
 <script setup lang="ts">
-// This component will be used as a slot for loading different contact types
+import UnderDevelopment from '@/components/UnderDevelopment.vue'
 </script>
 
 <template>
-  <div class="space-y-6 p-6">
-    <!-- Slot for loading contacts based on selected type -->
-    <RouterView />
-  </div>
+  <UnderDevelopment 
+    title="Contact Management"
+    description="Comprehensive contact management system for all project stakeholders."
+    plannedFor="Q1 2024"
+  />
 </template>
