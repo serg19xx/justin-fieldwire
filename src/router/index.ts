@@ -109,11 +109,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresPermission: 'files:read' },
     },
 
+    // API Tester route (только для разработки)
     {
-      path: '/project/:id',
-      name: 'project-dashboard',
-      component: () => import('@/views/ProjectDashboardView.vue'),
-      meta: { requiresAuth: true, requiresPermission: 'projects:read' },
+      path: '/api-tester',
+      name: 'api-tester',
+      component: () => import('@/components/ApiTester.vue'),
+      meta: { requiresAuth: true },
     },
   ],
 })
