@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 interface Props {
@@ -13,11 +13,49 @@ const emit = defineEmits<{
 }>()
 
 const authStore = useAuthStore()
+
+// State
+const step = ref<'delivery' | 'code'>('delivery')
+const deliveryMethod = ref<'sms' | 'email'>('sms')
 const code = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
+const successMessage = ref('')
 
-async function handleSubmit() {
+// Computed
+const userEmail = computed(() => authStore.currentUser?.email || '')
+
+async function handleSendCode() {
+  if (!userEmail.value) {
+    errorMessage.value = 'User email not found'
+    return
+  }
+
+  isLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    console.log('📤 Sending 2FA code via:', deliveryMethod.value)
+    
+    const result = await authStore.sendTwoFactorCode(userEmail.value, deliveryMethod.value)
+
+    if (result.success) {
+      successMessage.value = `Verification code sent to your ${deliveryMethod.value === 'sms' ? 'phone' : 'email'}`
+      step.value = 'code'
+      console.log('✅ Code sent successfully')
+    } else {
+      errorMessage.value = result.error || 'Failed to send verification code'
+      console.log('❌ Failed to send code:', result.error)
+    }
+  } catch (error) {
+    console.error('❌ Send code error:', error)
+    errorMessage.value = 'Failed to send verification code'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function handleVerifyCode() {
   if (!code.value || code.value.length !== 6) {
     errorMessage.value = 'Please enter a 6-digit code'
     return
@@ -27,30 +65,48 @@ async function handleSubmit() {
   errorMessage.value = ''
 
   try {
+    console.log('🔐 Verifying 2FA code')
+    
     const result = await authStore.verifyTwoFactor(code.value)
 
     if (result.success) {
+      console.log('✅ 2FA verification successful')
       emit('success')
     } else {
       errorMessage.value = result.error || 'Invalid code'
+      console.log('❌ 2FA verification failed:', result.error)
     }
   } catch (error) {
-    console.error('2FA error:', error)
+    console.error('❌ 2FA verification error:', error)
     errorMessage.value = 'Verification failed'
   } finally {
     isLoading.value = false
   }
 }
 
-function handleClose() {
+function handleBackToDelivery() {
+  step.value = 'delivery'
   code.value = ''
   errorMessage.value = ''
+  successMessage.value = ''
+}
+
+function handleClose() {
+  step.value = 'delivery'
+  deliveryMethod.value = 'sms'
+  code.value = ''
+  errorMessage.value = ''
+  successMessage.value = ''
   emit('close')
 }
 
 function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Enter') {
-    handleSubmit()
+    if (step.value === 'delivery') {
+      handleSendCode()
+    } else {
+      handleVerifyCode()
+    }
   }
 }
 </script>
@@ -76,69 +132,151 @@ function handleKeydown(event: KeyboardEvent) {
           </svg>
         </div>
 
-        <h3 class="text-lg font-medium text-gray-900 mb-2">Two-Factor Authentication</h3>
-        <p class="text-sm text-gray-500 mb-6">Enter the 6-digit code from your authenticator app</p>
+        <!-- Step 1: Delivery Method Selection -->
+        <div v-if="step === 'delivery'">
+          <h3 class="text-lg font-medium text-gray-900 mb-2">Two-Factor Authentication</h3>
+          <p class="text-sm text-gray-500 mb-6">
+            Choose how you'd like to receive your verification code
+          </p>
 
-        <!-- Error Message -->
-        <div v-if="errorMessage" class="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
-          <p class="text-sm text-red-800">{{ errorMessage }}</p>
-        </div>
+          <!-- Error Message -->
+          <div v-if="errorMessage" class="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
+            <p class="text-sm text-red-800">{{ errorMessage }}</p>
+          </div>
 
-        <!-- Code Input -->
-        <div class="mb-6">
-          <input
-            v-model="code"
-            @keydown="handleKeydown"
-            type="text"
-            maxlength="6"
-            placeholder="000000"
-            class="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-2xl font-mono tracking-widest focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            :disabled="isLoading"
-          />
-        </div>
+          <!-- Delivery Method Selection -->
+          <div class="mb-6 space-y-3">
+            <label class="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+              <input
+                v-model="deliveryMethod"
+                type="radio"
+                value="sms"
+                class="mr-3 text-blue-600 focus:ring-blue-500"
+              />
+              <div class="flex-1 text-left">
+                <div class="font-medium text-gray-900">SMS</div>
+                <div class="text-sm text-gray-500">Send code to your phone number</div>
+              </div>
+            </label>
 
-        <!-- Action Buttons -->
-        <div class="flex space-x-3">
-          <button
-            @click="handleClose"
-            :disabled="isLoading"
-            class="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            @click="handleSubmit"
-            :disabled="isLoading || code.length !== 6"
-            class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 flex items-center justify-center"
-          >
-            <svg
-              v-if="isLoading"
-              class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
+            <label class="flex items-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+              <input
+                v-model="deliveryMethod"
+                type="radio"
+                value="email"
+                class="mr-3 text-blue-600 focus:ring-blue-500"
+              />
+              <div class="flex-1 text-left">
+                <div class="font-medium text-gray-900">Email</div>
+                <div class="text-sm text-gray-500">Send code to your email address</div>
+              </div>
+            </label>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex space-x-3">
+            <button
+              @click="handleClose"
+              class="flex-1 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            {{ isLoading ? 'Verifying...' : 'Verify' }}
-          </button>
+              Cancel
+            </button>
+            <button
+              @click="handleSendCode"
+              :disabled="isLoading"
+              class="flex-1 flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg
+                v-if="isLoading"
+                class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              {{ isLoading ? 'Sending...' : 'Send Code' }}
+            </button>
+          </div>
         </div>
 
-        <!-- Help Text -->
-        <div class="mt-4 text-xs text-gray-500">
-          <p>Don't have access to your authenticator app?</p>
-          <button class="text-blue-600 hover:text-blue-500 mt-1">Contact administrator</button>
+        <!-- Step 2: Code Verification -->
+        <div v-if="step === 'code'">
+          <h3 class="text-lg font-medium text-gray-900 mb-2">Enter Verification Code</h3>
+          <p class="text-sm text-gray-500 mb-6">
+            Enter the 6-digit code sent to your {{ deliveryMethod === 'sms' ? 'phone' : 'email' }}
+          </p>
+
+          <!-- Success Message -->
+          <div v-if="successMessage" class="mb-4 bg-green-50 border border-green-200 rounded-md p-3">
+            <p class="text-sm text-green-800">{{ successMessage }}</p>
+          </div>
+
+          <!-- Error Message -->
+          <div v-if="errorMessage" class="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
+            <p class="text-sm text-red-800">{{ errorMessage }}</p>
+          </div>
+
+          <!-- Code Input -->
+          <div class="mb-6">
+            <input
+              v-model="code"
+              @keydown="handleKeydown"
+              type="text"
+              maxlength="6"
+              placeholder="000000"
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-2xl font-mono tracking-widest focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              :disabled="isLoading"
+            />
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex space-x-3">
+            <button
+              @click="handleBackToDelivery"
+              class="flex-1 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Back
+            </button>
+            <button
+              @click="handleVerifyCode"
+              :disabled="isLoading"
+              class="flex-1 flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg
+                v-if="isLoading"
+                class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+              {{ isLoading ? 'Verifying...' : 'Verify Code' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>

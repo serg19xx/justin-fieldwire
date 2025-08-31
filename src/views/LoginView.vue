@@ -331,7 +331,13 @@ function backToLogin() {
           <h3 class="text-sm font-medium text-gray-900 mb-2">Test Credentials:</h3>
           <div class="text-sm text-gray-600 space-y-1">
             <p><strong>Admin:</strong> admin@medicalcontractor.ca / password1234</p>
-            <p class="text-xs text-gray-500">* Use real credentials from your database</p>
+            <p><strong>2FA Flow:</strong></p>
+            <ul class="text-xs text-gray-500 ml-2 space-y-1">
+              <li>• Войдите с email/password</li>
+              <li>• Если 2FA включен → появится диалог для ввода кода</li>
+              <li>• Введите код из SMS → успешный логин</li>
+              <li>• Если 2FA выключен → прямой вход в систему</li>
+            </ul>
           </div>
         </div>
       </div>

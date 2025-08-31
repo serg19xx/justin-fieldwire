@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { api } from '@/utils/api'
+import { useAuthStore } from '@/stores/auth'
 
 interface Props {
   isOpen: boolean
@@ -17,6 +18,8 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 
+const authStore = useAuthStore()
+
 async function enableTwoFactor() {
   if (!phone.value) {
     errorMessage.value = 'Please enter your phone number'
@@ -29,26 +32,31 @@ async function enableTwoFactor() {
   try {
     console.log('📱 Enabling 2FA for phone:', phone.value)
 
-    const response = await api.post('/auth/enable-2fa', {
-      phone: phone.value,
-    })
+    const result = await authStore.enableTwoFactor(phone.value)
 
-    console.log('✅ 2FA setup response:', response.data)
-
-    const { data } = response.data
-    
-    if (data.success) {
+    if (result.success) {
       successMessage.value = '2FA enabled successfully! You will receive SMS codes for future logins.'
       setTimeout(() => {
         emit('success')
       }, 2000)
     } else {
-      errorMessage.value = data.message || 'Failed to enable 2FA'
+      errorMessage.value = result.error || 'Failed to enable 2FA'
     }
   } catch (error: unknown) {
     console.error('❌ 2FA setup error:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Failed to enable 2FA'
-    errorMessage.value = errorMessage
+
+    // Обработка ошибок от бэкенда
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as { response?: { data?: { message?: string } } }
+      if (axiosError.response?.data?.message) {
+        errorMessage.value = axiosError.response.data.message
+      } else {
+        errorMessage.value = 'Failed to enable 2FA'
+      }
+    } else {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to enable 2FA'
+      errorMessage.value = errorMessage
+    }
   } finally {
     isLoading.value = false
   }

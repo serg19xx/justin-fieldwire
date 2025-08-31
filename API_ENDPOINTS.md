@@ -120,6 +120,8 @@ Authorization: Bearer <token>
 }
 ```
 
+> **Note**: These endpoints are currently disabled in frontend until backend is ready.
+
 ## User Management Endpoints
 
 ### GET /api/builders
