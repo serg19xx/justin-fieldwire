@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import TwoFactorSetup from '@/components/TwoFactorSetup.vue'
 
 const authStore = useAuthStore()
 const activeTab = ref('profile')
@@ -29,6 +30,7 @@ const userTypeOptions = [
 const isEditing = ref(false)
 const avatarFile = ref<File | null>(null)
 const avatarPreview = ref('')
+const showTwoFactorSetup = ref(false)
 
 // Settings data
 const settingsForm = ref({
@@ -78,6 +80,22 @@ function toggleStatus() {
 function saveSettings() {
   // TODO: API call to save settings
   console.log('Saving settings:', settingsForm.value)
+}
+
+function openTwoFactorSetup() {
+  showTwoFactorSetup.value = true
+}
+
+function closeTwoFactorSetup() {
+  showTwoFactorSetup.value = false
+}
+
+function onTwoFactorSuccess() {
+  showTwoFactorSetup.value = false
+  // Обновить статус 2FA в профиле
+  if (authStore.currentUser) {
+    authStore.currentUser.twoFactorEnabled = true
+  }
 }
 </script>
 
@@ -273,6 +291,33 @@ function saveSettings() {
                 </button>
               </div>
 
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Two-Factor Authentication</label>
+                <div class="flex items-center justify-between p-4 border border-gray-300 rounded-lg">
+                  <div>
+                    <p class="font-medium">
+                      {{ authStore.currentUser?.twoFactorEnabled ? 'Enabled' : 'Disabled' }}
+                    </p>
+                    <p class="text-sm text-gray-500">
+                      {{ authStore.currentUser?.twoFactorEnabled ? 'SMS verification required' : 'No additional security' }}
+                    </p>
+                  </div>
+                  <button
+                    v-if="!authStore.currentUser?.twoFactorEnabled"
+                    @click="openTwoFactorSetup"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                  >
+                    Enable 2FA
+                  </button>
+                  <span
+                    v-else
+                    class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium"
+                  >
+                    Active
+                  </span>
+                </div>
+              </div>
+
               <div class="sm:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                   Additional Information
@@ -397,5 +442,12 @@ function saveSettings() {
         </div>
       </div>
     </div>
+
+    <!-- Two-Factor Setup Dialog -->
+    <TwoFactorSetup
+      :is-open="showTwoFactorSetup"
+      @close="closeTwoFactorSetup"
+      @success="onTwoFactorSuccess"
+    />
   </div>
 </template>

@@ -2,6 +2,7 @@
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
+import EnvironmentIndicator from '@/components/EnvironmentIndicator.vue'
 
 const authStore = useAuthStore()
 const route = useRoute()
@@ -54,6 +55,7 @@ onUnmounted(() => {
 
 <template>
   <div class="min-h-screen">
+    <EnvironmentIndicator />
     <!-- Header -->
     <header v-if="!isLoginPage" class="bg-white shadow-sm border-b border-gray-200 h-12 fixed top-0 left-0 right-0 z-50">
       <div class="flex justify-between items-center h-12 px-4">

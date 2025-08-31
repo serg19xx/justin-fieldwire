@@ -114,7 +114,7 @@ const router = createRouter({
       path: '/api-tester',
       name: 'api-tester',
       component: () => import('@/components/ApiTester.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: false },
     },
   ],
 })

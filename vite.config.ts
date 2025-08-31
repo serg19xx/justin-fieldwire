@@ -6,13 +6,10 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [
-    vue(),
-    vueDevTools(),
-  ],
+  plugins: [vue(), vueDevTools()],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   base: '/',
@@ -23,13 +20,15 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['vue', 'vue-router', 'pinia']
-        }
-      }
-    }
+          vendor: ['vue', 'vue-router', 'pinia'],
+        },
+      },
+    },
   },
   server: {
-    port: 5173,
-    host: true
-  }
+    port: 3000,
+    host: true,
+    https: false,
+    strictPort: true,
+  },
 })

@@ -1,10 +1,17 @@
 #!/bin/bash
 
-echo "🚀 Building and deploying FieldWire..."
+# Check if environment is specified
+ENV=${1:-production}
 
-# Build the project
-echo "📦 Building project..."
-npm run build
+echo "🚀 Building and deploying FieldWire for $ENV environment..."
+
+# Build the project for specified environment
+echo "📦 Building project for $ENV..."
+if [ "$ENV" = "development" ]; then
+    npm run build:dev
+else
+    npm run build:prod
+fi
 
 # Copy .htaccess
 echo "📋 Copying .htaccess..."

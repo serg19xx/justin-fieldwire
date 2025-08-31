@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import api from '@/utils/api'
 
 interface Props {
   isOpen: boolean
@@ -52,39 +53,29 @@ async function sendInvitation() {
   isLoading.value = true
 
   try {
-    // Вызов бекенд API для отправки приглашения
-    const response = await fetch('/api/invitations/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('authToken')}`,
-      },
-      body: JSON.stringify({
-        email: email.value.trim(),
-        firstName: firstName.value.trim(),
-        lastName: lastName.value.trim(),
-      }),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.message || 'Failed to send invitation')
-    }
-
-    // Успешная отправка
-    emit('invite-sent', {
+    const response = await api.post('/api/invitations/send', {
       email: email.value.trim(),
       firstName: firstName.value.trim(),
       lastName: lastName.value.trim(),
     })
 
-    // Очистка формы
-    email.value = ''
-    firstName.value = ''
-    lastName.value = ''
-    emit('close')
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to send invitation'
+    if (response.data.success) {
+      emit('invite-sent', {
+        email: email.value.trim(),
+        firstName: firstName.value.trim(),
+        lastName: lastName.value.trim(),
+      })
+      // Очистка формы
+      email.value = ''
+      firstName.value = ''
+      lastName.value = ''
+      emit('close')
+    } else {
+      error.value = response.data.message || 'Failed to send invitation'
+    }
+  } catch (err: unknown) {
+    const axiosError = err as { response?: { data?: { message?: string } }; message?: string }
+    error.value = axiosError.response?.data?.message || axiosError.message || 'Failed to send invitation'
   } finally {
     isLoading.value = false
   }

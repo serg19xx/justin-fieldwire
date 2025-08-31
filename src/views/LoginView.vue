@@ -2,6 +2,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import TwoFactorDialog from '@/components/TwoFactorDialog.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -16,9 +17,7 @@ const recoveryForm = reactive({
   email: '',
 })
 
-const twoFactorForm = reactive({
-  code: '',
-})
+
 
 const isLoading = ref(false)
 const showRecovery = ref(false)
@@ -37,53 +36,23 @@ async function handleLogin() {
       if (result.requires2FA) {
         showTwoFactor.value = true
       } else {
-        // Login successful
-        localStorage.setItem(
-          'user',
-          JSON.stringify({
-            email: result.user?.email,
-            role: result.user?.role,
-            name: result.user?.name,
-          }),
-        )
+        // Login successful - redirect to dashboard
         router.push('/')
       }
     } else {
-      errorMessage.value = 'Invalid email or password'
+      errorMessage.value = result.error || 'Invalid email or password'
     }
-  } catch {
+  } catch (error) {
+    console.error('Login error:', error)
     errorMessage.value = 'Login failed. Please try again.'
   } finally {
     isLoading.value = false
   }
 }
 
-async function handleTwoFactor() {
-  isLoading.value = true
-  errorMessage.value = ''
-
-  try {
-    const success = await authStore.verifyTwoFactor(twoFactorForm.code)
-
-    if (success) {
-      // 2FA successful
-      localStorage.setItem(
-        'user',
-        JSON.stringify({
-          email: authStore.currentUser?.email,
-          role: authStore.currentUser?.role,
-          name: authStore.currentUser?.name,
-        }),
-      )
-      router.push('/')
-    } else {
-      errorMessage.value = 'Invalid 2FA code'
-    }
-  } catch {
-    errorMessage.value = '2FA verification failed'
-  } finally {
-    isLoading.value = false
-  }
+function handleTwoFactorSuccess() {
+  // 2FA successful - redirect to dashboard
+  router.push('/')
 }
 
 async function handlePasswordRecovery() {
@@ -357,79 +326,22 @@ function backToLogin() {
           </div>
         </form>
 
-        <!-- Two-Factor Authentication Form -->
-        <form v-if="showTwoFactor" @submit.prevent="handleTwoFactor" class="space-y-6">
-          <div>
-            <label for="two-factor-code" class="block text-sm font-medium text-gray-700"
-              >Authentication Code</label
-            >
-            <div class="mt-1">
-              <input
-                id="two-factor-code"
-                v-model="twoFactorForm.code"
-                name="code"
-                type="text"
-                maxlength="6"
-                required
-                class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-center text-lg tracking-widest"
-                placeholder="000000"
-              />
-            </div>
-            <p class="mt-2 text-sm text-gray-500">
-              Enter the 6-digit code from your authenticator app
-            </p>
-          </div>
-
-          <div class="flex space-x-3">
-            <button
-              type="button"
-              @click="backToLogin"
-              class="flex-1 py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Back to Sign in
-            </button>
-            <button
-              type="submit"
-              :disabled="isLoading"
-              class="flex-1 flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg
-                v-if="isLoading"
-                class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  class="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  stroke-width="4"
-                ></circle>
-                <path
-                  class="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              {{ isLoading ? 'Verifying...' : 'Verify' }}
-            </button>
-          </div>
-        </form>
-
         <!-- Demo Info -->
         <div class="mt-6 bg-gray-50 rounded-md p-4">
-          <h3 class="text-sm font-medium text-gray-900 mb-2">Demo Credentials:</h3>
+          <h3 class="text-sm font-medium text-gray-900 mb-2">Test Credentials:</h3>
           <div class="text-sm text-gray-600 space-y-1">
-            <p><strong>Admin:</strong> admin@company.com / password123 / 2FA: 123456</p>
-            <p><strong>Manager:</strong> manager@company.com / password123</p>
-            <p><strong>Supervisor:</strong> supervisor@company.com / password123 / 2FA: 123456</p>
-            <p><strong>Engineer:</strong> engineer@company.com / password123</p>
-            <p><strong>Viewer:</strong> viewer@company.com / password123</p>
+            <p><strong>Admin:</strong> admin@medicalcontractor.ca / password1234</p>
+            <p class="text-xs text-gray-500">* Use real credentials from your database</p>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Two-Factor Authentication Dialog -->
+    <TwoFactorDialog
+      :is-open="showTwoFactor"
+      @close="backToLogin"
+      @success="handleTwoFactorSuccess"
+    />
   </div>
 </template>

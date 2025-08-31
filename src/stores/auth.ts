@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { api } from '@/utils/api'
 
 export interface User {
   id: number
@@ -9,7 +10,7 @@ export interface User {
   twoFactorEnabled: boolean
   isActive: boolean
   lastLogin?: string
-  permissions: string[]
+  permissions?: string[] // Сделали опциональным
 }
 
 export interface Invitation {
@@ -107,56 +108,125 @@ export const useAuthStore = defineStore('auth', () => {
   )
 
   // Actions
-  function login(
+  async function login(
     email: string,
     password: string,
-  ): Promise<{ success: boolean; user?: User; requires2FA?: boolean }> {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const user = users.value.find((u) => u.email === email && u.isActive)
+  ): Promise<{ success: boolean; user?: User; requires2FA?: boolean; error?: string }> {
+    try {
+      console.log('🌐 Making login request to:', `${api.defaults.baseURL}/auth/login`)
+      console.log('📧 Email:', email)
+      console.log('🔑 Password:', password ? '***' : 'empty')
 
-        if (user) {
-          // In real app, verify password hash
-          if (password === 'password123' || password === 'temp123') {
-            if (user.twoFactorEnabled) {
-              currentUser.value = user
-              resolve({ success: true, requires2FA: true, user })
-            } else {
-              currentUser.value = user
-              isAuthenticated.value = true
-              resolve({ success: true, user })
-            }
-          } else {
-            resolve({ success: false })
-          }
-        } else {
-          resolve({ success: false })
-        }
-      }, 1000)
-    })
+      const response = await api.post('/auth/login', {
+        email,
+        password,
+      })
+
+      console.log('✅ Login response:', response.data)
+
+      // Бэкенд возвращает данные в поле data
+      const { data } = response.data
+      const { user, token, requires2FA } = data
+
+      console.log('👤 User data from backend:', user)
+
+      if (token) {
+        localStorage.setItem('token', token)
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        console.log('🔐 Token saved to localStorage')
+      }
+
+      // Добавляем fallback permissions если их нет
+      if (!user.permissions) {
+        user.permissions = getPermissionsForRole(user.role)
+        console.log('🔧 Added fallback permissions for role:', user.role)
+      }
+
+      if (requires2FA) {
+        currentUser.value = user
+        console.log('🔒 2FA required for user:', user.email)
+        return { success: true, requires2FA: true, user }
+      } else {
+        currentUser.value = user
+        isAuthenticated.value = true
+        localStorage.setItem('user', JSON.stringify(user))
+        console.log('✅ Login successful for user:', user.email)
+        return { success: true, user }
+      }
+    } catch (error: unknown) {
+      console.error('❌ Login error:', error)
+
+      // Упрощенная обработка ошибок
+      const errorMessage =
+        error instanceof Error ? error.message : 'Login failed. Please check your credentials.'
+      return { success: false, error: errorMessage }
+    }
   }
 
-  function verifyTwoFactor(code: string): Promise<boolean> {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        if (code === '123456' && currentUser.value) {
-          isAuthenticated.value = true
-          resolve(true)
-        } else {
-          resolve(false)
-        }
-      }, 1000)
-    })
+  async function verifyTwoFactor(code: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('🔐 Making 2FA verification request')
+      console.log('📱 2FA Code:', code)
+
+      const response = await api.post('/auth/verify-2fa', {
+        code,
+      })
+
+      console.log('✅ 2FA response:', response.data)
+
+      // Бэкенд возвращает данные в поле data
+      const { data } = response.data
+      const { token } = data
+
+      if (token) {
+        localStorage.setItem('token', token)
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        isAuthenticated.value = true
+        localStorage.setItem('user', JSON.stringify(currentUser.value))
+        console.log('✅ 2FA verification successful')
+        return { success: true }
+      } else {
+        console.log('❌ No token in 2FA response')
+        return { success: false, error: 'Invalid 2FA code' }
+      }
+    } catch (error: unknown) {
+      console.error('❌ 2FA verification error:', error)
+
+      // Упрощенная обработка ошибок
+      const errorMessage = error instanceof Error ? error.message : 'Invalid 2FA code'
+      return {
+        success: false,
+        error: errorMessage,
+      }
+    }
   }
 
-  function logout() {
-    currentUser.value = null
-    isAuthenticated.value = false
-    localStorage.removeItem('user')
+  async function logout() {
+    try {
+      // Call logout endpoint to invalidate token on server
+      await api.post('/auth/logout')
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      // Clear local state
+      currentUser.value = null
+      isAuthenticated.value = false
+      localStorage.removeItem('user')
+      localStorage.removeItem('token')
+      delete api.defaults.headers.common['Authorization']
+    }
   }
 
   function checkPermission(permission: string): boolean {
     if (!currentUser.value) return false
+
+    // Проверяем, есть ли permissions
+    if (!currentUser.value.permissions) {
+      console.warn('⚠️ User permissions not defined, using role-based fallback')
+      // Fallback на основе роли
+      return ['admin', 'manager'].includes(currentUser.value.role || '')
+    }
+
     if (currentUser.value.permissions.includes('all')) return true
     return currentUser.value.permissions.includes(permission)
   }
@@ -267,21 +337,32 @@ export const useAuthStore = defineStore('auth', () => {
     return false
   }
 
-  // Initialize from localStorage
-  function initializeAuth() {
+  // Initialize from localStorage and token
+  async function initializeAuth() {
+    const token = localStorage.getItem('token')
     const savedUser = localStorage.getItem('user')
-    if (savedUser) {
+
+    if (token && savedUser) {
       try {
-        const userData = JSON.parse(savedUser)
-        const user = users.value.find((u) => u.email === userData.email)
+        // Set token in API headers
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+
+        // Verify token with server
+        const response = await api.get('/auth/me')
+        const user = response.data
+
         if (user && user.isActive) {
           currentUser.value = user
           isAuthenticated.value = true
+          localStorage.setItem('user', JSON.stringify(user))
         } else {
-          localStorage.removeItem('user')
+          // Token invalid or user inactive
+          logout()
         }
-      } catch {
-        localStorage.removeItem('user')
+      } catch (error) {
+        console.error('Auth initialization error:', error)
+        // Token invalid, clear everything
+        logout()
       }
     }
   }

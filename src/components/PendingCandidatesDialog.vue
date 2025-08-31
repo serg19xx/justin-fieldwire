@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import api from '@/utils/api'
 
 interface PendingCandidate {
   id: string
@@ -77,11 +78,15 @@ async function loadPendingCandidates() {
   isLoading.value = true
   error.value = ''
 
-  // Временно используем моковые данные
-  setTimeout(() => {
-    candidates.value = mockCandidates
+  try {
+    const response = await api.get('/api/invitations/pending')
+    candidates.value = response.data
+  } catch (err: unknown) {
+    const axiosError = err as { response?: { data?: { message?: string } }; message?: string }
+    error.value = axiosError.response?.data?.message || axiosError.message || 'Failed to load candidates'
+  } finally {
     isLoading.value = false
-  }, 500)
+  }
 }
 
 // Удаление приглашения
@@ -91,22 +96,11 @@ async function deleteInvitation(candidateId: string) {
   }
 
   try {
-    const response = await fetch(`/api/invitations/${candidateId}`, {
-      method: 'DELETE',
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('authToken')}`,
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error('Failed to delete invitation')
-    }
-
-    // Обновляем список
-    await loadPendingCandidates()
-    emit('delete-invitation', candidateId)
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to delete invitation'
+    await api.delete(`/api/invitations/${candidateId}`)
+    await loadPendingCandidates() // Reload the list
+  } catch (err: unknown) {
+    const axiosError = err as { response?: { data?: { message?: string } }; message?: string }
+    error.value = axiosError.response?.data?.message || axiosError.message || 'Failed to delete invitation'
   }
 }
 
