@@ -2,7 +2,7 @@
   <div class="bg-white shadow-sm rounded-lg overflow-hidden">
     <!-- Search and filters row -->
     <div class="p-3 sm:p-4 border-b border-gray-200">
-      <div class="flex flex-col gap-3">
+      <div class="flex flex-col sm:flex-row gap-3 sm:items-center">
         <!-- Search input -->
         <div class="w-full sm:w-64">
           <div class="relative">
