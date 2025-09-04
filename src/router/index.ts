@@ -36,8 +36,7 @@ const router = createRouter({
       children: [
         {
           path: '',
-          name: 'all-contacts',
-          component: () => import('@/views/contacts/AllContactsView.vue'),
+          redirect: { name: 'patients' },
         },
         {
           path: 'patients',
@@ -55,14 +54,19 @@ const router = createRouter({
           component: () => import('@/views/contacts/PharmaciesView.vue'),
         },
         {
+          path: 'pharmacists',
+          name: 'pharmacists',
+          component: () => import('@/views/contacts/PharmacistsView.vue'),
+        },
+        {
           path: 'physicians',
           name: 'physicians',
           component: () => import('@/views/contacts/PhysiciansView.vue'),
         },
         {
-          path: 'clinics',
-          name: 'clinics',
-          component: () => import('@/views/contacts/ClinicsView.vue'),
+          path: 'medical-clinics',
+          name: 'medical-clinics',
+          component: () => import('@/views/contacts/MedicalClinicsView.vue'),
         },
       ],
     },

@@ -121,12 +121,6 @@ onUnmounted(() => {
             <!-- Dropdown Menu -->
             <div class="absolute top-full left-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
               <RouterLink
-                to="/contacts"
-                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-              >
-                All Contacts
-              </RouterLink>
-              <RouterLink
                 to="/contacts/patients"
                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
               >
@@ -145,16 +139,22 @@ onUnmounted(() => {
                 Pharmacies
               </RouterLink>
               <RouterLink
+                to="/contacts/pharmacists"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Pharmacists
+              </RouterLink>
+              <RouterLink
                 to="/contacts/physicians"
                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
               >
                 Physicians & Providers
               </RouterLink>
               <RouterLink
-                to="/contacts/clinics"
+                to="/contacts/medical-clinics"
                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
               >
-                Medical Clinics/Offices
+                Medical Clinics
               </RouterLink>
             </div>
           </div>
@@ -277,14 +277,6 @@ onUnmounted(() => {
           </div>
 
           <RouterLink
-            to="/contacts"
-            @click="closeMobileMenu"
-            class="block px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-          >
-            All Contacts
-          </RouterLink>
-
-          <RouterLink
             to="/contacts/patients"
             @click="closeMobileMenu"
             class="block px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
@@ -317,11 +309,19 @@ onUnmounted(() => {
           </RouterLink>
 
           <RouterLink
-            to="/contacts/clinics"
+            to="/contacts/pharmacists"
             @click="closeMobileMenu"
             class="block px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
           >
-            Medical Clinics/Offices
+            Pharmacists
+          </RouterLink>
+
+          <RouterLink
+            to="/contacts/medical-clinics"
+            @click="closeMobileMenu"
+            class="block px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+          >
+            Medical Clinics
           </RouterLink>
         </nav>
       </div>

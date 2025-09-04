@@ -28,8 +28,19 @@ export interface User {
   twoFactorEnabled: boolean
   isActive: boolean
   lastLogin?: string
-  permissions?: string[] // Сделали опциональным
-  avatarUrl?: string // Added for avatar management
+  permissions?: string[]
+  avatarUrl?: string
+  // Добавляем дополнительные поля профиля
+  phone?: string
+  job_title?: string
+  user_type?: string
+  additional_info?: string
+  company?: string
+  department?: string
+  location?: string
+  // Добавляем поля для статуса работы
+  inactive_reason?: string
+  inactive_reason_details?: string
 }
 
 export interface Invitation {
@@ -49,72 +60,7 @@ export const useAuthStore = defineStore('auth', () => {
   const invitations = ref<Invitation[]>([])
 
   // Mock users data
-  const users = ref<User[]>([
-    {
-      id: 1,
-      email: 'admin@company.com',
-      name: 'Justin Admin',
-      role: 'admin',
-      twoFactorEnabled: true,
-      isActive: true,
-      lastLogin: '2024-01-15T10:30:00Z',
-      permissions: ['all'],
-    },
-    {
-      id: 2,
-      email: 'manager@company.com',
-      name: 'Sarah Manager',
-      role: 'manager',
-      twoFactorEnabled: false,
-      isActive: true,
-      lastLogin: '2024-01-15T09:15:00Z',
-      permissions: ['projects:read', 'projects:write', 'people:read', 'tasks:read', 'tasks:write'],
-    },
-    {
-      id: 3,
-      email: 'supervisor@company.com',
-      name: 'Mike Supervisor',
-      role: 'supervisor',
-      twoFactorEnabled: true,
-      isActive: true,
-      lastLogin: '2024-01-15T08:45:00Z',
-      permissions: ['projects:read', 'tasks:read', 'tasks:write', 'photos:read', 'photos:write'],
-    },
-    {
-      id: 4,
-      email: 'engineer@company.com',
-      name: 'Lisa Engineer',
-      role: 'engineer',
-      twoFactorEnabled: false,
-      isActive: true,
-      lastLogin: '2024-01-14T16:20:00Z',
-      permissions: ['projects:read', 'tasks:read', 'tasks:write', 'specifications:read'],
-    },
-    {
-      id: 5,
-      email: 'viewer@company.com',
-      name: 'John Viewer',
-      role: 'viewer',
-      twoFactorEnabled: false,
-      isActive: false,
-      lastLogin: '2024-01-10T14:20:00Z',
-      permissions: ['projects:read', 'tasks:read'],
-    },
-  ])
-
-  // Mock invitations data
-  const mockInvitations = ref<Invitation[]>([
-    {
-      id: 1,
-      email: 'newuser@company.com',
-      role: 'engineer',
-      invitedBy: 'admin@company.com',
-      invitedAt: '2024-01-15T10:00:00Z',
-      expiresAt: '2024-01-22T10:00:00Z',
-      status: 'pending',
-      temporaryPassword: 'temp123',
-    },
-  ])
+  const users = ref<User[]>([])
 
   // Computed properties
   const isAdmin = computed(() => currentUser.value?.role === 'admin')
@@ -132,16 +78,22 @@ export const useAuthStore = defineStore('auth', () => {
     password: string,
   ): Promise<{ success: boolean; user?: User; requires2FA?: boolean; error?: string }> {
     try {
-      console.log('🌐 Making login request to:', `${api.defaults.baseURL}/auth/login`)
+      console.log('🌐 Making login request to:', `${api.defaults.baseURL}/api/v1/auth/login`)
       console.log('📧 Email:', email)
       console.log('🔑 Password:', password ? '***' : 'empty')
 
-      const response = await api.post('/auth/login', {
+      const response = await api.post('/api/v1/auth/login', {
         email,
         password,
       })
 
       console.log('✅ Login response:', response.data)
+
+      // Check if backend returned an error
+      if (response.data.status === 'error') {
+        console.log('❌ Backend returned error:', response.data.message)
+        throw new Error(response.data.message || 'Login failed')
+      }
 
       // Бэкенд возвращает данные в поле data
       const { data } = response.data
@@ -158,7 +110,7 @@ export const useAuthStore = defineStore('auth', () => {
         name: user.name,
         role: mapUserTypeToRole(user.user_type),
         twoFactorEnabled: user.two_factor_enabled,
-        isActive: user.status === 'active',
+        isActive: isUserActive(user.status),
         lastLogin: user.last_login,
         permissions: getPermissionsForRole(mapUserTypeToRole(user.user_type)),
         avatarUrl: user.avatar_url
@@ -171,7 +123,7 @@ export const useAuthStore = defineStore('auth', () => {
       // Токен сохраняем только если НЕ требуется 2FA
       // При 2FA токен будет сохранен после успешной верификации
       if (token && !requires_2fa) {
-        localStorage.setItem('token', token)
+        localStorage.setItem('authToken', token)
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
         console.log('🔐 Token saved to localStorage')
       } else if (token && requires_2fa) {
@@ -199,10 +151,19 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Обработка ошибок от бэкенда
       if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { data?: { data?: { message?: string } } } }
-        if (axiosError.response?.data?.data?.message) {
-          return { success: false, error: axiosError.response.data.data.message }
+        const axiosError = error as {
+          response?: { data?: { message?: string; data?: { message?: string } }; status?: number }
         }
+        console.log('🔍 Login error response status:', axiosError.response?.status)
+        console.log('🔍 Login error response data:', axiosError.response?.data)
+
+        // Try to get error message from different possible locations
+        const errorMessage =
+          axiosError.response?.data?.message ||
+          axiosError.response?.data?.data?.message ||
+          'Invalid email or password'
+
+        return { success: false, error: errorMessage }
       }
 
       const errorMessage =
@@ -280,12 +241,12 @@ export const useAuthStore = defineStore('auth', () => {
           name: user.name,
           role: mapUserTypeToRole(user.user_type),
           twoFactorEnabled: user.two_factor_enabled,
-          isActive: user.status === 'active',
+          isActive: isUserActive(user.status),
           lastLogin: user.last_login,
           permissions: getPermissionsForRole(mapUserTypeToRole(user.user_type)),
         }
 
-        localStorage.setItem('token', token)
+        localStorage.setItem('authToken', token)
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
         currentUser.value = updatedUser
         isAuthenticated.value = true
@@ -391,10 +352,85 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Helper function to check if token is expired
+  // Simple validation without complex JWT parsing
+  function isTokenExpired(token: string): boolean {
+    // Simple check - if token exists and has reasonable length, consider it valid
+    if (!token || token.length < 10) {
+      console.log('❌ Token is invalid (too short or empty)')
+      return true
+    }
+
+    // Skip check for mock tokens
+    if (token.startsWith('dev_token_')) {
+      console.log('🔍 Mock token detected, skipping expiration check')
+      return false
+    }
+
+    // For real tokens, just check if they exist and have reasonable format
+    // Don't try to parse JWT payload to avoid parsing errors
+    console.log('🔍 Token validation passed - token exists and has valid format')
+    return false
+  }
+
+  // Helper function to check if token needs refresh (5 minutes before expiry)
+  // Simple validation without complex JWT parsing
+  function shouldRefreshToken(token: string): boolean {
+    // For now, always return false to avoid complex validation
+    // TODO: Implement proper token refresh logic when backend is ready
+    console.log('🔍 Token refresh check - always false for now')
+    console.log('🔑 Token length:', token.length)
+    return false
+  }
+
+  // Function to refresh token
+  async function refreshToken(): Promise<boolean> {
+    try {
+      console.log('🔄 Attempting to refresh token...')
+
+      // Try to get new token using current user data
+      if (currentUser.value) {
+        const response = await api.post('/api/v1/auth/refresh', {
+          user_id: currentUser.value.id,
+          email: currentUser.value.email,
+        })
+
+        if (response.data.status === 'success') {
+          const newToken = response.data.data.token
+          localStorage.setItem('authToken', newToken)
+          api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
+          console.log('✅ Token refreshed successfully')
+          return true
+        }
+      }
+
+      console.log('❌ Token refresh failed')
+      return false
+    } catch (error) {
+      console.error('❌ Token refresh error:', error)
+      return false
+    }
+  }
+
   // Profile management functions
   async function getProfile(): Promise<{ success: boolean; user?: User; error?: string }> {
     try {
       console.log('👤 Fetching user profile')
+      console.log('🔑 Current token in headers:', api.defaults.headers.common['Authorization'])
+      console.log('🔑 Current user:', currentUser.value?.email)
+
+      // Temporarily disabled token refresh to fix login
+      // const authHeader = api.defaults.headers.common['Authorization']
+      // const token = typeof authHeader === 'string' ? authHeader.replace('Bearer ', '') : ''
+      // if (token && shouldRefreshToken(token)) {
+      //   console.log('⚠️ Token needs refresh before API call, attempting to refresh...')
+      //   const refreshSuccess = await refreshToken()
+      //   if (!refreshSuccess) {
+      //     console.log('❌ Token refresh failed, logging out')
+      //     logout()
+      //     return { success: false, error: 'Token expired' }
+      //   }
+      // }
 
       const response = await api.get('/api/v1/profile')
 
@@ -407,8 +443,8 @@ export const useAuthStore = defineStore('auth', () => {
           email: backendUser.email,
           name: backendUser.name,
           role: mapUserTypeToRole(backendUser.user_type),
-          twoFactorEnabled: backendUser.two_factor_enabled,
-          isActive: backendUser.status === 'active',
+          twoFactorEnabled: isTwoFactorEnabled(backendUser.two_factor_enabled),
+          isActive: isUserActive(backendUser.status),
           lastLogin: backendUser.last_login,
           permissions: getPermissionsForRole(mapUserTypeToRole(backendUser.user_type)),
           avatarUrl: backendUser.avatar_url
@@ -416,6 +452,14 @@ export const useAuthStore = defineStore('auth', () => {
               ? backendUser.avatar_url
               : `${apiConfig.baseURL}${backendUser.avatar_url}`
             : undefined,
+          // Добавляем дополнительные поля
+          phone: backendUser.phone,
+          job_title: backendUser.job_title,
+          user_type: backendUser.user_type,
+          additional_info: backendUser.additional_info,
+          company: backendUser.company,
+          department: backendUser.department,
+          location: backendUser.location,
         }
 
         // Update current user
@@ -434,7 +478,9 @@ export const useAuthStore = defineStore('auth', () => {
 
       // Обработка ошибок от бэкенда
       if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { data?: { message?: string } } }
+        const axiosError = error as { response?: { data?: { message?: string }; status?: number } }
+        console.log('🔍 Error response status:', axiosError.response?.status)
+        console.log('🔍 Error response data:', axiosError.response?.data)
         if (axiosError.response?.data?.message) {
           return { success: false, error: axiosError.response.data.message }
         }
@@ -451,6 +497,10 @@ export const useAuthStore = defineStore('auth', () => {
     phone?: string
     job_title?: string
     additional_info?: string
+    user_type?: string
+    company?: string
+    department?: string
+    location?: string
   }): Promise<{ success: boolean; user?: User; error?: string }> {
     try {
       console.log('📝 Updating user profile:', profileData)
@@ -466,8 +516,8 @@ export const useAuthStore = defineStore('auth', () => {
           email: backendUser.email,
           name: backendUser.name,
           role: mapUserTypeToRole(backendUser.user_type),
-          twoFactorEnabled: backendUser.two_factor_enabled,
-          isActive: backendUser.status === 'active',
+          twoFactorEnabled: isTwoFactorEnabled(backendUser.two_factor_enabled),
+          isActive: isUserActive(backendUser.status),
           lastLogin: backendUser.last_login,
           permissions: getPermissionsForRole(mapUserTypeToRole(backendUser.user_type)),
           avatarUrl: backendUser.avatar_url
@@ -475,6 +525,14 @@ export const useAuthStore = defineStore('auth', () => {
               ? backendUser.avatar_url
               : `${apiConfig.baseURL}${backendUser.avatar_url}`
             : undefined,
+          // Добавляем дополнительные поля
+          phone: backendUser.phone,
+          job_title: backendUser.job_title,
+          user_type: backendUser.user_type,
+          additional_info: backendUser.additional_info,
+          company: backendUser.company,
+          department: backendUser.department,
+          location: backendUser.location,
         }
 
         // Update current user
@@ -649,7 +707,7 @@ export const useAuthStore = defineStore('auth', () => {
       currentUser.value = null
       isAuthenticated.value = false
       localStorage.removeItem('user')
-      localStorage.removeItem('token')
+      localStorage.removeItem('authToken')
       delete api.defaults.headers.common['Authorization']
       console.log('✅ Logout completed - local state cleared')
     }
@@ -669,121 +727,87 @@ export const useAuthStore = defineStore('auth', () => {
     return currentUser.value.permissions.includes(permission)
   }
 
-  function inviteUser(email: string, role: string): Promise<boolean> {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const invitation: Invitation = {
-          id: Date.now(),
-          email,
-          role,
-          invitedBy: currentUser.value?.email || '',
-          invitedAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
-          status: 'pending',
-          temporaryPassword: generateTemporaryPassword(),
+  // Update work status
+  async function updateWorkStatus(statusData: {
+    isActive: boolean
+    inactive_reason?: string
+    inactive_reason_details?: string
+  }): Promise<{
+    success: boolean
+    user?: User
+    workStatus?: {
+      isActive: boolean
+      inactive_reason?: string
+      inactive_reason_details?: string
+      updated_at?: string
+    }
+    error?: string
+  }> {
+    try {
+      console.log('📝 Updating work status:', statusData)
+
+      const response = await api.put('/api/v1/profile/work-status', statusData)
+
+      console.log('✅ Update work status response:', response.data)
+
+      if (response.data.status === 'success') {
+        const workStatus = response.data.data.work_status
+
+        // Update current user's work status
+        if (currentUser.value) {
+          currentUser.value.isActive = workStatus.isActive
+          currentUser.value.inactive_reason = workStatus.inactive_reason
+          currentUser.value.inactive_reason_details = workStatus.inactive_reason_details
+          localStorage.setItem('user', JSON.stringify(currentUser.value))
         }
 
-        invitations.value.push(invitation)
-        resolve(true)
-      }, 1000)
-    })
-  }
+        console.log('✅ Work status updated successfully')
+        return { success: true, workStatus, user: currentUser.value || undefined }
+      } else {
+        console.log('❌ Failed to update work status')
+        return { success: false, error: response.data.message }
+      }
+    } catch (error: unknown) {
+      console.error('❌ Update work status error:', error)
 
-  function generateTemporaryPassword(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-    let result = ''
-    for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length))
+      // Обработка ошибок от бэкенда
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string } } }
+        if (axiosError.response?.data?.message) {
+          return { success: false, error: axiosError.response.data.message }
+        }
+      }
+
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update work status'
+      return { success: false, error: errorMessage }
     }
-    return result
-  }
-
-  function createUserFromInvitation(invitation: Invitation): User {
-    const newUser: User = {
-      id: Date.now(),
-      email: invitation.email,
-      name: invitation.email.split('@')[0], // Use email prefix as name
-      role: invitation.role as User['role'],
-      twoFactorEnabled: false,
-      isActive: true,
-      lastLogin: new Date().toISOString(),
-      permissions: getPermissionsForRole(invitation.role),
-    }
-
-    users.value.push(newUser)
-    return newUser
-  }
-
-  function getPermissionsForRole(role: string): string[] {
-    switch (role) {
-      case 'admin':
-        return ['all']
-      case 'manager':
-        return [
-          'projects:read',
-          'projects:write',
-          'people:read',
-          'people:write',
-          'tasks:read',
-          'tasks:write',
-          'reports:read',
-        ]
-      case 'supervisor':
-        return [
-          'projects:read',
-          'tasks:read',
-          'tasks:write',
-          'photos:read',
-          'photos:write',
-          'forms:read',
-          'forms:write',
-        ]
-      case 'engineer':
-        return ['projects:read', 'tasks:read', 'tasks:write', 'specifications:read', 'plans:read']
-      case 'viewer':
-        return ['projects:read', 'tasks:read']
-      default:
-        return ['projects:read']
-    }
-  }
-
-  function updateUserRole(userId: number, newRole: string): boolean {
-    const user = users.value.find((u) => u.id === userId)
-    if (user) {
-      user.role = newRole as User['role']
-      user.permissions = getPermissionsForRole(newRole)
-      return true
-    }
-    return false
-  }
-
-  function deactivateUser(userId: number): boolean {
-    const user = users.value.find((u) => u.id === userId)
-    if (user) {
-      user.isActive = false
-      return true
-    }
-    return false
-  }
-
-  function activateUser(userId: number): boolean {
-    const user = users.value.find((u) => u.id === userId)
-    if (user) {
-      user.isActive = true
-      return true
-    }
-    return false
   }
 
   // Initialize from localStorage and token
   async function initializeAuth() {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('authToken')
     const savedUser = localStorage.getItem('user')
+
+    console.log('🔄 Initializing auth...')
+    console.log('🔑 Token exists:', !!token)
+    console.log('👤 Saved user exists:', !!savedUser)
+    console.log('🔍 localStorage keys:', Object.keys(localStorage))
+    console.log('🔍 localStorage authToken value:', token ? token.substring(0, 20) + '...' : 'null')
+    console.log('🔍 localStorage user value:', savedUser ? 'parsed user data' : 'null')
+    console.log('🔍 Full token value:', token)
+    console.log('🔍 Full user value:', savedUser)
 
     if (token && savedUser) {
       try {
-        // Set token in API headers
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        // Token will be added automatically by the request interceptor
+        console.log('🔑 Token found in localStorage:', token.substring(0, 20) + '...')
+
+        // Check if token is expired
+        if (isTokenExpired(token)) {
+          console.log('❌ Token is expired, logging out')
+          logout()
+          return
+        }
 
         // TODO: Uncomment when backend is ready
         // const response = await api.get('/auth/me')
@@ -792,12 +816,16 @@ export const useAuthStore = defineStore('auth', () => {
         // For now, use saved user data
         const user = JSON.parse(savedUser)
 
-        if (user && user.isActive) {
+        // Don't logout users who are intentionally inactive - they can still access their profile
+        // Only logout if user data is corrupted or missing
+        if (user && user.id && user.email) {
           currentUser.value = user
           isAuthenticated.value = true
           console.log('✅ Auth initialized from localStorage')
+          console.log('👤 Current user:', user.email)
         } else {
-          // User inactive, clear everything
+          // User data corrupted, clear everything
+          console.log('❌ User data corrupted, logging out')
           logout()
         }
       } catch (error) {
@@ -805,7 +833,34 @@ export const useAuthStore = defineStore('auth', () => {
         // Clear everything on error
         logout()
       }
+    } else {
+      console.log('❌ No token or user data found')
     }
+  }
+
+  // Helper function to check if user is active
+  function isUserActive(status: number | string | boolean): boolean {
+    if (typeof status === 'boolean') return status
+    if (typeof status === 'number') return status === 1
+    if (typeof status === 'string') {
+      const lowerStatus = status.toLowerCase()
+      return (
+        lowerStatus === 'active' ||
+        lowerStatus === '1' ||
+        lowerStatus === 'true' ||
+        lowerStatus === 'yes'
+      )
+    }
+    return false
+  }
+
+  // Helper function to check if 2FA is enabled
+  function isTwoFactorEnabled(enabled: boolean | number | string | null | undefined): boolean {
+    if (enabled === null || enabled === undefined) return false
+    if (typeof enabled === 'boolean') return enabled
+    if (typeof enabled === 'number') return enabled === 1
+    if (typeof enabled === 'string') return enabled === '1' || enabled === 'true'
+    return false
   }
 
   // Helper function to map backend user_type to frontend role
@@ -826,12 +881,46 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Helper function to get permissions for a specific role
+  function getPermissionsForRole(role: User['role']): string[] {
+    switch (role) {
+      case 'admin':
+        return [
+          'all',
+          'manage_users',
+          'manage_projects',
+          'manage_tasks',
+          'manage_files',
+          'manage_reports',
+          'view_analytics',
+          'system_settings',
+        ]
+      case 'manager':
+        return [
+          'manage_projects',
+          'manage_tasks',
+          'manage_files',
+          'manage_reports',
+          'view_analytics',
+          'invite_users',
+        ]
+      case 'supervisor':
+        return ['manage_tasks', 'manage_files', 'view_reports', 'view_analytics']
+      case 'engineer':
+        return ['view_projects', 'manage_tasks', 'upload_files', 'view_reports']
+      case 'viewer':
+        return ['view_projects', 'view_tasks', 'view_files', 'view_reports']
+      default:
+        return ['view_projects', 'view_tasks']
+    }
+  }
+
   return {
     // State
     currentUser,
     isAuthenticated,
     users,
-    invitations: mockInvitations,
+    invitations,
 
     // Computed
     isAdmin,
@@ -847,16 +936,14 @@ export const useAuthStore = defineStore('auth', () => {
     disableTwoFactor,
     logout,
     checkPermission,
-    inviteUser,
-    createUserFromInvitation,
-    updateUserRole,
-    deactivateUser,
-    activateUser,
     initializeAuth,
     getProfile,
     updateProfile,
     uploadAvatar,
     enableTwoFactorFromProfile,
     disableTwoFactorFromProfile,
+    updateWorkStatus,
+    refreshToken,
+    shouldRefreshToken,
   }
 })

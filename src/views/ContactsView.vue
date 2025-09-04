@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import UnderDevelopment from '@/components/UnderDevelopment.vue'
+// This view serves as a parent container for all contacts pages
+// Child routes will be displayed via router-view
 </script>
 
 <template>
-  <UnderDevelopment 
-    title="Contact Management"
-    description="Comprehensive contact management system for all project stakeholders."
-    plannedFor="Q1 2024"
-  />
+  <div class="min-h-screen bg-gray-50">
+    <!-- Router view for child routes -->
+    <router-view />
+  </div>
 </template>
