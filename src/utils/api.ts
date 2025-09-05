@@ -131,4 +131,29 @@ api.interceptors.request.use(
   },
 )
 
+// Auth API for invitation token validation
+export const authApi = {
+  async validateInvitationToken(token: string): Promise<{
+    valid: boolean
+    message?: string
+    user?: {
+      email: string
+      first_name: string
+      last_name: string
+      user_type: string
+    }
+  }> {
+    try {
+      const response = await api.get(`/api/v1/auth/validate-invitation-token?token=${token}`)
+      return response.data
+    } catch (error: any) {
+      console.error('Error validating invitation token:', error)
+      return {
+        valid: false,
+        message: error.response?.data?.message || 'Token validation failed'
+      }
+    }
+  }
+}
+
 export default api

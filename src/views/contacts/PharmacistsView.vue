@@ -29,6 +29,7 @@ const columns = [
   { key: 'operName', label: 'Pharmacy Name', sortable: true },
   { key: 'workplace', label: 'Workplace', sortable: true },
   { key: 'email', label: 'Email', sortable: true },
+  { key: 'cell_phone', label: 'Cell Phone', sortable: true },
 ]
 
 // Geography filters
@@ -176,6 +177,27 @@ function handleGeographyLoaded(filters: Record<string, string>) {
   loadPharmacists(filters)
 }
 
+// Phone number formatting function
+function formatPhoneNumber(phone: string): string {
+  if (!phone) return ''
+
+  // Remove all non-digit characters
+  const digits = phone.replace(/\D/g, '')
+
+  // Format as (XXX) XXX-XXXX for 10 digits
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`
+  }
+
+  // Format as +X (XXX) XXX-XXXX for 11 digits (with country code)
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`
+  }
+
+  // Return original if not 10 or 11 digits
+  return phone
+}
+
 // Load data on mount
 onMounted(() => {
   loadPharmacists()
@@ -285,6 +307,13 @@ onMounted(() => {
 
           <template #cell-workplace="{ value }">
             <span v-if="value" class="text-sm text-gray-700">{{ value }}</span>
+            <span v-else class="text-gray-400">-</span>
+          </template>
+
+          <template #cell-cell_phone="{ value }">
+            <a v-if="value" :href="`tel:${value}`" class="text-blue-600 hover:text-blue-800">
+              {{ formatPhoneNumber(value as string) }}
+            </a>
             <span v-else class="text-gray-400">-</span>
           </template>
         </DataTable>

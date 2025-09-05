@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import TwoFactorDialog from '@/components/TwoFactorDialog.vue'
+import api from '@/utils/api'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const loginForm = reactive({
@@ -25,6 +27,23 @@ const showTwoFactor = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 
+// Token validation state
+const invitationToken = ref('')
+const isValidatingToken = ref(false)
+const tokenValidationResult = ref<{
+  valid: boolean
+  message?: string
+  user?: {
+    email: string
+    first_name: string
+    last_name: string
+    user_type: string
+  }
+} | null>(null)
+
+// Form visibility state - initially hidden if token is present
+const isFormVisible = ref(false)
+
 async function handleLogin() {
   isLoading.value = true
   errorMessage.value = ''
@@ -36,8 +55,13 @@ async function handleLogin() {
       if (result.requires2FA) {
         showTwoFactor.value = true
       } else {
-        // Login successful - redirect to dashboard
-        router.push('/')
+        // Check if we have a valid token - redirect to password change
+        if (tokenValidationResult.value?.valid) {
+          router.push(`/password-change?token=${invitationToken.value}`)
+        } else {
+          // Normal login - redirect to dashboard
+          router.push('/')
+        }
       }
     } else {
       errorMessage.value = result.error || 'Invalid email or password'
@@ -51,8 +75,13 @@ async function handleLogin() {
 }
 
 function handleTwoFactorSuccess() {
-  // 2FA successful - redirect to dashboard
-  router.push('/')
+  // Check if we have a valid token - redirect to password change
+  if (tokenValidationResult.value?.valid) {
+    router.push(`/password-change?token=${invitationToken.value}`)
+  } else {
+    // Normal 2FA - redirect to dashboard
+    router.push('/')
+  }
 }
 
 async function handlePasswordRecovery() {
@@ -90,6 +119,62 @@ function backToLogin() {
   errorMessage.value = ''
   successMessage.value = ''
 }
+
+// Validate invitation token
+async function validateInvitationToken(token: string) {
+  isValidatingToken.value = true
+  errorMessage.value = ''
+
+  try {
+    const response = await api.get(`/api/v1/registration/validate/${token}`)
+    const result = response.data
+
+    if (result.status === 'success' && result.data.valid) {
+      tokenValidationResult.value = {
+        valid: true,
+        user: result.data.user
+      }
+      // Pre-fill email if token is valid
+      loginForm.email = result.data.user.email
+      successMessage.value = `Welcome ${result.data.user.first_name}! Please set your password to complete registration.`
+      // Show form only if token is valid
+      isFormVisible.value = true
+    } else {
+      tokenValidationResult.value = {
+        valid: false,
+        message: result.message || 'Invalid or expired invitation token'
+      }
+      errorMessage.value = result.message || 'Invalid or expired invitation token'
+      // Keep form hidden if token is invalid
+      isFormVisible.value = false
+    }
+  } catch (error) {
+    console.error('Token validation error:', error)
+    tokenValidationResult.value = {
+      valid: false,
+      message: 'Failed to validate invitation token'
+    }
+    errorMessage.value = 'Failed to validate invitation token'
+    // Keep form hidden if token validation fails
+    isFormVisible.value = false
+  } finally {
+    isValidatingToken.value = false
+  }
+}
+
+// Check for token in URL on component mount
+onMounted(() => {
+  const token = route.query.token as string
+  if (token) {
+    invitationToken.value = token
+    // Form is hidden by default when token is present
+    isFormVisible.value = false
+    validateInvitationToken(token)
+  } else {
+    // No token - show form immediately
+    isFormVisible.value = true
+  }
+})
 </script>
 
 <template>
@@ -109,26 +194,64 @@ function backToLogin() {
       </div>
       <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
         {{
-          showRecovery
-            ? 'Password Recovery'
-            : showTwoFactor
-              ? 'Two-Factor Authentication'
-              : 'Sign in to FieldWire'
+          isValidatingToken
+            ? 'Validating Invitation...'
+            : tokenValidationResult?.valid
+              ? 'Complete Registration'
+              : showRecovery
+                ? 'Password Recovery'
+                : showTwoFactor
+                  ? 'Two-Factor Authentication'
+                  : 'Sign in to FieldWire'
         }}
       </h2>
       <p class="mt-2 text-center text-sm text-gray-600">
         {{
-          showRecovery
-            ? 'Enter your email to receive a password reset link'
-            : showTwoFactor
-              ? 'Enter the 6-digit code from your authenticator app'
-              : 'Access your construction projects'
+          isValidatingToken
+            ? 'Please wait while we validate your invitation...'
+            : tokenValidationResult?.valid
+              ? 'Set your password to complete your account setup'
+              : showRecovery
+                ? 'Enter your email to receive a password reset link'
+                : showTwoFactor
+                  ? 'Enter the 6-digit code from your authenticator app'
+                  : 'Access your construction projects'
         }}
       </p>
     </div>
 
     <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
       <div class="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        <!-- Token Validation Loading -->
+        <div v-if="isValidatingToken" class="mb-4 bg-blue-50 border border-blue-200 rounded-md p-4">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <svg
+                class="animate-spin h-5 w-5 text-blue-400"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  class="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  stroke-width="4"
+                ></circle>
+                <path
+                  class="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm text-blue-800">Validating your invitation...</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Error/Success Messages -->
         <div v-if="errorMessage" class="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
           <div class="flex">
@@ -178,7 +301,7 @@ function backToLogin() {
 
         <!-- Login Form -->
         <form
-          v-if="!showRecovery && !showTwoFactor"
+          v-if="!showRecovery && !showTwoFactor && !isValidatingToken && isFormVisible"
           @submit.prevent="handleLogin"
           class="space-y-6"
         >
@@ -269,7 +392,7 @@ function backToLogin() {
         </form>
 
         <!-- Password Recovery Form -->
-        <form v-if="showRecovery" @submit.prevent="handlePasswordRecovery" class="space-y-6">
+        <form v-if="showRecovery && !isValidatingToken && isFormVisible" @submit.prevent="handlePasswordRecovery" class="space-y-6">
           <div>
             <label for="recovery-email" class="block text-sm font-medium text-gray-700"
               >Email address</label
@@ -327,7 +450,7 @@ function backToLogin() {
         </form>
 
         <!-- Demo Info -->
-        <div class="mt-6 bg-gray-50 rounded-md p-4">
+        <div v-if="isFormVisible" class="mt-6 bg-gray-50 rounded-md p-4">
           <h3 class="text-sm font-medium text-gray-900 mb-2">Test Credentials:</h3>
           <div class="text-sm text-gray-600 space-y-1">
             <p><strong>Admin:</strong> admin@medicalcontractor.ca / password1234</p>
@@ -345,6 +468,7 @@ function backToLogin() {
 
     <!-- Two-Factor Authentication Dialog -->
     <TwoFactorDialog
+      v-if="isFormVisible"
       :is-open="showTwoFactor"
       @close="backToLogin"
       @success="handleTwoFactorSuccess"

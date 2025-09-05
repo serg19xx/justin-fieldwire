@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import api from '@/utils/api'
 
 interface Props {
@@ -8,7 +8,14 @@ interface Props {
 
 interface Emits {
   (e: 'close'): void
-  (e: 'invite-sent', data: { email: string; firstName: string; lastName: string }): void
+  (e: 'invite-sent', data: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    userType: string;
+    specialization?: string;
+    phone?: string;
+  }): void
 }
 
 const { isOpen } = defineProps<Props>()
@@ -17,8 +24,49 @@ const emit = defineEmits<Emits>()
 const email = ref('')
 const firstName = ref('')
 const lastName = ref('')
+const userType = ref('')
+const specialization = ref('')
+const phone = ref('')
 const isLoading = ref(false)
 const error = ref('')
+
+// Specializations for different user types
+const specializationsByType = {
+  'General Contractor': [
+    'Foreman',
+    'General Labourer'
+  ],
+  'Trade Contractor': [
+    'HVAC',
+    'Electrician',
+    'Plumbing',
+    'Demolition',
+    'Framing',
+    'Drywall',
+    'Taping',
+    'Network & IT',
+    'Flooring',
+    'Stone Work',
+    'Concrete Work',
+    'Doors',
+    'Handyman & Labourer',
+    'Finish & Design',
+    'Commercial Cleaner',
+    'Painter',
+    'Ceiling & T-Bar',
+    'Millwork'
+  ]
+}
+
+// Computed property to get available specializations for selected user type
+const availableSpecializations = computed(() => {
+  return specializationsByType[userType.value as keyof typeof specializationsByType] || []
+})
+
+// Computed property to check if specialization is required
+const isSpecializationRequired = computed(() => {
+  return availableSpecializations.value.length > 0
+})
 
 function validateEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -50,13 +98,26 @@ async function sendInvitation() {
     return
   }
 
+  if (!userType.value) {
+    error.value = 'User type is required'
+    return
+  }
+
+  if (isSpecializationRequired.value && !specialization.value) {
+    error.value = 'Specialization is required for this user type'
+    return
+  }
+
   isLoading.value = true
 
   try {
-    const response = await api.post('/api/invitations/send', {
+    const response = await api.post('/api/v1/workers/invite', {
       email: email.value.trim(),
-      firstName: firstName.value.trim(),
-      lastName: lastName.value.trim(),
+      first_name: firstName.value.trim(),
+      last_name: lastName.value.trim(),
+      user_type: userType.value,
+      job_title: specialization.value || null,
+      phone: phone.value.trim() || null,
     })
 
     if (response.data.success) {
@@ -64,11 +125,17 @@ async function sendInvitation() {
         email: email.value.trim(),
         firstName: firstName.value.trim(),
         lastName: lastName.value.trim(),
+        userType: userType.value,
+        specialization: specialization.value || undefined,
+        phone: phone.value.trim() || undefined,
       })
       // Очистка формы
       email.value = ''
       firstName.value = ''
       lastName.value = ''
+      userType.value = ''
+      specialization.value = ''
+      phone.value = ''
       emit('close')
     } else {
       error.value = response.data.message || 'Failed to send invitation'
@@ -86,6 +153,9 @@ function closeDialog() {
     email.value = ''
     firstName.value = ''
     lastName.value = ''
+    userType.value = ''
+    specialization.value = ''
+    phone.value = ''
     error.value = ''
     emit('close')
   }
@@ -166,6 +236,63 @@ function closeDialog() {
                 />
               </div>
 
+              <!-- Phone Input -->
+              <div>
+                <label for="phone" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                  Phone Number
+                </label>
+                <input
+                  id="phone"
+                  v-model="phone"
+                  type="tel"
+                  placeholder="Enter phone number (optional)"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  :disabled="isLoading"
+                />
+              </div>
+
+              <!-- User Type Select -->
+              <div>
+                <label for="userType" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                  User Type *
+                </label>
+                <select
+                  id="userType"
+                  v-model="userType"
+                  @change="specialization = ''"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  :disabled="isLoading"
+                  required
+                >
+                  <option value="">Select user type</option>
+                  <option value="System Administrator">System Administrator</option>
+                  <option value="Architect">Architect</option>
+                  <option value="Project Manager">Project Manager</option>
+                  <option value="General Contractor">General Contractor</option>
+                  <option value="Trade Contractor">Trade Contractor</option>
+                  <option value="Client">Client</option>
+                </select>
+              </div>
+
+              <!-- Specialization Select (conditional) -->
+              <div v-if="isSpecializationRequired">
+                <label for="specialization" class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                  Specialization *
+                </label>
+                <select
+                  id="specialization"
+                  v-model="specialization"
+                  class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  :disabled="isLoading"
+                  required
+                >
+                  <option value="">Select specialization</option>
+                  <option v-for="spec in availableSpecializations" :key="spec" :value="spec">
+                    {{ spec }}
+                  </option>
+                </select>
+              </div>
+
               <!-- Error Message -->
               <div
                 v-if="error"
@@ -193,7 +320,7 @@ function closeDialog() {
             type="button"
             @click="sendInvitation"
             class="flex-1 sm:flex-none px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            :disabled="isLoading || !email.trim() || !firstName.trim() || !lastName.trim()"
+            :disabled="isLoading || !email.trim() || !firstName.trim() || !lastName.trim() || !userType || (isSpecializationRequired && !specialization)"
           >
             <span v-if="isLoading" class="flex items-center justify-center">
               <svg

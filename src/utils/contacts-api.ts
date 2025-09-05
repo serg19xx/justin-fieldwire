@@ -535,3 +535,130 @@ export const geographyApi = {
     return response.data
   },
 }
+
+// Worker interface
+export interface Worker {
+  id: number
+  email: string
+  password_hash: string
+  first_name: string
+  last_name: string
+  phone?: string
+  user_type: string
+  job_title?: string
+  status: number // 1 = active, 0 = inactive
+  status_reason?: string
+  status_details?: string
+  additional_info?: string
+  avatar_url?: string
+  two_factor_enabled: boolean
+  two_factor_secret?: string
+  last_login?: string
+  created_at: string
+  updated_at: string
+  invitation_status: string
+  invitation_token?: string
+  invitation_sent_at?: string
+  invitation_expires_at?: string
+  invited_by?: number
+  registration_completed_at?: string
+  invitation_attempts: number
+  last_reminder_sent_at?: string
+  temp_password?: string
+  temp_password_expires_at?: string
+}
+
+// Auth API
+export const authApi = {
+  async validateInvitationToken(token: string): Promise<{
+    valid: boolean
+    message: string
+    user?: {
+      id: number
+      email: string
+      first_name: string
+      last_name: string
+      user_type: string
+      job_title?: string
+    }
+  }> {
+    try {
+      const response = await api.get(`/api/v1/auth/validate-invitation-token?token=${encodeURIComponent(token)}`)
+      return response.data
+    } catch (error) {
+      console.error('Error validating invitation token:', error)
+      throw error
+    }
+  }
+}
+
+// Workers API
+export const workersApi = {
+  async getAll(
+    page: number = 1,
+    limit: number = 10,
+    filters: {
+      status?: string
+      search?: string
+      user_type?: string
+    } = {}
+  ): Promise<{
+    workers: Worker[]
+    pagination: {
+      current_page: number
+      per_page: number
+      total: number
+      last_page: number
+    }
+  }> {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        ...filters
+      })
+
+      console.log('🔍 Making request to:', `/api/v1/workers?${params}`)
+      const response = await api.get(`/api/v1/workers?${params}`)
+      console.log('✅ Workers API response:', response.data)
+      return response.data.data
+    } catch (error: any) {
+      console.error('Error fetching workers:', error)
+      if (error.response) {
+        console.error('Response status:', error.response.status)
+        console.error('Response data:', error.response.data)
+        console.error('Response headers:', error.response.headers)
+      }
+      throw error
+    }
+  },
+
+  async getById(id: number): Promise<Worker> {
+    try {
+      const response = await api.get(`/api/v1/workers/${id}`)
+      return response.data.data
+    } catch (error) {
+      console.error('Error fetching worker:', error)
+      throw error
+    }
+  },
+
+  async update(id: number, data: Partial<Worker>): Promise<Worker> {
+    try {
+      const response = await api.put(`/api/v1/workers/${id}`, data)
+      return response.data.data
+    } catch (error) {
+      console.error('Error updating worker:', error)
+      throw error
+    }
+  },
+
+  async delete(id: number): Promise<void> {
+    try {
+      await api.delete(`/api/v1/workers/${id}`)
+    } catch (error) {
+      console.error('Error deleting worker:', error)
+      throw error
+    }
+  }
+}

@@ -32,26 +32,28 @@
 
         <!-- Filters and actions -->
         <div class="flex flex-col sm:flex-row gap-2 sm:ml-auto">
-          <!-- Default filters -->
-          <select
-            v-model="countryFilter"
-            @change="handleCountryChange"
-            class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-          >
-            <option v-for="country in countries" :key="country.code2" :value="country.code2">
-              {{ country.name }}
-            </option>
-          </select>
+          <!-- Default geography filters (only show if not disabled) -->
+          <template v-if="!disableGeographyFilters">
+            <select
+              v-model="countryFilter"
+              @change="handleCountryChange"
+              class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+            >
+              <option v-for="country in countries" :key="country.code2" :value="country.code2">
+                {{ country.name }}
+              </option>
+            </select>
 
-          <select
-            v-model="regionFilter"
-            class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
-          >
-            <option value="">All Regions</option>
-            <option v-for="region in availableRegions" :key="region.code2" :value="region.code2">
-              {{ region.name }}
-            </option>
-          </select>
+            <select
+              v-model="regionFilter"
+              class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
+            >
+              <option value="">All Regions</option>
+              <option v-for="region in availableRegions" :key="region.code2" :value="region.code2">
+                {{ region.name }}
+              </option>
+            </select>
+          </template>
 
           <slot name="filters">
             <!-- Additional custom filters will go here -->
@@ -325,6 +327,7 @@ interface Props {
   showPagination?: boolean
   totalItems?: number
   currentPage?: number
+  disableGeographyFilters?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -333,6 +336,7 @@ const props = withDefaults(defineProps<Props>(), {
   showPagination: true,
   totalItems: undefined,
   currentPage: undefined,
+  disableGeographyFilters: false,
 })
 
 // State

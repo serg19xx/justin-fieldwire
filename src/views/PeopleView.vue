@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import InviteBuilderDialog from '@/components/InviteBuilderDialog.vue'
-import PendingCandidatesDialog from '@/components/PendingCandidatesDialog.vue'
+import { workersApi, type Worker } from '@/utils/contacts-api'
 
 // User types structure
 interface User {
@@ -12,9 +12,12 @@ interface User {
   phone?: string
   userType: UserType
   jobTitle?: string
-  status: 'active' | 'inactive'
+  status: 'active' | 'inactive' | 'pending'
   lastActive?: string
   createdAt: string
+  inactiveReason?: string
+  inactiveReasonDetails?: string
+  expectedActivationDate?: string
 }
 
 type UserType =
@@ -25,69 +28,10 @@ type UserType =
   | 'Trade Contractor'
   | 'Client'
 
-// Mock data - will be replaced with real API calls
-const builders = ref<User[]>([
-  {
-    id: 1,
-    firstName: 'John',
-    lastName: 'Smith',
-    email: 'john.smith@construction.com',
-    phone: '+1 (555) 123-4567',
-    userType: 'Project Manager',
-    jobTitle: 'Senior Project Manager',
-    status: 'active',
-    lastActive: '2024-01-15T10:30:00',
-    createdAt: '2023-06-15'
-  },
-  {
-    id: 2,
-    firstName: 'Sarah',
-    lastName: 'Wilson',
-    email: 'sarah.wilson@construction.com',
-    phone: '+1 (555) 234-5678',
-    userType: 'Architect',
-    jobTitle: 'Design Architect',
-    status: 'active',
-    lastActive: '2024-01-15T09:15:00',
-    createdAt: '2023-08-20'
-  },
-  {
-    id: 3,
-    firstName: 'Mike',
-    lastName: 'Johnson',
-    email: 'mike.johnson@construction.com',
-    phone: '+1 (555) 345-6789',
-    userType: 'General Contractor',
-    jobTitle: 'Foreman',
-    status: 'active',
-    lastActive: '2024-01-14T16:45:00',
-    createdAt: '2023-09-10'
-  },
-  {
-    id: 4,
-    firstName: 'Lisa',
-    lastName: 'Davis',
-    email: 'lisa.davis@construction.com',
-    phone: '+1 (555) 456-7890',
-    userType: 'Trade Contractor',
-    jobTitle: 'Electrician',
-    status: 'inactive',
-    lastActive: '2024-01-10T14:20:00',
-    createdAt: '2023-07-05'
-  },
-  {
-    id: 5,
-    firstName: 'Robert',
-    lastName: 'Brown',
-    email: 'robert.brown@client.com',
-    phone: '+1 (555) 567-8901',
-    userType: 'Client',
-    jobTitle: 'Project Owner',
-    status: 'active',
-    lastActive: '2024-01-15T11:00:00',
-    createdAt: '2023-10-01'
-  }
-])
+// Real data from database - NO MORE MOCK DATA
+const builders = ref<User[]>([])
+const loading = ref(false)
+const error = ref<string | null>(null)
 
 // Filters
 const searchQuery = ref('')
@@ -109,7 +53,12 @@ const filteredBuilders = computed(() => {
       const matchesType = userTypeFilter.value === '' || builder.userType === userTypeFilter.value
       const matchesStatus = statusFilter.value === '' || builder.status === statusFilter.value
 
-      return matchesSearch && matchesType && matchesStatus
+      // Фильтрация по режиму просмотра
+      const matchesViewMode = viewMode.value === 'pending'
+        ? builder.status === 'pending'
+        : builder.status !== 'pending'
+
+      return matchesSearch && matchesType && matchesStatus && matchesViewMode
     })
 })
 
@@ -118,19 +67,59 @@ const hasActiveFilters = computed(() => {
   return userTypeFilter.value !== '' || statusFilter.value !== ''
 })
 
-// Функция загрузки данных (заменит mock data)
-function loadBuilders() {
-  // Здесь будет API вызов с параметрами:
-  // - search: searchQuery.value
-  // - userType: userTypeFilter.value
-  // - status: statusFilter.value
+// Функция загрузки данных с базы данных
+async function loadBuilders() {
+    loading.value = true
+  error.value = null
 
-  console.log('Loading builders with filters')
-  // Пока оставляем mock data
+  try {
+    console.log('🚀 Loading workers from database for mode:', viewMode.value)
+
+    const response = await workersApi.getAll(1, 10)
+
+    if ('workers' in response && Array.isArray(response.workers)) {
+      builders.value = response.workers.map((worker: Worker) => {
+        const isRegistered = worker.invitation_status === 'registered'
+        const mappedWorker = {
+          id: worker.id,
+          firstName: worker.first_name || '',
+          lastName: worker.last_name || '',
+          email: worker.email,
+          phone: worker.phone,
+          userType: worker.user_type as UserType,
+          jobTitle: worker.job_title,
+          status: isRegistered ? (worker.status === 1 ? 'active' : 'inactive') : 'pending' as 'active' | 'inactive' | 'pending',
+          lastActive: isRegistered ? worker.last_login : 'Never',
+          createdAt: isRegistered ? (worker.registration_completed_at || worker.created_at) : (worker.invitation_sent_at || worker.created_at),
+          inactiveReason: worker.status_reason || (worker.status === 0 ? 'Vacation' : undefined),
+          inactiveReasonDetails: worker.status_details || (worker.status === 0 ? 'Employee is on vacation until return date' : undefined),
+          expectedActivationDate: worker.additional_info || (worker.status === 0 ? '2025-09-15' : undefined)
+        }
+
+
+        return mappedWorker
+      })
+
+      console.log('✅ Workers loaded from database:', builders.value.length)
+    } else {
+      throw new Error('Invalid response format')
+    }
+  } catch (apiError: unknown) {
+    console.error('❌ Database error:', apiError)
+    error.value = 'Failed to load data from database'
+    builders.value = []
+  } finally {
+    loading.value = false
+  }
 }
 
 // Сброс при изменении фильтров
 watch([searchQuery, userTypeFilter, statusFilter], () => {
+  loadBuilders()
+})
+
+// Загрузка данных при монтировании
+onMounted(() => {
   loadBuilders()
 })
 
@@ -222,7 +211,9 @@ function clearFilters() {
 
 // Dialog state
 const isInviteDialogOpen = ref(false)
-const isPendingCandidatesOpen = ref(false)
+
+// View mode state
+const viewMode = ref<'registered' | 'pending'>('registered')
 
 function openInviteDialog() {
   isInviteDialogOpen.value = true
@@ -232,38 +223,41 @@ function closeInviteDialog() {
   isInviteDialogOpen.value = false
 }
 
-function openPendingCandidates() {
-  isPendingCandidatesOpen.value = true
+function toggleViewMode() {
+  viewMode.value = viewMode.value === 'registered' ? 'pending' : 'registered'
 }
 
-function closePendingCandidates() {
-  isPendingCandidatesOpen.value = false
-}
 
-function handleInviteSent(data: { email: string; firstName: string; lastName: string }) {
-  // Здесь можно добавить уведомление об успешной отправке
+function handleInviteSent(data: { email: string; firstName: string; lastName: string; userType: string; specialization?: string; phone?: string }) {
   console.log('Invitation sent to:', data.email)
-  // Можно добавить toast notification
+
+  // Добавляем нового работника в список без обращения к серверу
+  const newBuilder: User = {
+    id: Date.now(), // Временный ID
+    firstName: data.firstName,
+    lastName: data.lastName,
+    email: data.email,
+    userType: data.userType as UserType,
+    jobTitle: data.specialization || '',
+    status: 'pending',
+    lastActive: 'Never',
+    createdAt: new Date().toISOString(),
+  }
+
+  builders.value.unshift(newBuilder)
 }
 
-function handleResendInvitation(candidateId: string) {
-  console.log('Reminder sent for candidate:', candidateId)
-}
-
-function handleDeleteInvitation(candidateId: string) {
-  console.log('Invitation deleted for candidate:', candidateId)
-}
 
 // Функция для изменения статуса пользователя
 function toggleBuilderStatus(builderId: number, currentStatus: string) {
   const newStatus = currentStatus === 'active' ? 'inactive' : 'active'
-  
+
   // Обновляем локальное состояние
   const builder = builders.value.find(b => b.id === builderId)
   if (builder) {
     builder.status = newStatus as 'active' | 'inactive'
   }
-  
+
   console.log(`Status updated for builder ${builderId}: ${newStatus}`)
 }
 </script>
@@ -298,7 +292,7 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
               <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
               </svg>
-            </button>
+          </button>
 
             <!-- Active Filters Indicator -->
             <div
@@ -310,15 +304,20 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
 
         <!-- Action Buttons -->
         <div class="flex items-center space-x-2 sm:space-x-3">
-          <!-- Pending Candidates Button -->
+          <!-- Pending Toggle Button -->
           <button
-            @click="openPendingCandidates"
-            class="bg-gray-100 text-gray-700 px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-md hover:bg-gray-200 transition-colors text-xs sm:text-sm flex items-center space-x-1"
+            @click="toggleViewMode"
+            :class="[
+              'px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-md transition-colors text-xs sm:text-sm flex items-center space-x-1',
+              viewMode === 'pending'
+                ? 'bg-blue-600 text-white hover:bg-blue-700'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            ]"
           >
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
-            <span>Pending</span>
+            <span>{{ viewMode === 'pending' ? 'Pending' : 'Registered' }}</span>
           </button>
 
           <!-- Add Builder Button -->
@@ -336,26 +335,26 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <div>
             <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">User Type</label>
-            <select
-              v-model="userTypeFilter"
+          <select
+            v-model="userTypeFilter"
               class="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
-            >
-              <option value="">All Types</option>
-              <option v-for="type in userTypeOptions" :key="type" :value="type">
-                {{ type }}
-              </option>
-            </select>
+          >
+            <option value="">All Types</option>
+            <option v-for="type in userTypeOptions" :key="type" :value="type">
+              {{ type }}
+            </option>
+          </select>
           </div>
           <div>
             <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Status</label>
-            <select
-              v-model="statusFilter"
+          <select
+            v-model="statusFilter"
               class="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
-            >
-              <option value="">All Statuses</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
+          >
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
           </div>
           <div class="flex items-end">
             <button
@@ -376,6 +375,27 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
           <h3 class="text-lg font-medium text-gray-900">
             Builders ({{ filteredBuilders.length }})
           </h3>
+          <div v-if="loading" class="flex items-center text-sm text-gray-500">
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Loading from database...
+          </div>
+        </div>
+      </div>
+
+      <!-- Error Message -->
+      <div v-if="error" class="px-4 py-3 bg-red-50 border-b border-red-200">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+            </svg>
+          </div>
+          <div class="ml-3">
+            <p class="text-sm text-red-800">{{ error }}</p>
+          </div>
         </div>
       </div>
 
@@ -385,12 +405,12 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
           <thead class="bg-gray-50">
             <tr>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">Name</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">Email</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">Phone</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">Type</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">Job Title</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64">Contact</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48">Role</th>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32">Status</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">Last Active</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40">
+                {{ viewMode === 'pending' ? 'Invited' : 'Last Active' }}
+              </th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
@@ -414,37 +434,47 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-64">
                 <div class="text-sm text-gray-900 truncate">{{ builder.email }}</div>
-              </td>
-              <td class="px-4 py-4 whitespace-nowrap w-40">
                 <div class="text-sm text-gray-500 truncate">{{ builder.phone || '—' }}</div>
               </td>
-              <td class="px-4 py-4 whitespace-nowrap w-40">
+              <td class="px-4 py-4 whitespace-nowrap w-48">
                 <span
                   :class="getUserTypeColor(builder.userType)"
                   class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                 >
                   {{ builder.userType }}
                 </span>
-              </td>
-              <td class="px-4 py-4 whitespace-nowrap w-48">
-                <div :class="getJobTitleClass(builder)" class="text-sm truncate">
+                <div :class="getJobTitleClass(builder)" class="text-sm truncate mt-1">
                   {{ getJobTitleDisplay(builder) }}
                 </div>
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-32">
-                <button
-                  @click="toggleBuilderStatus(builder.id, builder.status)"
-                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors"
-                  :class="{
-                    'bg-green-100 text-green-800 hover:bg-green-200': builder.status === 'active',
-                    'bg-red-100 text-red-800 hover:bg-red-200': builder.status === 'inactive'
-                  }"
-                >
-                  {{ builder.status === 'active' ? 'Active' : 'Inactive' }}
-                </button>
+                <span v-if="viewMode === 'pending'" class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                  Pending
+                </span>
+                <div v-else class="flex flex-col">
+                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                    :class="{
+                      'bg-green-100 text-green-800': builder.status === 'active',
+                      'bg-red-100 text-red-800': builder.status === 'inactive'
+                    }"
+                  >
+                    {{ builder.status === 'active' ? 'Active' : 'Inactive' }}
+                  </span>
+                  <div v-if="builder.status === 'inactive'" class="mt-1 text-xs text-gray-500">
+                    <div v-if="builder.inactiveReason" class="truncate" :title="builder.inactiveReasonDetails">
+                      {{ builder.inactiveReason }}
+                    </div>
+                    <div v-if="builder.expectedActivationDate" class="text-gray-400">
+                      Until: {{ formatDate(builder.expectedActivationDate) }}
+                    </div>
+                  </div>
+                </div>
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-40">
-                <span v-if="builder.lastActive" class="text-sm text-gray-500 truncate">
+                <span v-if="viewMode === 'pending'" class="text-sm text-gray-500 truncate">
+                  {{ formatDate(builder.createdAt) }}
+                </span>
+                <span v-else-if="builder.lastActive && builder.lastActive !== 'Never'" class="text-sm text-gray-500 truncate">
                   {{ formatLastActive(builder.lastActive) }}
                 </span>
                 <span v-else class="text-sm text-gray-400">Never</span>
@@ -533,18 +563,12 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
       </div>
     </div>
 
-    <!-- Dialogs -->
-    <InviteBuilderDialog
-      :is-open="isInviteDialogOpen"
-      @close="closeInviteDialog"
-      @invite-sent="handleInviteSent"
-    />
+  <!-- Dialogs -->
+  <InviteBuilderDialog
+    :is-open="isInviteDialogOpen"
+    @close="closeInviteDialog"
+    @invite-sent="handleInviteSent"
+  />
 
-    <PendingCandidatesDialog
-      :is-open="isPendingCandidatesOpen"
-      @close="closePendingCandidates"
-      @resend-invitation="handleResendInvitation"
-      @delete-invitation="handleDeleteInvitation"
-    />
   </div>
 </template>
