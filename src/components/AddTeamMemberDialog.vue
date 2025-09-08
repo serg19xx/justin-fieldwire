@@ -3,6 +3,11 @@ import { ref, computed, watch } from 'vue'
 import { projectsApi, type ProjectTeamMember } from '@/utils/contacts-api'
 import { workersApi, type Worker } from '@/utils/contacts-api'
 
+// Extended worker type with role for team management
+interface WorkerWithRole extends Worker {
+  role?: string
+}
+
 // Props
 interface Props {
   isOpen: boolean
@@ -23,8 +28,7 @@ const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
 const searchQuery = ref('')
-const selectedUsers = ref<Worker[]>([])
-const selectedRole = ref('member')
+const selectedUsers = ref<WorkerWithRole[]>([])
 
 // Available workers (excluding those already in team)
 const availableWorkers = ref<Worker[]>([])
@@ -49,6 +53,37 @@ const roleOptions = [
   { value: 'coordinator', label: 'Coordinator' },
 ]
 
+// Function to get default role based on user type
+function getDefaultRoleForUserType(userType: string): string {
+  switch (userType) {
+    case 'Plumber':
+      return 'member' // Plumber
+    case 'Electrician':
+      return 'member' // Electrician
+    case 'Carpenter':
+      return 'member' // Carpenter
+    case 'Mason':
+      return 'member' // Mason
+    case 'Painter':
+      return 'member' // Painter
+    case 'Architect':
+      return 'lead' // Architect usually leads design
+    case 'Engineer':
+      return 'lead' // Engineer usually leads technical aspects
+    case 'Project Manager':
+      return 'lead' // Project Manager leads the project
+    case 'Foreman':
+      return 'supervisor' // Foreman supervises workers
+    case 'Safety Inspector':
+      return 'supervisor' // Safety Inspector supervises safety
+    case 'Quality Control':
+      return 'supervisor' // Quality Control supervises quality
+    default:
+      return 'member' // Default to team member
+  }
+}
+
+
 // Load available workers
 async function loadAvailableWorkers() {
   if (!props.projectId) return
@@ -69,7 +104,9 @@ async function loadAvailableWorkers() {
         (worker) =>
           !existingUserIds.includes(worker.id) &&
           worker.invitation_status === 'registered' &&
-          worker.status === 1, // Only active workers
+          worker.status === 1 && // Only active workers
+          worker.user_type !== 'System Administrator' && // Exclude administrators
+          worker.user_type !== 'Project Manager' // Exclude project managers
       )
 
       console.log('✅ Available workers loaded:', availableWorkers.value.length)
@@ -95,13 +132,12 @@ async function addTeamMembers() {
   try {
     console.log('👥 Adding team members:', {
       projectId: props.projectId,
-      users: selectedUsers.value.map((u) => ({ id: u.id, name: getUserDisplayName(u) })),
-      role: selectedRole.value,
+      users: selectedUsers.value.map((u) => ({ id: u.id, name: getUserDisplayName(u), role: u.role })),
     })
 
-    // Add all selected users
+    // Add all selected users with their individual roles
     const promises = selectedUsers.value.map((user) =>
-      projectsApi.addTeamMember(props.projectId, user.id, selectedRole.value),
+      projectsApi.addTeamMember(props.projectId, user.id, user.role || 'member'),
     )
 
     const newMembers = await Promise.all(promises)
@@ -123,7 +159,6 @@ function closeDialog() {
   // Reset form
   searchQuery.value = ''
   selectedUsers.value = []
-  selectedRole.value = 'member'
   error.value = null
 
   emit('close')
@@ -167,7 +202,12 @@ function toggleUserSelection(worker: Worker) {
   if (index > -1) {
     selectedUsers.value.splice(index, 1)
   } else {
-    selectedUsers.value.push(worker)
+    // Auto-set role based on user type
+    const defaultRole = getDefaultRoleForUserType(worker.user_type)
+    selectedUsers.value.push({
+      ...worker,
+      role: defaultRole
+    } as WorkerWithRole)
   }
 }
 
@@ -176,11 +216,22 @@ function isUserSelected(worker: Worker): boolean {
   return selectedUsers.value.some((u) => u.id === worker.id)
 }
 
+// Update user role
+function updateUserRole(user: WorkerWithRole, newRole: string) {
+  const index = selectedUsers.value.findIndex((u) => u.id === user.id)
+  if (index > -1) {
+    selectedUsers.value[index] = { ...selectedUsers.value[index], role: newRole }
+  }
+}
+
 // Select all filtered users
 function selectAllFiltered() {
-  const newSelections = filteredWorkers.value.filter(
-    (worker) => !selectedUsers.value.some((u) => u.id === worker.id),
-  )
+  const newSelections = filteredWorkers.value
+    .filter((worker) => !selectedUsers.value.some((u) => u.id === worker.id))
+    .map(worker => ({
+      ...worker,
+      role: getDefaultRoleForUserType(worker.user_type)
+    } as WorkerWithRole))
   selectedUsers.value.push(...newSelections)
 }
 
@@ -258,33 +309,19 @@ function clearAllSelections() {
             />
           </div>
 
-          <!-- Role selection -->
-          <div class="mb-4">
-            <label for="role" class="block text-sm font-medium text-gray-700 mb-2"> Role </label>
-            <select
-              id="role"
-              v-model="selectedRole"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option v-for="role in roleOptions" :key="role.value" :value="role.value">
-                {{ role.label }}
-              </option>
-            </select>
-          </div>
 
           <!-- Selected users summary -->
           <div
             v-if="selectedUsers.length > 0"
             class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md"
           >
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between mb-3">
               <div>
-                <p class="text-sm font-medium text-blue-900">
-                  {{ selectedUsers.length }} worker{{ selectedUsers.length === 1 ? '' : 's' }}
-                  selected
-                </p>
-                <p class="text-xs text-blue-700">
-                  {{ selectedUsers.map((u) => getUserDisplayName(u)).join(', ') }}
+                <h4 class="text-sm font-medium text-blue-900">
+                  Selected Workers ({{ selectedUsers.length }})
+                </h4>
+                <p class="text-xs text-gray-500 mt-1">
+                  Roles are auto-assigned based on profession. You can change them if needed.
                 </p>
               </div>
               <button
@@ -293,6 +330,46 @@ function clearAllSelections() {
               >
                 Clear all
               </button>
+            </div>
+            <div class="space-y-2">
+              <div
+                v-for="user in selectedUsers"
+                :key="user.id"
+                class="flex items-center justify-between p-2 bg-white rounded border"
+              >
+                <div class="flex items-center space-x-3 flex-1">
+                  <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span class="text-sm font-medium text-blue-700">
+                      {{ user.first_name?.charAt(0) || 'U' }}
+                    </span>
+                  </div>
+                  <div class="flex-1">
+                    <div class="text-sm font-medium text-gray-900">
+                      {{ user.first_name }} {{ user.last_name }}
+                    </div>
+                    <div class="text-xs text-gray-500">
+                      {{ getUserTypeDisplay(user) }}
+                    </div>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <select
+                      :value="user.role"
+                      @change="updateUserRole(user, ($event.target as HTMLSelectElement).value)"
+                      class="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option v-for="role in roleOptions" :key="role.value" :value="role.value">
+                        {{ role.label }}
+                      </option>
+                    </select>
+                    <button
+                      @click="toggleUserSelection(user)"
+                      class="text-red-600 hover:text-red-800 text-sm"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

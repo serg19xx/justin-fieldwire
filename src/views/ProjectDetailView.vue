@@ -445,8 +445,134 @@ function addTeamMember() {
 // Handle team member added
 function handleTeamMemberAdded(newMember: ProjectTeamMember) {
   console.log('👥 Team member added:', newMember)
-  // Reload team members to get updated list
-  loadTeamMembers()
+  // Add new member to local data without full reload
+  teamMembers.value.push(newMember)
+}
+
+// Edit role dialog state
+const editRoleDialog = ref({
+  isOpen: false,
+  member: null as ProjectTeamMember | null,
+  newRole: ''
+})
+
+// Role options
+const roleOptions = [
+  { value: 'member', label: 'Team Member' },
+  { value: 'lead', label: 'Team Lead' },
+  { value: 'supervisor', label: 'Supervisor' },
+  { value: 'coordinator', label: 'Coordinator' },
+]
+
+// Function to get default role based on user type
+function getDefaultRoleForUserType(userType: string): string {
+  switch (userType) {
+    case 'Plumber':
+    case 'Electrician':
+    case 'Carpenter':
+    case 'Mason':
+    case 'Painter':
+      return 'member'
+    case 'Architect':
+    case 'Engineer':
+    case 'Project Manager':
+      return 'lead'
+    case 'Foreman':
+    case 'Safety Inspector':
+    case 'Quality Control':
+      return 'supervisor'
+    default:
+      return 'member'
+  }
+}
+
+
+// Function to get role status text for table display
+function getRoleStatusText(member: ProjectTeamMember): string {
+  const defaultRole = getDefaultRoleForUserType(member.user_type || '')
+
+  if (member.role === defaultRole) {
+    return 'Auto-assigned'
+  } else {
+    return 'Custom role'
+  }
+}
+
+// Open edit role dialog
+function openEditRoleDialog(member: ProjectTeamMember) {
+  editRoleDialog.value = {
+    isOpen: true,
+    member,
+    newRole: member.role
+  }
+}
+
+// Close edit role dialog
+function closeEditRoleDialog() {
+  editRoleDialog.value = {
+    isOpen: false,
+    member: null,
+    newRole: ''
+  }
+}
+
+// Save role changes
+async function saveRoleChanges() {
+  if (!editRoleDialog.value.member || !project.value) return
+
+  try {
+    console.log('💾 Updating role for member:', editRoleDialog.value.member.id, 'to:', editRoleDialog.value.newRole)
+
+    // Update role via API
+    await projectsApi.updateTeamMemberRole(
+      project.value.id,
+      editRoleDialog.value.member.id,
+      editRoleDialog.value.newRole
+    )
+
+    console.log('✅ Role updated successfully')
+
+    // Update local data without full reload
+    const memberIndex = teamMembers.value.findIndex(m => m.id === editRoleDialog.value.member!.id)
+    if (memberIndex > -1) {
+      teamMembers.value[memberIndex] = {
+        ...teamMembers.value[memberIndex],
+        role: editRoleDialog.value.newRole
+      }
+    }
+
+    closeEditRoleDialog()
+  } catch (error) {
+    console.error('❌ Error updating role:', error)
+    alert('Failed to update role. Please try again.')
+  }
+}
+
+// Remove team member
+async function removeTeamMember(member: ProjectTeamMember) {
+  if (!project.value) return
+
+  if (!confirm(`Are you sure you want to remove ${member.name} from the project team?`)) {
+    return
+  }
+
+  try {
+    console.log('🗑️ Removing team member:', member.id)
+
+    // Remove member via API
+    await projectsApi.removeTeamMember(project.value.id, member.id)
+
+    console.log('✅ Team member removed successfully')
+
+    // Update local data without full reload
+    const index = teamMembers.value.findIndex(m => m.id === member.id)
+    if (index > -1) {
+      teamMembers.value.splice(index, 1)
+    }
+  } catch (error) {
+    console.error('❌ Error removing team member:', error)
+    alert('Failed to remove team member. Please try again.')
+  }
 }
 
 // Handle task updates from calendar
@@ -946,7 +1072,18 @@ onMounted(() => {
                       <th
                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                       >
-                        Role
+                        <div class="flex items-center">
+                          <span>Role</span>
+                          <div class="ml-1 group relative">
+                            <svg class="h-4 w-4 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                              Role in this project (not job title)
+                              <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                            </div>
+                          </div>
+                        </div>
                       </th>
                       <th
                         class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -992,24 +1129,26 @@ onMounted(() => {
                         </div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
-                        <span
-                          class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                          :class="{
-                            'bg-blue-100 text-blue-800': member.role === 'lead',
-                            'bg-green-100 text-green-800': member.role === 'member',
-                            'bg-yellow-100 text-yellow-800': member.role === 'supervisor',
-                            'bg-purple-100 text-purple-800': member.role === 'coordinator',
-                            'bg-gray-100 text-gray-800': !['lead', 'member', 'supervisor', 'coordinator'].includes(member.role),
-                          }"
-                        >
-                          {{ member.role === 'lead' ? 'Team Lead' :
-                             member.role === 'member' ? 'Team Member' :
-                             member.role === 'supervisor' ? 'Supervisor' :
-                             member.role === 'coordinator' ? 'Coordinator' :
-                             member.role }}
-                        </span>
-                        <div v-if="member.job_title" class="text-xs text-gray-500 mt-1">
-                          {{ member.job_title }}
+                        <div class="flex flex-col">
+                          <span
+                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                            :class="{
+                              'bg-blue-100 text-blue-800': member.role === 'lead',
+                              'bg-green-100 text-green-800': member.role === 'member',
+                              'bg-yellow-100 text-yellow-800': member.role === 'supervisor',
+                              'bg-purple-100 text-purple-800': member.role === 'coordinator',
+                              'bg-gray-100 text-gray-800': !['lead', 'member', 'supervisor', 'coordinator'].includes(member.role),
+                            }"
+                          >
+                            {{ member.role === 'lead' ? 'Team Lead' :
+                               member.role === 'member' ? 'Team Member' :
+                               member.role === 'supervisor' ? 'Supervisor' :
+                               member.role === 'coordinator' ? 'Coordinator' :
+                               member.role }}
+                          </span>
+                          <span class="text-xs text-gray-400 mt-1">
+                            {{ getRoleStatusText(member) }}
+                          </span>
                         </div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
@@ -1030,8 +1169,18 @@ onMounted(() => {
                         v-if="canEditProject"
                         class="px-6 py-4 whitespace-nowrap text-sm font-medium"
                       >
-                        <button class="text-blue-600 hover:text-blue-900 mr-3">Edit</button>
-                        <button class="text-red-600 hover:text-red-900">Remove</button>
+                        <button
+                          @click="openEditRoleDialog(member)"
+                          class="text-blue-600 hover:text-blue-900 mr-3"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          @click="removeTeamMember(member)"
+                          class="text-red-600 hover:text-red-900"
+                        >
+                          Remove
+                        </button>
                       </td>
                     </tr>
                   </tbody>
@@ -1306,4 +1455,72 @@ onMounted(() => {
     @close="showAddTeamMemberDialog = false"
     @member-added="handleTeamMemberAdded"
   />
+
+  <!-- Edit Role Dialog -->
+  <div v-if="editRoleDialog.isOpen" class="fixed inset-0 z-50 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+      <!-- Background overlay -->
+      <div
+        class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+        @click="closeEditRoleDialog"
+      ></div>
+
+      <!-- Dialog panel -->
+      <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <!-- Header -->
+        <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+          <div class="sm:flex sm:items-start">
+            <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+              <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+              </svg>
+            </div>
+            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+              <h3 class="text-lg leading-6 font-medium text-gray-900">Edit Team Member Role</h3>
+              <div class="mt-2">
+                <p class="text-sm text-gray-500">
+                  Change the role for {{ editRoleDialog.member?.name || 'this team member' }}
+                </p>
+                <p class="text-xs text-gray-400 mt-1">
+                  Roles are auto-assigned based on profession. Change only if needed.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Content -->
+        <div class="bg-white px-4 pb-4 sm:p-6">
+          <div class="mb-4">
+            <label for="role" class="block text-sm font-medium text-gray-700 mb-2">Role</label>
+            <select
+              id="role"
+              v-model="editRoleDialog.newRole"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option v-for="role in roleOptions" :key="role.value" :value="role.value">
+                {{ role.label }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+          <button
+            @click="saveRoleChanges"
+            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+          >
+            Save Changes
+          </button>
+          <button
+            @click="closeEditRoleDialog"
+            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
