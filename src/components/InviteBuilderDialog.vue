@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import api from '@/utils/api'
+import { USER_TYPE_OPTIONS } from '@/utils/constants'
 
 interface Props {
   isOpen: boolean
@@ -265,12 +266,9 @@ function closeDialog() {
                   required
                 >
                   <option value="">Select user type</option>
-                  <option value="System Administrator">System Administrator</option>
-                  <option value="Architect">Architect</option>
-                  <option value="Project Manager">Project Manager</option>
-                  <option value="General Contractor">General Contractor</option>
-                  <option value="Trade Contractor">Trade Contractor</option>
-                  <option value="Client">Client</option>
+                  <option v-for="type in USER_TYPE_OPTIONS" :key="type" :value="type">
+                    {{ type }}
+                  </option>
                 </select>
               </div>
 

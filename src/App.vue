@@ -93,7 +93,7 @@ onUnmounted(() => {
           </RouterLink>
 
           <RouterLink
-            v-if="authStore.checkPermission('people:read')"
+            v-if="currentUser?.user_type === 'System Administrator' || currentUser?.user_type === 'Project Manager'"
             to="/people"
             class="text-sm font-medium text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md"
             :class="{ 'bg-gray-100 text-gray-900': route.path === '/people' }"
@@ -109,8 +109,8 @@ onUnmounted(() => {
             Reports
           </RouterLink>
 
-          <!-- Contacts Dropdown -->
-          <div class="relative group">
+          <!-- Contacts Dropdown - Only for System Administrator -->
+          <div v-if="currentUser?.user_type === 'System Administrator'" class="relative group">
             <button class="text-sm font-medium text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md flex items-center">
               Contacts
               <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -254,7 +254,7 @@ onUnmounted(() => {
           </RouterLink>
 
           <RouterLink
-            v-if="authStore.checkPermission('people:read')"
+            v-if="currentUser?.user_type === 'System Administrator' || currentUser?.user_type === 'Project Manager'"
             to="/people"
             @click="closeMobileMenu"
             class="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
@@ -270,59 +270,62 @@ onUnmounted(() => {
             Reports
           </RouterLink>
 
-          <div class="border-t border-gray-200 my-4"></div>
+          <!-- Contacts Section - Only for System Administrator -->
+          <div v-if="currentUser?.user_type === 'System Administrator'">
+            <div class="border-t border-gray-200 my-4"></div>
 
-          <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
-            Contacts
+            <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 py-2">
+              Contacts
+            </div>
+
+            <RouterLink
+              to="/contacts/patients"
+              @click="closeMobileMenu"
+              class="block px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+            >
+              Patients
+            </RouterLink>
+
+            <RouterLink
+              to="/contacts/drivers"
+              @click="closeMobileMenu"
+              class="block px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+            >
+              Drivers
+            </RouterLink>
+
+            <RouterLink
+              to="/contacts/pharmacies"
+              @click="closeMobileMenu"
+              class="block px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+            >
+              Pharmacies
+            </RouterLink>
+
+            <RouterLink
+              to="/contacts/physicians"
+              @click="closeMobileMenu"
+              class="block px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+            >
+              Physicians & Providers
+            </RouterLink>
+
+            <RouterLink
+              to="/contacts/pharmacists"
+              @click="closeMobileMenu"
+              class="block px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+            >
+              Pharmacists
+            </RouterLink>
+
+            <RouterLink
+              to="/contacts/medical-clinics"
+              @click="closeMobileMenu"
+              class="block px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+            >
+              Medical Clinics
+            </RouterLink>
           </div>
-
-          <RouterLink
-            to="/contacts/patients"
-            @click="closeMobileMenu"
-            class="block px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-          >
-            Patients
-          </RouterLink>
-
-          <RouterLink
-            to="/contacts/drivers"
-            @click="closeMobileMenu"
-            class="block px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-          >
-            Drivers
-          </RouterLink>
-
-          <RouterLink
-            to="/contacts/pharmacies"
-            @click="closeMobileMenu"
-            class="block px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-          >
-            Pharmacies
-          </RouterLink>
-
-          <RouterLink
-            to="/contacts/physicians"
-            @click="closeMobileMenu"
-            class="block px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-          >
-            Physicians & Providers
-          </RouterLink>
-
-          <RouterLink
-            to="/contacts/pharmacists"
-            @click="closeMobileMenu"
-            class="block px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-          >
-            Pharmacists
-          </RouterLink>
-
-          <RouterLink
-            to="/contacts/medical-clinics"
-            @click="closeMobileMenu"
-            class="block px-3 py-2 text-sm text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
-          >
-            Medical Clinics
-          </RouterLink>
         </nav>
       </div>
     </div>

@@ -109,6 +109,7 @@ export const useAuthStore = defineStore('auth', () => {
         email: user.email,
         name: user.name,
         role: mapUserTypeToRole(user.user_type),
+        user_type: user.user_type,
         twoFactorEnabled: user.two_factor_enabled,
         isActive: isUserActive(user.status),
         lastLogin: user.last_login,
@@ -240,6 +241,7 @@ export const useAuthStore = defineStore('auth', () => {
           email: user.email,
           name: user.name,
           role: mapUserTypeToRole(user.user_type),
+          user_type: user.user_type,
           twoFactorEnabled: user.two_factor_enabled,
           isActive: isUserActive(user.status),
           lastLogin: user.last_login,
@@ -720,6 +722,14 @@ export const useAuthStore = defineStore('auth', () => {
     if (!currentUser.value.permissions) {
       console.warn('⚠️ User permissions not defined, using role-based fallback')
       // Fallback на основе роли
+      if (permission === 'projects:read') {
+        return ['admin', 'manager', 'supervisor', 'engineer', 'viewer'].includes(
+          currentUser.value.role || '',
+        )
+      }
+      if (permission === 'people:read') {
+        return ['admin'].includes(currentUser.value.role || '')
+      }
       return ['admin', 'manager'].includes(currentUser.value.role || '')
     }
 
@@ -868,13 +878,15 @@ export const useAuthStore = defineStore('auth', () => {
     switch (userType.toLowerCase()) {
       case 'system administrator':
         return 'admin'
-      case 'manager':
+      case 'project manager':
         return 'manager'
-      case 'supervisor':
+      case 'general contractor':
         return 'supervisor'
-      case 'engineer':
+      case 'trade contractor':
         return 'engineer'
-      case 'viewer':
+      case 'architect':
+        return 'engineer'
+      case 'client':
         return 'viewer'
       default:
         return 'viewer'
@@ -888,7 +900,8 @@ export const useAuthStore = defineStore('auth', () => {
         return [
           'all',
           'manage_users',
-          'manage_projects',
+          'projects:read',
+          'people:read',
           'manage_tasks',
           'manage_files',
           'manage_reports',
@@ -898,6 +911,8 @@ export const useAuthStore = defineStore('auth', () => {
       case 'manager':
         return [
           'manage_projects',
+          'projects:read',
+          'people:read',
           'manage_tasks',
           'manage_files',
           'manage_reports',
@@ -905,13 +920,13 @@ export const useAuthStore = defineStore('auth', () => {
           'invite_users',
         ]
       case 'supervisor':
-        return ['manage_tasks', 'manage_files', 'view_reports', 'view_analytics']
+        return ['projects:read', 'manage_tasks', 'manage_files', 'view_reports', 'view_analytics']
       case 'engineer':
-        return ['view_projects', 'manage_tasks', 'upload_files', 'view_reports']
+        return ['projects:read', 'manage_tasks', 'upload_files', 'view_reports']
       case 'viewer':
-        return ['view_projects', 'view_tasks', 'view_files', 'view_reports']
+        return ['projects:read', 'view_tasks', 'view_files', 'view_reports']
       default:
-        return ['view_projects', 'view_tasks']
+        return ['projects:read', 'view_tasks']
     }
   }
 

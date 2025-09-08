@@ -662,3 +662,108 @@ export const workersApi = {
     }
   }
 }
+
+// Project types and API
+export interface Project {
+  id: number
+  prj_name: string
+  address: string
+  date_start: string
+  date_end: string
+  priority: string
+  status: string
+  prj_managger: number | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProjectsResponse {
+  projects: Project[]
+  pagination: {
+    current_page: number
+    per_page: number
+    total: number
+    last_page: number
+  }
+}
+
+export const projectsApi = {
+  async getAll(
+    page: number = 1,
+    limit: number = 20,
+    filters?: {
+      status?: string
+      priority?: string
+      search?: string
+      prj_manager?: number
+    }
+  ): Promise<ProjectsResponse> {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      })
+
+      if (filters?.status) params.append('status', filters.status)
+      if (filters?.priority) params.append('priority', filters.priority)
+      if (filters?.search) params.append('search', filters.search)
+      if (filters?.prj_manager !== undefined) params.append('prj_manager', filters.prj_manager.toString())
+
+      const response = await api.get(`/api/v1/projects?${params.toString()}`)
+      return response.data.data
+    } catch (error) {
+      console.error('Error fetching projects:', error)
+      throw error
+    }
+  },
+
+  async getById(id: number): Promise<Project> {
+    try {
+      const response = await api.get(`/api/v1/projects/${id}`)
+      return response.data.data
+    } catch (error) {
+      console.error('Error fetching project:', error)
+      throw error
+    }
+  },
+
+  async create(data: Partial<Project>): Promise<Project> {
+    try {
+      const response = await api.post('/api/v1/projects', data)
+      return response.data.data.project
+    } catch (error: any) {
+      console.error('Error creating project:', error)
+
+      // Handle API error response format
+      if (error.response?.data) {
+        const errorData = error.response.data
+        if (errorData.status === 'error') {
+          console.error('API Error:', errorData.message)
+          console.error('Error details:', errorData.data)
+          throw new Error(errorData.message + ': ' + errorData.data)
+        }
+      }
+
+      throw error
+    }
+  },
+
+  async update(id: number, data: Partial<Project>): Promise<Project> {
+    try {
+      const response = await api.put(`/api/v1/projects/${id}`, data)
+      return response.data.data
+    } catch (error) {
+      console.error('Error updating project:', error)
+      throw error
+    }
+  },
+
+  async delete(id: number): Promise<void> {
+    try {
+      await api.delete(`/api/v1/projects/${id}`)
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      throw error
+    }
+  }
+}

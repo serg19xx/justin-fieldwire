@@ -2,6 +2,10 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import InviteBuilderDialog from '@/components/InviteBuilderDialog.vue'
 import { workersApi, type Worker } from '@/utils/contacts-api'
+import { USER_TYPE_OPTIONS, type UserType } from '@/utils/constants'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 // User types structure
 interface User {
@@ -20,13 +24,7 @@ interface User {
   expectedActivationDate?: string
 }
 
-type UserType =
-  | 'System Administrator'
-  | 'Architect'
-  | 'Project Manager'
-  | 'General Contractor'
-  | 'Trade Contractor'
-  | 'Client'
+// UserType is now imported from constants
 
 // Real data from database - NO MORE MOCK DATA
 const builders = ref<User[]>([])
@@ -120,17 +118,13 @@ watch([searchQuery, userTypeFilter, statusFilter], () => {
 
 // Загрузка данных при монтировании
 onMounted(() => {
+  console.log('🔍 PeopleView mounted - current user:', authStore.currentUser)
+  console.log('🔍 User permissions:', authStore.currentUser?.permissions)
   loadBuilders()
 })
 
-// User type options for filter
-const userTypeOptions = [
-  'Architect',
-  'Project Manager',
-  'General Contractor',
-  'Trade Contractor',
-  'Client'
-]
+// User type options for filter (imported from constants)
+const userTypeOptions = USER_TYPE_OPTIONS
 
 function getUserTypeColor(userType: UserType) {
   switch (userType) {

@@ -298,6 +298,300 @@ CREATE TABLE invitations (
 
 Use the API Tester at `/api-tester` to test endpoints:
 
+## Projects Endpoints
+
+### GET /api/v1/projects
+**Get all projects with optional filtering**
+
+**Query Parameters:**
+- `page` (integer, optional): Page number for pagination (default: 1)
+- `limit` (integer, optional): Number of items per page (default: 20, max: 100)
+- `status` (string, optional): Filter by project status
+- `priority` (string, optional): Filter by project priority
+- `search` (string, optional): Search by project name or address
+- `prj_manager` (integer, optional): Filter by project manager ID (0 for unassigned)
+
+**Examples:**
+- `GET /api/v1/projects` - All projects
+- `GET /api/v1/projects?prj_manager=47` - Projects of manager 47
+- `GET /api/v1/projects?prj_manager=0` - Unassigned projects
+- `GET /api/v1/projects?prj_manager=47&status=Active` - Combined filtering
+
+**Response:**
+```json
+{
+  "error_code": 0,
+  "status": "success",
+  "message": "Projects retrieved successfully",
+  "data": {
+    "projects": [
+      {
+        "id": 1,
+        "prj_name": "Office Building Construction",
+        "address": "123 Main St, City, State",
+        "date_start": "2025-01-01",
+        "date_end": "2025-12-31",
+        "priority": "High",
+        "status": "Active",
+        "prj_managger": 1,
+        "created_at": "2025-09-07T15:02:58.805Z",
+        "updated_at": "2025-09-07T15:02:58.805Z"
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "per_page": 20,
+      "total": 100,
+      "last_page": 5
+    }
+  }
+}
+```
+
+### POST /api/v1/projects
+**Create new project**
+
+**Request:**
+```json
+{
+  "prj_name": "Office Building Construction",
+  "address": "123 Main St, City, State",
+  "date_start": "2025-01-01",
+  "date_end": "2025-12-31",
+  "priority": "High",
+  "status": "Active",
+  "prj_manager": 1
+}
+```
+
+**Response (Success):**
+```json
+{
+  "error_code": 0,
+  "status": "success",
+  "message": "Project created successfully",
+  "data": {
+    "project": {
+      "id": 1,
+      "prj_name": "Office Building Construction",
+      "address": "123 Main St, City, State",
+      "date_start": "2025-01-01",
+      "date_end": "2025-12-31",
+      "priority": "High",
+      "status": "Active",
+      "prj_managger": 1,
+      "created_at": "2025-09-07T15:02:58.805Z",
+      "updated_at": "2025-09-07T15:02:58.805Z"
+    }
+  }
+}
+```
+
+**Response (Error):**
+```json
+{
+  "error_code": 400,
+  "status": "error",
+  "message": "Validation failed",
+  "data": {
+    "errors": {
+      "prj_name": ["Project name is required"],
+      "address": ["Address is required"]
+    }
+  }
+}
+```
+
+### GET /api/v1/projects/{id}
+**Get project by ID**
+
+**Response:**
+```json
+{
+  "error_code": 0,
+  "status": "success",
+  "message": "Project retrieved successfully",
+  "data": {
+    "project": {
+      "id": 1,
+      "prj_name": "Office Building Construction",
+      "address": "123 Main St, City, State",
+      "date_start": "2025-01-01",
+      "date_end": "2025-12-31",
+      "priority": "High",
+      "status": "Active",
+      "prj_managger": 1,
+      "created_at": "2025-09-07T15:02:58.805Z",
+      "updated_at": "2025-09-07T15:02:58.805Z"
+    }
+  }
+}
+```
+
+### PUT /api/v1/projects/{id}
+**Update project**
+
+**Request:**
+```json
+{
+  "prj_name": "Updated Project Name",
+  "status": "Completed"
+}
+```
+
+### DELETE /api/v1/projects/{id}
+**Delete project**
+
+**Response:**
+```json
+{
+  "error_code": 0,
+  "status": "success",
+  "message": "Project deleted successfully"
+}
+```
+
+## Tasks API
+
+### GET /api/v1/projects/{projectId}/tasks
+**Get all tasks for a project with pagination and filtering**
+
+**Query Parameters:**
+- `page` (integer, optional): Page number for pagination (default: 1)
+- `limit` (integer, optional): Number of items per page (default: 20, max: 100)
+- `status[]` (string[], optional): Filter by task status (planned, in_progress, done, blocked, delayed)
+- `assignees[]` (string[], optional): Filter by assignee IDs
+- `wbs_path[]` (string[], optional): Filter by WBS path elements
+- `date_start` (string, optional): Filter tasks starting from this date (ISO format)
+- `date_end` (string, optional): Filter tasks ending before this date (ISO format)
+
+**Response:**
+```json
+{
+  "error_code": 0,
+  "status": "success",
+  "message": "Tasks retrieved successfully",
+  "data": {
+    "tasks": [
+      {
+        "id": "task-1",
+        "wbsPath": ["Фундамент", "Опалубка"],
+        "name": "Foundation Work",
+        "startPlanned": "2025-01-15T00:00:00Z",
+        "endPlanned": "2025-01-20T00:00:00Z",
+        "durationDays": 5,
+        "deps": [
+          {
+            "predecessorId": "task-0",
+            "type": "FS",
+            "lagDays": 0
+          }
+        ],
+        "resources": ["excavator-1", "concrete-mix-1"],
+        "assignees": ["john-smith"],
+        "calendarId": "project-calendar-1",
+        "milestone": false,
+        "baseline": {
+          "start": "2025-01-15T00:00:00Z",
+          "end": "2025-01-20T00:00:00Z"
+        },
+        "actual": {
+          "start": "2025-01-15T08:00:00Z",
+          "progressPct": 60
+        },
+        "slackDays": 2,
+        "status": "in_progress"
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "per_page": 20,
+      "total": 50,
+      "last_page": 3
+    }
+  }
+}
+```
+
+### POST /api/v1/projects/{projectId}/tasks
+**Create a new task**
+
+**Request:**
+```json
+{
+  "wbsPath": ["Фундамент", "Опалубка"],
+  "name": "Foundation Work",
+  "startPlanned": "2025-01-15T00:00:00Z",
+  "endPlanned": "2025-01-20T00:00:00Z",
+  "durationDays": 5,
+  "deps": [
+    {
+      "predecessorId": "task-0",
+      "type": "FS",
+      "lagDays": 0
+    }
+  ],
+  "resources": ["excavator-1", "concrete-mix-1"],
+  "assignees": ["john-smith"],
+  "calendarId": "project-calendar-1",
+  "milestone": false,
+  "status": "planned"
+}
+```
+
+### GET /api/v1/projects/{projectId}/tasks/{taskId}
+**Get task by ID**
+
+### PUT /api/v1/projects/{projectId}/tasks/{taskId}
+**Update task**
+
+### DELETE /api/v1/projects/{projectId}/tasks/{taskId}
+**Delete task**
+
+### GET /api/v1/projects/{projectId}/tasks/stats
+**Get task statistics for a project**
+
+**Response:**
+```json
+{
+  "error_code": 0,
+  "status": "success",
+  "message": "Task statistics retrieved successfully",
+  "data": {
+    "total": 50,
+    "planned": 20,
+    "inProgress": 15,
+    "done": 10,
+    "blocked": 3,
+    "delayed": 2,
+    "milestones": 5,
+    "avgProgress": 45.5
+  }
+}
+```
+
+### PATCH /api/v1/projects/{projectId}/tasks/{taskId}/progress
+**Update task progress**
+
+**Request:**
+```json
+{
+  "progressPct": 75
+}
+```
+
+### PATCH /api/v1/projects/{projectId}/tasks/{taskId}/status
+**Update task status**
+
+**Request:**
+```json
+{
+  "status": "in_progress"
+}
+```
+
+## System Endpoints
+
 1. **Health Check**: `GET /api/v1/health`
 2. **Version Info**: `GET /api/v1/version`
 3. **Database Tables**: `GET /api/v1/database/tables`

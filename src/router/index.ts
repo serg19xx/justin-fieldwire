@@ -29,6 +29,12 @@ const router = createRouter({
       meta: { requiresAuth: true, requiresPermission: 'projects:read' },
     },
     {
+      path: '/projects/:id',
+      name: 'project-detail',
+      component: () => import('@/views/ProjectDetailView.vue'),
+      meta: { requiresAuth: true, requiresPermission: 'projects:read' },
+    },
+    {
       path: '/people',
       name: 'builders',
       component: () => import('@/views/PeopleView.vue'),
@@ -38,7 +44,7 @@ const router = createRouter({
       path: '/contacts',
       name: 'contacts',
       component: () => import('@/views/ContactsView.vue'),
-      meta: { requiresAuth: true, requiresPermission: 'contacts:read' },
+      meta: { requiresAuth: true, requiresRole: 'System Administrator' },
       children: [
         {
           path: '',
@@ -149,6 +155,12 @@ router.beforeEach((to, from, next) => {
     to.meta.requiresPermission &&
     !authStore.checkPermission(to.meta.requiresPermission as string)
   ) {
+    next('/')
+    return
+  }
+
+  // Check if route requires specific role
+  if (to.meta.requiresRole && authStore.currentUser?.user_type !== to.meta.requiresRole) {
     next('/')
     return
   }
