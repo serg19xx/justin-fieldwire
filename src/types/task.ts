@@ -24,23 +24,35 @@ export interface TaskActual {
 // Task status type
 export type TaskStatus = 'planned' | 'in_progress' | 'done' | 'blocked' | 'delayed'
 
-// Main Task interface
+// Main Task interface (matches database structure)
 export interface Task {
   id: string
-  wbsPath: string[] // ['Фундамент','Опалубка']
+  project_id: number
+  wbs_path?: string // WBS path as string "1.1.1"
   name: string
-  startPlanned: string // ISO
-  endPlanned?: string // ISO
-  durationDays?: number
+  start_planned: string // DATE from database
+  end_planned?: string // DATE from database
+  duration_days?: number
+  milestone: boolean
+  status: TaskStatus
+  progress_pct: number
+  notes?: string
+  task_lead_id?: number // single responsible person
+  team_members?: number[] // array of team member IDs
+  assignees?: number[] // legacy field for backward compatibility
+  created_at: string
+  updated_at: string
+  // Extended properties (from database)
+  resources: string[] // resource IDs
+  dependencies: Array<{ predecessor_id: number; type: string; lag_days: number }> | number[] // Full dependency objects or legacy IDs
+  baseline_start?: string
+  baseline_end?: string
+  actual_start?: string
+  actual_end?: string
+  slack_days?: number
+  // For future use
   deps?: TaskDependency[]
-  resources?: string[] // ids бригад/техники/материалов
-  assignees?: string[] // ids ответственных
-  calendarId?: string // id календаря ресурса/проекта
-  milestone?: boolean
-  baseline?: TaskBaseline
-  actual?: TaskActual
-  slackDays?: number
-  status?: TaskStatus
+  calendarId?: string
 }
 
 // Task for FullCalendar (simplified version)

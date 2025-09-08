@@ -1,21 +1,42 @@
 import type { Task, CalendarTask, TaskStatus } from '@/types/task'
 
+// WBS utility functions
+export function parseWbsPath(wbsPath?: string): string[] {
+  return wbsPath ? wbsPath.split('.') : []
+}
+
+export function formatWbsPath(wbsArray: string[]): string {
+  return wbsArray.join('.')
+}
+
+export function getWbsLevel(wbsPath: string): number {
+  return wbsPath ? wbsPath.split('.').length : 0
+}
+
+export function getParentWbs(wbsPath: string): string {
+  const parts = wbsPath.split('.')
+  return parts.slice(0, -1).join('.')
+}
+
 // Convert Task to CalendarTask for FullCalendar
 export function taskToCalendarTask(task: Task): CalendarTask {
+  // Add progress percentage to title
+  const progressText = task.progress_pct > 0 ? ` (${task.progress_pct}%)` : ''
+
   const calendarTask = {
     id: task.id,
-    title: task.name,
-    start: task.startPlanned,
-    end: task.endPlanned,
-    allDay: !task.endPlanned, // If no end date, treat as all-day event
+    title: `${task.name}${progressText}`,
+    start: task.start_planned,
+    end: task.end_planned || undefined, // Keep end date if it exists
+    allDay: true, // All tasks are all-day events
     color: getTaskColor(task.status),
     extendedProps: {
-      wbsPath: task.wbsPath,
-      status: task.status || 'planned',
-      assignees: task.assignees || [],
-      milestone: task.milestone || false,
-      progressPct: task.actual?.progressPct,
-      description: `${task.wbsPath.join(' > ')} - ${task.name}`,
+      wbsPath: parseWbsPath(task.wbs_path), // Convert to array for display
+      status: task.status,
+      assignees: (task.assignees || []).map(String), // Convert numbers to strings for compatibility
+      milestone: task.milestone,
+      progressPct: task.progress_pct,
+      description: task.notes || `${task.wbs_path || 'No WBS'} - ${task.name}`,
     },
   }
 
@@ -40,6 +61,8 @@ export function getTaskColor(status?: TaskStatus): string {
       return '#3B82F6' // Default blue
   }
 }
+
+// Progress is shown in task title, colors remain standard by status
 
 // Get status label
 export function getTaskStatusLabel(status: TaskStatus): string {

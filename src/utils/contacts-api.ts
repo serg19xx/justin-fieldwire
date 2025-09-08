@@ -687,6 +687,32 @@ export interface ProjectsResponse {
   }
 }
 
+// Project Team Member interface
+export interface ProjectTeamMember {
+  id: number
+  project_id: number
+  user_id: number
+  role: string
+  added_at: string
+  added_by: number
+  // User details (joined from fw_users)
+  name?: string
+  email?: string
+  user_type?: string
+  job_title?: string
+  status?: number
+}
+
+export interface ProjectTeamResponse {
+  team_members: ProjectTeamMember[]
+  pagination: {
+    current_page: number
+    per_page: number
+    total: number
+    last_page: number
+  }
+}
+
 export const projectsApi = {
   async getAll(
     page: number = 1,
@@ -696,7 +722,7 @@ export const projectsApi = {
       priority?: string
       search?: string
       prj_manager?: number
-    }
+    },
   ): Promise<ProjectsResponse> {
     try {
       const params = new URLSearchParams({
@@ -707,7 +733,8 @@ export const projectsApi = {
       if (filters?.status) params.append('status', filters.status)
       if (filters?.priority) params.append('priority', filters.priority)
       if (filters?.search) params.append('search', filters.search)
-      if (filters?.prj_manager !== undefined) params.append('prj_manager', filters.prj_manager.toString())
+      if (filters?.prj_manager !== undefined)
+        params.append('prj_manager', filters.prj_manager.toString())
 
       const response = await api.get(`/api/v1/projects?${params.toString()}`)
       return response.data.data
@@ -765,5 +792,66 @@ export const projectsApi = {
       console.error('Error deleting project:', error)
       throw error
     }
-  }
+  },
+
+  // Project Team Management
+  async getTeamMembers(
+    projectId: number,
+    page: number = 1,
+    limit: number = 50,
+  ): Promise<ProjectTeamResponse> {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      })
+      const response = await api.get(`/api/v1/projects/${projectId}/team?${params.toString()}`)
+      return response.data.data
+    } catch (error) {
+      console.error('Error fetching project team members:', error)
+      throw error
+    }
+  },
+
+  async addTeamMember(
+    projectId: number,
+    userId: number,
+    role: string = 'member',
+  ): Promise<ProjectTeamMember> {
+    try {
+      const response = await api.post(`/api/v1/projects/${projectId}/team`, {
+        user_id: userId,
+        role: role,
+      })
+      return response.data.data
+    } catch (error) {
+      console.error('Error adding team member:', error)
+      throw error
+    }
+  },
+
+  async removeTeamMember(projectId: number, teamMemberId: number): Promise<void> {
+    try {
+      await api.delete(`/api/v1/projects/${projectId}/team/${teamMemberId}`)
+    } catch (error) {
+      console.error('Error removing team member:', error)
+      throw error
+    }
+  },
+
+  async updateTeamMemberRole(
+    projectId: number,
+    teamMemberId: number,
+    role: string,
+  ): Promise<ProjectTeamMember> {
+    try {
+      const response = await api.put(`/api/v1/projects/${projectId}/team/${teamMemberId}`, {
+        role: role,
+      })
+      return response.data.data
+    } catch (error) {
+      console.error('Error updating team member role:', error)
+      throw error
+    }
+  },
 }

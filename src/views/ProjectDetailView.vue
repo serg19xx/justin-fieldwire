@@ -2,19 +2,26 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { projectsApi, type Project as ApiProject } from '@/utils/contacts-api'
+import { projectsApi, type Project as ApiProject, type ProjectTeamMember } from '@/utils/contacts-api'
 import ProjectCalendar from '@/components/ProjectCalendar.vue'
+import AddTeamMemberDialog from '@/components/AddTeamMemberDialog.vue'
 import { exportTasksToICal, downloadFile } from '@/utils/task-utils'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
+// Emits
+const emit = defineEmits<{
+  createTask: []
+}>()
+
 // Project data
 const project = ref<Project | null>(null)
 const projects = ref<Project[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+const calendarRef = ref()
 
 // Navigation state
 const activeSection = ref<'plans' | 'tasks' | 'photos' | 'team' | 'settings'>('plans')
@@ -31,8 +38,9 @@ const settingsForm = ref({
 const isSavingSettings = ref(false)
 
 // Team state
-const teamMembers = ref<any[]>([])
+const teamMembers = ref<ProjectTeamMember[]>([])
 const loadingTeam = ref(false)
+const showAddTeamMemberDialog = ref(false)
 
 // Calendar state
 const selectedEvent = ref<any>(null)
@@ -236,7 +244,10 @@ function resetSettings() {
 }
 
 const canEditProject = computed(() => {
-  return authStore.currentUser?.user_type === 'Project Manager'
+  const userType = authStore.currentUser?.user_type
+  const canEdit = userType === 'Project Manager' || userType === 'System Administrator'
+  console.log('🔧 canEditProject check:', { userType, canEdit, currentUser: authStore.currentUser })
+  return canEdit
 })
 
 // Team functions
@@ -246,39 +257,63 @@ async function loadTeamMembers() {
   loadingTeam.value = true
 
   try {
-    // TODO: Replace with actual API call when endpoint is available
-    // For now, we'll use mock data
     console.log('👥 Loading team members for project:', project.value.id)
 
-    // Mock team members data
-    teamMembers.value = [
-      {
-        id: 1,
-        name: 'John Smith',
-        email: 'john@example.com',
-        role: 'Foreman',
-        status: 'active',
-        joinDate: '2025-01-15',
-      },
-      {
-        id: 2,
-        name: 'Sarah Johnson',
-        email: 'sarah@example.com',
-        role: 'Safety Inspector',
-        status: 'active',
-        joinDate: '2025-02-01',
-      },
-      {
-        id: 3,
-        name: 'Mike Wilson',
-        email: 'mike@example.com',
-        role: 'Equipment Operator',
-        status: 'inactive',
-        joinDate: '2025-01-20',
-      },
-    ]
+    // Try to load from API first
+    try {
+      const response = await projectsApi.getTeamMembers(project.value.id)
+      teamMembers.value = response.team_members
+      console.log('✅ Team members loaded from API:', teamMembers.value.length)
+    } catch (apiError) {
+      console.log('⚠️ API not available, using mock data')
+
+      // Fallback to mock data
+      teamMembers.value = [
+        {
+          id: 1,
+          project_id: project.value.id,
+          user_id: 1,
+          role: 'lead',
+          added_at: '2025-01-15T10:00:00Z',
+          added_by: 1,
+          name: 'John Smith',
+          email: 'john.smith@example.com',
+          user_type: 'Project Manager',
+          job_title: 'Senior Project Manager',
+          status: 1,
+        },
+        {
+          id: 2,
+          project_id: project.value.id,
+          user_id: 2,
+          role: 'member',
+          added_at: '2025-01-20T10:00:00Z',
+          added_by: 1,
+          name: 'Sarah Johnson',
+          email: 'sarah.johnson@example.com',
+          user_type: 'Architect',
+          job_title: 'Lead Architect',
+          status: 1,
+        },
+        {
+          id: 3,
+          project_id: project.value.id,
+          user_id: 3,
+          role: 'member',
+          added_at: '2025-01-25T10:00:00Z',
+          added_by: 1,
+          name: 'Mike Davis',
+          email: 'mike.davis@example.com',
+          user_type: 'Engineer',
+          job_title: 'Senior Engineer',
+          status: 1,
+        },
+      ]
+      console.log('✅ Team members loaded from mock data:', teamMembers.value.length)
+    }
   } catch (error) {
     console.error('❌ Error loading team members:', error)
+    teamMembers.value = []
   } finally {
     loadingTeam.value = false
   }
@@ -331,8 +366,14 @@ function createNewPlan() {
 
 function createNewTask() {
   console.log('➕ Create new task for project:', project.value?.id)
-  // TODO: Open dialog to create new task
-  alert('Create new task dialog will be implemented here')
+  console.log('🔧 Calendar ref available:', !!calendarRef.value)
+  // Call ProjectCalendar method to open create dialog
+  if (calendarRef.value) {
+    console.log('🔧 Calling openTaskDialog...')
+    calendarRef.value.openTaskDialog('create')
+  } else {
+    console.log('❌ Calendar ref not available')
+  }
 }
 
 function exportTasksToICal() {
@@ -398,8 +439,14 @@ function uploadPhoto() {
 
 function addTeamMember() {
   console.log('👥 Add team member for project:', project.value?.id)
-  // TODO: Open dialog to add team member
-  alert('Add team member dialog will be implemented here')
+  showAddTeamMemberDialog.value = true
+}
+
+// Handle team member added
+function handleTeamMemberAdded(newMember: ProjectTeamMember) {
+  console.log('👥 Team member added:', newMember)
+  // Reload team members to get updated list
+  loadTeamMembers()
 }
 
 // Handle task updates from calendar
@@ -842,6 +889,7 @@ onMounted(() => {
           <div v-else-if="activeSection === 'tasks'">
             <!-- Calendar Component -->
             <ProjectCalendar
+              ref="calendarRef"
               :project-id="project?.id || 0"
               :can-edit="canEditProject"
               @event-click="handleEventClick"
@@ -928,7 +976,7 @@ onMounted(() => {
                             >
                               <span class="text-sm font-medium text-gray-700">
                                 {{
-                                  member.name
+                                  (member.name || 'Unknown')
                                     .split(' ')
                                     .map((n) => n[0])
                                     .join('')
@@ -937,31 +985,46 @@ onMounted(() => {
                             </div>
                           </div>
                           <div class="ml-4">
-                            <div class="text-sm font-medium text-gray-900">{{ member.name }}</div>
-                            <div class="text-sm text-gray-500">{{ member.email }}</div>
+                            <div class="text-sm font-medium text-gray-900">{{ member.name || 'Unknown User' }}</div>
+                            <div class="text-sm text-gray-500">{{ member.email || 'No email' }}</div>
+                            <div class="text-xs text-gray-400">{{ member.user_type || 'Unknown Type' }}</div>
                           </div>
                         </div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <span
-                          class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                          class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                          :class="{
+                            'bg-blue-100 text-blue-800': member.role === 'lead',
+                            'bg-green-100 text-green-800': member.role === 'member',
+                            'bg-yellow-100 text-yellow-800': member.role === 'supervisor',
+                            'bg-purple-100 text-purple-800': member.role === 'coordinator',
+                            'bg-gray-100 text-gray-800': !['lead', 'member', 'supervisor', 'coordinator'].includes(member.role),
+                          }"
                         >
-                          {{ member.role }}
+                          {{ member.role === 'lead' ? 'Team Lead' :
+                             member.role === 'member' ? 'Team Member' :
+                             member.role === 'supervisor' ? 'Supervisor' :
+                             member.role === 'coordinator' ? 'Coordinator' :
+                             member.role }}
                         </span>
+                        <div v-if="member.job_title" class="text-xs text-gray-500 mt-1">
+                          {{ member.job_title }}
+                        </div>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap">
                         <span
                           :class="
-                            member.status === 'active'
+                            member.status === 1
                               ? 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800'
                               : 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800'
                           "
                         >
-                          {{ member.status }}
+                          {{ member.status === 1 ? 'Active' : 'Inactive' }}
                         </span>
                       </td>
                       <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {{ new Date(member.joinDate).toLocaleDateString() }}
+                        {{ new Date(member.added_at).toLocaleDateString() }}
                       </td>
                       <td
                         v-if="canEditProject"
@@ -996,6 +1059,7 @@ onMounted(() => {
                 </p>
                 <div v-if="canEditProject" class="mt-6">
                   <button
+                    @click="addTeamMember"
                     class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
                   >
                     + Add Team Member
@@ -1233,4 +1297,13 @@ onMounted(() => {
       </div>
     </div>
   </div>
+
+  <!-- Add Team Member Dialog -->
+  <AddTeamMemberDialog
+    :is-open="showAddTeamMemberDialog"
+    :project-id="project?.id || 0"
+    :existing-team-members="teamMembers"
+    @close="showAddTeamMemberDialog = false"
+    @member-added="handleTeamMemberAdded"
+  />
 </template>

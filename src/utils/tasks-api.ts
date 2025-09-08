@@ -21,17 +21,22 @@ export const tasksApi = {
   // Get all tasks for a project
   async getAll(
     projectId: number,
-    page: number = 1,
-    limit: number = 20,
+    page?: number,
+    limit?: number,
     filters?: TaskFilter,
   ): Promise<TasksResponse> {
     try {
       console.log('🔍 Tasks API: Attempting to fetch tasks for project:', projectId)
 
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-      })
+      const params = new URLSearchParams()
+
+      // Add pagination only if provided
+      if (page) {
+        params.append('page', page.toString())
+      }
+      if (limit) {
+        params.append('limit', limit.toString())
+      }
 
       if (filters?.status?.length) {
         filters.status.forEach((status) => params.append('status[]', status))
@@ -47,7 +52,9 @@ export const tasksApi = {
         params.append('date_end', filters.dateRange.end)
       }
 
-      const url = `/api/v1/projects/${projectId}/tasks?${params.toString()}`
+      const url = params.toString()
+        ? `/api/v1/projects/${projectId}/tasks?${params.toString()}`
+        : `/api/v1/projects/${projectId}/tasks`
       console.log('📡 Tasks API: Making request to:', url)
 
       const response = await api.get(url)
@@ -59,7 +66,43 @@ export const tasksApi = {
         throw new Error('Empty response from tasks API')
       }
 
-      return response.data.data
+      // Transform database fields to our interface
+      const transformedTasks = response.data.data.tasks.map((task: any) => ({
+        ...task,
+        wbs_path: task.wbs_path || '', // Keep as string "1.1.1"
+        start_planned: task.start_planned,
+        end_planned: task.end_planned,
+        duration_days: task.duration_days,
+        milestone: Boolean(task.milestone),
+        status: task.status,
+        progress_pct: task.progress_pct || 0,
+        notes: task.notes,
+        // Handle both old and new structure
+        task_lead_id:
+          task.task_lead_id ||
+          (task.assignees && task.assignees.length > 0 ? task.assignees[0] : null),
+        team_members: task.team_members || (task.assignees ? task.assignees.slice(1) : []),
+        assignees: task.assignees || [], // Keep for backward compatibility
+        resources: task.resources || [],
+        dependencies: task.dependencies || [],
+        baseline_start: task.baseline_start,
+        baseline_end: task.baseline_end,
+        actual_start: task.actual_start,
+        actual_end: task.actual_end,
+        slack_days: task.slack_days,
+        created_at: task.created_at,
+        updated_at: task.updated_at,
+      }))
+
+      return {
+        tasks: transformedTasks,
+        pagination: response.data.data.pagination || {
+          current_page: 1,
+          per_page: transformedTasks.length,
+          total: transformedTasks.length,
+          last_page: 1,
+        },
+      }
     } catch (error) {
       console.error('❌ Tasks API: Error fetching tasks:', error)
       // Check if it's a 404 (endpoint doesn't exist yet)
