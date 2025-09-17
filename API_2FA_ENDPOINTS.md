@@ -6,7 +6,7 @@ This document describes the 2FA (Two-Factor Authentication) API endpoints for th
 ## Authentication Flow
 
 ### 1. Login with 2FA Check
-**Endpoint:** `POST /auth/login`
+**Endpoint:** `POST /api/v1/auth/login`
 
 **Request:**
 ```json

@@ -30,9 +30,16 @@ function closeUserMenu() {
   isUserMenuOpen.value = false
 }
 
-function handleLogout() {
-  authStore.logout()
-  window.location.href = '/login'
+async function handleLogout() {
+  try {
+    await authStore.logout()
+    // Redirect to login page after successful logout
+    window.location.href = '/login'
+  } catch (error) {
+    console.error('Logout error:', error)
+    // Still redirect even if logout fails
+    window.location.href = '/login'
+  }
 }
 
 // Close user menu when clicking outside

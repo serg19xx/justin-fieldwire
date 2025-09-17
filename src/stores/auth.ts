@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { api } from '@/utils/api'
+import { api, setSessionExpiredCallback } from '@/utils/api'
 import { apiConfig } from '@/config/api'
+import {
+  initializeSessionManager,
+  startSessionManager,
+  stopSessionManager,
+} from '@/utils/session-manager'
+import { isTokenExpired } from '@/utils/jwt-utils'
 
 // Helper function to get current environment
 function getCurrentEnvironment(): string {
@@ -145,6 +151,30 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem('user', JSON.stringify(frontendUser))
         console.log('✅ Login successful for user:', frontendUser.email)
         console.log('🖼️ Avatar URL after login:', frontendUser.avatarUrl)
+
+        // Initialize session manager after successful login
+        initializeSessionManager({
+          checkInterval: 5 * 60 * 1000, // 5 minutes
+          activityCheckInterval: 60 * 1000, // 1 minute
+          useAPI: false, // Temporarily disable API checks to avoid backend issues
+          onSessionExpired: () => {
+            console.log('🔒 Session expired - logging out')
+            logout()
+          },
+          onSessionValid: () => {
+            console.log('✅ Session is valid')
+          },
+        })
+
+        // Set up API interceptor callback
+        setSessionExpiredCallback(() => {
+          console.log('🔒 API interceptor detected session expiration')
+          logout()
+        })
+
+        // Start session monitoring
+        startSessionManager()
+
         return { success: true, user: frontendUser }
       }
     } catch (error: unknown) {
@@ -254,6 +284,30 @@ export const useAuthStore = defineStore('auth', () => {
         isAuthenticated.value = true
         localStorage.setItem('user', JSON.stringify(updatedUser))
         console.log('✅ 2FA verification successful - user authenticated')
+
+        // Initialize session manager after successful 2FA verification
+        initializeSessionManager({
+          checkInterval: 5 * 60 * 1000, // 5 minutes
+          activityCheckInterval: 60 * 1000, // 1 minute
+          useAPI: false, // Temporarily disable API checks to avoid backend issues
+          onSessionExpired: () => {
+            console.log('🔒 Session expired - logging out')
+            logout()
+          },
+          onSessionValid: () => {
+            console.log('✅ Session is valid')
+          },
+        })
+
+        // Set up API interceptor callback
+        setSessionExpiredCallback(() => {
+          console.log('🔒 API interceptor detected session expiration')
+          logout()
+        })
+
+        // Start session monitoring
+        startSessionManager()
+
         return { success: true }
       } else {
         console.log('❌ No token or user data in 2FA response')
@@ -355,24 +409,16 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Helper function to check if token is expired
-  // Simple validation without complex JWT parsing
-  function isTokenExpired(token: string): boolean {
-    // Simple check - if token exists and has reasonable length, consider it valid
-    if (!token || token.length < 10) {
-      console.log('❌ Token is invalid (too short or empty)')
-      return true
-    }
-
+  // Now uses the new JWT utility function
+  function isTokenExpiredLocal(token: string): boolean {
     // Skip check for mock tokens
     if (token.startsWith('dev_token_')) {
       console.log('🔍 Mock token detected, skipping expiration check')
       return false
     }
 
-    // For real tokens, just check if they exist and have reasonable format
-    // Don't try to parse JWT payload to avoid parsing errors
-    console.log('🔍 Token validation passed - token exists and has valid format')
-    return false
+    // Use the new JWT utility function
+    return isTokenExpired(token)
   }
 
   // Helper function to check if token needs refresh (5 minutes before expiry)
@@ -699,11 +745,26 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout() {
     try {
-      // TODO: Uncomment when backend is ready
-      // await api.post('/auth/logout')
-      console.log('🔓 Logout - backend call disabled')
+      // Stop session manager before logout
+      stopSessionManager()
+
+      // Call backend logout endpoint
+      const token = localStorage.getItem('authToken')
+      if (token) {
+        await api.post(
+          '/api/v1/auth/logout',
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        )
+        console.log('🔓 Logout - backend call successful')
+      }
     } catch (error) {
       console.error('Logout error:', error)
+      // Continue with local cleanup even if backend call fails
     } finally {
       // Clear local state
       currentUser.value = null
@@ -812,8 +873,8 @@ export const useAuthStore = defineStore('auth', () => {
         // Token will be added automatically by the request interceptor
         console.log('🔑 Token found in localStorage:', token.substring(0, 20) + '...')
 
-        // Check if token is expired
-        if (isTokenExpired(token)) {
+        // Check if token is expired using new JWT utils
+        if (isTokenExpiredLocal(token)) {
           console.log('❌ Token is expired, logging out')
           logout()
           return
@@ -833,6 +894,29 @@ export const useAuthStore = defineStore('auth', () => {
           isAuthenticated.value = true
           console.log('✅ Auth initialized from localStorage')
           console.log('👤 Current user:', user.email)
+
+          // Initialize session manager
+          initializeSessionManager({
+            checkInterval: 5 * 60 * 1000, // 5 minutes
+            activityCheckInterval: 60 * 1000, // 1 minute
+            useAPI: false, // Temporarily disable API checks to avoid backend issues
+            onSessionExpired: () => {
+              console.log('🔒 Session expired - logging out')
+              logout()
+            },
+            onSessionValid: () => {
+              console.log('✅ Session is valid')
+            },
+          })
+
+          // Set up API interceptor callback
+          setSessionExpiredCallback(() => {
+            console.log('🔒 API interceptor detected session expiration')
+            logout()
+          })
+
+          // Start session monitoring
+          startSessionManager()
         } else {
           // User data corrupted, clear everything
           console.log('❌ User data corrupted, logging out')

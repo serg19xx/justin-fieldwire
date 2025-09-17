@@ -2,7 +2,7 @@
 
 ## Authentication Endpoints
 
-### POST /auth/login
+### POST /api/v1/auth/login
 **Login with email and password**
 
 **Request:**
@@ -56,7 +56,7 @@
 }
 ```
 
-### POST /auth/verify-2fa
+### POST /api/v1/auth/verify-2fa
 **Verify 2FA code**
 
 **Request:**
@@ -82,7 +82,7 @@
 }
 ```
 
-### GET /auth/me
+### GET /api/v1/auth/me
 **Get current user info (requires token)**
 
 **Headers:**
@@ -104,7 +104,7 @@ Authorization: Bearer <token>
 }
 ```
 
-### POST /auth/logout
+### POST /api/v1/auth/logout
 **Logout (invalidate token)**
 
 **Headers:**
@@ -120,7 +120,37 @@ Authorization: Bearer <token>
 }
 ```
 
-> **Note**: These endpoints are currently disabled in frontend until backend is ready.
+### POST /api/v1/auth/check-session
+**Check session validity**
+
+**Headers:**
+```
+Authorization: Bearer <token>
+```
+
+**Response (Valid):**
+```json
+{
+  "status": "success",
+  "message": "Session is valid"
+}
+```
+
+**Response (Invalid):**
+```json
+{
+  "status": "error",
+  "message": "Session expired"
+}
+```
+
+**Response (Unauthorized):**
+```json
+{
+  "status": "error",
+  "message": "Unauthorized"
+}
+```
 
 ## User Management Endpoints
 

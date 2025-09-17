@@ -1,8 +1,19 @@
 import axios from 'axios'
 import { apiConfig } from '@/config/api'
+import { isTokenExpired } from './jwt-utils'
 
 // Создаем основной экземпляр axios для всего приложения
 export const api = axios.create(apiConfig)
+
+// Callback for handling session expiration
+let onSessionExpired: (() => void) | null = null
+
+/**
+ * Set callback for session expiration
+ */
+export function setSessionExpiredCallback(callback: () => void): void {
+  onSessionExpired = callback
+}
 
 // Добавляем интерцепторы для обработки ошибок
 api.interceptors.response.use(
@@ -14,16 +25,25 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       console.log('🔒 401 Unauthorized - token may be expired')
 
-      // Don't redirect if we're already on login page or if it's a login request
+      // Don't redirect if we're already on login page or if it's a login/logout request
       const isLoginRequest = error.config?.url?.includes('/auth/login')
+      const isLogoutRequest = error.config?.url?.includes('/auth/logout')
+      const isCheckSessionRequest = error.config?.url?.includes('/auth/check-session')
       const isLoginPage = window.location.pathname === '/login'
 
-      if (!isLoginRequest && !isLoginPage) {
-        console.log('🔒 401 error - but keeping token for now (backend issue)')
-        // TODO: Fix backend JWT validation instead of clearing tokens
-        console.log('⚠️ Backend JWT validation issue - keeping token')
+      if (!isLoginRequest && !isLogoutRequest && !isCheckSessionRequest && !isLoginPage) {
+        console.log('🔒 401 error - triggering session expiration')
+
+        // Check if token is actually expired
+        const token = localStorage.getItem('authToken')
+        if (token && isTokenExpired(token)) {
+          console.log('❌ Token is expired - calling logout')
+          onSessionExpired?.()
+        } else {
+          console.log('⚠️ 401 but token not expired - may be server issue')
+        }
       } else {
-        console.log('🔒 401 on login page or login request - not redirecting')
+        console.log('🔒 401 on login/logout/check-session page or request - not redirecting')
       }
     }
 
@@ -48,24 +68,11 @@ function isTokenExpiringSoon(): boolean {
   if (!token) return true
 
   try {
-    // Validate token format first
-    if (!token.includes('.') || token.split('.').length !== 3) {
-      console.warn('⚠️ Invalid JWT token format')
-      return true
-    }
-
-    // Decode JWT token to get expiration time
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    const expirationTime = payload.exp * 1000 // Convert to milliseconds
-    const currentTime = Date.now()
-    const timeUntilExpiry = expirationTime - currentTime
-
-    // Return true if token expires within 5 minutes
-    console.log('⏰ Token expires in:', Math.round(timeUntilExpiry / 1000 / 60), 'minutes')
-    return timeUntilExpiry < 5 * 60 * 1000
+    // Use the new JWT utility function
+    const { isTokenExpiringSoon: checkExpiringSoon } = require('./jwt-utils')
+    return checkExpiringSoon(token, 5)
   } catch (error) {
-    console.warn('⚠️ Error parsing token:', error)
-    console.log('🔑 Token value:', token ? token.substring(0, 50) + '...' : 'null')
+    console.warn('⚠️ Error checking token expiration:', error)
     // Don't treat parsing errors as expiration - just skip the check
     return false
   }
