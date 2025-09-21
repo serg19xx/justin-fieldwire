@@ -6,7 +6,10 @@ A modern web application for construction project management, built with Vue.js 
 
 - 📊 **Dashboard** - Overview of projects and key metrics
 - 🏗️ **Projects Management** - Create, view, and manage construction projects
-- 📋 **Tasks & Forms** - Task management and form handling
+- 📋 **Task Management** - Advanced task management with dependencies and validation
+- 🎯 **Milestone Tasks** - Point-in-time events (inspections, meetings, deliveries)
+- 🔗 **Task Dependencies** - Finish-to-Start, Start-to-Start, Finish-to-Finish, Start-to-Finish
+- 📅 **Interactive Calendar** - Drag-and-drop task management with visual indicators
 - 👥 **People Management** - Manage contacts, patients, drivers, physicians
 - 🏥 **Healthcare Integration** - Clinics, pharmacies, and medical records
 - 📁 **File Management** - Document and file organization
@@ -124,6 +127,19 @@ chmod +x upload-to-whc.sh
 ### Troubleshooting
 
 See [FTP_TROUBLESHOOTING.md](./FTP_TROUBLESHOOTING.md) for detailed troubleshooting guide.
+
+## Documentation
+
+### User Guides
+- [Task Dependencies Guide](./TASK_DEPENDENCIES_USER_GUIDE.md) - Complete guide to task dependencies and constraints
+- [Milestone Tasks Guide](./MILESTONE_TASKS_GUIDE.md) - Guide to creating and managing milestone tasks
+- [Dependency Quick Reference](./DEPENDENCY_QUICK_REFERENCE.md) - Quick reference for dependency types
+- [Dependency Diagrams](./DEPENDENCY_DIAGRAMS.md) - Visual diagrams of dependency relationships
+
+### Technical Documentation
+- [API Endpoints](./API_ENDPOINTS.md) - Complete API documentation
+- [Deployment Guide](./DEPLOYMENT_GUIDE.md) - Production deployment instructions
+- [Session Management](./SESSION_MANAGEMENT.md) - Authentication and session handling
 
 ## Development
 

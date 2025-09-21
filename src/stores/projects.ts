@@ -95,77 +95,7 @@ export const useProjectsStore = defineStore('projects', () => {
     },
   ])
 
-  const tasks = ref<Task[]>([
-    {
-      id: 1,
-      title: 'Electrical wiring installation',
-      description: 'Install electrical wiring for the main building',
-      priority: 'high',
-      status: 'in-progress',
-      assignee: 'John Smith',
-      projectId: 1,
-      dueDate: '2024-01-15',
-      estimatedHours: 40,
-      actualHours: 25,
-    },
-    {
-      id: 2,
-      title: 'Plumbing system check',
-      description: 'Inspect and test all plumbing systems',
-      priority: 'medium',
-      status: 'pending',
-      assignee: 'Mike Johnson',
-      projectId: 2,
-      dueDate: '2024-01-18',
-      estimatedHours: 16,
-    },
-    {
-      id: 3,
-      title: 'HVAC maintenance',
-      description: 'Perform routine HVAC system maintenance',
-      priority: 'low',
-      status: 'completed',
-      assignee: 'Sarah Wilson',
-      projectId: 1,
-      dueDate: '2024-01-12',
-      estimatedHours: 8,
-      actualHours: 8,
-    },
-    {
-      id: 4,
-      title: 'Foundation inspection',
-      description: 'Inspect foundation for structural integrity',
-      priority: 'high',
-      status: 'blocked',
-      assignee: 'David Lee',
-      projectId: 3,
-      dueDate: '2024-01-20',
-      estimatedHours: 24,
-    },
-    {
-      id: 5,
-      title: 'Roof repair',
-      description: 'Repair damaged roof sections',
-      priority: 'high',
-      status: 'in-progress',
-      assignee: 'Lisa Brown',
-      projectId: 4,
-      dueDate: '2024-01-25',
-      estimatedHours: 32,
-      actualHours: 18,
-    },
-    {
-      id: 6,
-      title: 'Safety equipment check',
-      description: 'Verify all safety equipment is properly installed',
-      priority: 'medium',
-      status: 'pending',
-      assignee: 'Tom Anderson',
-      projectId: 2,
-      dueDate: '2024-01-22',
-      estimatedHours: 12,
-    },
-  ])
+  const tasks = ref<Task[]>([])
 
   // Computed properties
   const activeProjects = computed(() =>

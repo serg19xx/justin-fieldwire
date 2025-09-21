@@ -5,16 +5,16 @@ import { useAuthStore } from '@/stores/auth'
 import { projectsApi, type Project as ApiProject, type ProjectTeamMember } from '@/utils/contacts-api'
 import ProjectCalendar from '@/components/ProjectCalendar.vue'
 import AddTeamMemberDialog from '@/components/AddTeamMemberDialog.vue'
-import { exportTasksToICal, downloadFile } from '@/utils/task-utils'
+// import { exportTasksToICal as exportTasksToICalUtil, downloadFile } from '@/utils/task-utils'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
 // Emits
-const emit = defineEmits<{
-  createTask: []
-}>()
+// const emit = defineEmits<{
+//   createTask: []
+// }>()
 
 // Project data
 const project = ref<Project | null>(null)
@@ -43,7 +43,15 @@ const loadingTeam = ref(false)
 const showAddTeamMemberDialog = ref(false)
 
 // Calendar state
-const selectedEvent = ref<any>(null)
+const selectedEvent = ref<{
+  id: string;
+  title: string;
+  start: Date;
+  end?: Date;
+  description?: string;
+  assignee?: string;
+  priority?: string;
+} | null>(null)
 const showEventModal = ref(false)
 
 // Debug: watch activeSection changes
@@ -73,7 +81,7 @@ async function loadProjects() {
     console.log('🚀 Loading projects for dropdown...')
     console.log('👤 Current user:', authStore.currentUser)
 
-    const filters: any = {}
+    const filters: Record<string, unknown> = {}
 
     // If user is Project Manager, filter by their ID
     // Temporarily disabled to test API
@@ -88,18 +96,12 @@ async function loadProjects() {
 
     console.log('📋 Filters:', filters)
 
-    const requestParams = {
-      page: 1,
-      limit: 100, // Load more projects for dropdown
-      ...filters,
-    }
-
-    console.log('📤 Request params:', requestParams)
+    console.log('📤 Request params:', { page: 1, limit: 100, filters })
 
     const response = await projectsApi.getAll(
-      requestParams.page,
-      requestParams.limit,
-      requestParams,
+      1,
+      100,
+      filters,
     )
 
     console.log('📦 Projects API response:', response)
@@ -112,8 +114,7 @@ async function loadProjects() {
       startDate: apiProject.date_start,
       endDate: apiProject.date_end,
       status: apiProject.status,
-      projectManager: apiProject.prj_managger,
-      managerName: apiProject.manager_name,
+      projectManager: apiProject.prj_managger || undefined, // cspell:ignore managger
       description: '',
       createdAt: apiProject.created_at,
       updatedAt: apiProject.updated_at,
@@ -139,25 +140,30 @@ async function loadProject() {
 
   try {
     console.log('📡 Calling projectsApi.getById...')
-    const apiProject = await projectsApi.getById(parseInt(projectId))
+    const apiResponse = await projectsApi.getById(parseInt(projectId)) as unknown as { project: ApiProject }
+    console.log('📦 Raw API response:', apiResponse)
+    console.log('🔍 API response structure:', {
+      hasProject: 'project' in apiResponse,
+      hasId: 'id' in apiResponse,
+      keys: Object.keys(apiResponse)
+    })
 
     // Map API data to frontend format
-    const projectData = apiProject.project
     project.value = {
-      id: projectData.id,
-      name: projectData.prj_name,
-      address: projectData.address,
-      priority: projectData.priority,
-      startDate: projectData.date_start,
-      endDate: projectData.date_end,
-      status: projectData.status,
-      projectManager: projectData.prj_manager,
-      managerName: projectData.manager_name,
+      id: apiResponse.project.id,
+      name: apiResponse.project.prj_name,
+      address: apiResponse.project.address,
+      priority: apiResponse.project.priority,
+      startDate: apiResponse.project.date_start,
+      endDate: apiResponse.project.date_end,
+      status: apiResponse.project.status,
+      projectManager: apiResponse.project.prj_managger || undefined, // cspell:ignore managger
       description: '',
-      createdAt: projectData.created_at,
-      updatedAt: projectData.updated_at,
+      createdAt: apiResponse.project.created_at,
+      updatedAt: apiResponse.project.updated_at,
     }
     console.log('✅ Project loaded successfully:', project.value)
+    console.log('🔍 Project ID type:', typeof project.value.id, 'value:', project.value.id)
   } catch (apiError: unknown) {
     console.error('❌ Error loading project:', apiError)
     error.value = 'Failed to load project'
@@ -169,6 +175,11 @@ async function loadProject() {
 // Navigation functions
 function setActiveSection(section: 'plans' | 'tasks' | 'photos' | 'team' | 'settings') {
   console.log('🔄 Switching to section:', section)
+  console.log('🔍 Current project state:', {
+    hasProject: !!project.value,
+    projectId: project.value?.id,
+    projectName: project.value?.name
+  })
   activeSection.value = section
 
   // Load settings form when switching to settings
@@ -188,13 +199,13 @@ function switchProject(projectId: number) {
 }
 
 // Project action functions (now handled through navigation)
-function archiveProject() {
-  console.log('🗑️ Archive project:', project.value?.id)
-  // TODO: Implement project archiving
-  if (confirm('Are you sure you want to archive this project?')) {
-    // Archive logic here
-  }
-}
+// function archiveProject() {
+//   console.log('🗑️ Archive project:', project.value?.id)
+//   // TODO: Implement project archiving
+//   if (confirm('Are you sure you want to archive this project?')) {
+//     // Archive logic here
+//   }
+// }
 
 // Settings functions
 function loadSettingsForm() {
@@ -231,7 +242,7 @@ async function saveSettings() {
     await loadProject()
 
     alert('Project settings saved successfully!')
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error saving project:', error)
     alert('Failed to save project settings. Please try again.')
   } finally {
@@ -264,7 +275,7 @@ async function loadTeamMembers() {
       const response = await projectsApi.getTeamMembers(project.value.id)
       teamMembers.value = response.team_members
       console.log('✅ Team members loaded from API:', teamMembers.value.length)
-    } catch (apiError) {
+    } catch {
       console.log('⚠️ API not available, using mock data')
 
       // Fallback to mock data
@@ -320,36 +331,50 @@ async function loadTeamMembers() {
 }
 
 // Calendar functions
-function handleEventClick(event: any) {
+function handleEventClick(event: unknown) {
   console.log('📅 Event clicked:', event)
+  const eventInfo = event as {
+    id: string;
+    title: string;
+    start: Date;
+    end?: Date;
+    extendedProps?: {
+      description?: string;
+      assignee?: string;
+      priority?: string;
+    }
+  }
   selectedEvent.value = {
-    id: event.id,
-    title: event.title,
-    start: event.start,
-    end: event.end,
-    description: event.extendedProps?.description || '',
-    assignee: event.extendedProps?.assignee || '',
-    priority: event.extendedProps?.priority || 'medium',
+    id: eventInfo.id,
+    title: eventInfo.title,
+    start: eventInfo.start,
+    end: eventInfo.end,
+    description: eventInfo.extendedProps?.description || '',
+    assignee: eventInfo.extendedProps?.assignee || '',
+    priority: eventInfo.extendedProps?.priority || 'medium',
   }
   showEventModal.value = true
 }
 
-function handleDateClick(info: any) {
+function handleDateClick(info: unknown) {
   console.log('📅 Date clicked:', info)
   // TODO: Open dialog to create new event
-  alert(`Create new task on ${info.dateStr}`)
+  const dateInfo = info as { dateStr: string }
+  alert(`Create new task on ${dateInfo.dateStr}`)
 }
 
-function handleEventDrop(info: any) {
+function handleEventDrop(info: unknown) {
   console.log('📅 Event moved:', info)
   // TODO: Update event in backend
-  alert(`Event "${info.event.title}" moved to ${info.event.start.toDateString()}`)
+  const eventInfo = info as { event: { title: string; start: Date } }
+  alert(`Event "${eventInfo.event.title}" moved to ${eventInfo.event.start.toDateString()}`)
 }
 
-function handleEventResize(info: any) {
+function handleEventResize(info: unknown) {
   console.log('📅 Event resized:', info)
   // TODO: Update event duration in backend
-  alert(`Event "${info.event.title}" duration updated`)
+  const eventInfo = info as { event: { title: string } }
+  alert(`Event "${eventInfo.event.title}" duration updated`)
 }
 
 function closeEventModal() {
@@ -376,59 +401,11 @@ function createNewTask() {
   }
 }
 
-function exportTasksToICal() {
+function exportTasksToICalLocal() {
   console.log('📅 Export tasks to iCal for project:', project.value?.id)
 
-  // For now, we'll use mock tasks from the calendar
-  // In the future, this should fetch real tasks from the API
-  const mockTasks = [
-    {
-      id: 'mock-1',
-      name: 'Foundation Work',
-      startPlanned: '2025-09-10T00:00:00',
-      endPlanned: '2025-09-15T00:00:00',
-      status: 'in_progress',
-      assignees: ['john-smith'],
-      description: 'Фундамент > Опалубка - Foundation Work',
-    },
-    {
-      id: 'mock-2',
-      name: 'Framing',
-      startPlanned: '2025-09-20T00:00:00',
-      endPlanned: '2025-09-25T00:00:00',
-      status: 'planned',
-      assignees: ['mike-wilson'],
-      description: 'Каркас > Стены - Framing',
-    },
-    {
-      id: 'mock-3',
-      name: 'Electrical Installation',
-      startPlanned: '2025-09-05T00:00:00',
-      endPlanned: '2025-09-08T00:00:00',
-      status: 'planned',
-      assignees: ['sarah-johnson'],
-      description: 'Электрика > Проводка - Electrical Installation',
-    },
-    {
-      id: 'mock-4',
-      name: 'Safety Inspection',
-      startPlanned: '2025-09-12T10:00:00',
-      endPlanned: '2025-09-12T12:00:00',
-      status: 'planned',
-      assignees: ['safety-team'],
-      description: 'Контроль > Безопасность - Safety Inspection',
-    },
-  ]
-
-  try {
-    const icalContent = exportTasksToICal(mockTasks)
-    const filename = `project-${project.value?.id || 'unknown'}-tasks.ics`
-    downloadFile(icalContent, filename, 'text/calendar')
-    console.log('✅ iCal export completed')
-  } catch (error) {
-    console.error('❌ Error exporting to iCal:', error)
-    alert('Error exporting tasks to iCal format')
-  }
+  // TODO: Fetch real tasks from API instead of using mock data
+  alert('Task export functionality will be implemented when real task data is available')
 }
 
 function uploadPhoto() {
@@ -576,7 +553,7 @@ async function removeTeamMember(member: ProjectTeamMember) {
 }
 
 // Handle task updates from calendar
-function handleTaskUpdate(task: any) {
+function handleTaskUpdate(task: unknown) {
   console.log('📝 Task updated:', task)
   // TODO: Show notification or update UI
 }
@@ -620,13 +597,13 @@ function getStatusColor(status?: string) {
   }
 }
 
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
+// function formatDate(dateString: string) {
+//   return new Date(dateString).toLocaleDateString('en-US', {
+//     year: 'numeric',
+//     month: 'short',
+//     day: 'numeric',
+//   })
+// }
 
 // Load project on mount
 onMounted(() => {
@@ -850,7 +827,7 @@ onMounted(() => {
                   + New Task
                 </button>
                 <button
-                  @click="exportTasksToICal"
+                  @click="exportTasksToICalLocal"
                   class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-medium"
                   title="Export tasks to iCal format"
                 >
@@ -1013,10 +990,12 @@ onMounted(() => {
 
           <!-- Tasks Section -->
           <div v-else-if="activeSection === 'tasks'">
+
             <!-- Calendar Component -->
             <ProjectCalendar
+              v-if="project && project.id"
               ref="calendarRef"
-              :project-id="project?.id || 0"
+              :project-id="project.id"
               :can-edit="canEditProject"
               @event-click="handleEventClick"
               @date-click="handleDateClick"
@@ -1024,6 +1003,17 @@ onMounted(() => {
               @event-resize="handleEventResize"
               @task-update="handleTaskUpdate"
             />
+            <!-- Loading state for tasks -->
+            <div v-else class="flex items-center justify-center h-64">
+              <div class="text-center">
+                <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto mb-4" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-gray-600">Loading project tasks...</p>
+                <p class="text-xs text-gray-500 mt-2">Project state: {{ project ? 'Loaded' : 'Not loaded' }}</p>
+              </div>
+            </div>
           </div>
 
           <!-- Photos Section -->

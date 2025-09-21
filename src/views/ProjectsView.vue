@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { PROJECT_PRIORITIES, PROJECT_STATUSES, type ProjectPriority, type ProjectStatus } from '@/utils/constants'
+import { type ProjectPriority, type ProjectStatus } from '@/utils/constants'
 import { projectsApi, type Project as ApiProject } from '@/utils/contacts-api'
 
 const router = useRouter()
@@ -87,7 +87,7 @@ async function loadProjects() {
       startDate: apiProject.date_start,
       endDate: apiProject.date_end,
       status: apiProject.status,
-      projectManager: apiProject.prj_managger,
+      projectManager: apiProject.prj_managger || undefined, // cspell:ignore managger
       description: '',
       createdAt: apiProject.created_at,
       updatedAt: apiProject.updated_at
@@ -260,7 +260,7 @@ async function createNewProject() {
       startDate: apiProject.date_start,
       endDate: apiProject.date_end,
       status: apiProject.status,
-      projectManager: apiProject.prj_managger,
+      projectManager: apiProject.prj_managger || undefined, // cspell:ignore managger
       description: '',
       createdAt: apiProject.created_at,
       updatedAt: apiProject.updated_at
@@ -271,11 +271,11 @@ async function createNewProject() {
 
     // Close dialog and reset form
     closeNewProjectDialog()
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error creating project:', error)
 
     // Show error message to user
-    if (error.message) {
+    if (error instanceof Error && error.message) {
       alert('Error creating project: ' + error.message)
     } else {
       alert('Failed to create project. Please try again.')

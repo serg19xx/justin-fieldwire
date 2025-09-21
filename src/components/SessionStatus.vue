@@ -22,7 +22,7 @@ interface Props {
   showDetails?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   showDetails: false,
 })
 
@@ -35,7 +35,7 @@ const status = ref({
   isUserActive: false,
 })
 
-let statusInterval: NodeJS.Timeout | null = null
+let statusInterval: number | null = null
 
 const sessionStatusClass = computed(() => {
   if (!authStore.isAuthenticated) {

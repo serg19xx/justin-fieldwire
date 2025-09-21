@@ -24,6 +24,9 @@ export interface TaskActual {
 // Task status type
 export type TaskStatus = 'planned' | 'in_progress' | 'done' | 'blocked' | 'delayed'
 
+// Milestone task types
+export type MilestoneType = 'inspection' | 'visit' | 'meeting' | 'review' | 'delivery' | 'approval' | 'other'
+
 // Main Task interface (matches database structure)
 export interface Task {
   id: string
@@ -34,6 +37,7 @@ export interface Task {
   end_planned?: string // DATE from database
   duration_days?: number
   milestone: boolean
+  milestone_type?: MilestoneType
   status: TaskStatus
   progress_pct: number
   notes?: string
@@ -63,6 +67,9 @@ export interface CalendarTask {
   end?: string
   allDay?: boolean
   color?: string
+  editable?: boolean
+  startEditable?: boolean
+  durationEditable?: boolean
   extendedProps: {
     wbsPath: string[]
     status: TaskStatus
@@ -75,17 +82,29 @@ export interface CalendarTask {
 
 // Task creation/update DTO
 export interface TaskCreateUpdate {
-  wbsPath: string[]
+  project_id?: number
+  wbs_path?: string
   name: string
-  startPlanned: string
+  start_planned: string
+  end_planned?: string
+  duration_days?: number
+  milestone?: boolean
+  milestone_type?: MilestoneType
+  status?: TaskStatus
+  progress_pct?: number
+  notes?: string
+  task_lead_id?: number
+  team_members?: number[]
+  assignees?: number[]
+  resources?: string[]
+  dependencies?: Array<{ predecessor_id: number; type: string; lag_days: number }>
+  // Legacy fields for backward compatibility
+  wbsPath?: string[]
+  startPlanned?: string
   endPlanned?: string
   durationDays?: number
   deps?: TaskDependency[]
-  resources?: string[]
-  assignees?: string[]
   calendarId?: string
-  milestone?: boolean
-  status?: TaskStatus
 }
 
 // Task filter interface
@@ -98,6 +117,10 @@ export interface TaskFilter {
     start: string
     end: string
   }
+  // Additional filter fields
+  priority?: string[]
+  search?: string
+  project_id?: string
 }
 
 // Task statistics interface
