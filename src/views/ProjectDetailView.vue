@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { projectsApi, type Project as ApiProject, type ProjectTeamMember } from '@/utils/contacts-api'
+import { tasksApi } from '@/utils/tasks-api'
+import type { Task } from '@/types/task'
 import ProjectCalendar from '@/components/ProjectCalendar.vue'
 import AddTeamMemberDialog from '@/components/AddTeamMemberDialog.vue'
-// import { exportTasksToICal as exportTasksToICalUtil, downloadFile } from '@/utils/task-utils'
+import { exportTasksToICal as exportTasksToICalUtil, downloadFile } from '@/utils/task-utils'
 
 const route = useRoute()
 const router = useRouter()
@@ -26,6 +28,7 @@ const calendarRef = ref()
 // Navigation state
 const activeSection = ref<'plans' | 'tasks' | 'photos' | 'team' | 'settings'>('plans')
 
+
 // Settings form state
 const settingsForm = ref({
   name: '',
@@ -41,6 +44,15 @@ const isSavingSettings = ref(false)
 const teamMembers = ref<ProjectTeamMember[]>([])
 const loadingTeam = ref(false)
 const showAddTeamMemberDialog = ref(false)
+
+// Export state
+const isExporting = ref(false)
+
+// Search state
+const selectedTask = ref<Task | null>(null)
+const searchQuery = ref('')
+const isSearching = ref(false)
+const allTasks = ref<Task[]>([])
 
 // Calendar state
 const selectedEvent = ref<{
@@ -389,23 +401,49 @@ function createNewPlan() {
   alert('Create new plan dialog will be implemented here')
 }
 
-function createNewTask() {
-  console.log('➕ Create new task for project:', project.value?.id)
-  console.log('🔧 Calendar ref available:', !!calendarRef.value)
-  // Call ProjectCalendar method to open create dialog
-  if (calendarRef.value) {
-    console.log('🔧 Calling openTaskDialog...')
-    calendarRef.value.openTaskDialog('create')
-  } else {
-    console.log('❌ Calendar ref not available')
+
+
+async function exportTasksToICalLocal() {
+  if (!project.value?.id) {
+    alert('No project selected')
+    return
   }
-}
 
-function exportTasksToICalLocal() {
-  console.log('📅 Export tasks to iCal for project:', project.value?.id)
+  console.log('📅 Export tasks to iCal for project:', project.value.id)
 
-  // TODO: Fetch real tasks from API instead of using mock data
-  alert('Task export functionality will be implemented when real task data is available')
+  try {
+    isExporting.value = true
+
+    // Fetch tasks from API
+    const tasksResponse = await tasksApi.getAll(project.value.id)
+    const tasks = tasksResponse.tasks
+    console.log('📋 Fetched tasks for export:', tasks.length)
+
+    if (tasks.length === 0) {
+      alert('No tasks found to export')
+      return
+    }
+
+    // Generate iCal content
+    const icalContent = exportTasksToICalUtil(tasks)
+
+    // Create filename with project name and date
+    const projectName = project.value.name.replace(/[^a-zA-Z0-9]/g, '_')
+    const dateStr = new Date().toISOString().split('T')[0]
+    const filename = `${projectName}_tasks_${dateStr}.ics`
+
+    // Download the file
+    downloadFile(icalContent, filename, 'text/calendar')
+
+    console.log('✅ iCal export completed:', filename)
+    console.log('📄 iCal content preview:', icalContent.substring(0, 500) + '...')
+
+  } catch (error) {
+    console.error('❌ Export failed:', error)
+    alert('Failed to export tasks. Please try again.')
+  } finally {
+    isExporting.value = false
+  }
 }
 
 function uploadPhoto() {
@@ -417,6 +455,54 @@ function uploadPhoto() {
 function addTeamMember() {
   console.log('👥 Add team member for project:', project.value?.id)
   showAddTeamMemberDialog.value = true
+}
+
+// Load all tasks for search
+async function loadTasksForSearch() {
+  if (!project.value?.id) return
+
+  try {
+    isSearching.value = true
+    const tasksResponse = await tasksApi.getAll(project.value.id)
+    allTasks.value = tasksResponse.tasks
+    console.log(`📋 Loaded ${allTasks.value.length} tasks for search`)
+  } catch (error) {
+    console.error('❌ Failed to load tasks for search:', error)
+    allTasks.value = []
+  } finally {
+    isSearching.value = false
+  }
+}
+
+// Filter tasks based on search query
+const filteredTasks = computed(() => {
+  if (!searchQuery.value.trim()) return []
+
+  const query = searchQuery.value.toLowerCase()
+  return allTasks.value.filter(task =>
+    task.name.toLowerCase().includes(query) ||
+    (task.notes && task.notes.toLowerCase().includes(query)) ||
+    (task.wbs_path && task.wbs_path.toLowerCase().includes(query))
+  )
+})
+
+// Handle task selection
+function handleTaskSelect(task: Task) {
+  console.log('🎯 Selected task:', task.name)
+  selectedTask.value = task
+
+  // Switch to tasks section and navigate to the task
+  activeSection.value = 'tasks'
+
+  // Clear search
+  searchQuery.value = ''
+
+  // Navigate to task in calendar
+  nextTick(() => {
+    if (calendarRef.value && typeof calendarRef.value.searchTasks === 'function') {
+      calendarRef.value.searchTasks(task.name)
+    }
+  })
 }
 
 // Handle team member added
@@ -605,11 +691,19 @@ function getStatusColor(status?: string) {
 //   })
 // }
 
+
 // Load project on mount
 onMounted(() => {
   loadProjects()
   loadProject()
 })
+
+// Load tasks when project is loaded
+watch(project, (newProject) => {
+  if (newProject) {
+    loadTasksForSearch()
+  }
+}, { immediate: true })
 </script>
 
 <template>
@@ -820,18 +914,19 @@ onMounted(() => {
             <template v-else-if="activeSection === 'tasks'">
               <div class="flex items-center space-x-2">
                 <button
-                  v-if="canEditProject"
-                  @click="createNewTask"
-                  class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
-                >
-                  + New Task
-                </button>
-                <button
                   @click="exportTasksToICalLocal"
-                  class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-medium"
+                  :disabled="isExporting"
+                  :class="[
+                    'px-4 py-2 rounded-md transition-colors text-sm font-medium flex items-center space-x-2',
+                    isExporting
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  ]"
                   title="Export tasks to iCal format"
                 >
-                  📅 Export iCal
+                  <span v-if="isExporting" class="animate-spin">⏳</span>
+                  <span v-else>📅</span>
+                  <span>{{ isExporting ? 'Exporting...' : 'Export iCal' }}</span>
                 </button>
               </div>
             </template>
@@ -894,11 +989,12 @@ onMounted(() => {
           </div>
 
           <!-- Search Bar -->
-          <div class="relative">
+          <div class="w-64 relative">
             <input
+              v-model="searchQuery"
               type="text"
-              placeholder="Search..."
-              class="w-64 pl-8 pr-3 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              placeholder="Search tasks..."
+              class="w-full pl-8 pr-10 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             />
             <svg
               class="absolute left-2.5 top-2 h-4 w-4 text-gray-400"
@@ -913,6 +1009,29 @@ onMounted(() => {
                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
               ></path>
             </svg>
+
+            <!-- Search Results Dropdown -->
+            <div
+              v-if="searchQuery.trim() && filteredTasks.length > 0"
+              class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto"
+            >
+              <div
+                v-for="task in filteredTasks"
+                :key="task.id"
+                @click="handleTaskSelect(task)"
+                class="px-3 py-2 cursor-pointer text-sm border-b border-gray-100 last:border-b-0 hover:bg-gray-50"
+              >
+                <div class="flex items-center space-x-2">
+                  <span class="text-xs">{{ task.milestone ? '🎯' : '📋' }}</span>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-medium truncate">{{ task.name }}</div>
+                    <div v-if="task.wbs_path" class="text-xs text-gray-500 truncate">WBS: {{ task.wbs_path }}</div>
+                    <div v-if="task.notes" class="text-xs text-gray-500 truncate">{{ task.notes }}</div>
+                  </div>
+                  <span class="text-xs px-2 py-1 bg-gray-100 rounded">{{ task.status }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

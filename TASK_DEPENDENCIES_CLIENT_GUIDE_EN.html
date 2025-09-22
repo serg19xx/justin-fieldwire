@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Task Dependencies Guide - FieldWire Client Manual</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 20px;
+        color: #333;
+      }
+      h1 {
+        color: #2c3e50;
+        text-align: center;
+        border-bottom: 3px solid #3498db;
+        padding-bottom: 10px;
+      }
+      h2 {
+        color: #34495e;
+        background-color: #ecf0f1;
+        padding: 10px;
+        border-left: 4px solid #3498db;
+      }
+      h3 {
+        color: #2c3e50;
+        margin-top: 25px;
+      }
+      .example {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 15px;
+        margin: 10px 0;
+      }
+      .warning {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 5px;
+        padding: 15px;
+        margin: 10px 0;
+      }
+      .success {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
+        border-radius: 5px;
+        padding: 15px;
+        margin: 10px 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left;
+      }
+      th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+      }
+      .icon {
+        font-size: 1.2em;
+        margin-right: 5px;
+      }
+      ul,
+      ol {
+        padding-left: 20px;
+      }
+      li {
+        margin: 5px 0;
+      }
+      .diagram {
+        background-color: #f8f9fa;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 20px 0;
+        text-align: center;
+        font-family: monospace;
+      }
+      .task-box {
+        display: inline-block;
+        background-color: #3498db;
+        color: white;
+        padding: 8px 12px;
+        margin: 5px;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+      .arrow {
+        font-size: 1.5em;
+        color: #e74c3c;
+        margin: 0 10px;
+      }
+      .lag-text {
+        color: #f39c12;
+        font-weight: bold;
+        font-size: 0.9em;
+      }
+      .timeline {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 15px 0;
+        flex-wrap: wrap;
+      }
+      .timeline-item {
+        background-color: #ecf0f1;
+        border: 1px solid #bdc3c7;
+        padding: 8px 12px;
+        margin: 2px;
+        border-radius: 4px;
+        font-size: 0.9em;
+      }
+      .timeline-arrow {
+        color: #e74c3c;
+        margin: 0 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔗 Task Dependencies in FieldWire</h1>
+    <p><strong>Client User Manual</strong></p>
+
+    <h2>🎯 What are Task Dependencies?</h2>
+    <p>
+      Dependencies are logical connections between tasks that determine the order in which work must
+      be performed. The system automatically checks and enforces these relationships to ensure
+      proper project sequencing.
+    </p>
+
+    <div class="success">
+      <strong>💡 Why are dependencies important:</strong>
+      <ul>
+        <li>Automatically plan work sequence</li>
+        <li>Prevent planning errors</li>
+        <li>Show impact of delays on other tasks</li>
+        <li>Help identify the project's critical path</li>
+        <li>Ensure logical work flow</li>
+      </ul>
+    </div>
+
+    <h2>📋 Types of Dependencies</h2>
+
+    <table>
+      <tr>
+        <th>Type</th>
+        <th>Name</th>
+        <th>Rule</th>
+        <th>Example</th>
+      </tr>
+      <tr>
+        <td><strong>FS</strong></td>
+        <td>Finish-to-Start</td>
+        <td>Task B starts after Task A finishes</td>
+        <td>Foundation → Walls</td>
+      </tr>
+      <tr>
+        <td><strong>SS</strong></td>
+        <td>Start-to-Start</td>
+        <td>Task B starts when Task A starts</td>
+        <td>Site Preparation → Equipment Installation</td>
+      </tr>
+      <tr>
+        <td><strong>FF</strong></td>
+        <td>Finish-to-Finish</td>
+        <td>Task B finishes when Task A finishes</td>
+        <td>Electrical ↔ Plumbing</td>
+      </tr>
+      <tr>
+        <td><strong>SF</strong></td>
+        <td>Start-to-Finish</td>
+        <td>Task B finishes when Task A starts</td>
+        <td>New System → Old System Shutdown</td>
+      </tr>
+    </table>
+
+    <h3>Visual Examples of Each Dependency Type</h3>
+
+    <div class="diagram">
+      <h4>FS (Finish-to-Start) - Most Common</h4>
+      <div class="timeline">
+        <div class="task-box">Task A<br />Foundation</div>
+        <div class="arrow">→</div>
+        <div class="task-box">Task B<br />Walls</div>
+      </div>
+      <p><em>Walls cannot start until foundation is complete</em></p>
+    </div>
+
+    <div class="diagram">
+      <h4>SS (Start-to-Start) - Parallel Work</h4>
+      <div class="timeline">
+        <div class="task-box">Task A<br />Site Prep</div>
+        <div class="arrow">▶</div>
+        <div class="task-box">Task B<br />Equipment</div>
+      </div>
+      <p><em>Equipment installation can start when site prep begins (not when it finishes)</em></p>
+    </div>
+
+    <div class="diagram">
+      <h4>FF (Finish-to-Finish) - Coordinated Completion</h4>
+      <div class="timeline">
+        <div class="task-box">Task A<br />Electrical</div>
+        <div class="arrow">↔</div>
+        <div class="task-box">Task B<br />Plumbing</div>
+      </div>
+      <p><em>Both electrical and plumbing must finish together</em></p>
+    </div>
+
+    <div class="diagram">
+      <h4>SF (Start-to-Finish) - System Transition</h4>
+      <div class="timeline">
+        <div class="task-box">Task A<br />New System</div>
+        <div class="arrow">🔄</div>
+        <div class="task-box">Task B<br />Old System</div>
+      </div>
+      <p><em>Old system can only shut down after new system starts</em></p>
+    </div>
+
+    <h2>⏱️ Lags (Delays)</h2>
+    <p>A lag is additional time between related tasks, often for curing, drying, or buffer time.</p>
+
+    <div class="example">
+      <strong>Example with 2-day lag:</strong><br />
+      <div class="timeline">
+        <div class="timeline-item">Task A: "Pour Foundation"<br />Jan 1-5</div>
+        <div class="timeline-arrow">→</div>
+        <div class="lag-text">+2 days</div>
+        <div class="timeline-arrow">→</div>
+        <div class="timeline-item">Task B: "Build Walls"<br />Jan 8-15</div>
+      </div>
+      <strong>Lag: 2 days</strong> — concrete curing time
+    </div>
+
+    <h2>📅 How Dependencies Work in the Calendar</h2>
+
+    <h3>1. Moving Tasks</h3>
+    <ol>
+      <li><strong>Drag a task</strong> to a new date</li>
+      <li><strong>System automatically checks</strong> all dependencies</li>
+      <li><strong>If violations exist</strong> — a warning dialog appears</li>
+      <li>
+        <strong>Choose your action:</strong>
+        <ul>
+          <li><strong>"Cancel"</strong> — revert to original position</li>
+          <li><strong>"Adjust"</strong> — apply suggested dates</li>
+        </ul>
+      </li>
+    </ol>
+
+    <h3>2. Cascade Effects</h3>
+    <p>
+      When you change one task, the system automatically suggests changes for all related tasks.
+    </p>
+
+    <div class="diagram">
+      <h4>Cascade Example</h4>
+      <div class="timeline">
+        <div class="task-box">Foundation</div>
+        <div class="arrow">→</div>
+        <div class="task-box">Walls</div>
+        <div class="arrow">→</div>
+        <div class="task-box">Roof</div>
+        <div class="arrow">→</div>
+        <div class="task-box">Interior</div>
+      </div>
+      <p>
+        <em
+          >Moving Foundation forward by 3 days automatically suggests moving all dependent tasks
+          forward by 3 days</em
+        >
+      </p>
+    </div>
+
+    <div class="example">
+      <strong>Cascade sequence:</strong><br />
+      1. Move "Foundation" forward 3 days<br />
+      2. System suggests moving "Walls" forward 3 days<br />
+      3. Then suggests moving "Roof" forward 3 days<br />
+      4. And so on through the dependency chain
+    </div>
+
+    <h2>⚠️ Important Limitations</h2>
+
+    <div class="warning">
+      <strong>🚫 What you cannot do:</strong>
+      <ul>
+        <li>Create circular dependencies (A→B→A)</li>
+        <li>Move tasks outside project boundaries</li>
+        <li>Violate logical relationships between tasks</li>
+        <li>Set negative lags (tasks cannot start before their predecessors)</li>
+      </ul>
+    </div>
+
+    <h2>🎯 Milestone Tasks</h2>
+    <p>Milestones are point-in-time events that mark important project phases:</p>
+
+    <div class="diagram">
+      <h4>Milestone Types</h4>
+      <div class="timeline">
+        <div class="task-box">🔍 Inspection</div>
+        <div class="task-box">👥 Meeting</div>
+        <div class="task-box">📋 Review</div>
+        <div class="task-box">✅ Approval</div>
+        <div class="task-box">🚚 Delivery</div>
+      </div>
+    </div>
+
+    <div class="example">
+      <strong>Milestone characteristics:</strong>
+      <ul>
+        <li>Single date (no duration)</li>
+        <li>Cannot be resized, only moved</li>
+        <li>Simplified status: Planned → Done → Blocked</li>
+        <li>Used for checkpoints and reminders</li>
+      </ul>
+    </div>
+
+    <h2>🔄 Complete Dependency Flow Diagram</h2>
+
+    <div class="diagram">
+      <h4>Project Timeline with Dependencies</h4>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 15px">
+        <!-- Phase 1: Foundation -->
+        <div style="display: flex; align-items: center; gap: 10px">
+          <div class="task-box" style="background-color: #e74c3c">Phase 1: Foundation</div>
+        </div>
+
+        <!-- Foundation Tasks -->
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+          <div class="task-box" style="background-color: #3498db">Site Prep</div>
+          <div class="arrow">SS</div>
+          <div class="task-box" style="background-color: #3498db">Excavation</div>
+          <div class="arrow">FS</div>
+          <div class="task-box" style="background-color: #3498db">Pour Foundation</div>
+          <div class="arrow">FS</div>
+          <div class="task-box" style="background-color: #3498db">Cure Concrete</div>
+        </div>
+
+        <!-- Lag indicator -->
+        <div class="lag-text">+2 days lag</div>
+
+        <!-- Phase 2: Structure -->
+        <div style="display: flex; align-items: center; gap: 10px">
+          <div class="task-box" style="background-color: #e74c3c">Phase 2: Structure</div>
+        </div>
+
+        <!-- Structure Tasks -->
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+          <div class="task-box" style="background-color: #2ecc71">Build Walls</div>
+          <div class="arrow">SS</div>
+          <div class="task-box" style="background-color: #2ecc71">Install Windows</div>
+          <div class="arrow">FF</div>
+          <div class="task-box" style="background-color: #2ecc71">Install Doors</div>
+        </div>
+
+        <!-- Milestone -->
+        <div style="display: flex; align-items: center; gap: 10px">
+          <div class="task-box" style="background-color: #f39c12">🎯 Structure Complete</div>
+        </div>
+
+        <!-- Phase 3: Systems -->
+        <div style="display: flex; align-items: center; gap: 10px">
+          <div class="task-box" style="background-color: #e74c3c">Phase 3: Systems</div>
+        </div>
+
+        <!-- Systems Tasks -->
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+          <div class="task-box" style="background-color: #9b59b6">Electrical</div>
+          <div class="arrow">FF</div>
+          <div class="task-box" style="background-color: #9b59b6">Plumbing</div>
+          <div class="arrow">FS</div>
+          <div class="task-box" style="background-color: #9b59b6">HVAC</div>
+        </div>
+
+        <!-- Final Milestone -->
+        <div style="display: flex; align-items: center; gap: 10px">
+          <div class="task-box" style="background-color: #27ae60">🎯 Project Complete</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px; font-size: 0.9em; color: #7f8c8d">
+        <strong>Legend:</strong><br />
+        <span style="color: #e74c3c">●</span> Phase Markers |
+        <span style="color: #3498db">●</span> Foundation Tasks |
+        <span style="color: #2ecc71">●</span> Structure Tasks |
+        <span style="color: #9b59b6">●</span> Systems Tasks |
+        <span style="color: #f39c12">●</span> Milestones
+      </div>
+    </div>
+
+    <h2>📋 Best Practices</h2>
+
+    <h3>For Project Planning:</h3>
+    <ol>
+      <li><strong>Start with main tasks</strong> without dependencies</li>
+      <li><strong>Add dependencies gradually</strong> as you plan</li>
+      <li><strong>Use FS</strong> for sequential work (most common case)</li>
+      <li><strong>Set realistic lags</strong> for buffer time</li>
+      <li><strong>Plan milestones</strong> for key checkpoints</li>
+    </ol>
+
+    <h3>When Working with Calendar:</h3>
+    <ol>
+      <li><strong>Read system warnings</strong> carefully</li>
+      <li><strong>Use "Adjust"</strong> for automatic corrections</li>
+      <li><strong>Check cascade effects</strong> before confirming</li>
+      <li><strong>When in doubt</strong> — cancel changes and replan</li>
+      <li><strong>Test dependencies</strong> by moving tasks around</li>
+    </ol>
+
+    <h2>🎨 Visual Indicators</h2>
+    <p>In the calendar you will see:</p>
+    <ul>
+      <li><strong>🔗 Dependency icons</strong> in task titles (for managers)</li>
+      <li><strong>📋 Task icons</strong> vs <strong>🎯 Milestone icons</strong></li>
+      <li><strong>Color-coded status indicators</strong> for all tasks</li>
+      <li><strong>Warning dialogs</strong> for violations</li>
+      <li><strong>Suggested dates</strong> for corrections</li>
+      <li><strong>Red selection border</strong> for selected tasks</li>
+    </ul>
+
+    <h2>🔧 Troubleshooting Common Issues</h2>
+
+    <div class="warning">
+      <strong>Problem: Task won't move to desired date</strong><br />
+      <strong>Solution:</strong> Check if the task has dependencies that prevent the move. Use
+      "Adjust" to see suggested dates.
+    </div>
+
+    <div class="warning">
+      <strong>Problem: Multiple tasks move together unexpectedly</strong><br />
+      <strong>Solution:</strong> This is normal cascade behavior. The system is maintaining
+      dependency relationships.
+    </div>
+
+    <div class="warning">
+      <strong>Problem: Milestone appears outside project boundaries</strong><br />
+      <strong>Solution:</strong> Use "Adjust" to move it to the nearest valid project date.
+    </div>
+
+    <h2>📞 Support</h2>
+    <p>If you have questions about dependencies:</p>
+    <ol>
+      <li>Contact your technical specialist</li>
+      <li>Save a screenshot of the problem</li>
+      <li>Describe what actions led to the error</li>
+      <li>Note which tasks and dependencies were involved</li>
+    </ol>
+
+    <div class="success">
+      <strong>💡 Remember:</strong> The dependency system helps prevent planning errors and
+      automatically maintains project logic. Trust the system warnings and use the suggested
+      corrections to keep your project on track.
+    </div>
+
+    <hr />
+    <p style="text-align: center; color: #7f8c8d; font-size: 0.9em">
+      FieldWire - Construction Project Management System<br />
+      Document Version: 2024
+    </p>
+  </body>
+</html>

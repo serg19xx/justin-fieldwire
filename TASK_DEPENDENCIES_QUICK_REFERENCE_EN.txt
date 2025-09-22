@@ -1,0 +1,117 @@
+FIELDWIRE: TASK DEPENDENCIES QUICK REFERENCE CARD
+================================================
+
+This quick reference card helps you understand task dependencies in FieldWire and how the system automatically manages your project schedule.
+
+1. WHAT ARE TASK DEPENDENCIES?
+------------------------------
+Dependencies are logical connections between tasks that determine the order in which work must be performed. They ensure that one task cannot start (or finish) until another task is completed (or started).
+
+Why are they important?
+- Automatic schedule management
+- Prevents planning errors  
+- Shows impact of changes on the entire project
+- Helps identify critical path
+
+2. DEPENDENCY TYPES
+------------------
+
+➡️ Finish-to-Start (FS) - Most Common
+   Rule: Task B cannot start until Task A finishes
+   Example: "Pour Foundation" (A) → "Build Walls" (B)
+   Logic: Walls cannot be built until foundation is complete
+   Use for: Sequential work
+
+▶️ Start-to-Start (SS) - Parallel Work  
+   Rule: Task B cannot start until Task A starts
+   Example: "Site Preparation" (A) → "Equipment Installation" (B)
+   Logic: Equipment can start when site prep begins (not when it finishes)
+   Use for: Parallel work that can start together
+
+🔚 Finish-to-Finish (FF) - Coordinated Completion
+   Rule: Task B cannot finish until Task A finishes  
+   Example: "Electrical Work" (A) ↔ "Plumbing Work" (B)
+   Logic: Both must finish together or plumbing after electrical
+   Use for: Coordinating completion of related tasks
+
+🔄 Start-to-Finish (SF) - System Transition
+   Rule: Task B cannot finish until Task A starts
+   Example: "New System Launch" (A) → "Old System Shutdown" (B)
+   Logic: Old system can only shut down after new system starts
+   Use for: System transitions (rare)
+
+3. LAGS (DELAYS) BETWEEN TASKS
+-----------------------------
+"Lag" is the number of days that must pass between the completion of one task and the start of another.
+- 0 days: Immediately (default)
+- 1+ days: Additional buffer time
+Example: FS with 2-day lag. Task B starts 2 days after Task A finishes (e.g., for curing time)
+
+4. HOW IT WORKS IN THE CALENDAR
+------------------------------
+The system automatically checks dependencies when you move or resize tasks.
+- Moving a predecessor: Dependent tasks automatically suggest new dates
+- Resizing tasks: Dependent tasks are also adjusted
+
+IMPORTANT: Tasks without dependencies can be moved freely. Tasks with dependencies will always follow the established rules and lags.
+
+5. CASCADE CHANGES AND VALIDATION
+--------------------------------
+If your action violates a dependency or goes outside project boundaries, the system shows a dialog:
+- Project boundary violation: Offers to "adjust" the task to the nearest valid date
+- Dependency violation: Shows violated dependencies and suggests new dates
+
+You can choose:
+- "Cancel": Task returns to original position
+- "Adjust": System automatically applies suggested dates
+
+6. MILESTONE TASKS
+-----------------
+Milestones are point-in-time events for checkpoints and reminders:
+- Single date (no duration)
+- Cannot be resized, only moved
+- Simplified status: Planned → Done → Blocked
+- Types: 🔍 Inspection, 👥 Meeting, 📋 Review, ✅ Approval, 🚚 Delivery, 🏗️ Visit
+
+7. VISUAL INDICATORS IN INTERFACE
+--------------------------------
+- Dependency icons: In task titles in calendar (➡️, ▶️, 🔚, 🔄)
+- Task highlighting: Selected task has red border, "Delete" button appears in top panel
+- Status colors: Same for both tasks and milestones
+- Icons: 📋 for regular tasks, 🎯 for milestones
+
+8. BEST PRACTICES
+----------------
+For Planning:
+- Start with main tasks without dependencies
+- Add dependencies gradually as you plan
+- Use FS for most tasks (simplest and most common)
+- Set realistic lags for buffer time
+- Plan milestones for key checkpoints
+
+For Calendar Work:
+- Read system warnings carefully
+- Use "Adjust" for automatic corrections
+- Check cascade effects before confirming
+- When in doubt, cancel changes and replan
+- Test dependencies by moving tasks around
+
+9. TROUBLESHOOTING
+-----------------
+Problem: Task won't move to desired date
+Solution: Check if task has dependencies preventing the move. Use "Adjust" to see suggested dates.
+
+Problem: Multiple tasks move together unexpectedly  
+Solution: This is normal cascade behavior. System is maintaining dependency relationships.
+
+Problem: Milestone appears outside project boundaries
+Solution: Use "Adjust" to move it to nearest valid project date.
+
+10. SUPPORT
+-----------
+For questions or problems with task dependencies, contact technical support with:
+- Screenshot of the problem
+- Description of actions that led to error
+- Note which tasks and dependencies were involved
+
+Remember: The dependency system helps prevent planning errors and automatically maintains project logic. Trust the system warnings and use suggested corrections.

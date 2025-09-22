@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { tasksApi } from '@/utils/tasks-api'
 import type { Task, TaskFilter, TaskCreateUpdate } from '@/types/task'
@@ -8,6 +8,7 @@ import { projectsApi } from '@/utils/contacts-api'
 import TaskDialog from '@/components/TaskDialog.vue'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 
 // Task data
@@ -118,12 +119,39 @@ const filteredTasks = computed(() => {
 })
 
 // Task management functions
-function openCreateTaskDialog() {
-  taskDialogMode.value = 'create'
-  selectedTask.value = null
-  showTaskDialog.value = true
-  console.log('🔧 Opening create task dialog')
-  console.log('📋 Available tasks for dependencies:', availableTasksForDependencies.value.length)
+function searchAndOpenCalendar() {
+  if (!searchQuery.value.trim()) {
+    alert('Please enter a search term')
+    return
+  }
+
+  // Find tasks that match the search query
+  const matchingTasks = tasks.value.filter(task =>
+    task.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+    task.notes?.toLowerCase().includes(searchQuery.value.toLowerCase())
+  )
+
+  if (matchingTasks.length === 0) {
+    alert('No tasks found matching your search')
+    return
+  }
+
+  if (matchingTasks.length === 1) {
+    // Single task found - open calendar and highlight it
+    const task = matchingTasks[0]
+    console.log('🎯 Found single task:', task.name)
+
+    // Navigate to calendar view
+    router.push(`/projects/${route.params.projectId}?view=calendar&highlight=${task.id}`)
+  } else {
+    // Multiple tasks found - show list and let user choose
+    const taskNames = matchingTasks.map(t => t.name).join('\n')
+    const choice = confirm(`Found ${matchingTasks.length} tasks:\n\n${taskNames}\n\nOpen calendar to view all results?`)
+
+    if (choice) {
+      router.push(`/projects/${route.params.projectId}?view=calendar&search=${encodeURIComponent(searchQuery.value)}`)
+    }
+  }
 }
 
 function openEditTaskDialog(task: Task) {
@@ -338,13 +366,6 @@ onMounted(() => {
     <div v-else>
       <div class="flex justify-between items-center mb-6">
         <div class="flex space-x-3">
-          <button
-            v-if="canManageTasks"
-            @click="openCreateTaskDialog"
-            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-          >
-            + Create Task
-          </button>
           <button class="bg-white text-gray-700 px-4 py-2 rounded-md border border-gray-300 hover:bg-gray-50 transition-colors">
             Import Tasks
           </button>
@@ -353,12 +374,22 @@ onMounted(() => {
         <!-- Filters -->
         <div class="flex space-x-2">
           <!-- Search -->
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Search tasks..."
-            class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-          />
+          <div class="flex space-x-2">
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Search tasks..."
+              class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              @keyup.enter="searchAndOpenCalendar"
+            />
+            <button
+              @click="searchAndOpenCalendar"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+              title="Search and open in calendar"
+            >
+              🔍
+            </button>
+          </div>
 
           <!-- Project Filter -->
           <select
@@ -417,14 +448,6 @@ onMounted(() => {
           <p class="mt-1 text-sm text-gray-500">
             {{ projectFilter ? 'No tasks match your current filters.' : 'Get started by creating a new task.' }}
           </p>
-          <div v-if="canManageTasks" class="mt-6">
-            <button
-              @click="openCreateTaskDialog"
-              class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-            >
-              + Create Task
-            </button>
-          </div>
         </div>
 
         <!-- Tasks List -->

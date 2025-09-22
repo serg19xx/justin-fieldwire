@@ -302,28 +302,71 @@ export function exportTasksToICal(tasks: Task[]): string {
     'PRODID:-//FieldWire//Project Tasks//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
+    'X-WR-CALNAME:FieldWire Project Tasks',
+    'X-WR-CALDESC:Project tasks exported from FieldWire',
   ]
 
   tasks.forEach((task) => {
-    const startDate = task.start_planned.replace(/[-:]/g, '').split('.')[0] + 'Z'
-    const endDate = task.end_planned
-      ? task.end_planned.replace(/[-:]/g, '').split('.')[0] + 'Z'
-      : startDate
+    try {
+      // Normalize date format - ensure we have proper ISO dates
+      // Parse and format start date
+      const startDateObj = new Date(task.start_planned + 'T00:00:00')
+      if (isNaN(startDateObj.getTime())) {
+        console.warn('⚠️ Invalid start date for task:', task.name, task.start_planned)
+        return // Skip this task
+      }
+      const startDate = startDateObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
 
-    ical.push(
-      'BEGIN:VEVENT',
-      `UID:${task.id}@fieldwire.com`, // cspell:ignore fieldwire
-      `DTSTAMP:${now}`,
-      `DTSTART:${startDate}`,
-      `DTEND:${endDate}`,
-      `SUMMARY:${task.name}`,
-      `DESCRIPTION:${task.wbs_path || 'No WBS'} - ${task.status || 'planned'}`,
-      `STATUS:${task.status === 'done' ? 'CONFIRMED' : 'TENTATIVE'}`,
-      'END:VEVENT',
-    )
+      // Parse and format end date
+      let endDate: string
+      if (task.end_planned) {
+        const endDateObj = new Date(task.end_planned + 'T00:00:00')
+        if (isNaN(endDateObj.getTime())) {
+          console.warn('⚠️ Invalid end date for task:', task.name, task.end_planned)
+          endDate = startDate // Use start date as fallback
+        } else {
+          endDate = endDateObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+        }
+      } else {
+        // For milestones or tasks without end date, use start date + 1 day
+        const endDateObj = new Date(startDateObj.getTime() + 24 * 60 * 60 * 1000)
+        endDate = endDateObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
+      }
+
+      // Create description with more details
+      const description = [
+        task.wbs_path ? `WBS: ${task.wbs_path}` : 'No WBS',
+        `Status: ${task.status}`,
+        task.progress_pct > 0 ? `Progress: ${task.progress_pct}%` : '',
+        task.notes ? `Notes: ${task.notes}` : '',
+        task.milestone ? `Type: ${task.milestone_type || 'Milestone'}` : 'Type: Task',
+      ]
+        .filter(Boolean)
+        .join('\\n')
+
+      // Create summary with type indicator
+      const typeIcon = task.milestone ? '🎯' : '📋'
+      const summary = `${typeIcon} ${task.name}`
+
+      ical.push(
+        'BEGIN:VEVENT',
+        `UID:${task.id}@fieldwire.com`,
+        `DTSTAMP:${now}`,
+        `DTSTART:${startDate}`,
+        `DTEND:${endDate}`,
+        `SUMMARY:${summary}`,
+        `DESCRIPTION:${description}`,
+        `STATUS:${task.status === 'done' ? 'CONFIRMED' : 'TENTATIVE'}`,
+        `CATEGORIES:${task.milestone ? 'MILESTONE' : 'TASK'}`,
+        `PRIORITY:${getTaskPriority(task).toUpperCase()}`,
+        'END:VEVENT',
+      )
+    } catch (error) {
+      console.error('❌ Error processing task for iCal export:', task.name, error)
+    }
   })
 
-  ical.push('END:VCALENDAR') // cspell:ignore VCALENDAR
+  ical.push('END:VCALENDAR')
 
   return ical.join('\r\n')
 }

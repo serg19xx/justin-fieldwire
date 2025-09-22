@@ -76,6 +76,102 @@ const projectInfo = ref<Project | null>(null)
 // Selected task for details view
 const selectedTask = ref<Task | null>(null)
 
+// Search state
+const searchResults = ref<Task[]>([])
+const currentSearchIndex = ref(0)
+const isSearchActive = ref(false)
+
+
+function searchTasks(query: string) {
+  console.log('🔍 Search function called with query:', query)
+  console.log('📋 Available tasks:', tasks.value.length)
+
+  if (!query || !query.trim()) {
+    console.log('⚠️ Empty search query - clearing search')
+    clearSearch()
+    return
+  }
+
+  const searchTerm = query.trim().toLowerCase()
+  console.log('🔍 Searching for:', searchTerm)
+
+  // Find tasks that match the search query
+  const matchingTasks = tasks.value.filter(task => {
+    const nameMatch = task.name.toLowerCase().includes(searchTerm)
+    const notesMatch = task.notes?.toLowerCase().includes(searchTerm) || false
+    const wbsMatch = task.wbs_path?.toLowerCase().includes(searchTerm) || false
+
+    return nameMatch || notesMatch || wbsMatch
+  })
+
+  console.log('🎯 Found matching tasks:', matchingTasks.length)
+
+  // Update search state
+  searchResults.value = matchingTasks
+  currentSearchIndex.value = 0
+  isSearchActive.value = true
+
+  if (matchingTasks.length === 0) {
+    console.log('❌ No tasks found')
+    // Clear any previous selection
+    selectedTask.value = null
+    return
+  }
+
+  // Navigate to first result
+  navigateToSearchResult(0)
+}
+
+function navigateToSearchResult(index: number) {
+  if (!searchResults.value.length || index < 0 || index >= searchResults.value.length) {
+    return
+  }
+
+  const task = searchResults.value[index]
+  currentSearchIndex.value = index
+
+  console.log(`🎯 Navigating to search result ${index + 1}/${searchResults.value.length}:`, task.name)
+
+  // Select the task
+  selectedTask.value = task
+  restoreTaskSelection(task.id)
+
+  // Navigate to the task date and scroll to it
+  const calendar = calendarRef.value?.getApi()
+  if (calendar) {
+    const event = calendar.getEventById(String(task.id))
+    if (event) {
+      console.log('📅 Navigating to task:', task.name, 'at date:', event.start)
+
+      // Navigate to the date first
+      calendar.gotoDate(event.start)
+
+      // Then scroll to the time (for time-based views)
+      setTimeout(() => {
+        calendar.scrollToTime(event.start)
+      }, 100)
+    } else {
+      console.warn('⚠️ Could not find calendar event for task:', task.id)
+    }
+  }
+}
+
+function nextSearchResult() {
+  if (searchResults.value.length === 0) return
+
+  const nextIndex = (currentSearchIndex.value + 1) % searchResults.value.length
+  navigateToSearchResult(nextIndex)
+}
+
+function previousSearchResult() {
+  if (searchResults.value.length === 0) return
+
+  const prevIndex = currentSearchIndex.value === 0
+    ? searchResults.value.length - 1
+    : currentSearchIndex.value - 1
+  navigateToSearchResult(prevIndex)
+}
+
 // Project bounds dialog state
 const simpleBoundsDialog = ref({
   isOpen: false,
@@ -2170,20 +2266,53 @@ onMounted(() => {
 })
 
 
+// Clear search function
+function clearSearch() {
+  console.log('🧹 Clearing search results')
+
+  // Clear search state
+  searchResults.value = []
+  currentSearchIndex.value = 0
+  isSearchActive.value = false
+
+  // Clear any search highlighting
+  const calendar = calendarRef.value?.getApi()
+  if (calendar) {
+    const allEvents = calendar.getEvents()
+    allEvents.forEach((event: { removeClass?: (className: string) => void }) => {
+      if (event.removeClass) {
+        event.removeClass('fc-event-selected')
+      }
+    })
+  }
+
+  // Clear selection
+  selectedTask.value = null
+  document.documentElement.style.removeProperty('--selected-task-id')
+}
+
 // Expose functions for parent component
 defineExpose({
   openTaskDialog,
   openMilestoneDialog,
   loadTasks,
+  searchTasks,
+  clearSearch,
+  nextSearchResult,
+  previousSearchResult,
+  searchResults,
+  currentSearchIndex,
+  isSearchActive,
 })
 </script>
 
 <template>
   <!-- Legend Section -->
   <div class="px-4 py-2 bg-transparent text-xs text-gray-600">
-    <div class="flex items-center justify-end space-x-6">
+    <div class="flex items-center justify-center space-x-6">
       <!-- Status Legend -->
-      <div class="flex items-center space-x-3 text-xs border border-gray-300 rounded-md px-3 py-1">
+      <div class="flex items-center space-x-2 text-xs border border-gray-300 rounded-md px-3 py-1 bg-gray-50">
+        <span class="text-xs font-medium text-gray-700">Tasks:</span>
         <div class="flex items-center space-x-1">
           <div class="w-3 h-3 rounded-full" style="background-color: #3B82F6"></div>
           <span class="text-gray-600">Planned</span>
@@ -2212,27 +2341,27 @@ defineExpose({
           <span class="text-xs font-medium text-blue-700">Dependencies:</span>
           <div class="flex items-center gap-2 text-xs">
             <div class="flex items-center space-x-1">
-              <span class="text-sm">🔗</span>
+              <span class="text-xs">🔗</span>
               <span class="text-gray-600">FS</span>
             </div>
             <div class="flex items-center space-x-1">
-              <span class="text-sm">⚡</span>
+              <span class="text-xs">⚡</span>
               <span class="text-gray-600">SS</span>
             </div>
             <div class="flex items-center space-x-1">
-              <span class="text-sm">🎯</span>
+              <span class="text-xs">🎯</span>
               <span class="text-gray-600">FF</span>
             </div>
             <div class="flex items-center space-x-1">
-              <span class="text-sm">🔄</span>
+              <span class="text-xs">🔄</span>
               <span class="text-gray-600">SF</span>
             </div>
             <div class="flex items-center space-x-1">
-              <span class="text-sm">⏱️</span>
+              <span class="text-xs">⏱️</span>
               <span class="text-gray-600">Lag</span>
             </div>
             <div class="flex items-center space-x-1">
-              <span class="text-sm">📋</span>
+              <span class="text-xs">📋</span>
               <span class="text-gray-600">Deps</span>
             </div>
           </div>
@@ -2243,27 +2372,27 @@ defineExpose({
           <span class="text-xs font-medium text-purple-700">Milestones:</span>
           <div class="flex items-center gap-2 text-xs">
             <div class="flex items-center space-x-1">
-              <span class="text-sm">🔍</span>
+              <span class="text-xs">🔍</span>
               <span class="text-gray-600">Inspection</span>
             </div>
             <div class="flex items-center space-x-1">
-              <span class="text-sm">🏗️</span>
+              <span class="text-xs">🏗️</span>
               <span class="text-gray-600">Visit</span>
             </div>
             <div class="flex items-center space-x-1">
-              <span class="text-sm">👥</span>
+              <span class="text-xs">👥</span>
               <span class="text-gray-600">Meeting</span>
             </div>
             <div class="flex items-center space-x-1">
-              <span class="text-sm">📋</span>
+              <span class="text-xs">📋</span>
               <span class="text-gray-600">Review</span>
             </div>
             <div class="flex items-center space-x-1">
-              <span class="text-sm">📦</span>
+              <span class="text-xs">📦</span>
               <span class="text-gray-600">Delivery</span>
             </div>
             <div class="flex items-center space-x-1">
-              <span class="text-sm">✅</span>
+              <span class="text-xs">✅</span>
               <span class="text-gray-600">Approval</span>
             </div>
           </div>
@@ -2319,13 +2448,39 @@ defineExpose({
             >
               🗑️ Delete
             </button>
+
+            <!-- Search Navigation -->
+            <div v-if="isSearchActive && searchResults.length > 1" class="flex items-center space-x-1 ml-2">
+              <button
+                @click="previousSearchResult"
+                class="px-2 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
+                title="Previous search result"
+              >
+                ⬅️
+              </button>
+              <span class="px-2 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md">
+                {{ currentSearchIndex + 1 }}/{{ searchResults.length }}
+              </span>
+              <button
+                @click="nextSearchResult"
+                class="px-2 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
+                title="Next search result"
+              >
+                ➡️
+              </button>
+            </div>
           </div>
 
           <span v-if="loading" class="text-sm text-gray-500">Loading tasks...</span>
           <span v-else-if="error" class="text-sm text-red-500">{{ error }}</span>
           <span v-else class="text-sm text-gray-500">
             {{ tasks.length }} tasks
-            <span v-if="selectedTask" class="ml-2 text-blue-600">| Selected: {{ selectedTask.name }}</span>
+            <span v-if="selectedTask" class="ml-2 text-blue-600">
+              | Selected: {{ selectedTask.name }}
+              <span v-if="isSearchActive && searchResults.length > 1" class="ml-2 text-green-600">
+                ({{ currentSearchIndex + 1 }}/{{ searchResults.length }})
+              </span>
+            </span>
           </span>
         </div>
 
