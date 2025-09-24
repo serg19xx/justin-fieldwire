@@ -7,7 +7,10 @@ import { tasksApi } from '@/utils/tasks-api'
 import type { Task } from '@/types/task'
 import ProjectCalendar from '@/components/ProjectCalendar.vue'
 import AddTeamMemberDialog from '@/components/AddTeamMemberDialog.vue'
-import { exportTasksToICal as exportTasksToICalUtil, downloadFile } from '@/utils/task-utils'
+import FileUploadDialog from '@/components/FileUploadDialog.vue'
+import FolderManager from '@/components/FolderManager.vue'
+import { exportTasksToICal as exportTasksToICalUtil, downloadFile as downloadFileUtil } from '@/utils/task-utils'
+import { filesApi, type FileUpload, type Folder } from '@/utils/files-api'
 
 const route = useRoute()
 const router = useRouter()
@@ -53,6 +56,14 @@ const selectedTask = ref<Task | null>(null)
 const searchQuery = ref('')
 const isSearching = ref(false)
 const allTasks = ref<Task[]>([])
+
+// Files state
+const showFileUploadDialog = ref(false)
+const selectedFile = ref<File | null>(null)
+const isUploading = ref(false)
+const uploadProgress = ref(0)
+const currentFolderPath = ref('/')
+const folderManagerRef = ref()
 
 // Calendar state
 const selectedEvent = ref<{
@@ -395,10 +406,139 @@ function closeEventModal() {
 }
 
 // Section-specific action functions
-function createNewPlan() {
-  console.log('📋 Create new plan for project:', project.value?.id)
-  // TODO: Open dialog to create new plan
-  alert('Create new plan dialog will be implemented here')
+
+// File management functions
+
+function handleFilesSelected(selectedFiles: File[]) {
+  if (selectedFiles.length > 0) {
+    // Get current path from FolderManager
+    const currentPath = folderManagerRef.value?.currentPath || '/'
+
+    // Add files to interface only (no server upload)
+    selectedFiles.forEach(file => {
+      // Determine category based on file type
+      let category = 'document'
+      if (file.type.startsWith('image/')) {
+        category = 'image'
+      } else if (file.type.includes('pdf')) {
+        category = 'pdf'
+      } else if (file.type.includes('excel') || file.type.includes('spreadsheet') || file.name.endsWith('.xls') || file.name.endsWith('.xlsx')) {
+        category = 'spreadsheet'
+      } else if (file.type.includes('word') || file.name.endsWith('.doc') || file.name.endsWith('.docx')) {
+        category = 'document'
+      } else if (file.type.includes('powerpoint') || file.name.endsWith('.ppt') || file.name.endsWith('.pptx')) {
+        category = 'presentation'
+      } else if (file.name.endsWith('.dwg') || file.name.endsWith('.dxf')) {
+        category = 'drawing'
+      } else if (file.type.includes('video/')) {
+        category = 'video'
+      } else if (file.type.includes('audio/')) {
+        category = 'audio'
+      } else if (file.type.includes('zip') || file.type.includes('rar') || file.type.includes('7z')) {
+        category = 'archive'
+      }
+
+      const mockFile: FileUpload = {
+        id: Date.now() + Math.random(), // Temporary ID
+        file_name: file.name,
+        original_name: file.name,
+        file_path: `/mock/path/${file.name}`, // Mock path
+        folder_id: getCurrentFolderId(), // Use current folder ID
+        file_size: file.size,
+        mime_type: file.type,
+        category: category,
+        description: '',
+        version: '1.0',
+        uploaded_by: 1,
+        uploaded_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
+
+      // Add to FolderManager files
+      if (folderManagerRef.value) {
+        folderManagerRef.value.files.push(mockFile)
+      }
+
+      console.log('📄 File added to interface:', mockFile)
+      console.log('📄 File structure:', {
+        id: mockFile.id,
+        file_name: mockFile.file_name,
+        original_name: mockFile.original_name,
+        file_path: mockFile.file_path,
+        folder_id: mockFile.folder_id,
+        file_size: mockFile.file_size,
+        mime_type: mockFile.mime_type,
+        category: mockFile.category,
+        description: mockFile.description,
+        version: mockFile.version,
+        uploaded_by: mockFile.uploaded_by,
+        uploaded_at: mockFile.uploaded_at,
+        updated_at: mockFile.updated_at
+      })
+      console.log('📄 Current path:', currentPath)
+      console.log('📄 Total files in FolderManager:', folderManagerRef.value?.files.length || 0)
+    })
+  }
+}
+
+async function handleFileUpload(data: { file: File; formData: { fileName: string; description: string; category: string; version: string } }) {
+  if (!project.value?.id) return
+
+  try {
+    isUploading.value = true
+    uploadProgress.value = 0
+
+    const uploadedFile = await filesApi.uploadFile(
+      data.file,
+      getCurrentFolderId(),
+      {
+        fileName: data.formData.fileName,
+        description: data.formData.description,
+        category: data.formData.category,
+        version: data.formData.version
+      }
+    )
+
+    console.log('✅ File uploaded successfully:', uploadedFile)
+
+    // Files will be refreshed by FolderManager
+
+    // Close dialog
+    showFileUploadDialog.value = false
+    selectedFile.value = null
+
+    alert('File uploaded successfully!')
+
+  } catch (error) {
+    console.error('❌ File upload failed:', error)
+    alert('File upload failed. Please try again.')
+  } finally {
+    isUploading.value = false
+    uploadProgress.value = 0
+  }
+}
+
+function closeFileUploadDialog() {
+  showFileUploadDialog.value = false
+  selectedFile.value = null
+  isUploading.value = false
+  uploadProgress.value = 0
+}
+
+
+// Folder Manager event handlers
+function handleFolderCreated(folder: Folder) {
+  console.log('📁 Folder created:', folder)
+}
+
+function handleFileUploaded(file: FileUpload) {
+  console.log('📄 File uploaded:', file)
+}
+
+// Folder management functions
+function getCurrentFolderId(): number {
+  // For now, return 1 (root folder) - this should be determined from current path
+  return 1
 }
 
 
@@ -433,7 +573,7 @@ async function exportTasksToICalLocal() {
     const filename = `${projectName}_tasks_${dateStr}.ics`
 
     // Download the file
-    downloadFile(icalContent, filename, 'text/calendar')
+    downloadFileUtil(icalContent, filename, 'text/calendar')
 
     console.log('✅ iCal export completed:', filename)
     console.log('📄 iCal content preview:', icalContent.substring(0, 500) + '...')
@@ -698,10 +838,11 @@ onMounted(() => {
   loadProject()
 })
 
-// Load tasks when project is loaded
+// Load tasks and files when project is loaded
 watch(project, (newProject) => {
   if (newProject) {
     loadTasksForSearch()
+    // Files will be loaded by FolderManager
   }
 }, { immediate: true })
 </script>
@@ -901,13 +1042,7 @@ watch(project, (newProject) => {
           <div>
             <!-- Plans Section Buttons -->
             <template v-if="activeSection === 'plans'">
-              <button
-                v-if="canEditProject"
-                @click="createNewPlan"
-                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
-              >
-                + New Plan
-              </button>
+              <!-- No buttons needed - all actions are in FolderManager -->
             </template>
 
             <!-- Tasks Section Buttons -->
@@ -1094,16 +1229,17 @@ watch(project, (newProject) => {
         <div v-else-if="project">
           <!-- Plans Section -->
           <div v-if="activeSection === 'plans'" class="space-y-6">
-            <div class="flex items-center justify-between">
-              <h2 class="text-xl font-semibold text-gray-900">Plans</h2>
-              <button
-                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                + New Plan
-              </button>
-            </div>
-            <div class="bg-white rounded-lg shadow p-6">
-              <p class="text-gray-500">Plans content will be implemented here</p>
+
+            <!-- Folder Manager -->
+            <div class="bg-white rounded-lg shadow p-6 h-[70vh] w-full overflow-hidden">
+              <FolderManager
+                ref="folderManagerRef"
+                :project-id="project?.id || 0"
+                :initial-path="currentFolderPath"
+                @file-selected="(file: File) => handleFilesSelected([file])"
+                @folder-created="handleFolderCreated"
+                @file-uploaded="handleFileUploaded"
+              />
             </div>
           </div>
 
@@ -1563,6 +1699,19 @@ watch(project, (newProject) => {
     :existing-team-members="teamMembers"
     @close="showAddTeamMemberDialog = false"
     @member-added="handleTeamMemberAdded"
+  />
+
+  <!-- File Upload Dialog -->
+  <FileUploadDialog
+    :is-open="showFileUploadDialog"
+    :title="'Upload File'"
+    :file-info="selectedFile ? {
+      name: selectedFile.name,
+      size: selectedFile.size,
+      type: selectedFile.type
+    } : null"
+    @close="closeFileUploadDialog"
+    @upload="handleFileUpload"
   />
 
   <!-- Edit Role Dialog -->
