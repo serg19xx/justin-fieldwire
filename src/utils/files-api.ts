@@ -317,7 +317,7 @@ export function getFileIcon(mimeType: string, fileName?: string): FileIcon {
 }
 
 // Utility function to get folder icon - all folders have the same icon
-export function getFolderIcon(folderName: string, folderPath?: string): string {
+export function getFolderIcon(): string {
   // All folders have the same icon
   return '📁'
 }
