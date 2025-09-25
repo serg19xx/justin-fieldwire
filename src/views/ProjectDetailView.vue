@@ -784,6 +784,12 @@ function handleTaskUpdate(task: unknown) {
   // TODO: Show notification or update UI
 }
 
+// Handle task duplication from calendar
+function handleTaskDuplicate(task: unknown) {
+  console.log('📋 Task duplicated:', task)
+  // TODO: Show notification or update UI
+}
+
 // Helper functions
 function getPriorityColor(priority?: string) {
   if (!priority) return 'bg-gray-100 text-gray-800'
@@ -1231,7 +1237,7 @@ watch(project, (newProject) => {
           <div v-if="activeSection === 'plans'" class="space-y-6">
 
             <!-- Folder Manager -->
-            <div class="bg-white rounded-lg shadow p-6 h-[70vh] w-full overflow-hidden">
+            <div class="bg-white rounded-lg shadow p-3 max-h-[calc(100vh-180px)] h-[calc(100vh-180px)] w-full overflow-hidden mb-6">
               <FolderManager
                 ref="folderManagerRef"
                 :project-id="project?.id || 0"
@@ -1257,6 +1263,7 @@ watch(project, (newProject) => {
               @event-drop="handleEventDrop"
               @event-resize="handleEventResize"
               @task-update="handleTaskUpdate"
+              @task-duplicate="handleTaskDuplicate"
             />
             <!-- Loading state for tasks -->
             <div v-else class="flex items-center justify-center h-64">

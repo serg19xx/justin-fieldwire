@@ -397,14 +397,22 @@
               >
                 Cancel
               </button>
-              <button
-                v-if="mode === 'edit' && canManageProject"
-                @click="handleDelete"
-                type="button"
-                class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm font-medium"
-              >
-                Delete
-              </button>
+               <button
+                 v-if="mode === 'edit' && canManageProject"
+                 @click="handleDelete"
+                 type="button"
+                 class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm font-medium"
+               >
+                 Delete
+               </button>
+               <button
+                 v-if="mode === 'edit' && canManageProject"
+                 @click="handleDuplicate"
+                 type="button"
+                 class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-medium"
+               >
+                 Duplicate
+               </button>
               <button
                 v-if="mode !== 'view'"
                 type="submit"
@@ -473,6 +481,7 @@ const emit = defineEmits<{
   close: []
   save: [task: Partial<Task>]
   delete: [taskId: string]
+  duplicate: [task: Task]
   projectUpdated: [project: Project]
   openProjectSettings: []
 }>()
@@ -1028,13 +1037,21 @@ function handleSubmit() {
   console.log('✅ Save event emitted successfully')
 }
 
-function handleDelete() {
-  if (props.task) {
-    if (confirm(`Are you sure you want to delete "${props.task.name}"? This action cannot be undone.`)) {
-      emit('delete', props.task.id)
-      closeDialog()
-    }
-  }
-}
+ function handleDelete() {
+   if (props.task) {
+     if (confirm(`Are you sure you want to delete "${props.task.name}"? This action cannot be undone.`)) {
+       emit('delete', props.task.id)
+       closeDialog()
+     }
+   }
+ }
+
+ function handleDuplicate() {
+   if (props.task) {
+     console.log('📋 Duplicating task:', props.task.name)
+     emit('duplicate', props.task)
+     closeDialog()
+   }
+ }
 
 </script>

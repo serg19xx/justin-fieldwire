@@ -24,6 +24,7 @@ export interface Folder {
   created_at: string
   updated_at: string
   children?: Folder[] // Nested folders
+  files?: FileUpload[] // Files in this folder
 }
 
 export interface FileUploadResponse {
@@ -82,17 +83,6 @@ export const filesApi = {
     return response.data
   },
 
-  // Rename folder
-  async renameFolder(folderId: number, newName: string): Promise<Folder> {
-    const response = await api.put(`/api/v1/plan/folders/${folderId}`, { name: newName })
-    return response.data
-  },
-
-  // Delete folder
-  async deleteFolder(folderId: number): Promise<void> {
-    await api.delete(`/api/v1/plan/folders/${folderId}`)
-  },
-
   // Upload file to specific folder
   async uploadFile(
     file: File,
@@ -141,12 +131,6 @@ export const filesApi = {
     await api.delete(`/api/v1/plan/files/${fileId}`)
   },
 
-  // Rename file
-  async renameFile(fileId: number, newName: string): Promise<FileUpload> {
-    const response = await api.put(`/api/v1/plan/files/${fileId}`, { file_name: newName })
-    return response.data
-  },
-
   // Move file to different folder
   async moveFile(fileId: number, newFolderId: number): Promise<FileUpload> {
     const response = await api.put(`/api/v1/plan/files/${fileId}/move`, { folder_id: newFolderId })
@@ -162,9 +146,62 @@ export const filesApi = {
     return response.data
   },
 
+  // Move folder to different parent
+  async moveFolder(folderId: number, newParentId?: number): Promise<Folder> {
+    const response = await api.put(`/api/v1/plan/folders/${folderId}/move`, {
+      parent_id: newParentId || null,
+    })
+    return response.data
+  },
+
+  // Copy folder (creates new folder with all contents)
+  async copyFolder(folderId: number, newParentId: number, newName?: string): Promise<Folder> {
+    const response = await api.post(`/api/v1/plan/folders/${folderId}/copy`, {
+      parent_id: newParentId,
+      name: newName,
+    })
+    return response.data
+  },
+
   // Update file metadata
   async updateFile(fileId: number, metadata: Partial<FileUpload>): Promise<FileUpload> {
     const response = await api.put(`/api/v1/plan/files/${fileId}`, metadata)
+    return response.data
+  },
+
+  // Get file info by ID
+  async getFileInfo(fileId: number): Promise<FileUpload> {
+    const response = await api.get(`/api/v1/plan/files/${fileId}`)
+    return response.data
+  },
+
+  // Get folder info by ID
+  async getFolderInfo(folderId: number): Promise<Folder> {
+    const response = await api.get(`/api/v1/plan/folders/${folderId}`)
+    return response.data
+  },
+
+  // Rename file
+  async renameFile(fileId: number, newName: string): Promise<FileUpload> {
+    const response = await api.put(`/api/v1/plan/files/${fileId}/rename`, {
+      new_name: newName,
+    })
+    return response.data
+  },
+
+  // Rename folder
+  async renameFolder(folderId: number, newName: string): Promise<Folder> {
+    const response = await api.put(`/api/v1/plan/folders/${folderId}/rename`, {
+      new_name: newName,
+    })
+    return response.data
+  },
+
+  // Update file description
+  async updateFileDescription(fileId: number, description: string): Promise<FileUpload> {
+    const response = await api.put(`/api/v1/plan/files/${fileId}/description`, {
+      description: description,
+    })
     return response.data
   },
 }

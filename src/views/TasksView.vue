@@ -231,6 +231,7 @@ async function handleTaskDuplicate(task: Task) {
       milestone: task.milestone,
       notes: task.notes,
       wbs_path: task.wbs_path,
+      task_lead_id: task.task_lead_id, // Добавляем обязательное поле
       dependencies: Array.isArray(task.dependencies) && task.dependencies.length > 0 && typeof task.dependencies[0] === 'object'
         ? task.dependencies as { predecessor_id: number; type: string; lag_days: number; }[]
         : undefined

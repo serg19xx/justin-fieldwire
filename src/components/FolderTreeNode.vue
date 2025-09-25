@@ -8,14 +8,17 @@
       <button
         v-if="hasChildren"
         @click.stop="toggleExpanded"
-        class="w-4 h-4 flex items-center justify-center text-xs"
+        class="w-4 h-4 flex items-center justify-center text-xs text-gray-700 hover:text-gray-900"
       >
         {{ isExpanded ? '▼' : '▶' }}
       </button>
+      <div v-else-if="hasFiles" class="w-4 h-4 flex items-center justify-center">
+        <span class="text-xs text-gray-500" title="Contains files">▶</span>
+      </div>
       <span v-else class="w-4"></span>
 
       <span class="text-sm">{{ getFolderIcon(folder.name) }}</span>
-      <span class="text-sm truncate flex-1" :title="folder.name">{{ folder.name }}</span>
+      <span class="text-sm truncate flex-1 text-gray-900" :title="folder.name">{{ folder.name }}</span>
     </div>
 
     <div v-if="isExpanded && hasChildren" class="ml-4 space-y-1">
@@ -26,6 +29,7 @@
         :current-path="currentPath"
         :all-folders="allFolders"
         :expanded-folders="expandedFolders"
+        :folder-files-count="folderFilesCount"
         @navigate="$emit('navigate', $event)"
         @toggle-expanded="$emit('toggle-expanded', $event)"
       />
@@ -42,6 +46,7 @@ interface Props {
   currentPath: string
   allFolders: Folder[]
   expandedFolders: Set<number>
+  folderFilesCount?: Record<number, number> // Map of folder ID to files count
 }
 
 interface Emits {
@@ -62,6 +67,14 @@ const children = computed(() => {
 
 const hasChildren = computed(() => {
   return children.value.length > 0
+})
+
+const hasFiles = computed(() => {
+  return props.folderFilesCount && props.folderFilesCount[props.folder.id] > 0
+})
+
+const hasContent = computed(() => {
+  return hasChildren.value || hasFiles.value
 })
 
 const isCurrentPath = computed(() => {

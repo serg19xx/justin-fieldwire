@@ -37,6 +37,7 @@ const emit = defineEmits<{
   eventDrop: [info: unknown]
   eventResize: [info: unknown]
   taskUpdate: [task: Task]
+  taskDuplicate: [task: Task]
   openProjectSettings: []
 }>()
 
@@ -2223,6 +2224,40 @@ async function handleTaskDelete(taskId: string) {
   }
 }
 
+async function handleTaskDuplicate(task: Task) {
+  console.log('📋 Duplicating task from dialog:', task.name)
+
+  try {
+    const duplicateData: TaskCreateUpdate = {
+      name: `${task.name} (Copy)`,
+      project_id: task.project_id,
+      start_planned: task.start_planned,
+      end_planned: task.end_planned,
+      status: 'planned',
+      progress_pct: 0,
+      milestone: task.milestone,
+      notes: task.notes,
+      wbs_path: task.wbs_path,
+      task_lead_id: task.task_lead_id, // Добавляем обязательное поле
+      dependencies: Array.isArray(task.dependencies) && task.dependencies.length > 0 && typeof task.dependencies[0] === 'object'
+        ? task.dependencies as { predecessor_id: number; type: string; lag_days: number; }[]
+        : undefined
+    }
+
+    await tasksApi.create(props.projectId, duplicateData)
+    console.log('✅ Task duplicated successfully')
+
+    // Reload tasks
+    await loadTasks()
+
+    // Close dialog
+    closeTaskDialog()
+  } catch (error) {
+    console.error('❌ Error duplicating task:', error)
+    alert('Failed to duplicate task. Please try again.')
+  }
+}
+
 
 // Calendar mounted handler
 function onCalendarMounted() {
@@ -2773,6 +2808,7 @@ defineExpose({
       @close="closeTaskDialog"
       @save="handleTaskSave"
       @delete="handleTaskDelete"
+      @duplicate="handleTaskDuplicate"
       @project-updated="handleProjectUpdated"
       @open-project-settings="handleOpenProjectSettings"
     />
