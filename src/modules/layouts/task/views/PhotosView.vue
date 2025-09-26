@@ -1,0 +1,1 @@
+<template><div class="task-PhotosView.vue"><div class="bg-orange-600 text-white p-6 rounded-lg mb-6"><h1 class="text-3xl font-bold">Task PhotosView.vue</h1><p class="text-orange-100">Task PhotosView.vue content</p></div></div></template><script setup lang="ts">// Task PhotosView.vue</script>

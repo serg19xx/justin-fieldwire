@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/core/stores/auth'
 import { type ProjectPriority, type ProjectStatus } from '@/utils/constants'
 import { projectsApi, type Project as ApiProject } from '@/utils/contacts-api'
 

@@ -1,0 +1,1 @@
+<template><div class="project-TeamView.vue"><div class="bg-green-600 text-white p-6 rounded-lg mb-6"><h1 class="text-3xl font-bold">Project TeamView.vue</h1><p class="text-green-100">Project TeamView.vue content</p></div></div></template><script setup lang="ts">// Project TeamView.vue</script>

@@ -47,6 +47,9 @@ export interface User {
   // Добавляем поля для статуса работы
   inactive_reason?: string
   inactive_reason_details?: string
+  // Добавляем поля для новой системы ролей
+  role_category?: string
+  role_code?: string
 }
 
 export interface Invitation {
@@ -108,6 +111,8 @@ export const useAuthStore = defineStore('auth', () => {
       console.log('👤 User data from backend:', user)
       console.log('🔐 Token from backend:', token ? 'present' : 'missing')
       console.log('🔒 2FA required:', requires_2fa)
+      console.log('🔍 Role category from backend:', user.role_category)
+      console.log('🔍 Role code from backend:', user.role_code)
 
       // Преобразуем структуру пользователя в формат фронтенда
       const frontendUser: User = {
@@ -116,6 +121,8 @@ export const useAuthStore = defineStore('auth', () => {
         name: user.name,
         role: mapUserTypeToRole(user.role_code),
         user_type: user.role_code,
+        role_category: user.role_category,
+        role_code: user.role_code,
         twoFactorEnabled: user.two_factor_enabled,
         isActive: isUserActive(user.status),
         lastLogin: user.last_login,
@@ -156,7 +163,7 @@ export const useAuthStore = defineStore('auth', () => {
         initializeSessionManager({
           checkInterval: 5 * 60 * 1000, // 5 minutes
           activityCheckInterval: 60 * 1000, // 1 minute
-          useAPI: false, // Temporarily disable API checks to avoid backend issues
+          useAPI: true, // Enable API checks now that backend is ready
           onSessionExpired: () => {
             console.log('🔒 Session expired - logging out')
             logout()
@@ -272,6 +279,8 @@ export const useAuthStore = defineStore('auth', () => {
           name: user.name,
           role: mapUserTypeToRole(user.role_code),
           user_type: user.role_code,
+          role_category: user.role_category,
+          role_code: user.role_code,
           twoFactorEnabled: user.two_factor_enabled,
           isActive: isUserActive(user.status),
           lastLogin: user.last_login,
@@ -289,7 +298,7 @@ export const useAuthStore = defineStore('auth', () => {
         initializeSessionManager({
           checkInterval: 5 * 60 * 1000, // 5 minutes
           activityCheckInterval: 60 * 1000, // 1 minute
-          useAPI: false, // Temporarily disable API checks to avoid backend issues
+          useAPI: true, // Enable API checks now that backend is ready
           onSessionExpired: () => {
             console.log('🔒 Session expired - logging out')
             logout()
@@ -491,6 +500,8 @@ export const useAuthStore = defineStore('auth', () => {
           email: backendUser.email,
           name: backendUser.name,
           role: mapUserTypeToRole(backendUser.role_code),
+          role_category: backendUser.role_category,
+          role_code: backendUser.role_code,
           twoFactorEnabled: isTwoFactorEnabled(backendUser.two_factor_enabled),
           isActive: isUserActive(backendUser.status),
           lastLogin: backendUser.last_login,
@@ -564,6 +575,8 @@ export const useAuthStore = defineStore('auth', () => {
           email: backendUser.email,
           name: backendUser.name,
           role: mapUserTypeToRole(backendUser.role_code),
+          role_category: backendUser.role_category,
+          role_code: backendUser.role_code,
           twoFactorEnabled: isTwoFactorEnabled(backendUser.two_factor_enabled),
           isActive: isUserActive(backendUser.status),
           lastLogin: backendUser.last_login,
@@ -745,34 +758,53 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout() {
     try {
-      // Stop session manager before logout
+      // Get token before clearing localStorage
+      const token = localStorage.getItem('authToken')
+
+      // Stop session manager first
       stopSessionManager()
 
-      // Call backend logout endpoint
-      const token = localStorage.getItem('authToken')
+      // Call backend logout endpoint first
       if (token) {
-        await api.post(
-          '/api/v1/auth/logout',
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
+        try {
+          await api.post(
+            '/api/v1/auth/logout',
+            {},
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
             },
-          },
-        )
-        console.log('🔓 Logout - backend call successful')
+          )
+          console.log('🔓 Logout - backend call successful')
+        } catch (error) {
+          console.error('Logout backend error:', error)
+          // Continue with local cleanup even if backend call fails
+        }
       }
-    } catch (error) {
-      console.error('Logout error:', error)
-      // Continue with local cleanup even if backend call fails
-    } finally {
+
       // Clear local state
       currentUser.value = null
       isAuthenticated.value = false
       localStorage.removeItem('user')
       localStorage.removeItem('authToken')
       delete api.defaults.headers.common['Authorization']
+
       console.log('✅ Logout completed - local state cleared')
+      console.log('🔍 localStorage after logout:', Object.keys(localStorage))
+      console.log('🔍 authToken after logout:', localStorage.getItem('authToken'))
+      console.log('🔍 user after logout:', localStorage.getItem('user'))
+    } catch (error) {
+      console.error('Logout error:', error)
+      // Ensure local state is cleared even if there's an error
+      currentUser.value = null
+      isAuthenticated.value = false
+      localStorage.removeItem('user')
+      localStorage.removeItem('authToken')
+      delete api.defaults.headers.common['Authorization']
+
+      console.log('✅ Logout error cleanup completed')
+      console.log('🔍 localStorage after error cleanup:', Object.keys(localStorage))
     }
   }
 
@@ -862,17 +894,9 @@ export const useAuthStore = defineStore('auth', () => {
     console.log('🔄 Initializing auth...')
     console.log('🔑 Token exists:', !!token)
     console.log('👤 Saved user exists:', !!savedUser)
-    console.log('🔍 localStorage keys:', Object.keys(localStorage))
-    console.log('🔍 localStorage authToken value:', token ? token.substring(0, 20) + '...' : 'null')
-    console.log('🔍 localStorage user value:', savedUser ? 'parsed user data' : 'null')
-    console.log('🔍 Full token value:', token)
-    console.log('🔍 Full user value:', savedUser)
 
     if (token && savedUser) {
       try {
-        // Token will be added automatically by the request interceptor
-        console.log('🔑 Token found in localStorage:', token.substring(0, 20) + '...')
-
         // Check if token is expired using new JWT utils
         if (isTokenExpiredLocal(token)) {
           console.log('❌ Token is expired, logging out')
@@ -880,15 +904,10 @@ export const useAuthStore = defineStore('auth', () => {
           return
         }
 
-        // TODO: Uncomment when backend is ready
-        // const response = await api.get('/auth/me')
-        // const user = response.data
-
-        // For now, use saved user data
+        // Parse saved user data
         const user = JSON.parse(savedUser)
 
-        // Don't logout users who are intentionally inactive - they can still access their profile
-        // Only logout if user data is corrupted or missing
+        // Validate user data
         if (user && user.id && user.email) {
           currentUser.value = user
           isAuthenticated.value = true
@@ -899,7 +918,7 @@ export const useAuthStore = defineStore('auth', () => {
           initializeSessionManager({
             checkInterval: 5 * 60 * 1000, // 5 minutes
             activityCheckInterval: 60 * 1000, // 1 minute
-            useAPI: false, // Temporarily disable API checks to avoid backend issues
+            useAPI: true, // Enable API checks now that backend is ready
             onSessionExpired: () => {
               console.log('🔒 Session expired - logging out')
               logout()
@@ -964,7 +983,7 @@ export const useAuthStore = defineStore('auth', () => {
       console.warn('⚠️ roleCode is null, undefined, or empty - defaulting to viewer role')
       return 'viewer'
     }
-    
+
     switch (roleCode.toLowerCase()) {
       case 'admin':
         return 'admin'
