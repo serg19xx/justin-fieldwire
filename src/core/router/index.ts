@@ -91,36 +91,36 @@ const router = createRouter({
       component: () => import('@/modules/layouts/global/views/contacts/MedicalClinicsView.vue'),
       meta: { requiresAuth: true },
     },
-    // Project routes
+    // Unified routes for all categories
     {
-      path: '/project/dashboard',
-      name: 'project-dashboard',
+      path: '/dashboard',
+      name: 'dashboard',
       component: () => import('@/modules/dashboard/views/ProjectDashboardView.vue'),
-      meta: { requiresAuth: true, requiresCategory: 'project' },
+      meta: { requiresAuth: true },
     },
     {
-      path: '/project/projects',
-      name: 'project-projects',
+      path: '/projects',
+      name: 'projects',
       component: () => import('@/modules/layouts/project/views/ProjectsView.vue'),
-      meta: { requiresAuth: true, requiresCategory: 'project' },
+      meta: { requiresAuth: true },
     },
     {
-      path: '/project/tasks',
-      name: 'project-tasks',
+      path: '/tasks',
+      name: 'tasks',
       component: () => import('@/modules/layouts/project/views/TasksView.vue'),
-      meta: { requiresAuth: true, requiresCategory: 'project' },
+      meta: { requiresAuth: true },
     },
     {
-      path: '/project/team',
-      name: 'project-team',
+      path: '/team',
+      name: 'team',
       component: () => import('@/modules/layouts/project/views/TeamView.vue'),
-      meta: { requiresAuth: true, requiresCategory: 'project' },
+      meta: { requiresAuth: true },
     },
     {
-      path: '/project/reports',
-      name: 'project-reports',
+      path: '/reports',
+      name: 'reports',
       component: () => import('@/modules/layouts/project/views/ReportsView.vue'),
-      meta: { requiresAuth: true, requiresCategory: 'project' },
+      meta: { requiresAuth: true },
     },
     // Task routes
     {
@@ -261,8 +261,15 @@ router.beforeEach((to, from, next) => {
     to.meta.requiresCategory &&
     authStore.currentUser?.role_category !== to.meta.requiresCategory
   ) {
-    // Redirect to main dashboard - CategoryRouter will handle the rest
-    next('/')
+    // Redirect based on user category
+    const user = authStore.currentUser
+    if (user?.role_category === 'project') {
+      next('/project')
+    } else if (user?.role_category === 'task') {
+      next('/task')
+    } else {
+      next('/')
+    }
     return
   }
 
@@ -283,10 +290,11 @@ router.beforeEach((to, from, next) => {
 
   // Redirect to dashboard if already logged in and trying to access login
   if (to.path === '/login' && authStore.isAuthenticated) {
-    // Redirect to main dashboard - CategoryRouter will handle the rest
-    next('/')
+    next('/dashboard')
     return
   }
+
+  // No redirects needed - unified routes for all categories
 
   // If user is not authenticated and trying to access protected routes, redirect to login
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {

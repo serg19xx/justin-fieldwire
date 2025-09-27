@@ -1,183 +1,211 @@
 <template>
-  <div class="project-layout min-h-screen bg-gray-50">
-    <!-- Project Header -->
-    <header class="bg-green-600 text-white shadow-lg">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-16">
-          <!-- Logo and Title -->
-          <div class="flex items-center">
-            <div class="flex-shrink-0">
-              <h1 class="text-xl font-bold">FieldWire Projects</h1>
-            </div>
-          </div>
+  <div class="min-h-screen bg-gray-50">
+    <!-- Debug info removed -->
+    <!-- Project Category Header -->
+    <header class="bg-green-600 shadow-sm border-b border-green-700 h-12 fixed top-0 left-0 right-0 z-50">
+      <div class="flex justify-between items-center h-12 px-4">
+        <!-- Left side -->
+        <div class="flex items-center space-x-3">
+          <!-- Mobile menu button -->
+          <button
+            @click="toggleMobileMenu"
+            class="lg:hidden p-2 text-white hover:text-green-100 text-2xl font-bold"
+          >
+            {{ isMobileMenuOpen ? '✕' : '☰' }}
+          </button>
 
-          <!-- Navigation -->
-          <nav class="hidden md:flex space-x-8">
-            <router-link
-              to="/project/dashboard"
-              class="text-green-100 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-              :class="{ 'bg-green-700 text-white': $route.path === '/project/dashboard' }"
-            >
-              Dashboard
-            </router-link>
-            <router-link
-              to="/project/projects"
-              class="text-green-100 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-              :class="{ 'bg-green-700 text-white': $route.path.startsWith('/project/projects') }"
-            >
-              My Projects
-            </router-link>
-            <router-link
-              to="/project/tasks"
-              class="text-green-100 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-              :class="{ 'bg-green-700 text-white': $route.path.startsWith('/project/tasks') }"
-            >
-              Tasks
-            </router-link>
-            <router-link
-              to="/project/team"
-              class="text-green-100 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-              :class="{ 'bg-green-700 text-white': $route.path.startsWith('/project/team') }"
-            >
-              Team
-            </router-link>
-            <router-link
-              to="/project/reports"
-              class="text-green-100 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-              :class="{ 'bg-green-700 text-white': $route.path.startsWith('/project/reports') }"
-            >
-              Reports
-            </router-link>
-          </nav>
+          <RouterLink to="/project" class="hover:opacity-80">
+            <h1 class="text-lg font-semibold text-white hidden lg:block">FieldWire - Project</h1>
+          </RouterLink>
+        </div>
 
-          <!-- User Menu -->
-          <div class="flex items-center space-x-4">
-            <div class="relative">
-              <button
-                @click="toggleUserMenu"
-                class="flex items-center space-x-2 text-green-100 hover:text-white"
-              >
-                <div class="w-8 h-8 bg-green-700 rounded-full flex items-center justify-center">
-                  <span class="text-white text-sm font-medium">
-                    {{ user?.name?.charAt(0) || 'P' }}
-                  </span>
-                </div>
-                <span class="text-sm">{{ user?.name }}</span>
-                <span class="text-xs text-green-200"
-                  >({{ user?.role_category }}/{{ user?.role_code }})</span
-                >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </button>
+        <!-- Desktop Navigation Menu -->
+        <nav class="hidden lg:flex items-center space-x-6">
+          <RouterLink
+            to="/dashboard"
+            class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
+            :class="{ 'bg-green-700 text-white': route.path === '/dashboard' }"
+          >
+            Dashboard
+          </RouterLink>
+          <RouterLink
+            to="/projects"
+            class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
+            :class="{ 'bg-green-700 text-white': route.path === '/projects' }"
+          >
+            My Projects
+          </RouterLink>
+          <RouterLink
+            to="/tasks"
+            class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
+            :class="{ 'bg-green-700 text-white': route.path === '/tasks' }"
+          >
+            Tasks
+          </RouterLink>
+          <RouterLink
+            to="/team"
+            class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
+            :class="{ 'bg-green-700 text-white': route.path === '/team' }"
+          >
+            Team
+          </RouterLink>
+          <RouterLink
+            to="/reports"
+            class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
+            :class="{ 'bg-green-700 text-white': route.path === '/reports' }"
+          >
+            Reports
+          </RouterLink>
+        </nav>
 
-              <!-- User Dropdown -->
-              <div
-                v-if="isUserMenuOpen"
-                class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50"
-              >
-                <router-link
-                  to="/account"
-                  @click="closeUserMenu"
-                  class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Account Settings
-                </router-link>
-                <button
-                  @click="handleLogout"
-                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Sign Out
-                </button>
+        <!-- Right side -->
+        <div class="flex items-center space-x-2">
+          <!-- User menu -->
+          <div class="relative user-menu">
+            <button
+              @click="toggleUserMenu"
+              class="p-1 rounded-full hover:bg-green-700"
+            >
+              <div class="w-8 h-8 bg-green-800 rounded-full flex items-center justify-center">
+                <span class="text-white text-sm font-medium">
+                  {{ user?.name?.charAt(0) || 'U' }}
+                </span>
               </div>
+            </button>
+
+            <!-- User dropdown menu -->
+            <div
+              v-if="isUserMenuOpen"
+              class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50"
+            >
+              <RouterLink
+                to="/account"
+                @click="closeUserMenu"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                My Profile
+              </RouterLink>
+              <button
+                @click="handleLogout"
+                class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+              >
+                Sign Out
+              </button>
             </div>
           </div>
         </div>
       </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div class="px-4 py-6 sm:px-0">
-        <slot />
-      </div>
-    </main>
-
-    <!-- Mobile Menu -->
-    <div v-if="isMobileMenuOpen" class="md:hidden fixed inset-0 bg-black bg-opacity-50 z-50">
-      <div class="fixed left-0 top-0 h-full w-64 bg-white shadow-lg">
-        <div class="flex items-center justify-between h-16 px-4 border-b border-gray-200">
-          <h2 class="text-lg font-semibold text-gray-900">Project Menu</h2>
-          <button @click="closeMobileMenu" class="p-1 text-gray-400 hover:text-gray-600">✕</button>
+    <!-- Mobile Sidebar -->
+    <div
+      v-if="isMobileMenuOpen"
+      class="fixed inset-0 z-40 lg:hidden"
+      @click="closeMobileMenu"
+    >
+      <div class="fixed inset-0 bg-black bg-opacity-25"></div>
+      <div class="fixed inset-y-0 left-0 w-64 bg-white shadow-xl">
+        <div class="flex items-center justify-between h-12 px-4 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-900">Menu</h2>
+          <button
+            @click="closeMobileMenu"
+            class="p-2 text-gray-400 hover:text-gray-600"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
 
-        <nav class="px-4 py-6 space-y-2">
-          <router-link
-            to="/project/dashboard"
+        <nav class="mt-4">
+          <RouterLink
+            to="/dashboard"
             @click="closeMobileMenu"
-            class="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+            class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
           >
             Dashboard
-          </router-link>
-          <router-link
-            to="/project/projects"
+          </RouterLink>
+          <RouterLink
+            to="/projects"
             @click="closeMobileMenu"
-            class="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+            class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
           >
             My Projects
-          </router-link>
-          <router-link
-            to="/project/tasks"
+          </RouterLink>
+          <RouterLink
+            to="/tasks"
             @click="closeMobileMenu"
-            class="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+            class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
           >
             Tasks
-          </router-link>
-          <router-link
-            to="/project/team"
+          </RouterLink>
+          <RouterLink
+            to="/team"
             @click="closeMobileMenu"
-            class="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+            class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
           >
             Team
-          </router-link>
-          <router-link
-            to="/project/reports"
+          </RouterLink>
+          <RouterLink
+            to="/reports"
             @click="closeMobileMenu"
-            class="block px-3 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-md"
+            class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
           >
             Reports
-          </router-link>
+          </RouterLink>
         </nav>
       </div>
     </div>
+
+    <!-- Main content -->
+    <main class="pt-12">
+      <!-- Dashboard content directly here -->
+      <div class="p-6">
+        <!-- Welcome Section -->
+        <div class="mb-8">
+          <h1 class="text-3xl font-bold text-gray-900 mb-2">
+            Dashboard
+          </h1>
+          <p class="text-gray-600">
+            Here's what's happening with your projects today.
+          </p>
+        </div>
+
+        <!-- Dashboard content -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Active Projects</h3>
+            <p class="text-3xl font-bold text-green-600">12</p>
+          </div>
+
+          <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Tasks This Week</h3>
+            <p class="text-3xl font-bold text-blue-600">156</p>
+          </div>
+
+          <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Team Members</h3>
+            <p class="text-3xl font-bold text-purple-600">8</p>
+          </div>
+        </div>
+      </div>
+    </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
-const isUserMenuOpen = ref(false)
 const isMobileMenuOpen = ref(false)
+const isUserMenuOpen = ref(false)
 
 const user = computed(() => authStore.currentUser)
-
-function toggleUserMenu() {
-  isUserMenuOpen.value = !isUserMenuOpen.value
-}
-
-function closeUserMenu() {
-  isUserMenuOpen.value = false
-}
 
 function toggleMobileMenu() {
   isMobileMenuOpen.value = !isMobileMenuOpen.value
@@ -187,35 +215,28 @@ function closeMobileMenu() {
   isMobileMenuOpen.value = false
 }
 
+function toggleUserMenu() {
+  isUserMenuOpen.value = !isUserMenuOpen.value
+}
+
+function closeUserMenu() {
+  isUserMenuOpen.value = false
+}
+
 async function handleLogout() {
-  try {
-    await authStore.logout()
-    router.push('/login')
-  } catch (error) {
-    console.error('Logout error:', error)
-    router.push('/login')
-  }
+  console.log('🔓 Starting logout process...')
+  isUserMenuOpen.value = false
+  await authStore.logout()
+  console.log('🔓 Logout completed, redirecting to login...')
+  router.replace('/login')
 }
 
 // Close user menu when clicking outside
 function handleClickOutside(event: Event) {
   const target = event.target as HTMLElement
-  if (!target.closest('.user-menu')) {
-    closeUserMenu()
+  const userMenu = document.querySelector('.user-menu')
+  if (userMenu && !userMenu.contains(target)) {
+    isUserMenuOpen.value = false
   }
 }
-
-onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-})
-
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-})
 </script>
-
-<style scoped>
-.project-layout {
-  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
-}
-</style>

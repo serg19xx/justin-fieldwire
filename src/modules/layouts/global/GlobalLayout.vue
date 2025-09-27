@@ -121,27 +121,13 @@
           <div class="relative user-menu">
             <button
               @click="toggleUserMenu"
-              class="flex items-center space-x-2 p-1 rounded-full hover:bg-gray-100"
+              class="p-1 rounded-full hover:bg-gray-100"
             >
               <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                 <span class="text-white text-sm font-medium">
                   {{ user?.name?.charAt(0) || 'U' }}
                 </span>
               </div>
-              <!-- Dropdown arrow -->
-              <svg
-                class="h-4 w-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 9l-7 7-7-7"
-                ></path>
-              </svg>
             </button>
 
             <!-- User dropdown menu -->

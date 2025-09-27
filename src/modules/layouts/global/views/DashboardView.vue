@@ -97,10 +97,15 @@ const recentActivity = [
 
 <template>
   <div class="p-6">
+    <!-- Debug info -->
+    <div class="bg-blue-500 text-white p-2 text-sm mb-4">
+      DashboardView is rendering! Route: {{ $route.path }}
+    </div>
+
     <!-- Welcome Section -->
     <div class="mb-8">
       <h1 class="text-3xl font-bold text-gray-900 mb-2">
-        Welcome back, {{ authStore.currentUser?.name || 'User' }}!
+        Dashboard
       </h1>
       <p class="text-gray-600">
         Here's what's happening with your projects today.
