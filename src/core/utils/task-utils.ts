@@ -1,4 +1,4 @@
-import type { Task, CalendarTask, TaskStatus, MilestoneType } from '@/types/task'
+import type { Task, CalendarTask, TaskStatus, MilestoneType } from '@/core/types/task'
 
 // WBS utility functions
 export function parseWbsPath(wbsPath?: string): string[] {

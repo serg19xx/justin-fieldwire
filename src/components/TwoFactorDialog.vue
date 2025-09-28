@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/core/stores/auth'
 
 interface Props {
   isOpen: boolean
@@ -36,7 +36,7 @@ async function handleSendCode() {
 
   try {
     console.log('📤 Sending 2FA code via:', deliveryMethod.value)
-    
+
     const result = await authStore.sendTwoFactorCode(userEmail.value, deliveryMethod.value)
 
     if (result.success) {
@@ -66,7 +66,7 @@ async function handleVerifyCode() {
 
   try {
     console.log('🔐 Verifying 2FA code')
-    
+
     const result = await authStore.verifyTwoFactor(code.value)
 
     if (result.success) {

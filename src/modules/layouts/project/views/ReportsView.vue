@@ -1,1 +1,0 @@
-<template><div class="project-ReportsView.vue"><div class="bg-green-600 text-white p-6 rounded-lg mb-6"><h1 class="text-3xl font-bold">Project ReportsView.vue</h1><p class="text-green-100">Project ReportsView.vue content</p></div></div></template><script setup lang="ts">// Project ReportsView.vue</script>

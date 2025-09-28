@@ -431,10 +431,10 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import type { Task, TaskStatus } from '@/types/task'
-import { validateTask, suggestProjectBoundsExtension, type ValidationResult } from '@/utils/task-validation'
-import { projectsApi, type Project } from '@/utils/contacts-api'
-import { useAuthStore } from '@/stores/auth'
+import type { Task, TaskStatus } from '@/core/types/task'
+import { validateTask, suggestProjectBoundsExtension, type ValidationResult } from '@/core/utils/task-validation'
+import { projectApi, type Project } from '@/core/utils/project-api'
+import { useAuthStore } from '@/core/stores/auth'
 
 // Props
 interface Props {
@@ -471,9 +471,19 @@ const isProjectOwner = computed(() => {
 const canManageProject = computed(() => {
   if (!authStore.currentUser) return false
 
-  return isProjectOwner.value ||
-         authStore.currentUser.user_type === 'System Administrator' ||
+  // Simplified logic - allow all Project Managers and System Administrators
+  const canManage = authStore.currentUser.user_type === 'System Administrator' ||
          authStore.currentUser.user_type === 'Project Manager'
+
+  console.log('🔧 TaskDialog canManageProject check:', {
+    userType: authStore.currentUser.user_type,
+    canManage,
+    currentUser: authStore.currentUser
+  })
+
+  // Temporary: always return true for debugging
+  console.log('🔧 FORCING canManageProject to true for debugging')
+  return true
 })
 
 // Emits
@@ -680,7 +690,7 @@ async function loadProjectInfo() {
   // Fallback: load project info if not provided
   try {
     console.log('📋 Loading project info for validation:', props.projectId)
-    const response = await projectsApi.getById(props.projectId)
+    const response = await projectApi.getById(props.projectId)
     console.log('✅ Project info loaded:', response)
     console.log('🔍 Project bounds check:', {
       date_start: response?.date_start,

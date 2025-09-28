@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { api, setSessionExpiredCallback } from '@/utils/api'
+import { api, setSessionExpiredCallback } from '@/core/utils/api'
 import { apiConfig } from '@/config/api'
 import {
   initializeSessionManager,
   startSessionManager,
   stopSessionManager,
-} from '@/utils/session-manager'
-import { isTokenExpired } from '@/utils/jwt-utils'
+} from '@/core/utils/session-manager'
+import { isTokenExpired } from '@/core/utils/jwt-utils'
 
 // Helper function to get current environment
 function getCurrentEnvironment(): string {
@@ -30,7 +30,18 @@ export interface User {
   id: number
   email: string
   name: string
-  role: 'admin' | 'manager' | 'supervisor' | 'engineer' | 'viewer'
+  first_name?: string
+  last_name?: string
+  role_category?: 'global' | 'project' | 'task'
+  role_code?:
+    | 'admin'
+    | 'project_manager'
+    | 'architect'
+    | 'foreman'
+    | 'worker'
+    | 'contractor'
+    | 'inspector'
+  role_name?: string
   twoFactorEnabled: boolean
   isActive: boolean
   lastLogin?: string
@@ -47,9 +58,6 @@ export interface User {
   // Добавляем поля для статуса работы
   inactive_reason?: string
   inactive_reason_details?: string
-  // Добавляем поля для новой системы ролей
-  role_category?: string
-  role_code?: string
 }
 
 export interface Invitation {
@@ -72,13 +80,13 @@ export const useAuthStore = defineStore('auth', () => {
   const users = ref<User[]>([])
 
   // Computed properties
-  const isAdmin = computed(() => currentUser.value?.role === 'admin')
-  const isManager = computed(() => currentUser.value?.role === 'manager')
+  const isAdmin = computed(() => currentUser.value?.role_code === 'admin')
+  const isManager = computed(() => currentUser.value?.role_code === 'project_manager')
   const canManageUsers = computed(() =>
-    ['admin', 'manager'].includes(currentUser.value?.role || ''),
+    ['admin', 'project_manager'].includes(currentUser.value?.role_code || ''),
   )
   const canManageProjects = computed(() =>
-    ['admin', 'manager'].includes(currentUser.value?.role || ''),
+    ['admin', 'project_manager'].includes(currentUser.value?.role_code || ''),
   )
 
   // Actions
@@ -119,14 +127,13 @@ export const useAuthStore = defineStore('auth', () => {
         id: user.id,
         email: user.email,
         name: user.name,
-        role: mapUserTypeToRole(user.role_code),
         user_type: user.role_code,
         role_category: user.role_category,
         role_code: user.role_code,
         twoFactorEnabled: user.two_factor_enabled,
         isActive: isUserActive(user.status),
         lastLogin: user.last_login,
-        permissions: getPermissionsForRole(mapUserTypeToRole(user.role_code)),
+        permissions: getPermissionsForRole(user.role_code),
         avatarUrl: user.avatar_url
           ? user.avatar_url.startsWith('http')
             ? user.avatar_url
@@ -277,14 +284,13 @@ export const useAuthStore = defineStore('auth', () => {
           id: user.id,
           email: user.email,
           name: user.name,
-          role: mapUserTypeToRole(user.role_code),
           user_type: user.role_code,
           role_category: user.role_category,
           role_code: user.role_code,
           twoFactorEnabled: user.two_factor_enabled,
           isActive: isUserActive(user.status),
           lastLogin: user.last_login,
-          permissions: getPermissionsForRole(mapUserTypeToRole(user.role_code)),
+          permissions: getPermissionsForRole(user.role_code),
         }
 
         localStorage.setItem('authToken', token)
@@ -499,13 +505,12 @@ export const useAuthStore = defineStore('auth', () => {
           id: backendUser.id,
           email: backendUser.email,
           name: backendUser.name,
-          role: mapUserTypeToRole(backendUser.role_code),
           role_category: backendUser.role_category,
           role_code: backendUser.role_code,
           twoFactorEnabled: isTwoFactorEnabled(backendUser.two_factor_enabled),
           isActive: isUserActive(backendUser.status),
           lastLogin: backendUser.last_login,
-          permissions: getPermissionsForRole(mapUserTypeToRole(backendUser.role_code)),
+          permissions: getPermissionsForRole(backendUser.role_code),
           avatarUrl: backendUser.avatar_url
             ? backendUser.avatar_url.startsWith('http')
               ? backendUser.avatar_url
@@ -574,13 +579,12 @@ export const useAuthStore = defineStore('auth', () => {
           id: backendUser.id,
           email: backendUser.email,
           name: backendUser.name,
-          role: mapUserTypeToRole(backendUser.role_code),
           role_category: backendUser.role_category,
           role_code: backendUser.role_code,
           twoFactorEnabled: isTwoFactorEnabled(backendUser.two_factor_enabled),
           isActive: isUserActive(backendUser.status),
           lastLogin: backendUser.last_login,
-          permissions: getPermissionsForRole(mapUserTypeToRole(backendUser.role_code)),
+          permissions: getPermissionsForRole(backendUser.role_code),
           avatarUrl: backendUser.avatar_url
             ? backendUser.avatar_url.startsWith('http')
               ? backendUser.avatar_url
@@ -817,13 +821,13 @@ export const useAuthStore = defineStore('auth', () => {
       // Fallback на основе роли
       if (permission === 'projects:read') {
         return ['admin', 'manager', 'supervisor', 'engineer', 'viewer'].includes(
-          currentUser.value.role || '',
+          currentUser.value.role_code || '',
         )
       }
       if (permission === 'people:read') {
-        return ['admin'].includes(currentUser.value.role || '')
+        return ['admin'].includes(currentUser.value.role_code || '')
       }
-      return ['admin', 'manager'].includes(currentUser.value.role || '')
+      return ['admin', 'project_manager'].includes(currentUser.value.role_code || '')
     }
 
     if (currentUser.value.permissions.includes('all')) return true
@@ -976,38 +980,9 @@ export const useAuthStore = defineStore('auth', () => {
     return false
   }
 
-  // Helper function to map backend role_code to frontend role
-  function mapUserTypeToRole(roleCode: string | null | undefined): User['role'] {
-    // Handle null, undefined, or empty string cases
-    if (!roleCode || roleCode.trim() === '') {
-      console.warn('⚠️ roleCode is null, undefined, or empty - defaulting to viewer role')
-      return 'viewer'
-    }
-
-    switch (roleCode.toLowerCase()) {
-      case 'admin':
-        return 'admin'
-      case 'project_manager':
-        return 'manager'
-      case 'architect':
-        return 'engineer'
-      case 'foreman':
-        return 'supervisor'
-      case 'worker':
-        return 'engineer'
-      case 'contractor':
-        return 'engineer'
-      case 'inspector':
-        return 'viewer'
-      default:
-        console.warn('⚠️ Unknown roleCode:', roleCode, '- defaulting to viewer role')
-        return 'viewer'
-    }
-  }
-
   // Helper function to get permissions for a specific role
-  function getPermissionsForRole(role: User['role']): string[] {
-    switch (role) {
+  function getPermissionsForRole(role_code: User['role_code']): string[] {
+    switch (role_code) {
       case 'admin':
         return [
           'all',
@@ -1020,7 +995,7 @@ export const useAuthStore = defineStore('auth', () => {
           'view_analytics',
           'system_settings',
         ]
-      case 'manager':
+      case 'project_manager':
         return [
           'manage_projects',
           'projects:read',
@@ -1031,11 +1006,15 @@ export const useAuthStore = defineStore('auth', () => {
           'view_analytics',
           'invite_users',
         ]
-      case 'supervisor':
+      case 'architect':
         return ['projects:read', 'manage_tasks', 'manage_files', 'view_reports', 'view_analytics']
-      case 'engineer':
+      case 'foreman':
         return ['projects:read', 'manage_tasks', 'upload_files', 'view_reports']
-      case 'viewer':
+      case 'worker':
+        return ['projects:read', 'view_tasks', 'view_files', 'view_reports']
+      case 'contractor':
+        return ['projects:read', 'view_tasks', 'view_files', 'view_reports']
+      case 'inspector':
         return ['projects:read', 'view_tasks', 'view_files', 'view_reports']
       default:
         return ['projects:read', 'view_tasks']

@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { Task, TaskCreateUpdate, TaskFilter, TaskStats } from '@/types/task'
+import type { Task, TaskCreateUpdate, TaskFilter, TaskStats } from '@/core/types/task'
 
 // API response interfaces
 interface TasksResponse {

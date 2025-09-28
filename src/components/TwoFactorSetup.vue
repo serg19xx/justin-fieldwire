@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { api } from '@/utils/api'
-import { useAuthStore } from '@/stores/auth'
+import { api } from '@/core/utils/api'
+import { useAuthStore } from '@/core/stores/auth'
 
 interface Props {
   isOpen: boolean

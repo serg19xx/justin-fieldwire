@@ -83,9 +83,9 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import type { TaskCreateUpdate } from '@/types/task'
-import type { Project } from '@/utils/contacts-api'
-import { projectsApi } from '@/utils/contacts-api'
+import type { TaskCreateUpdate } from '@/core/types/task'
+import type { Project } from '@/core/utils/project-api'
+import { projectApi } from '@/core/utils/project-api'
 
 // Props
 interface Props {
@@ -136,7 +136,7 @@ async function handleExtendBounds() {
 
     console.log('📤 Extending project bounds:', updateData)
 
-    const updatedProject = await projectsApi.update(props.projectInfo.id, updateData)
+    const updatedProject = await projectApi.update(props.projectInfo.id, updateData)
 
     console.log('✅ Project bounds extended successfully')
 

@@ -5,13 +5,13 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import listPlugin from '@fullcalendar/list'
-import type { Task, TaskStatus, TaskCreateUpdate } from '@/types/task'
-import { taskToCalendarTask, getTaskColor, processEndDateForDisplay } from '@/utils/task-utils'
-import { useAuthStore } from '@/stores/auth'
-import { tasksApi } from '@/utils/tasks-api'
-import { projectsApi, type Project } from '@/utils/contacts-api'
-import { checkProjectBounds } from '@/utils/project-bounds-checker'
-import { checkDependencyConstraints } from '@/utils/dependency-validator'
+import type { Task, TaskStatus, TaskCreateUpdate } from '@/core/types/task'
+import { taskToCalendarTask, getTaskColor, processEndDateForDisplay } from '@/core/utils/task-utils'
+import { useAuthStore } from '@/core/stores/auth'
+import { tasksApi } from '@/core/utils/tasks-api'
+import { projectApi, type Project } from '@/core/utils/project-api'
+import { checkProjectBounds } from '@/core/utils/project-bounds-checker'
+import { checkDependencyConstraints } from '@/core/utils/dependency-validator'
 import TaskDialog from './TaskDialog.vue'
 import MilestoneDialog from './MilestoneDialog.vue'
 import SimpleBoundsDialog from './SimpleBoundsDialog.vue'
@@ -50,8 +50,8 @@ const showDependencyIndicators = ref(true)
 // Computed property to determine if user can see dependency indicators
 const canSeeDependencyIndicators = computed(() => {
   // Show indicators for managers, supervisors, and admins
-  const userRole = authStore.currentUser?.role
-  const showForRoles = ['admin', 'manager', 'supervisor']
+  const userRole = authStore.currentUser?.user_type
+  const showForRoles = ['System Administrator', 'Project Manager', 'Supervisor']
 
   // Also check if user has project management permissions
   const hasProjectManagementPermissions = authStore.checkPermission('manage_projects') ||
@@ -721,7 +721,7 @@ async function loadProjectInfo() {
 
   try {
     console.log('📋 Loading project info for calendar bounds:', props.projectId)
-    const response = await projectsApi.getById(props.projectId)
+    const response = await projectApi.getById(props.projectId)
     console.log('📋 Raw API response:', response)
     projectInfo.value = (response as any).project || response // eslint-disable-line @typescript-eslint/no-explicit-any
     console.log('✅ Project info loaded for calendar:', {
@@ -1833,6 +1833,41 @@ function editTask(task: Task) {
   }
 }
 
+async function duplicateTask(task: Task) {
+  console.log('📋 Duplicate task:', task.name)
+
+  try {
+    // Create a simplified copy of the task
+    const duplicatedTask = {
+      name: `${task.name} (Copy)`,
+      start_planned: task.start_planned,
+      end_planned: task.end_planned,
+      status: 'planned' as const,
+      milestone: task.milestone,
+      dependencies: Array.isArray(task.dependencies) && task.dependencies.length > 0 && typeof task.dependencies[0] === 'object'
+        ? task.dependencies as { predecessor_id: number; type: string; lag_days: number; }[]
+        : undefined
+    }
+
+    console.log('📋 Creating duplicated task:', duplicatedTask)
+
+    // Create the duplicated task via API
+    const newTask = await tasksApi.create(props.projectId, duplicatedTask)
+    console.log('✅ Task duplicated successfully:', newTask)
+
+    // Reload tasks to show the new duplicated task
+    await loadTasks()
+
+    // Select the new duplicated task
+    selectedTask.value = newTask
+    console.log('📋 Selected duplicated task:', newTask.name)
+
+  } catch (error) {
+    console.error('❌ Error duplicating task:', error)
+    alert('Failed to duplicate task. Please try again.')
+  }
+}
+
 async function deleteTask(task: Task) {
   console.log('🗑️ Delete task:', task.name)
 
@@ -1876,7 +1911,6 @@ async function deleteTask(task: Task) {
     alert('Failed to delete task. Please try again.')
   }
 }
-
 
 // Task list detail functions
 function selectTaskForDetails(task: Task) {
@@ -2343,7 +2377,7 @@ defineExpose({
 
 <template>
   <!-- Legend Section -->
-  <div class="px-4 py-2 bg-transparent text-xs text-gray-600">
+  <div class="px-4 py-1 bg-transparent text-xs text-gray-600">
     <div class="flex items-center justify-center space-x-6">
       <!-- Status Legend -->
       <div class="flex items-center space-x-2 text-xs border border-gray-300 rounded-md px-3 py-1 bg-gray-50">
@@ -2482,6 +2516,14 @@ defineExpose({
               title="Delete selected task"
             >
               🗑️ Delete
+            </button>
+            <button
+              v-if="selectedTask"
+              @click="duplicateTask(selectedTask)"
+              class="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors"
+              title="Duplicate selected task"
+            >
+              📋 Duplicate
             </button>
 
             <!-- Search Navigation -->

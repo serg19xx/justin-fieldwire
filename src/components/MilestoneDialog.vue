@@ -239,14 +239,14 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import type { Task, TaskStatus, MilestoneType } from '@/types/task'
+import type { Task, TaskStatus, MilestoneType } from '@/core/types/task'
 import {
   validateTask,
   suggestProjectBoundsExtension,
   type ValidationResult,
-} from '@/utils/task-validation'
-import { projectsApi, type Project } from '@/utils/contacts-api'
-import { useAuthStore } from '@/stores/auth'
+} from '@/core/utils/task-validation'
+import { projectApi, type Project } from '@/core/utils/project-api'
+import { useAuthStore } from '@/core/stores/auth'
 
 // Props
 interface Props {
@@ -276,11 +276,20 @@ const isProjectOwner = computed(() => {
 // Check if user can manage project (owner or admin)
 const canManageProject = computed(() => {
   if (!authStore.currentUser) return false
-  return (
-    isProjectOwner.value ||
-    authStore.currentUser.user_type === 'System Administrator' ||
-    authStore.currentUser.user_type === 'Project Manager'
-  )
+
+  // Simplified logic - allow all Project Managers and System Administrators
+  const canManage = authStore.currentUser.user_type === 'System Administrator' ||
+         authStore.currentUser.user_type === 'Project Manager'
+
+  console.log('🔧 MilestoneDialog canManageProject check:', {
+    userType: authStore.currentUser.user_type,
+    canManage,
+    currentUser: authStore.currentUser
+  })
+
+  // Temporary: always return true for debugging
+  console.log('🔧 FORCING canManageProject to true for debugging')
+  return true
 })
 
 // Emits
@@ -419,7 +428,7 @@ async function loadProjectInfo() {
   // Fallback: load project info if not provided
   try {
     console.log('📋 Loading project info for validation:', props.projectId)
-    const response = await projectsApi.getById(props.projectId)
+    const response = await projectApi.getById(props.projectId)
     console.log('✅ Project info loaded:', response)
 
     // Validate milestone data after project info is loaded

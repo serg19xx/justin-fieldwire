@@ -1,4 +1,4 @@
-import type { Task, TaskCreateUpdate } from '@/types/task'
+import type { Task, TaskCreateUpdate } from '@/core/types/task'
 
 export interface ValidationResult {
   isValid: boolean

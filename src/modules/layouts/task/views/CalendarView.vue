@@ -1,1 +1,0 @@
-<template><div class="task-CalendarView.vue"><div class="bg-orange-600 text-white p-6 rounded-lg mb-6"><h1 class="text-3xl font-bold">Task CalendarView.vue</h1><p class="text-orange-100">Task CalendarView.vue content</p></div></div></template><script setup lang="ts">// Task CalendarView.vue</script>

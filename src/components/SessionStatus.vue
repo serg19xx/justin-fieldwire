@@ -15,8 +15,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { getSessionManager } from '@/utils/session-manager'
-import { useAuthStore } from '@/stores/auth'
+import { getSessionManager } from '@/core/utils/session-manager'
+import { useAuthStore } from '@/core/stores/auth'
 
 interface Props {
   showDetails?: boolean

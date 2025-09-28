@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import api from '@/utils/api'
-import { USER_TYPE_OPTIONS } from '@/utils/constants'
+import api from '@/core/utils/api'
+import { USER_TYPE_OPTIONS } from '@/core/utils/constants'
 
 interface Props {
   isOpen: boolean

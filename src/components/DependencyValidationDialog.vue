@@ -77,7 +77,7 @@
 
 <script setup lang="ts">
 import { defineProps, defineEmits } from 'vue'
-import type { DependencyConstraint } from '@/utils/dependency-validator'
+import type { DependencyConstraint } from '@/core/utils/dependency-validator'
 
 interface Props {
   isOpen: boolean

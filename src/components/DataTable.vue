@@ -306,7 +306,6 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { geographyApi, type Country } from '@/utils/contacts-api'
 
 interface Column {
   key: string
@@ -317,6 +316,17 @@ interface Column {
 interface DataItem {
   id?: string | number
   [key: string]: unknown
+}
+
+interface Country {
+  code2: string
+  name: string
+  regions: Region[]
+}
+
+interface Region {
+  code2: string
+  name: string
 }
 
 interface Props {
@@ -403,7 +413,7 @@ const paginatedData = computed(() => {
 // Computed regions for selected country
 const availableRegions = computed(() => {
   if (!countryFilter.value || countries.value.length === 0) return []
-  const selectedCountry = countries.value.find((country) => country.code2 === countryFilter.value)
+  const selectedCountry = countries.value.find((country: Country) => country.code2 === countryFilter.value)
   return selectedCountry ? selectedCountry.regions : []
 })
 
@@ -581,9 +591,9 @@ watch([countryFilter, regionFilter], (newValues, oldValues) => {
   }
 
   // Get country and region names instead of codes
-  const selectedCountry = countries.value.find((country) => country.code2 === countryFilter.value)
+  const selectedCountry = countries.value.find((country: Country) => country.code2 === countryFilter.value)
   const selectedRegion = availableRegions.value.find(
-    (region) => region.code2 === regionFilter.value,
+    (region: Region) => region.code2 === regionFilter.value,
   )
 
   // Only send region if it's selected (not "All Regions")
@@ -609,7 +619,7 @@ function handleCountryChange() {
   console.log('🔄 Region reset to:', regionFilter.value)
 
   // Get country name instead of code
-  const selectedCountry = countries.value.find((country) => country.code2 === countryFilter.value)
+  const selectedCountry = countries.value.find((country: Country) => country.code2 === countryFilter.value)
 
   // When country changes, only send country (region is reset to "All Regions")
   const countryName = selectedCountry ? selectedCountry.name : ''
@@ -627,8 +637,28 @@ async function loadGeography() {
 
   loadingGeography.value = true
   try {
-    const response = await geographyApi.getCountriesAndRegions()
-    countries.value = response.data.countries
+    // Mock geography data for now
+    const mockCountries: Country[] = [
+      {
+        code2: 'US',
+        name: 'United States',
+        regions: [
+          { code2: 'CA', name: 'California' },
+          { code2: 'NY', name: 'New York' },
+          { code2: 'TX', name: 'Texas' }
+        ]
+      },
+      {
+        code2: 'CA',
+        name: 'Canada',
+        regions: [
+          { code2: 'ON', name: 'Ontario' },
+          { code2: 'BC', name: 'British Columbia' }
+        ]
+      }
+    ]
+
+    countries.value = mockCountries
 
     // Set default country to first one in the list
     if (countries.value.length > 0) {

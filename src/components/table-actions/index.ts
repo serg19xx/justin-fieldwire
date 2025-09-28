@@ -1,5 +1,0 @@
-export { default as EditAction } from './EditAction.vue'
-export { default as SendSmsAction } from './SendSmsAction.vue'
-export { default as SendEmailAction } from './SendEmailAction.vue'
-export { default as FixAddressAction } from './FixAddressAction.vue'
-export { default as DeleteAction } from './DeleteAction.vue'

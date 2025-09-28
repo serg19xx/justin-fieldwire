@@ -1,5 +1,5 @@
-import type { TaskCreateUpdate } from '@/types/task'
-import type { Project } from '@/utils/contacts-api'
+import type { TaskCreateUpdate } from '@/core/types/task'
+import type { Project } from '@/core/utils/project-api'
 
 export interface BoundsCheckResult {
   isWithinBounds: boolean

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import api from '@/utils/api'
+import api from '@/core/utils/api'
 
 interface PendingCandidate {
   id: string

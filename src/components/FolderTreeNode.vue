@@ -39,7 +39,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { type Folder, getFolderIcon } from '@/utils/files-api'
+import { type Folder, getFolderIcon } from '@/core/utils/files-api'
 
 interface Props {
   folder: Folder
