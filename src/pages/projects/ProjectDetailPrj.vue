@@ -2633,7 +2633,9 @@ watch(
 
             <div v-if="selectedEvent.end">
               <label class="block text-sm font-medium text-gray-700">End Date</label>
-              <p class="mt-1 text-sm text-gray-900">{{ selectedEvent.end.toLocaleDateString() }}</p>
+              <p class="mt-1 text-sm text-gray-900">
+                {{ selectedEvent.end.toLocaleDateString() }}
+              </p>
             </div>
 
             <div v-if="selectedEvent.description">

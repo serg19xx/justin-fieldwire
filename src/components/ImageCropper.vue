@@ -83,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 
 interface Props {
   aspectRatio?: number
@@ -284,7 +284,7 @@ function crop() {
   ctx.clip()
 
   // Calculate the visible area of the image
-  const imageRect = imageElement.value.getBoundingClientRect()
+  // const imageRect = imageElement.value.getBoundingClientRect()
   const cropRect = {
     x: cropX.value,
     y: cropY.value,
@@ -317,16 +317,16 @@ function crop() {
   )
 }
 
-function uploadNew() {
-  console.log('📁 uploadNew called')
-  if (uploadNewInput.value) {
-    uploadNewInput.value.value = ''
-    uploadNewInput.value.click()
-    console.log('✅ Upload new input clicked')
-  } else {
-    console.log('❌ Upload new input not found')
-  }
-}
+// function uploadNew() {
+//   console.log('📁 uploadNew called')
+//   if (uploadNewInput.value) {
+//     uploadNewInput.value.value = ''
+//     uploadNewInput.value.click()
+//     console.log('✅ Upload new input clicked')
+//   } else {
+//     console.log('❌ Upload new input not found')
+//   }
+// }
 
 function handleUploadNew(event: Event) {
   console.log('📁 handleUploadNew called')

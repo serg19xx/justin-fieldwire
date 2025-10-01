@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { projectApi, type ProjectTeamMember } from '@/core/utils/project-api'
-import { hrResourcesApi } from '@/core/utils/hr-api'
+import { type ProjectTeamMember } from '@/core/utils/project-api'
 
 // Extended worker type with role for team management
 interface WorkerWithRole extends Worker {

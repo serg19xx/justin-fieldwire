@@ -832,13 +832,15 @@ async function loadFolderStats(forceReload = false) {
     // Count subfolders and files for each folder from tree structure
     allFolders.forEach((folder) => {
       // Count subfolders
-      if (folder.parent_id) {
+      if (folder.parent_id && statsMap[folder.parent_id]) {
         statsMap[folder.parent_id].subfolders_count++
       }
 
       // Count files if they exist in the tree structure
       if (folder.files && Array.isArray(folder.files)) {
-        statsMap[folder.id].files_count = folder.files.length
+        if (statsMap[folder.id]) {
+          statsMap[folder.id].files_count = folder.files.length
+        }
       }
     })
 

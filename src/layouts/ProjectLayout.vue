@@ -15,21 +15,25 @@
           <RouterLink to="/" class="hover:opacity-80">
             <h1 class="text-lg font-semibold text-white hidden lg:block">FieldWire - Project</h1>
           </RouterLink>
+          <div class="hidden md:flex items-center space-x-2">
+            <span class="text-xs font-medium text-green-100 uppercase tracking-wider">Project Manager</span>
+            <div class="w-2 h-2 bg-green-300 rounded-full"></div>
+          </div>
         </div>
 
         <!-- Desktop Navigation -->
         <nav class="hidden lg:flex items-center space-x-6">
           <RouterLink
-            to="/"
+            to="/dashboard"
             class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
-            :class="{ 'bg-green-700 text-white': $route.path === '/' }"
+            :class="{ 'bg-green-700 text-white': $route.path === '/dashboard' }"
           >
             Dashboard
           </RouterLink>
           <RouterLink
             to="/projects"
             class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
-            :class="{ 'bg-green-700 text-white': $route.path === '/projects' }"
+            :class="{ 'bg-green-700 text-white': $route.path.startsWith('/projects') }"
           >
             My Projects
           </RouterLink>
@@ -105,7 +109,7 @@
 
         <nav class="mt-4">
           <RouterLink
-            to="/"
+            to="/dashboard"
             @click="closeMobileMenu"
             class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
           >
@@ -138,7 +142,7 @@
 
     <!-- Main content -->
     <main class="pt-12 min-h-screen">
-      <RouterView />
+      <slot />
     </main>
   </div>
 </template>

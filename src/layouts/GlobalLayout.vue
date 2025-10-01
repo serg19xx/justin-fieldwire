@@ -10,14 +10,18 @@
           <RouterLink to="/" class="hover:opacity-80">
             <h1 class="text-lg font-semibold text-gray-900">FieldWire</h1>
           </RouterLink>
+          <div class="hidden md:flex items-center space-x-2">
+            <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Global</span>
+            <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+          </div>
         </div>
 
         <!-- Desktop Navigation Menu -->
         <nav class="hidden lg:flex items-center space-x-6">
           <RouterLink
-            to="/"
+            to="/dashboard"
             class="text-sm font-medium text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md"
-            :class="{ 'bg-gray-100 text-gray-900': $route.path === '/' }"
+            :class="{ 'bg-gray-100 text-gray-900': $route.path === '/dashboard' }"
           >
             Dashboard
           </RouterLink>
@@ -29,11 +33,11 @@
             Projects
           </RouterLink>
           <RouterLink
-            to="/people"
+            to="/team"
             class="text-sm font-medium text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md"
-            :class="{ 'bg-gray-100 text-gray-900': $route.path === '/people' }"
+            :class="{ 'bg-gray-100 text-gray-900': $route.path === '/team' }"
           >
-            Builders
+            Team
           </RouterLink>
           <RouterLink
             to="/reports"
@@ -44,10 +48,6 @@
           </RouterLink>
         </nav>
 
-        <!-- Debug info -->
-        <div class="text-xs text-gray-500 mr-4">
-          Debug: {{ authStore.currentUser?.role_code }} | {{ authStore.currentUser?.role_category }}
-        </div>
 
         <!-- Right side -->
         <div class="flex items-center space-x-2">
@@ -84,7 +84,7 @@
 
     <!-- Main content -->
     <main class="pt-12 min-h-screen">
-      <RouterView />
+      <slot />
     </main>
   </div>
 </template>

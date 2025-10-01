@@ -11,33 +11,17 @@ defineOptions({
 
 const authStore = useAuthStore()
 
-// User data
-const user = computed(() => authStore.currentUser)
-const userAvatar = computed(() => user.value?.avatarUrl || '/default-avatar.png')
-
 // State
 const isLoading = ref(false)
 const isUpdating = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 
-
 const showAvatarEditor = ref(false)
 const showImageCropper = ref(false)
 
 const avatarKey = ref(0) // For forcing image refresh
 const showInactiveReasonFields = ref(false) // New state for showing reason fields
-
-// Tab management
-const activeTab = ref('basic')
-const tabs = [
-  { id: 'basic', name: 'Basic Info', icon: '👤' },
-  { id: 'professional', name: 'Professional', icon: '💼' },
-  { id: 'emergency', name: 'Emergency', icon: '🚨' },
-  { id: 'system', name: 'System', icon: '⚙️' }
-]
-
-// Functions will be defined below
 
 // Profile form
 const profileForm = reactive({
@@ -53,17 +37,6 @@ const profileForm = reactive({
   isActive: true,
   inactive_reason: '',
   inactive_reason_details: '',
-  // Extended profile fields
-  resume: '',
-  experience_years: '',
-  specialization: '',
-  certifications: '',
-  emergency_contact: '',
-  emergency_phone: '',
-  skills: '',
-  bio: '',
-  linkedin_url: '',
-  portfolio_url: '',
 })
 
 // Validation errors
@@ -173,6 +146,15 @@ const fullName = computed(() => {
   return `${profileForm.first_name} ${profileForm.last_name}`.trim() || 'Not specified'
 })
 
+const userAvatar = computed(() => {
+  // Check if user has avatar URL from backend
+  if (authStore.currentUser?.avatarUrl) {
+    return authStore.currentUser.avatarUrl
+  }
+
+  // Fallback to default avatar or empty
+  return ''
+})
 
 const hasAvatar = computed(() => {
   return !!userAvatar.value
@@ -188,19 +170,40 @@ async function loadProfile() {
   errorMessage.value = ''
 
   try {
-    // Always use data from login, don't call getProfile() to avoid overwriting role data
-    console.log('✅ Using data from login, skipping getProfile() to preserve role information')
-    // Just populate form with existing data from login
-    if (authStore.currentUser?.name) {
-      profileForm.first_name = authStore.currentUser.name.split(' ')[0] || ''
-      profileForm.last_name = authStore.currentUser.name.split(' ').slice(1).join(' ') || ''
-    }
-    profileForm.phone = authStore.currentUser?.phone || ''
-    profileForm.job_title = authStore.currentUser?.job_title || ''
-    profileForm.additional_info = authStore.currentUser?.additional_info || ''
-    profileForm.isActive = authStore.currentUser?.isActive !== undefined ? authStore.currentUser.isActive : true
+    const result = await authStore.getProfile()
 
-    console.log('✅ Profile loaded from login data')
+    if (result.success && result.user) {
+      // Populate form with user data
+      profileForm.first_name = result.user.name.split(' ')[0] || ''
+      profileForm.last_name = result.user.name.split(' ').slice(1).join(' ') || ''
+
+      // Попробуем загрузить дополнительные поля из backend
+      // Если backend поддерживает эти поля, они будут загружены
+      // Если нет - останутся пустыми
+      profileForm.phone = result.user.phone || ''
+      profileForm.job_title = result.user.job_title || result.user.user_type || ''
+      profileForm.additional_info = result.user.additional_info || ''
+      profileForm.user_type = result.user.user_type || ''
+      profileForm.company = result.user.company || ''
+      profileForm.department = result.user.department || ''
+      profileForm.location = result.user.location || ''
+      profileForm.isActive = result.user.isActive !== undefined ? result.user.isActive : true
+      profileForm.inactive_reason = result.user.inactive_reason || ''
+      profileForm.inactive_reason_details = result.user.inactive_reason_details || ''
+
+      // Always hide inactive reason fields on profile load
+      // They will only show when user actively changes status
+      showInactiveReasonFields.value = false
+
+      console.log('✅ Profile loaded successfully')
+      console.log('👤 User data:', result.user)
+      console.log('🔄 profileForm.isActive set to:', profileForm.isActive)
+      console.log('🔄 showInactiveReasonFields set to:', showInactiveReasonFields.value)
+      console.log('🖼️ Avatar URL from profile:', result.user?.avatarUrl)
+    } else {
+      errorMessage.value = result.error || 'Failed to load profile'
+      console.log('❌ Failed to load profile:', result.error)
+    }
   } catch (error) {
     console.error('❌ Load profile error:', error)
     errorMessage.value = 'Failed to load profile'
@@ -293,65 +296,10 @@ function openImageCropper() {
   showImageCropper.value = true
 }
 
-// Enhanced avatar upload with validation
-function validateImageFile(file: File): { valid: boolean; error?: string } {
-  const maxSize = 5 * 1024 * 1024 // 5MB
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
-
-  if (file.size > maxSize) {
-    return { valid: false, error: 'File size must be less than 5MB' }
-  }
-
-  if (!allowedTypes.includes(file.type)) {
-    return { valid: false, error: 'Only JPG, PNG, and WebP formats are allowed' }
-  }
-
-  return { valid: true }
-}
-
-// Compress image before upload
-function compressImage(file: File, maxWidth: number = 800, quality: number = 0.8): Promise<File> {
-  return new Promise((resolve) => {
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    const img = new Image()
-
-    img.onload = () => {
-      const ratio = Math.min(maxWidth / img.width, maxWidth / img.height)
-      canvas.width = img.width * ratio
-      canvas.height = img.height * ratio
-
-      ctx?.drawImage(img, 0, 0, canvas.width, canvas.height)
-
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const compressedFile = new File([blob], file.name, { type: file.type })
-          resolve(compressedFile)
-        } else {
-          resolve(file)
-        }
-      }, file.type, quality)
-    }
-
-    img.src = URL.createObjectURL(file)
-  })
-}
-
 async function handleImageCrop(file: File) {
   try {
     console.log('🔄 Starting avatar save from cropper...')
     console.log('📄 Cropped file received:', file.name, file.size, file.type)
-
-    // Validate file
-    const validation = validateImageFile(file)
-    if (!validation.valid) {
-      errorMessage.value = validation.error || 'Invalid file'
-      return
-    }
-
-    // Compress image
-    const compressedFile = await compressImage(file)
-    console.log('📦 Compressed file:', compressedFile.name, compressedFile.size, compressedFile.type)
 
     // Convert file to data URL
     const reader = new FileReader()
@@ -372,7 +320,7 @@ async function handleImageCrop(file: File) {
         errorMessage.value = 'User not found'
       }
     }
-    reader.readAsDataURL(compressedFile)
+    reader.readAsDataURL(file)
   } catch (error) {
     console.error('❌ Save avatar from cropper error:', error)
     errorMessage.value = 'Failed to save avatar'
@@ -571,27 +519,6 @@ function handleAvatarLoad(event: Event) {
 onMounted(() => {
   console.log('🚀 AccountView mounted - loading profile...')
   console.log('👤 Current user:', authStore.currentUser)
-  console.log('🔍 ROLE DEBUG:')
-  console.log('  - role_category:', authStore.currentUser?.role_category)
-  console.log('  - role_code:', authStore.currentUser?.role_code)
-  console.log('  - user_type:', authStore.currentUser?.user_type)
-  console.log('  - typeof role_category:', typeof authStore.currentUser?.role_category)
-  console.log('🔍 FULL USER OBJECT:')
-  console.log('  - All keys:', Object.keys(authStore.currentUser || {}))
-  console.log('  - Full object:', JSON.stringify(authStore.currentUser, null, 2))
-  console.log('🔍 LOCALSTORAGE DEBUG:')
-  console.log('  - localStorage user:', localStorage.getItem('user'))
-  console.log('  - localStorage token:', localStorage.getItem('token'))
-
-  // Debug: Clear storage button
-  if (typeof window !== 'undefined') {
-    (window as unknown as Window & { clearAuthStorage: () => void }).clearAuthStorage = () => {
-      localStorage.removeItem('user')
-      localStorage.removeItem('authToken')
-      location.reload()
-    }
-    console.log('🔧 Debug: Call clearAuthStorage() to clear storage and reload')
-  }
   console.log('🖼️ User avatar URL:', authStore.currentUser?.avatarUrl)
   console.log('🖼️ Has avatar:', hasAvatar.value)
 
@@ -636,283 +563,240 @@ watch(
 
       <!-- Profile Content -->
       <div v-else class="space-y-8">
-        <!-- Tab Navigation -->
-        <div class="bg-white shadow rounded-lg">
-          <div class="border-b border-gray-200">
-            <!-- Desktop Tabs -->
-            <nav class="hidden md:flex -mb-px space-x-8 px-6" aria-label="Tabs">
-              <button
-                v-for="tab in tabs"
-                :key="tab.id"
-                @click="activeTab = tab.id"
-                :class="[
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                  'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2'
-                ]"
-              >
-                <span>{{ tab.icon }}</span>
-                <span>{{ tab.name }}</span>
-              </button>
-            </nav>
+        <!-- Avatar Section -->
+        <div class="bg-white shadow rounded-lg p-6">
+          <h2 class="text-xl font-semibold text-gray-900 mb-6">Profile Picture</h2>
 
-            <!-- Mobile Dropdown -->
-            <div class="md:hidden">
-              <select
-                v-model="activeTab"
-                class="w-full px-4 py-3 text-sm border-0 bg-transparent focus:outline-none focus:ring-0"
-              >
-                <option v-for="tab in tabs" :key="tab.id" :value="tab.id">
-                  {{ tab.icon }} {{ tab.name }}
-                </option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tab Content -->
-        <div class="bg-white shadow rounded-lg">
-          <!-- Basic Info Tab -->
-          <div v-if="activeTab === 'basic'" class="p-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6">Basic Information</h2>
-
-            <!-- Avatar Section -->
-            <div class="mb-8">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Profile Picture</h3>
-              <p class="text-sm text-gray-600 mb-4">Upload a professional photo. Supported formats: JPG, PNG, WebP (max 5MB)</p>
-            </div>
-            <!-- Image Cropper (when active) -->
-            <div v-if="showImageCropper" class="mb-6">
-              <div class="bg-gray-50 rounded-lg p-4">
-                <div class="flex items-center justify-between mb-4">
-                  <h3 class="text-lg font-medium text-gray-900">Edit Profile Picture</h3>
-                  <button
-                    @click="handleImageCropCancel"
-                    class="text-gray-500 hover:text-gray-700 text-sm flex items-center gap-1"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                      />
-                    </svg>
-                    Back
-                  </button>
-                </div>
-                <ImageCropper
-                  :aspect-ratio="1"
-                  :quality="0.9"
-                  format="image/jpeg"
-                  :initial-image="userAvatar"
-                  @crop="handleImageCrop"
-                  @cancel="handleImageCropCancel"
-                />
-              </div>
-            </div>
-
-            <!-- Avatar Display and Controls -->
-            <div v-else class="flex items-center space-x-6">
-              <!-- Current Avatar -->
-              <div class="flex-shrink-0">
-                <div
-                  class="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden"
+          <!-- Image Cropper (when active) -->
+          <div v-if="showImageCropper" class="mb-6">
+            <div class="bg-gray-50 rounded-lg p-4">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Edit Profile Picture</h3>
+                <button
+                  @click="handleImageCropCancel"
+                  class="text-gray-500 hover:text-gray-700 text-sm flex items-center gap-1"
                 >
-                  <img
-                    v-if="hasAvatar"
-                    :key="avatarKey"
-                    :src="userAvatar"
-                    :alt="fullName"
-                    class="w-full h-full object-cover object-center rounded-full"
-                    style="aspect-ratio: 1/1"
-                    @error="handleAvatarError"
-                    @load="handleAvatarLoad"
-                  />
-                  <svg
-                    v-else
-                    class="w-10 h-10 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"
                       stroke-width="2"
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      d="M10 19l-7-7m0 0l7-7m-7 7h18"
                     />
                   </svg>
-                </div>
-                <p class="text-xs text-gray-500 mt-2 text-center">Profile Picture</p>
+                  Back
+                </button>
               </div>
+              <ImageCropper
+                :aspect-ratio="1"
+                :quality="0.9"
+                format="image/jpeg"
+                :initial-image="userAvatar"
+                @crop="handleImageCrop"
+                @cancel="handleImageCropCancel"
+              />
+            </div>
+          </div>
 
-              <!-- Avatar Info and Controls -->
-              <div class="flex-1">
-                <div class="space-y-3">
-                  <p class="text-sm text-gray-600">
-                    {{ hasAvatar ? 'Your current profile picture' : 'No profile picture set' }}
-                  </p>
-
-                  <div class="flex space-x-3">
-                    <button
-                      @click="openImageCropper"
-                      class="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {{ hasAvatar ? 'Edit Picture' : 'Add Picture' }}
-                    </button>
-                  </div>
-
-                  <p class="text-xs text-gray-500">
-                    Upload and crop your profile picture. Supported formats: JPG, PNG, GIF (max 5MB)
-                  </p>
-                </div>
+          <!-- Avatar Display and Controls -->
+          <div v-else class="flex items-center space-x-6">
+            <!-- Current Avatar -->
+            <div class="flex-shrink-0">
+              <div
+                class="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden"
+              >
+                <img
+                  v-if="hasAvatar"
+                  :key="avatarKey"
+                  :src="userAvatar"
+                  :alt="fullName"
+                  class="w-full h-full object-cover object-center rounded-full"
+                  style="aspect-ratio: 1/1"
+                  @error="handleAvatarError"
+                  @load="handleAvatarLoad"
+                />
+                <svg
+                  v-else
+                  class="w-10 h-10 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
               </div>
+              <p class="text-xs text-gray-500 mt-2 text-center">Profile Picture</p>
             </div>
 
-            <!-- Work Status Section -->
-            <div class="border-t pt-6 mt-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Work Status</h3>
+            <!-- Avatar Info and Controls -->
+            <div class="flex-1">
+              <div class="space-y-3">
+                <p class="text-sm text-gray-600">
+                  {{ hasAvatar ? 'Your current profile picture' : 'No profile picture set' }}
+                </p>
 
-              <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <p class="text-sm text-gray-600">
+                <div class="flex space-x-3">
+                  <button
+                    @click="openImageCropper"
+                    class="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {{ hasAvatar ? 'Edit Picture' : 'Add Picture' }}
+                  </button>
+                </div>
+
+                <p class="text-xs text-gray-500">
+                  Upload and crop your profile picture. Supported formats: JPG, PNG, GIF (max 5MB)
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Work Status Section -->
+          <div class="border-t pt-6 mt-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-4">Work Status</h3>
+
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-sm text-gray-600">
+                    {{
+                      profileForm.isActive
+                        ? 'Active - Available for work'
+                        : 'Inactive - Not available for work'
+                    }}
+                  </p>
+                </div>
+
+                <!-- Status Toggle -->
+                <div class="flex items-center">
+                  <button
+                    @click="toggleWorkStatus"
+                    :disabled="isUpdating"
+                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    :class="profileForm.isActive ? 'bg-blue-600' : 'bg-gray-200'"
+                  >
+                    <span
+                      class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                      :class="profileForm.isActive ? 'translate-x-6' : 'translate-x-1'"
+                    />
+                  </button>
+                  <span class="ml-3 text-sm font-medium text-gray-900">
+                    {{ profileForm.isActive ? 'Active' : 'Inactive' }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Status Description -->
+              <div class="bg-gray-50 rounded-lg p-4">
+                <div class="flex">
+                  <div class="flex-shrink-0">
+                    <svg
+                      class="h-5 w-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <div class="ml-3">
+                    <h4 class="text-sm font-medium text-gray-900">
+                      {{ profileForm.isActive ? 'Active Status' : 'Inactive Status' }}
+                    </h4>
+                    <p class="text-sm text-gray-600 mt-1">
                       {{
                         profileForm.isActive
-                          ? 'Active - Available for work'
-                          : 'Inactive - Not available for work'
+                          ? 'You are currently available for new projects and tasks. Managers can assign work to you.'
+                          : 'You are currently not available for new work. You will not receive new project assignments or tasks.'
                       }}
                     </p>
                   </div>
+                </div>
+              </div>
 
-                  <!-- Status Toggle -->
-                  <div class="flex items-center">
-                    <button
-                      @click="toggleWorkStatus"
-                      :disabled="isUpdating"
-                      class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                      :class="profileForm.isActive ? 'bg-blue-600' : 'bg-gray-200'"
-                    >
-                      <span
-                        class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                        :class="profileForm.isActive ? 'translate-x-6' : 'translate-x-1'"
-                      />
-                    </button>
-                    <span class="ml-3 text-sm font-medium text-gray-900">
-                      {{ profileForm.isActive ? 'Active' : 'Inactive' }}
-                    </span>
-                  </div>
+              <!-- Status Change Reason (when setting to inactive) -->
+              <!-- Debug: showInactiveReasonFields = {{ showInactiveReasonFields }}, profileForm.isActive = {{ profileForm.isActive }} -->
+              <div v-if="showInactiveReasonFields" class="space-y-3">
+                <div
+                  v-if="showInactiveReasonFields"
+                  class="bg-blue-50 border border-blue-200 rounded-md p-3"
+                >
+                  <p class="text-sm text-blue-800">
+                    <strong>Setting status to Inactive:</strong> Please select a reason and click
+                    "Save Inactive Status" to confirm.
+                  </p>
                 </div>
 
-                <!-- Status Description -->
-                <div class="bg-gray-50 rounded-lg p-4">
-                  <div class="flex">
-                    <div class="flex-shrink-0">
-                      <svg
-                        class="h-5 w-5 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                    </div>
-                    <div class="ml-3">
-                      <h4 class="text-sm font-medium text-gray-900">
-                        {{ profileForm.isActive ? 'Active Status' : 'Inactive Status' }}
-                      </h4>
-                      <p class="text-sm text-gray-600 mt-1">
-                        {{
-                          profileForm.isActive
-                            ? 'You are currently available for new projects and tasks. Managers can assign work to you.'
-                            : 'You are currently not available for new work. You will not receive new project assignments or tasks.'
-                        }}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                <label for="inactive_reason" class="block text-sm font-medium text-gray-700">
+                  Reason for being inactive
+                </label>
+                <select
+                  id="inactive_reason"
+                  v-model="profileForm.inactive_reason"
+                  class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select a reason</option>
+                  <option value="vacation">Vacation / Holiday</option>
+                  <option value="sick_leave">Sick Leave</option>
+                  <option value="personal_leave">Personal Leave</option>
+                  <option value="training">Training / Course</option>
+                  <option value="other">Other</option>
+                </select>
 
-                <!-- Status Change Reason (when setting to inactive) -->
-                <!-- Debug: showInactiveReasonFields = {{ showInactiveReasonFields }}, profileForm.isActive = {{ profileForm.isActive }} -->
-                <div v-if="showInactiveReasonFields" class="space-y-3">
-                  <div
-                    v-if="showInactiveReasonFields"
-                    class="bg-blue-50 border border-blue-200 rounded-md p-3"
+                <label
+                  v-if="profileForm.inactive_reason"
+                  for="inactive_reason_details"
+                  class="block text-sm font-medium text-gray-700"
+                >
+                  {{
+                    profileForm.inactive_reason === 'other'
+                      ? 'Please specify the reason'
+                      : 'Additional details (optional)'
+                  }}
+                </label>
+
+                <textarea
+                  v-if="profileForm.inactive_reason"
+                  v-model="profileForm.inactive_reason_details"
+                  rows="2"
+                  class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  :placeholder="
+                    profileForm.inactive_reason === 'other'
+                      ? 'Please specify the reason...'
+                      : 'Additional details (optional)...'
+                  "
+                ></textarea>
+
+                <!-- Save Inactive Status Button -->
+                <div
+                  v-if="showInactiveReasonFields && profileForm.inactive_reason"
+                  class="flex justify-end space-x-3"
+                >
+                  <button
+                    @click="cancelInactiveStatus"
+                    :disabled="isUpdating"
+                    class="px-4 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <p class="text-sm text-blue-800">
-                      <strong>Setting status to Inactive:</strong> Please select a reason and click
-                      "Save Inactive Status" to confirm.
-                    </p>
-                  </div>
-
-                  <label for="inactive_reason" class="block text-sm font-medium text-gray-700">
-                    Reason for being inactive
-                  </label>
-                  <select
-                    id="inactive_reason"
-                    v-model="profileForm.inactive_reason"
-                    class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    Cancel
+                  </button>
+                  <button
+                    @click="saveInactiveStatus"
+                    :disabled="isUpdating"
+                    class="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <option value="">Select a reason</option>
-                    <option value="vacation">Vacation / Holiday</option>
-                    <option value="sick_leave">Sick Leave</option>
-                    <option value="personal_leave">Personal Leave</option>
-                    <option value="training">Training / Course</option>
-                    <option value="other">Other</option>
-                  </select>
-
-                  <label
-                    v-if="profileForm.inactive_reason"
-                    for="inactive_reason_details"
-                    class="block text-sm font-medium text-gray-700"
-                  >
-                    {{
-                      profileForm.inactive_reason === 'other'
-                        ? 'Please specify the reason'
-                        : 'Additional details (optional)'
-                    }}
-                  </label>
-
-                  <textarea
-                    v-if="profileForm.inactive_reason"
-                    v-model="profileForm.inactive_reason_details"
-                    rows="2"
-                    class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    :placeholder="
-                      profileForm.inactive_reason === 'other'
-                        ? 'Please specify the reason...'
-                        : 'Additional details (optional)...'
-                    "
-                  ></textarea>
-
-                  <!-- Save Inactive Status Button -->
-                  <div
-                    v-if="showInactiveReasonFields && profileForm.inactive_reason"
-                    class="flex justify-end space-x-3"
-                  >
-                    <button
-                      @click="cancelInactiveStatus"
-                      :disabled="isUpdating"
-                      class="px-4 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      @click="saveInactiveStatus"
-                      :disabled="isUpdating"
-                      class="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <span v-if="isUpdating">Saving...</span>
-                      <span v-else>Save Inactive Status</span>
-                    </button>
-                  </div>
+                    <span v-if="isUpdating">Saving...</span>
+                    <span v-else>Save Inactive Status</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -1257,253 +1141,16 @@ watch(
               </div>
             </div>
           </div>
-
-
-          <!-- Professional Tab -->
-          <div v-if="activeTab === 'professional'" class="p-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6">Professional Information</h2>
-            <p class="text-gray-600 mb-6">Your professional background and expertise</p>
-
-            <form @submit.prevent="updateProfile" class="space-y-6">
-              <!-- Resume/Bio -->
-              <div>
-                <label for="bio" class="block text-sm font-medium text-gray-700 mb-2">
-                  Professional Bio
-                </label>
-                <textarea
-                  id="bio"
-                  v-model="profileForm.bio"
-                  rows="4"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Tell us about your professional background..."
-                ></textarea>
-              </div>
-
-              <!-- Experience -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label for="experience_years" class="block text-sm font-medium text-gray-700 mb-2">
-                    Years of Experience
-                  </label>
-                  <input
-                    id="experience_years"
-                    v-model="profileForm.experience_years"
-                    type="number"
-                    min="0"
-                    max="50"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="5"
-                  />
-                </div>
-
-                <div>
-                  <label for="specialization" class="block text-sm font-medium text-gray-700 mb-2">
-                    Specialization
-                  </label>
-                  <input
-                    id="specialization"
-                    v-model="profileForm.specialization"
-                    type="text"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g., Electrical, Plumbing, HVAC"
-                  />
-                </div>
-              </div>
-
-              <!-- Skills -->
-              <div>
-                <label for="skills" class="block text-sm font-medium text-gray-700 mb-2">
-                  Skills & Certifications
-                </label>
-                <textarea
-                  id="skills"
-                  v-model="profileForm.skills"
-                  rows="3"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="List your skills, certifications, and qualifications..."
-                ></textarea>
-              </div>
-
-              <!-- Links -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label for="linkedin_url" class="block text-sm font-medium text-gray-700 mb-2">
-                    LinkedIn Profile
-                  </label>
-                  <input
-                    id="linkedin_url"
-                    v-model="profileForm.linkedin_url"
-                    type="url"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="https://linkedin.com/in/yourname"
-                  />
-                </div>
-
-                <div>
-                  <label for="portfolio_url" class="block text-sm font-medium text-gray-700 mb-2">
-                    Portfolio/Website
-                  </label>
-                  <input
-                    id="portfolio_url"
-                    v-model="profileForm.portfolio_url"
-                    type="url"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="https://yourportfolio.com"
-                  />
-                </div>
-              </div>
-
-              <div class="flex justify-end">
-                <button
-                  type="submit"
-                  :disabled="isUpdating"
-                  class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                >
-                  <span v-if="isUpdating">Updating...</span>
-                  <span v-else>Update Professional Info</span>
-                </button>
-              </div>
-            </form>
-          </div>
-
-          <!-- Emergency Tab -->
-          <div v-if="activeTab === 'emergency'" class="p-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6">Emergency Contacts</h2>
-            <p class="text-gray-600 mb-6">Contact information for emergency situations</p>
-
-            <form @submit.prevent="updateProfile" class="space-y-6">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label for="emergency_contact" class="block text-sm font-medium text-gray-700 mb-2">
-                    Emergency Contact Name
-                  </label>
-                  <input
-                    id="emergency_contact"
-                    v-model="profileForm.emergency_contact"
-                    type="text"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Full name of emergency contact"
-                  />
-                </div>
-
-                <div>
-                  <label for="emergency_phone" class="block text-sm font-medium text-gray-700 mb-2">
-                    Emergency Contact Phone
-                  </label>
-                  <input
-                    id="emergency_phone"
-                    v-model="profileForm.emergency_phone"
-                    type="tel"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="+1234567890"
-                  />
-                </div>
-              </div>
-
-              <div class="flex justify-end">
-                <button
-                  type="submit"
-                  :disabled="isUpdating"
-                  class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                >
-                  <span v-if="isUpdating">Updating...</span>
-                  <span v-else>Update Emergency Contacts</span>
-                </button>
-              </div>
-            </form>
-          </div>
-
-          <!-- System Tab -->
-          <div v-if="activeTab === 'system'" class="p-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6">System Settings</h2>
-            <p class="text-gray-600 mb-6">Security and account settings</p>
-
-            <!-- 2FA Section -->
-            <div class="mb-8">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Two-Factor Authentication</h3>
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm text-gray-600">
-                    {{ authStore.currentUser?.twoFactorEnabled ? 'Enabled' : 'Disabled' }}
-                  </p>
-                </div>
-                <button
-                  @click="toggleTwoFactor"
-                  :disabled="isUpdating"
-                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  :class="authStore.currentUser?.twoFactorEnabled ? 'bg-blue-600' : 'bg-gray-200'"
-                >
-                  <span
-                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                    :class="
-                      authStore.currentUser?.twoFactorEnabled ? 'translate-x-6' : 'translate-x-1'
-                    "
-                  ></span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Work Status Section -->
-            <div class="mb-8">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Work Status</h3>
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm text-gray-600">
-                    {{ profileForm.isActive ? 'Active - Available for work' : 'Inactive - Not available for work' }}
-                  </p>
-                </div>
-                <button
-                  @click="toggleWorkStatus"
-                  :disabled="isUpdating"
-                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  :class="profileForm.isActive ? 'bg-blue-600' : 'bg-gray-200'"
-                >
-                  <span
-                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                    :class="profileForm.isActive ? 'translate-x-6' : 'translate-x-1'"
-                  ></span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Account Info -->
-            <div class="border-t pt-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Account Information</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span class="font-medium text-gray-700">Email:</span>
-                  <span class="ml-2 text-gray-900">{{ authStore.currentUser?.email }}</span>
-                </div>
-                <div>
-                  <span class="font-medium text-gray-700">Role:</span>
-                  <span class="ml-2 text-gray-900">{{ authStore.currentUser?.role_code }}</span>
-                </div>
-                <div>
-                  <span class="font-medium text-gray-700">Status:</span>
-                  <span class="ml-2 text-gray-900">{{
-                    authStore.currentUser?.isActive ? 'Active' : 'Inactive'
-                  }}</span>
-                </div>
-                <div>
-                  <span class="font-medium text-gray-700">Last Login:</span>
-                  <span class="ml-2 text-gray-900">{{
-                    authStore.currentUser?.lastLogin || 'Never'
-                  }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
+
+    <!-- Avatar Editor Dialog -->
+    <AvatarEditor
+      :is-open="showAvatarEditor"
+      :current-avatar="userAvatar"
+      @close="closeAvatarEditor"
+      @save="saveAvatarFromEditor"
+    />
   </div>
-
-  <!-- Avatar Editor Dialog -->
-  <AvatarEditor
-    :is-open="showAvatarEditor"
-    :current-avatar="userAvatar"
-    @close="closeAvatarEditor"
-    @save="saveAvatarFromEditor"
-  />
-
 </template>

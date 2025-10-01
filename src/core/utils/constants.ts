@@ -1,17 +1,17 @@
 // User types constants
 export const USER_TYPES = [
-  'System Administrator',
-  'Architect',
-  'Project Manager',
-  'General Contractor',
-  'Trade Contractor',
-  'Client',
+  'admin',
+  'architect',
+  'project_manager',
+  'general_contractor',
+  'contractor',
+  'client',
 ] as const
 
 export type UserType = (typeof USER_TYPES)[number]
 
-// User types for filtering (excluding System Administrator)
-export const USER_TYPE_OPTIONS = USER_TYPES.filter((type) => type !== 'System Administrator')
+// User types for filtering (excluding admin)
+export const USER_TYPE_OPTIONS = USER_TYPES.filter((type) => type !== 'admin')
 
 // Project priorities
 export const PROJECT_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const

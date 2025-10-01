@@ -121,6 +121,7 @@ export const useAuthStore = defineStore('auth', () => {
       console.log('🔒 2FA required:', requires_2fa)
       console.log('🔍 Role category from backend:', user.role_category)
       console.log('🔍 Role code from backend:', user.role_code)
+      console.log('🔍 Full user from backend:', JSON.stringify(user, null, 2))
 
       // Преобразуем структуру пользователя в формат фронтенда
       const frontendUser: User = {
@@ -526,9 +527,8 @@ export const useAuthStore = defineStore('auth', () => {
           location: backendUser.location,
         }
 
-        // Update current user
-        currentUser.value = frontendUser
-        localStorage.setItem('user', JSON.stringify(frontendUser))
+        // Don't update currentUser - keep login data intact
+        // Only return profile data for editing
 
         console.log('✅ Profile fetched successfully')
         console.log('🖼️ Avatar URL:', frontendUser.avatarUrl)

@@ -104,7 +104,7 @@ const authStore = useAuthStore()
 
 const emit = defineEmits<{
   showRecovery: []
-  showTwoFactor: [user: any]
+  showTwoFactor: [user: Record<string, unknown>]
 }>()
 
 const loginForm = reactive({

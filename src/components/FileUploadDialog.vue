@@ -241,7 +241,7 @@ async function handleSubmit() {
 
     // Create a File object with the new name
     const file = new File(
-      [props.fileInfo as any],
+      [props.fileInfo as Blob],
       `${formData.value.fileName}.${getFileExtension(props.fileInfo.name)}`,
       {
         type: props.fileInfo.type,

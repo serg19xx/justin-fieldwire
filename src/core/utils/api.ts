@@ -63,13 +63,13 @@ function getAuthToken(): string | null {
 }
 
 // Check if token is about to expire (within 5 minutes)
-function isTokenExpiringSoon(): boolean {
+async function isTokenExpiringSoon(): Promise<boolean> {
   const token = getAuthToken()
   if (!token) return true
 
   try {
     // Use the new JWT utility function
-    const { isTokenExpiringSoon: checkExpiringSoon } = require('./jwt-utils')
+    const { isTokenExpiringSoon: checkExpiringSoon } = await import('./jwt-utils')
     return checkExpiringSoon(token, 5)
   } catch (error) {
     console.warn('⚠️ Error checking token expiration:', error)
@@ -78,20 +78,20 @@ function isTokenExpiringSoon(): boolean {
   }
 }
 
-// Refresh token function
-async function refreshToken(): Promise<boolean> {
-  try {
-    console.log('🔄 Attempting to refresh token...')
-
-    // For now, we'll just return false to trigger re-login
-    // In the future, this could call a refresh endpoint
-    console.log('⚠️ Token refresh not implemented - user needs to re-login')
-    return false
-  } catch (error) {
-    console.error('❌ Token refresh failed:', error)
-    return false
-  }
-}
+// Refresh token function (currently unused)
+// async function _refreshToken(): Promise<boolean> {
+//   try {
+//     console.log('🔄 Attempting to refresh token...')
+//
+//     // For now, we'll just return false to trigger re-login
+//     // In the future, this could call a refresh endpoint
+//     console.log('⚠️ Token refresh not implemented - user needs to re-login')
+//     return false
+//   } catch (error) {
+//     console.error('❌ Token refresh failed:', error)
+//     return false
+//   }
+// }
 
 // Добавляем интерцептор для автоматического добавления токена
 api.interceptors.request.use(
@@ -105,7 +105,7 @@ api.interceptors.request.use(
 
     // Check if token is expiring soon
     try {
-      if (isTokenExpiringSoon()) {
+      if (await isTokenExpiringSoon()) {
         console.log('⚠️ Token is expiring soon, but skipping refresh for now')
         // TODO: Implement proper token refresh when backend is fixed
         console.log('⚠️ Backend JWT issue - skipping token refresh')
@@ -153,14 +153,16 @@ export const authApi = {
     try {
       const response = await api.get(`/api/v1/auth/validate-invitation-token?token=${token}`)
       return response.data
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error validating invitation token:', error)
       return {
         valid: false,
-        message: error.response?.data?.message || 'Token validation failed'
+        message:
+          (error as { response?: { data?: { message?: string } } }).response?.data?.message ||
+          'Token validation failed',
       }
     }
-  }
+  },
 }
 
 export default api

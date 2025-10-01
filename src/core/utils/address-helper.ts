@@ -62,7 +62,7 @@ export function buildAddress(
  * @param physician - Physician object with address fields
  * @returns Formatted address string
  */
-export function buildPhysicianAddress(physician: any): string {
+export function buildPhysicianAddress(physician: Record<string, unknown>): string {
   return buildAddress(physician, {
     unitNumber: 'unitNumb',
     streetNumber: 'streetNumber',
@@ -74,7 +74,7 @@ export function buildPhysicianAddress(physician: any): string {
  * @param pharmacy - Pharmacy object with address fields
  * @returns Formatted address string
  */
-export function buildPharmacyAddress(pharmacy: any): string {
+export function buildPharmacyAddress(pharmacy: Record<string, unknown>): string {
   return buildAddress(pharmacy, {
     unitNumber: 'unitNumb',
     streetNumber: 'street',
@@ -86,7 +86,7 @@ export function buildPharmacyAddress(pharmacy: any): string {
  * @param patient - Patient object with address fields
  * @returns Formatted address string
  */
-export function buildPatientAddress(patient: any): string {
+export function buildPatientAddress(patient: Record<string, unknown>): string {
   return buildAddress(patient, {
     unitNumber: 'address1',
     streetNumber: 'address2',
@@ -98,7 +98,7 @@ export function buildPatientAddress(patient: any): string {
  * @param driver - Driver object with address fields
  * @returns Formatted address string
  */
-export function buildDriverAddress(driver: any): string {
+export function buildDriverAddress(driver: Record<string, unknown>): string {
   return buildAddress(driver, {
     unitNumber: 'unitNumber',
     streetNumber: 'streetAddress',
@@ -110,7 +110,7 @@ export function buildDriverAddress(driver: any): string {
  * @param clinic - Clinic object with address fields
  * @returns Formatted address string
  */
-export function buildClinicAddress(clinic: any): string {
+export function buildClinicAddress(clinic: Record<string, unknown>): string {
   return buildAddress(clinic, {
     unitNumber: 'unitNumber',
     streetNumber: 'streetAddress',
@@ -122,7 +122,7 @@ export function buildClinicAddress(clinic: any): string {
  * @param clinic - Medical Clinic object with address fields
  * @returns Formatted address string
  */
-export function buildMedicalClinicAddress(clinic: any): string {
+export function buildMedicalClinicAddress(clinic: Record<string, unknown>): string {
   return buildAddress(clinic, {
     unitNumber: 'unitNumb',
     streetNumber: 'streetName',

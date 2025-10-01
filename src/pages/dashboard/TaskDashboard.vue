@@ -43,7 +43,7 @@
         <p><strong>2FA:</strong> {{ user?.twoFactorEnabled ? 'Enabled' : 'Disabled' }}</p>
       </div>
     </div>
-  </div>
+    </div>
 </template>
 
 <script setup lang="ts">

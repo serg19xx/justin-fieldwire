@@ -79,7 +79,7 @@ async function handlePasswordChange() {
     } else {
       errorMessage.value = response.data.message || 'Failed to change password'
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Password change error:', error)
     errorMessage.value = error.response?.data?.message || 'Failed to change password'
   } finally {

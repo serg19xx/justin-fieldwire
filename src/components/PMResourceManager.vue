@@ -2,8 +2,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { hrResourcesApi } from '@/core/utils/hr-api'
-import { type ProjectTeamMember } from '@/core/utils/project-api'
-import { useAuthStore } from '@/core/stores/auth'
+// import { type ProjectTeamMember } from '@/core/utils/project-api'
+// import { useAuthStore } from '@/core/stores/auth'
 
 // Props
 interface Props {
@@ -12,7 +12,7 @@ interface Props {
   mode: 'project' | 'task' // Режим: для проекта или для задачи
 }
 
-const props = defineProps<Props>()
+// const props = defineProps<Props>()
 
 // Emits
 const emit = defineEmits<{
@@ -22,7 +22,7 @@ const emit = defineEmits<{
 }>()
 
 // Store
-const authStore = useAuthStore()
+// const authStore = useAuthStore()
 
 // State
 const loading = ref(false)
@@ -72,9 +72,9 @@ const filteredWorkers = computed(() => {
 })
 
 // Проверка активных фильтров
-const hasActiveFilters = computed(() => {
-  return skillFilter.value !== '' || statusFilter.value !== ''
-})
+// const hasActiveFilters = computed(() => {
+//   return skillFilter.value !== '' || statusFilter.value !== ''
+// })
 
 // Загрузка доступных работников
 async function loadAvailableWorkers() {

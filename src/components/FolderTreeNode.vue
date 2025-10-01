@@ -73,9 +73,9 @@ const hasFiles = computed(() => {
   return props.folderFilesCount && props.folderFilesCount[props.folder.id] > 0
 })
 
-const hasContent = computed(() => {
-  return hasChildren.value || hasFiles.value
-})
+// const hasContent = computed(() => {
+//   return hasChildren.value || hasFiles.value
+// })
 
 const isCurrentPath = computed(() => {
   return props.currentPath === `/folder/${props.folder.id}`

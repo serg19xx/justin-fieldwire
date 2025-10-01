@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { apiConfig } from '@/config/api'
 
 const currentEnvironment = computed(() => {
   const hostname = window.location.hostname
-  
+
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
     return 'development'
   } else if (hostname.includes('staging') || hostname.includes('dev')) {
@@ -34,7 +33,7 @@ const showIndicator = computed(() => {
 
 <template>
   <div v-if="showIndicator" class="fixed top-4 right-4 z-50">
-    <div 
+    <div
       :class="[
         'px-3 py-1 rounded-full text-xs font-medium border shadow-sm',
         environmentColor

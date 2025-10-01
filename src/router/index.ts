@@ -1,11 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
 
-// Import layouts
-import GlobalLayout from '@/layouts/GlobalLayout.vue'
-import ProjectLayout from '@/layouts/ProjectLayout.vue'
-import TaskLayout from '@/layouts/TaskLayout.vue'
-
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -22,7 +17,7 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
 
-    // Main application route with dynamic layout
+    // Main application routes
     {
       path: '/',
       redirect: '/dashboard',
@@ -31,142 +26,98 @@ const router = createRouter({
       path: '/dashboard',
       component: () => {
         const authStore = useAuthStore()
-        const category = authStore.currentUser?.role_category
+        const roleCategory = authStore.currentUser?.role_category
 
-        switch (category) {
-          case 'global':
-            return GlobalLayout
-          case 'project':
-            return ProjectLayout
-          case 'task':
-            return TaskLayout
-          default:
-            return GlobalLayout
+        console.log('🔍 Router dashboard debug:', { roleCategory })
+
+        // Global users get GlobalDashboard
+        if (roleCategory === 'global') {
+          return import('../pages/dashboard/GlobalDashboard.vue')
         }
+
+        // Project Managers get ProjectDashboard
+        if (roleCategory === 'project') {
+          return import('../pages/dashboard/ProjectDashboard.vue')
+        }
+
+        // Task Executors get TaskDashboard
+        if (roleCategory === 'task') {
+          return import('../pages/dashboard/TaskDashboard.vue')
+        }
+
+        // Default fallback
+        return import('../pages/dashboard/ProjectDashboard.vue')
       },
-      children: [
-        // Dashboard pages
-        {
-          path: '',
-          component: () => {
-            const authStore = useAuthStore()
-            const category = authStore.currentUser?.role_category
-
-            switch (category) {
-              case 'global':
-                return import('@/pages/dashboard/GlobalDashboard.vue')
-              case 'project':
-                return import('@/pages/dashboard/ProjectDashboard.vue')
-              case 'task':
-                return import('@/pages/dashboard/TaskDashboard.vue')
-              default:
-                return import('@/pages/dashboard/GlobalDashboard.vue')
-            }
-          },
-        },
-
-        // Tasks
-        {
-          path: 'tasks',
-          component: () => import('../pages/tasks/Tasks.vue'),
-        },
-
-        // Reports
-        {
-          path: 'reports',
-          component: () => import('../pages/reports/Reports.vue'),
-        },
-
-        // People/Team
-        {
-          path: 'people',
-          component: () => import('../pages/people/People.vue'),
-        },
-        {
-          path: 'team',
-          component: () => import('../pages/team/Team.vue'),
-        },
-
-        // Account
-        {
-          path: 'account',
-          component: () => import('../pages/account/Account.vue'),
-        },
-
-        // Calendar
-        {
-          path: 'calendar',
-          component: () => import('../pages/calendar/Calendar.vue'),
-        },
-
-        // Photos
-        {
-          path: 'photos',
-          component: () => import('../pages/photos/Photos.vue'),
-        },
-      ],
     },
     {
       path: '/team',
       component: () => {
         const authStore = useAuthStore()
-        const category = authStore.currentUser?.role_category
-
-        switch (category) {
-          case 'global':
-            return GlobalLayout
-          case 'project':
-            return ProjectLayout
-          case 'task':
-            return TaskLayout
-          default:
-            return GlobalLayout
-        }
+        const roleCategory = authStore.currentUser?.role_category
+        return roleCategory === 'global'
+          ? import('../pages/team/TeamAdmin.vue')
+          : import('../pages/team/TeamPrj.vue')
       },
-      children: [
-        {
-          path: '',
-          component: () => import('../pages/team/Team.vue'),
-        },
-      ],
+    },
+    {
+      path: '/tasks',
+      component: () => {
+        const authStore = useAuthStore()
+        const roleCode = authStore.currentUser?.role_code
+
+        console.log('🔍 Router tasks debug:', { roleCode })
+
+        // All users get Tasks.vue for now
+        return import('../pages/tasks/Tasks.vue')
+      },
+    },
+    {
+      path: '/reports',
+      component: () => {
+        const authStore = useAuthStore()
+        const roleCode = authStore.currentUser?.role_code
+
+        console.log('🔍 Router reports debug:', { roleCode })
+
+        // All users get Reports.vue for now
+        return import('../pages/reports/Reports.vue')
+      },
+    },
+    {
+      path: '/account',
+      component: () => {
+        const authStore = useAuthStore()
+        const roleCode = authStore.currentUser?.role_code
+
+        console.log('🔍 Router account debug:', { roleCode })
+
+        // All users get Account.vue for now
+        return import('../pages/account/Account.vue')
+      },
     },
     {
       path: '/projects',
       component: () => {
         const authStore = useAuthStore()
-        const category = authStore.currentUser?.role_category
+        const roleCode = authStore.currentUser?.role_code
 
-        switch (category) {
-          case 'global':
-            return GlobalLayout
-          case 'project':
-            return ProjectLayout
-          case 'task':
-            return TaskLayout
-          default:
-            return GlobalLayout
-        }
+        console.log('🔍 Router projects debug:', { roleCode })
+
+        // All users get ProjectsPrj for now
+        return import('../pages/projects/ProjectsPrj.vue')
       },
-      children: [
-        {
-          path: '',
-          component: () => import('@/pages/projects/Projects.vue'),
-        },
-        {
-          path: ':id',
-          component: () => import('@/pages/projects/ProjectDetail.vue'),
-        },
-      ],
     },
     {
-      path: '/account',
-      component: ProjectLayout,
-      children: [
-        {
-          path: '',
-          component: () => import('../pages/account/Account.vue'),
-        },
-      ],
+      path: '/projects/:id',
+      component: () => {
+        const authStore = useAuthStore()
+        const roleCode = authStore.currentUser?.role_code
+
+        console.log('🔍 Router project detail debug:', { roleCode })
+
+        // All users get ProjectDetailPrj (layout is handled by App.vue)
+        return import('../pages/projects/ProjectDetailPrj.vue')
+      },
     },
   ],
 })

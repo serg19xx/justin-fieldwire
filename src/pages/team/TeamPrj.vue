@@ -1,17 +1,19 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import InviteBuilderDialog from '@/components/InviteBuilderDialog.vue'
 import { hrResourcesApi } from '@/core/utils/hr-api'
-import { type ProjectTeamMember } from '@/core/utils/project-api'
+import { type Worker } from '@/core/utils/hr-api'
 import { type UserType } from '@/core/utils/constants'
 import { useAuthStore } from '@/core/stores/auth'
 
 // Store
 const authStore = useAuthStore()
+const route = useRoute()
 
 // Project workers data
-const builders = ref<ProjectTeamMember[]>([])
+const builders = ref<Worker[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -19,31 +21,19 @@ const error = ref<string | null>(null)
 const searchQuery = ref('')
 const userTypeFilter = ref('')
 const statusFilter = ref('')
+const invitationStatusFilter = ref('')
 const isFiltersOpen = ref(false)
 
-// Computed filtered builders (excluding System Administrator)
+// Computed filtered builders - теперь просто возвращаем данные с сервера
 const filteredBuilders = computed(() => {
   return builders.value
-    .filter((builder) => builder.user_type !== 'System Administrator')
-    .filter((builder) => {
-      const matchesSearch =
-        searchQuery.value === '' ||
-        builder.name.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        builder.email.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
-        (builder.job_title &&
-          builder.job_title.toLowerCase().includes(searchQuery.value.toLowerCase()))
-
-      const matchesType = userTypeFilter.value === '' || builder.user_type === userTypeFilter.value
-      const matchesStatus =
-        statusFilter.value === '' || builder.status.toString() === statusFilter.value
-
-      return matchesSearch && matchesType && matchesStatus
-    })
 })
 
 // Computed для проверки активных фильтров
 const hasActiveFilters = computed(() => {
-  return userTypeFilter.value !== '' || statusFilter.value !== ''
+  return (
+    userTypeFilter.value !== '' || statusFilter.value !== '' || invitationStatusFilter.value !== ''
+  )
 })
 
 // Функция загрузки данных с базы данных
@@ -54,14 +44,72 @@ async function loadBuilders() {
   try {
     console.log('🚀 Loading workers from database for mode:', viewMode.value)
 
-    const response = await hrResourcesApi.getAllUsers(1, 50, {
-      status: 'active',
-    })
+    // Формируем фильтры только для выбранных значений
+    const filters: {
+      sort_by: string
+      sort_order: 'ASC' | 'DESC'
+      status?: string
+      invitation_status?: string
+      view_mode?: string
+      role_code?: string
+      search?: string
+      project_id?: number
+      prj_mngr_id?: number
+    } = {
+      sort_by: 'created_at',
+      sort_order: 'DESC',
+    }
 
-    if ('users' in response && Array.isArray(response.users)) {
-      builders.value = response.users
+    // Добавляем фильтры только если они выбраны
+    if (statusFilter.value && statusFilter.value !== '') {
+      filters.status = statusFilter.value
+    }
+
+    if (invitationStatusFilter.value && invitationStatusFilter.value !== '') {
+      filters.invitation_status = invitationStatusFilter.value
+    } else {
+      // Если фильтр по статусу приглашения не выбран, используем режим просмотра
+      filters.view_mode = viewMode.value
+    }
+
+    if (userTypeFilter.value && userTypeFilter.value !== '') {
+      filters.role_code = userTypeFilter.value
+    }
+
+    if (searchQuery.value && searchQuery.value.trim() !== '') {
+      filters.search = searchQuery.value.trim()
+    }
+
+    // Определяем параметры проекта на основе роли пользователя
+    const userRole = authStore.currentUser?.role_code
+    const userId = authStore.currentUser?.id
+
+    if (userRole === 'project_manager' && userId) {
+      // Если менеджер проекта - передаем его ID
+      filters.prj_mngr_id = userId
+    } else if (route.params.id) {
+      // Если есть ID проекта в роуте - передаем его
+      filters.project_id = parseInt(route.params.id as string)
+    }
+
+    console.log('🔍 Filters being sent to API:', filters)
+
+    const response = await hrResourcesApi.getAllWorkers(1, 50, filters)
+
+    if ('workers' in response && Array.isArray(response.workers)) {
+      builders.value = response.workers
 
       console.log('✅ Project workers loaded from database:', builders.value.length)
+
+      // Логируем статусы приглашений для отладки
+      const statusCounts = builders.value.reduce(
+        (acc: Record<string, number>, builder: Worker) => {
+          acc[builder.invitation_status] = (acc[builder.invitation_status] || 0) + 1
+          return acc
+        },
+        {} as Record<string, number>,
+      )
+      console.log('📊 Invitation status counts:', statusCounts)
     } else {
       throw new Error('Invalid response format')
     }
@@ -75,7 +123,7 @@ async function loadBuilders() {
 }
 
 // Сброс при изменении фильтров
-watch([searchQuery, userTypeFilter, statusFilter], () => {
+watch([searchQuery, userTypeFilter, statusFilter, invitationStatusFilter], () => {
   loadBuilders()
 })
 
@@ -86,24 +134,31 @@ onMounted(() => {
 
 // User type options for filter
 const userTypeOptions = [
-  'Architect',
-  'Project Manager',
-  'General Contractor',
-  'Trade Contractor',
-  'Client',
+  'architect',
+  'project_manager',
+  'general_contractor',
+  'contractor',
+  'client',
 ]
+
+// Get role display name from API data
+function getRoleDisplayName(roleCode: string): string {
+  // Найдем роль в данных и вернем role_name
+  const builder = builders.value.find((b) => b.role_code === roleCode)
+  return builder?.role_name || roleCode
+}
 
 function getUserTypeColor(userType: UserType) {
   switch (userType) {
-    case 'Architect':
+    case 'architect':
       return 'bg-purple-100 text-purple-800'
-    case 'Project Manager':
+    case 'project_manager':
       return 'bg-blue-100 text-blue-800'
-    case 'General Contractor':
+    case 'general_contractor':
       return 'bg-green-100 text-green-800'
-    case 'Trade Contractor':
+    case 'contractor':
       return 'bg-yellow-100 text-yellow-800'
-    case 'Client':
+    case 'client':
       return 'bg-gray-100 text-gray-800'
     default:
       return 'bg-gray-100 text-gray-800'
@@ -120,16 +175,16 @@ function formatDate(dateString: string) {
 
 // Check if job title is required for user type
 function isJobTitleRequired(userType: UserType): boolean {
-  return userType === 'Trade Contractor'
+  return userType === 'contractor'
 }
 
 // Get job title display with validation
-function getJobTitleDisplay(builder: ProjectTeamMember): string {
+function getJobTitleDisplay(builder: Worker): string {
   if (builder.job_title) {
     return builder.job_title
   }
 
-  if (isJobTitleRequired(builder.user_type as UserType)) {
+  if (isJobTitleRequired(builder.role_code as UserType)) {
     return 'Required'
   }
 
@@ -137,12 +192,12 @@ function getJobTitleDisplay(builder: ProjectTeamMember): string {
 }
 
 // Get job title display class
-function getJobTitleClass(builder: ProjectTeamMember): string {
+function getJobTitleClass(builder: Worker): string {
   if (builder.job_title) {
     return 'text-sm text-gray-900'
   }
 
-  if (isJobTitleRequired(builder.user_type as UserType)) {
+  if (isJobTitleRequired(builder.role_code as UserType)) {
     return 'text-sm text-red-600 font-medium'
   }
 
@@ -157,6 +212,7 @@ function clearFilters() {
   searchQuery.value = ''
   userTypeFilter.value = ''
   statusFilter.value = ''
+  invitationStatusFilter.value = ''
 }
 
 // Dialog state
@@ -170,17 +226,6 @@ const showHRManager = ref(false)
 const hrManagerMode = ref<'project' | 'task'>('project')
 
 // Computed properties
-const isProjectManager = computed(() => {
-  return authStore.currentUser?.user_type === 'Project Manager'
-})
-
-const isAdmin = computed(() => {
-  return authStore.currentUser?.user_type === 'System Administrator'
-})
-
-const canManageHR = computed(() => {
-  return isProjectManager.value || isAdmin.value
-})
 
 function openInviteDialog() {
   isInviteDialogOpen.value = true
@@ -192,16 +237,10 @@ function closeInviteDialog() {
 
 function toggleViewMode() {
   viewMode.value = viewMode.value === 'registered' ? 'pending' : 'registered'
-}
-
-// HR Manager functions
-function openHRManager(mode: 'project' | 'task' = 'project') {
-  hrManagerMode.value = mode
-  showHRManager.value = true
-}
-
-function closeHRManager() {
-  showHRManager.value = false
+  // Сбрасываем фильтры при переключении режимов
+  userTypeFilter.value = ''
+  statusFilter.value = ''
+  invitationStatusFilter.value = ''
 }
 
 function handleWorkerSelected(worker: Worker) {
@@ -212,7 +251,6 @@ function handleWorkerSelected(worker: Worker) {
 function handleWorkersInvited(workers: Worker[]) {
   console.log('Workers invited:', workers)
   // Здесь можно добавить логику для отправки приглашений
-  closeHRManager()
 }
 
 function handleInviteSent(data: {
@@ -226,18 +264,36 @@ function handleInviteSent(data: {
   console.log('Invitation sent to:', data.email)
 
   // Добавляем нового работника в список без обращения к серверу
-  const newBuilder: ProjectTeamMember = {
+  const newBuilder: Worker = {
     id: Date.now(), // Временный ID
-    project_id: 0,
-    user_id: 0,
-    role: 'member',
-    added_at: new Date().toISOString(),
-    added_by: 0,
-    name: `${data.firstName} ${data.lastName}`,
     email: data.email,
-    user_type: data.userType,
+    first_name: data.firstName,
+    last_name: data.lastName,
+    phone: data.phone || '',
+    role_id: 0,
     job_title: data.specialization || '',
-    status: 0, // pending status
+    status: 0,
+    two_factor_enabled: false,
+    last_login: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    invitation_status: 'invited',
+    invitation_sent_at: new Date().toISOString(),
+    invitation_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    invited_by: 0,
+    registration_completed_at: null,
+    invitation_attempts: 0,
+    last_reminder_sent_at: null,
+    archived_at: null,
+    role_code: 'contractor',
+    role_name: 'Contractor',
+    role_category: 'task',
+    role_description: null,
+    status_reason: null,
+    status_details: null,
+    additional_info: null,
+    avatar_url: null,
+    two_factor_secret: null,
   }
 
   builders.value.unshift(newBuilder)
@@ -245,12 +301,12 @@ function handleInviteSent(data: {
 
 // Функция для изменения статуса пользователя
 function toggleBuilderStatus(builderId: number, currentStatus: string) {
-  const newStatus = currentStatus === 'active' ? 0 : 1
+  const newStatus = currentStatus === 'active' ? 'registered' : 'invited'
 
   // Обновляем локальное состояние
   const builder = builders.value.find((b) => b.id === builderId)
   if (builder) {
-    builder.status = newStatus
+    builder.invitation_status = newStatus
   }
 
   console.log(`Status updated for builder ${builderId}: ${newStatus}`)
@@ -340,22 +396,6 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
             <span>{{ viewMode === 'pending' ? 'Pending' : 'Registered' }}</span>
           </button>
 
-          <!-- HR Manager Buttons (for PM and Admin) -->
-          <div v-if="canManageHR" class="flex items-center space-x-2">
-            <button
-              @click="openHRManager('project')"
-              class="bg-green-600 text-white px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-md hover:bg-green-700 transition-colors text-xs sm:text-sm"
-            >
-              HR Resources
-            </button>
-            <button
-              @click="openHRManager('task')"
-              class="bg-purple-600 text-white px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-md hover:bg-purple-700 transition-colors text-xs sm:text-sm"
-            >
-              Task Team
-            </button>
-          </div>
-
           <!-- Add Builder Button -->
           <button
             @click="openInviteDialog"
@@ -377,19 +417,35 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
             >
               <option value="">All Types</option>
               <option v-for="type in userTypeOptions" :key="type" :value="type">
-                {{ type }}
+                {{ getRoleDisplayName(type) }}
               </option>
             </select>
           </div>
           <div>
-            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Status</label>
+            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
+              >User Status</label
+            >
             <select
               v-model="statusFilter"
               class="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
             >
-              <option value="">All Statuses</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="">All User Statuses</option>
+              <option value="1">Active</option>
+              <option value="0">Inactive</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
+              >Invitation Status</label
+            >
+            <select
+              v-model="invitationStatusFilter"
+              class="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
+            >
+              <option value="">All Invitation Statuses</option>
+              <option value="registered">Registered</option>
+              <option value="invited">Invited</option>
+              <option value="expired">Expired</option>
             </select>
           </div>
           <div class="flex items-end">
@@ -479,7 +535,12 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
               <th
                 class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32"
               >
-                Status
+                User Status
+              </th>
+              <th
+                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32"
+              >
+                Invitation
               </th>
               <th
                 class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40"
@@ -497,7 +558,7 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
                   >
                     <span class="text-white text-xs font-medium">
                       {{
-                        builder.name
+                        (builder.first_name + ' ' + builder.last_name)
                           .split(' ')
                           .map((n) => n.charAt(0))
                           .join('')
@@ -506,7 +567,7 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
                   </div>
                   <div class="ml-3 min-w-0 flex-1">
                     <div class="text-sm font-medium text-gray-900 truncate">
-                      {{ builder.name }}
+                      {{ builder.first_name + ' ' + builder.last_name }}
                     </div>
                     <div class="text-sm text-gray-500 truncate">ID: {{ builder.id }}</div>
                   </div>
@@ -517,10 +578,10 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-48">
                 <span
-                  :class="getUserTypeColor(builder.user_type as UserType)"
+                  :class="getUserTypeColor(builder.role_code as UserType)"
                   class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                 >
-                  {{ builder.user_type }}
+                  {{ builder.role_name }}
                 </span>
                 <div :class="getJobTitleClass(builder)" class="text-sm truncate mt-1">
                   {{ getJobTitleDisplay(builder) }}
@@ -545,9 +606,27 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
                   </span>
                 </div>
               </td>
+              <td class="px-4 py-4 whitespace-nowrap w-32">
+                <span
+                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                  :class="{
+                    'bg-green-100 text-green-800': builder.invitation_status === 'registered',
+                    'bg-yellow-100 text-yellow-800': builder.invitation_status === 'invited',
+                    'bg-red-100 text-red-800': builder.invitation_status === 'expired',
+                  }"
+                >
+                  {{
+                    builder.invitation_status === 'registered'
+                      ? 'Registered'
+                      : builder.invitation_status === 'invited'
+                        ? 'Invited'
+                        : 'Expired'
+                  }}
+                </span>
+              </td>
               <td class="px-4 py-4 whitespace-nowrap w-40">
                 <span v-if="viewMode === 'pending'" class="text-sm text-gray-500 truncate">
-                  {{ formatDate(builder.added_at) }}
+                  {{ formatDate(builder.created_at) }}
                 </span>
                 <span class="text-sm text-gray-400">N/A</span>
               </td>
@@ -567,7 +646,7 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
               >
                 <span class="text-white text-sm font-medium">
                   {{
-                    builder.name
+                    (builder.first_name + ' ' + builder.last_name)
                       .split(' ')
                       .map((n) => n.charAt(0))
                       .join('')
@@ -580,7 +659,7 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
                 <div class="flex items-center justify-between mb-2">
                   <div>
                     <h4 class="text-sm font-medium text-gray-900">
-                      {{ builder.name }}
+                      {{ builder.first_name + ' ' + builder.last_name }}
                     </h4>
                     <p class="text-sm text-gray-500">ID: {{ builder.id }}</p>
                   </div>
@@ -607,10 +686,10 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
                 <!-- Type and Job Title -->
                 <div class="flex flex-wrap items-center gap-2 mb-2">
                   <span
-                    :class="getUserTypeColor(builder.user_type as UserType)"
+                    :class="getUserTypeColor(builder.role_code as UserType)"
                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                   >
-                    {{ builder.user_type }}
+                    {{ builder.role_name }}
                   </span>
                   <div :class="getJobTitleClass(builder)" class="text-xs">
                     {{ getJobTitleDisplay(builder) }}
@@ -635,7 +714,7 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
         :mode="hrManagerMode"
         @worker-selected="handleWorkerSelected"
         @workers-invited="handleWorkersInvited"
-        @close="closeHRManager"
+        @close="closeInviteDialog"
       />
     </div>
 

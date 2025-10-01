@@ -48,7 +48,7 @@ export async function checkSessionWithAPI(token: string): Promise<SessionCheckRe
     } else {
       return { isValid: false, error: 'Session invalid' }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Session check API error:', error)
 
     // Handle 401 Unauthorized

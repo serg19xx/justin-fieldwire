@@ -15,14 +15,18 @@
           <RouterLink to="/" class="hover:opacity-80">
             <h1 class="text-lg font-semibold text-white hidden lg:block">FieldWire - Task</h1>
           </RouterLink>
+          <div class="hidden md:flex items-center space-x-2">
+            <span class="text-xs font-medium text-orange-100 uppercase tracking-wider">Task Executor</span>
+            <div class="w-2 h-2 bg-orange-300 rounded-full"></div>
+          </div>
         </div>
 
         <!-- Desktop Navigation -->
         <nav class="hidden lg:flex items-center space-x-6">
           <RouterLink
-            to="/"
+            to="/dashboard"
             class="text-sm font-medium text-white hover:text-orange-100 px-3 py-2 rounded-md"
-            :class="{ 'bg-orange-700 text-white': $route.path === '/' }"
+            :class="{ 'bg-orange-700 text-white': $route.path === '/dashboard' }"
           >
             Dashboard
           </RouterLink>
@@ -34,18 +38,11 @@
             My Tasks
           </RouterLink>
           <RouterLink
-            to="/calendar"
+            to="/reports"
             class="text-sm font-medium text-white hover:text-orange-100 px-3 py-2 rounded-md"
-            :class="{ 'bg-orange-700 text-white': $route.path === '/calendar' }"
+            :class="{ 'bg-orange-700 text-white': $route.path === '/reports' }"
           >
-            Calendar
-          </RouterLink>
-          <RouterLink
-            to="/photos"
-            class="text-sm font-medium text-white hover:text-orange-100 px-3 py-2 rounded-md"
-            :class="{ 'bg-orange-700 text-white': $route.path === '/photos' }"
-          >
-            Photos
+            Reports
           </RouterLink>
         </nav>
 
@@ -82,9 +79,56 @@
       </div>
     </header>
 
+    <!-- Mobile Menu -->
+    <div
+      v-if="isMobileMenuOpen"
+      class="lg:hidden fixed inset-0 z-40 bg-black bg-opacity-50"
+      @click="closeMobileMenu"
+    >
+      <div class="fixed inset-y-0 left-0 w-64 bg-white shadow-lg" @click.stop>
+        <div class="flex items-center justify-between p-4 border-b">
+          <h2 class="text-lg font-semibold text-gray-900">Menu</h2>
+          <button @click="closeMobileMenu" class="text-gray-500 hover:text-gray-700">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
+            </svg>
+          </button>
+        </div>
+
+        <nav class="mt-4">
+          <RouterLink
+            to="/dashboard"
+            @click="closeMobileMenu"
+            class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-orange-500"
+          >
+            Dashboard
+          </RouterLink>
+          <RouterLink
+            to="/tasks"
+            @click="closeMobileMenu"
+            class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-orange-500"
+          >
+            My Tasks
+          </RouterLink>
+          <RouterLink
+            to="/reports"
+            @click="closeMobileMenu"
+            class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-orange-500"
+          >
+            Reports
+          </RouterLink>
+        </nav>
+      </div>
+    </div>
+
     <!-- Main content -->
     <main class="pt-12 min-h-screen">
-      <RouterView />
+      <slot />
     </main>
   </div>
 </template>

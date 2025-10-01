@@ -3,7 +3,6 @@
  */
 
 import { checkSessionWithAPI, checkSessionLocally, getStoredToken } from './session-utils'
-import { isTokenExpired } from './jwt-utils'
 
 export interface SessionManagerConfig {
   checkInterval: number // Interval in milliseconds (default: 5 minutes)
