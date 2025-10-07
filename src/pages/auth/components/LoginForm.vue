@@ -126,9 +126,9 @@ async function handleLogin() {
     const result = await authStore.login(loginForm.email, loginForm.password)
 
     if (result.success) {
-      if (result.requires2FA) {
+      if (result.requires2FA && result.user) {
         // Показать диалог 2FA
-        emit('showTwoFactor', result.user)
+        emit('showTwoFactor', result.user as unknown as Record<string, unknown>)
         return
       }
 

@@ -42,7 +42,7 @@
               "
             >
               <div class="flex flex-col items-center text-center h-full">
-                <div class="text-3xl mb-2 flex-shrink-0">{{ getFolderIcon(folder.name) }}</div>
+                <div class="text-3xl mb-2 flex-shrink-0">{{ getFolderIcon() }}</div>
                 <h3
                   class="text-xs font-medium text-gray-900 truncate w-full flex-shrink-0"
                   :title="folder.name"
@@ -192,7 +192,7 @@
                 >
                   <div style="width: 400px; padding: 8px; display: flex; align-items: center">
                     <span style="margin-right: 12px; font-size: 18px">{{
-                      getFolderIcon(folder.name)
+                      getFolderIcon()
                     }}</span>
                     <span
                       style="
@@ -227,9 +227,6 @@
                   <div style="width: 300px; padding: 8px; color: #6b7280"></div>
                   <div style="width: 100px; text-align: right; padding: 8px">
                     <button
-                      @click.stop="
-                        startRename({ id: folder.id, type: 'folder', name: folder.name })
-                      "
                       style="
                         color: #2563eb;
                         padding: 4px;
@@ -345,7 +342,6 @@
                       📝
                     </button>
                     <button
-                      @click.stop="startRename({ id: file.id, type: 'file', name: file.file_name })"
                       style="
                         color: #2563eb;
                         padding: 4px;
@@ -1008,7 +1004,7 @@ function moveFileInTree(fileId: number, newFolderId: number) {
 
   if (removeFromFolder(folders.value) && fileToMove) {
     // Update file's folder_id
-    fileToMove.folder_id = newFolderId
+    (fileToMove as FileUpload).folder_id = newFolderId
 
     // Add file to new location
     addFileToTree(fileToMove)
@@ -1045,7 +1041,7 @@ function moveFolderInTree(folderId: number, newParentId: number) {
   if (removeFromParent(folders.value) && folderToMove) {
     // Update folder's parent_id
     if (folderToMove) {
-      folderToMove.parent_id = newParentId
+      (folderToMove as Folder).parent_id = newParentId
     }
 
     // Add folder to new location
@@ -1110,7 +1106,7 @@ function copyFolderInTree(folderId: number, newParentId: number, newName?: strin
   if (findFolder(folders.value) && folderToCopy) {
     // Update folder's parent_id
     if (folderToCopy) {
-      folderToCopy.parent_id = newParentId
+      (folderToCopy as Folder).parent_id = newParentId
     }
 
     // Add copied folder to new location
@@ -1230,29 +1226,6 @@ async function createFolder() {
   }
 }
 
-async function editFolder(folder: Folder) {
-  const newName = prompt('Enter new folder name:', folder.name)
-  if (!newName || newName.trim() === folder.name) return
-
-  try {
-    // Update folder in memory only
-    const updatedFolder: Folder = {
-      ...folder,
-      name: newName.trim(),
-      updated_at: new Date().toISOString(),
-    }
-
-    const index = folders.value.findIndex((f) => f.id === folder.id)
-    if (index !== -1) {
-      folders.value[index] = updatedFolder
-    }
-
-    console.log('📁 Folder renamed in memory:', updatedFolder)
-  } catch (error) {
-    console.error('Failed to update folder:', error)
-    alert('Failed to rename folder. Please try again.')
-  }
-}
 
 async function deleteFolder(folder: Folder) {
   if (
@@ -1404,10 +1377,6 @@ async function previewFile(file: FileUpload) {
   }
 }
 
-async function moveFile(file: FileUpload) {
-  // TODO: Implement file move functionality
-  alert('Move file functionality will be implemented')
-}
 
 async function deleteFile(file: FileUpload) {
   if (!confirm(`Are you sure you want to delete "${file.file_name}"?`)) {
@@ -1455,15 +1424,6 @@ function showFileContextMenu(event: MouseEvent, file: FileUpload) {
   console.log('File context menu:', file)
 }
 
-// Selection and clipboard methods
-function toggleFileSelection(file: FileUpload) {
-  const index = selectedItems.value.findIndex((item) => item.id === file.id && item.type === 'file')
-  if (index >= 0) {
-    selectedItems.value.splice(index, 1)
-  } else {
-    selectedItems.value.push({ id: file.id, type: 'file' })
-  }
-}
 
 // Handle single click on folders
 function handleFolderClick(folder: Folder) {
@@ -1532,11 +1492,6 @@ function selectAll() {
   console.log('📋 All items selected:', allItems.length)
 }
 
-// Clear clipboard manually
-function clearClipboard() {
-  clipboard.value = []
-  console.log('🗑️ Clipboard cleared manually')
-}
 
 // Format date for display
 function formatDate(dateString: string): string {
@@ -1579,11 +1534,6 @@ function truncateFileName(fileName: string, maxLength: number = 30): string {
   return nameWithoutExt.substring(0, availableForName) + '...' + extension
 }
 
-// Toggle description expansion
-function toggleDescription(fileId: number) {
-  // This could be expanded to show a modal or tooltip with full description
-  console.log('Toggle description for file:', fileId)
-}
 
 // Rename functionality is handled by parent ProjectDetail component
 
@@ -1654,43 +1604,7 @@ function openFile(file: FileUpload) {
   previewFile(file)
 }
 
-// Create download link for file (for copy/paste functionality)
-function createDownloadLink(file: FileUpload): string {
-  // In a real system, this would create a proper download URL
-  // For now, we'll create a data URL or blob URL
-  const fileExtension = file.file_name.split('.').pop()?.toLowerCase()
-  const mimeType = getMimeTypeFromExtension(fileExtension)
 
-  // Create a simple text content for demonstration
-  const content = `This is a mock file: ${file.file_name}\nSize: ${file.file_size} bytes\nType: ${file.mime_type}\nCreated: ${file.created_at}`
-
-  const blob = new Blob([content], { type: mimeType })
-  const url = URL.createObjectURL(blob)
-
-  return url
-}
-
-// Get MIME type from file extension
-function getMimeTypeFromExtension(extension: string | undefined): string {
-  const mimeTypes: { [key: string]: string } = {
-    pdf: 'application/pdf',
-    doc: 'application/msword',
-    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    xls: 'application/vnd.ms-excel',
-    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    csv: 'text/csv',
-    ppt: 'application/vnd.ms-powerpoint',
-    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    txt: 'text/plain',
-    png: 'image/png',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    gif: 'image/gif',
-    svg: 'image/svg+xml',
-  }
-
-  return mimeTypes[extension || ''] || 'application/octet-stream'
-}
 
 async function deleteSelected() {
   console.log('🗑️ deleteSelected called, selectedItems:', selectedItems.value)
@@ -1766,29 +1680,6 @@ function copySelected() {
   console.log('📋 Items copied to clipboard:', clipboard.value)
 }
 
-// Move selected items (permanent move in file system)
-function moveSelected() {
-  if (selectedItems.value.length === 0) {
-    console.log('❌ No items selected for move')
-    return
-  }
-
-  // Store items to move and show dialog
-  moveItems.value = [...selectedItems.value]
-  moveDestinationFolderId.value = null
-  showMoveDialog.value = true
-
-  console.log('📁 Moving items to new location:', moveItems.value)
-  console.log('📁 Show move dialog:', showMoveDialog.value)
-
-  // Debug: Show all available folders
-  const allFolders = getAllFoldersFlat()
-  console.log(
-    '📁 All available folders:',
-    allFolders.map((f) => ({ id: f.id, name: f.name, parent_id: f.parent_id })),
-  )
-  console.log('📁 Available folders count:', allFolders.length)
-}
 
 // Execute move operation
 async function executeMove() {
@@ -1957,7 +1848,6 @@ function cutSelected() {
 // Check if file/folder exists in destination
 function checkItemExists(
   item: { id: number; type: 'file' | 'folder' },
-  destinationPath: string,
 ): boolean {
   if (item.type === 'file') {
     const file = files.value.find((f) => f.id === item.id)
@@ -1965,7 +1855,7 @@ function checkItemExists(
 
     const existingFile = files.value.find(
       (f) =>
-        f.folder_path === destinationPath && f.file_name === file.file_name && f.id !== file.id,
+        f.folder_id === getCurrentFolderId() && f.file_name === file.file_name && f.id !== file.id,
     )
     return !!existingFile
   } else {
@@ -1974,8 +1864,8 @@ function checkItemExists(
 
     const existingFolder = folders.value.find(
       (f) =>
-        f.parent_path === destinationPath &&
-        f.folder_name === folder.folder_name &&
+        f.parent_id === getCurrentFolderId() &&
+        f.name === folder.name &&
         f.id !== folder.id,
     )
     return !!existingFolder
@@ -1985,13 +1875,12 @@ function checkItemExists(
 // Handle file/folder name conflicts
 function handleNameConflict(
   item: { id: number; type: 'file' | 'folder' },
-  destinationPath: string,
 ): Promise<'replace' | 'rename' | 'cancel'> {
   return new Promise((resolve) => {
     const itemName =
       item.type === 'file'
         ? files.value.find((f) => f.id === item.id)?.file_name || 'Unknown'
-        : folders.value.find((f) => f.id === item.id)?.folder_name || 'Unknown'
+        : folders.value.find((f) => f.id === item.id)?.name || 'Unknown'
 
     const message = `${item.type === 'file' ? 'File' : 'Folder'} "${itemName}" already exists in destination.\n\nWhat would you like to do?`
 
@@ -2030,8 +1919,8 @@ function generateUniqueName(
   while (true) {
     const exists =
       type === 'file'
-        ? files.value.some((f) => f.folder_path === destinationPath && f.file_name === newName)
-        : folders.value.some((f) => f.parent_path === destinationPath && f.folder_name === newName)
+        ? files.value.some((f) => f.folder_id === getCurrentFolderId() && f.file_name === newName)
+        : folders.value.some((f) => f.parent_id === getCurrentFolderId() && f.name === newName)
 
     if (!exists) break
 
@@ -2042,22 +1931,6 @@ function generateUniqueName(
   return newName
 }
 
-function downloadSelected() {
-  if (selectedItems.value.length === 0) {
-    console.log('❌ No items selected for download')
-    return
-  }
-
-  // Download selected files
-  selectedItems.value.forEach(async (item) => {
-    if (item.type === 'file') {
-      const file = files.value.find((f) => f.id === item.id)
-      if (file) {
-        await downloadFile(file)
-      }
-    }
-  })
-}
 
 async function pasteToCurrentFolder() {
   if (clipboard.value.length === 0) {
@@ -2085,8 +1958,8 @@ async function executePasteToFolder(destinationFolderId: number) {
       console.log('Processing item:', item)
 
       // Check for conflicts
-      if (checkItemExists(item, currentPath.value)) {
-        const conflictResolution = await handleNameConflict(item, currentPath.value)
+      if (checkItemExists(item)) {
+        const conflictResolution = await handleNameConflict(item)
 
         if (conflictResolution === 'cancel') {
           console.log('❌ Operation cancelled by user')
@@ -2098,7 +1971,7 @@ async function executePasteToFolder(destinationFolderId: number) {
           if (item.type === 'file') {
             const existingFile = files.value.find(
               (f) =>
-                f.folder_path === currentPath.value &&
+                f.folder_id === getCurrentFolderId() &&
                 f.file_name === files.value.find((f) => f.id === item.id)?.file_name,
             )
             if (existingFile) {
@@ -2109,13 +1982,13 @@ async function executePasteToFolder(destinationFolderId: number) {
           } else {
             const existingFolder = folders.value.find(
               (f) =>
-                f.parent_path === currentPath.value &&
-                f.folder_name === folders.value.find((f) => f.id === item.id)?.folder_name,
+                f.parent_id === getCurrentFolderId() &&
+                f.name === folders.value.find((f) => f.id === item.id)?.name,
             )
             if (existingFolder) {
               const index = folders.value.indexOf(existingFolder)
               folders.value.splice(index, 1)
-              console.log('🗑️ Replaced existing folder:', existingFolder.folder_name)
+              console.log('🗑️ Replaced existing folder:', existingFolder.name)
             }
           }
         } else if (conflictResolution === 'rename') {
@@ -2123,7 +1996,7 @@ async function executePasteToFolder(destinationFolderId: number) {
           const originalName =
             item.type === 'file'
               ? files.value.find((f) => f.id === item.id)?.file_name || 'Unknown'
-              : folders.value.find((f) => f.id === item.id)?.folder_name || 'Unknown'
+              : folders.value.find((f) => f.id === item.id)?.name || 'Unknown'
 
           const uniqueName = generateUniqueName(originalName, currentPath.value, item.type)
           console.log(`📝 Renaming to: ${uniqueName}`)
@@ -2222,154 +2095,8 @@ async function executePasteToFolder(destinationFolderId: number) {
   }
 }
 
-// Create new document function
-async function createNewDocument() {
-  // Trigger file input for document upload (interface only, no server)
-  const input = document.createElement('input')
-  input.type = 'file'
 
-  // Allow only supported file types
-  input.accept =
-    '.pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.txt,.md,.json,.xml,.png,.jpg,.jpeg,.gif,.svg,.zip,.rar,.7z,.tar,.gz,.dwg,.dxf,.skp,.step,.stp'
-  input.multiple = true // Allow multiple files
 
-  input.onchange = async (event) => {
-    const target = event.target as HTMLInputElement
-    const selectedFiles = Array.from(target.files || [])
-    if (selectedFiles.length > 0) {
-      await handleFilesSelected(selectedFiles)
-    }
-  }
-
-  input.click()
-}
-
-// Check if file type is supported
-function isFileTypeSupported(file: File): boolean {
-  const supportedExtensions = [
-    '.pdf',
-    '.doc',
-    '.docx',
-    '.xls',
-    '.xlsx',
-    '.csv',
-    '.ppt',
-    '.pptx',
-    '.txt',
-    '.md',
-    '.json',
-    '.xml',
-    '.png',
-    '.jpg',
-    '.jpeg',
-    '.gif',
-    '.svg',
-    '.zip',
-    '.rar',
-    '.7z',
-    '.tar',
-    '.gz',
-    '.dwg',
-    '.dxf',
-    '.skp',
-    '.step',
-    '.stp',
-  ]
-
-  const fileName = file.name.toLowerCase()
-  return supportedExtensions.some((ext) => fileName.endsWith(ext))
-}
-
-// Handle files selected for upload
-async function handleFilesSelected(selectedFiles: File[]) {
-  if (selectedFiles.length > 0) {
-    // Filter only supported file types
-    const supportedFiles = selectedFiles.filter(isFileTypeSupported)
-    const unsupportedFiles = selectedFiles.filter((file) => !isFileTypeSupported(file))
-
-    if (unsupportedFiles.length > 0) {
-      console.warn(
-        'Unsupported file types:',
-        unsupportedFiles.map((f) => f.name),
-      )
-      alert(`Unsupported file types: ${unsupportedFiles.map((f) => f.name).join(', ')}`)
-    }
-
-    if (supportedFiles.length === 0) {
-      return
-    }
-
-    // Get current path from FolderManager
-    const currentFolderPath = currentPath.value || '/'
-
-    // Upload files to server via API
-    for (const file of supportedFiles) {
-      try {
-        console.log('📄 Uploading file:', file.name)
-        // Determine category based on file type
-        let category = 'document'
-        if (file.type.startsWith('image/')) {
-          category = 'image'
-        } else if (file.type.includes('pdf')) {
-          category = 'pdf'
-        } else if (
-          file.type.includes('excel') ||
-          file.type.includes('spreadsheet') ||
-          file.name.endsWith('.xls') ||
-          file.name.endsWith('.xlsx')
-        ) {
-          category = 'spreadsheet'
-        } else if (
-          file.type.includes('word') ||
-          file.name.endsWith('.doc') ||
-          file.name.endsWith('.docx')
-        ) {
-          category = 'document'
-        } else if (
-          file.type.includes('powerpoint') ||
-          file.name.endsWith('.ppt') ||
-          file.name.endsWith('.pptx')
-        ) {
-          category = 'presentation'
-        } else if (file.name.endsWith('.dwg') || file.name.endsWith('.dxf')) {
-          category = 'drawing'
-        } else if (file.type.includes('video/')) {
-          category = 'video'
-        } else if (file.type.includes('audio/')) {
-          category = 'audio'
-        } else if (
-          file.type.includes('zip') ||
-          file.type.includes('rar') ||
-          file.type.includes('7z')
-        ) {
-          category = 'archive'
-        }
-
-        // Get current folder ID
-        const currentFolderId = getCurrentFolderId()
-
-        // Upload file via API
-        const uploadedFile = await filesApi.uploadFile(file, currentFolderId, {
-          fileName: file.name,
-          description: '',
-          category: category,
-          version: '1.0',
-        })
-
-        console.log('✅ File uploaded successfully:', uploadedFile)
-
-        // Add file to tree structure
-        addFileToTree(uploadedFile)
-
-        // Refresh the current path to show the new file
-        await loadCurrentPath()
-      } catch (error) {
-        console.error('❌ Failed to upload file:', file.name, error)
-        alert(`Failed to upload file: ${file.name}`)
-      }
-    }
-  }
-}
 
 // Helper function to get current folder ID
 function getCurrentFolderId(): number {

@@ -114,9 +114,9 @@ function handleKeydown(event: KeyboardEvent) {
 <template>
   <div
     v-if="isOpen"
-    class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+    class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-2 sm:p-4"
   >
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+    <div class="relative mx-auto p-4 sm:p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
       <div class="mt-3 text-center">
         <!-- Header -->
         <div

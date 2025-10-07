@@ -214,7 +214,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch } from 'vue'
 
 interface Patient {
   id: string
@@ -278,11 +278,11 @@ watch(
         email: newPatient.email || '',
         phone: newPatient.phone || '',
         cell: newPatient.cell || '',
-        dateOfBirth: newPatient.birthday || '',
-        streetAddress: newPatient.address1 || '',
+        dateOfBirth: newPatient.dateOfBirth || '',
+        streetAddress: newPatient.streetAddress || '',
         city: newPatient.city || '',
         province: newPatient.province || '',
-        postalCode: newPatient.postal || '',
+        postalCode: newPatient.postalCode || '',
         country: newPatient.country || '',
         allergies: newPatient.allergies || '',
         status: newPatient.status || 'active',
@@ -311,11 +311,11 @@ async function handleSubmit() {
       email: form.value.email,
       phone: form.value.phone,
       cell: form.value.cell,
-      birthday: form.value.dateOfBirth,
-      address1: form.value.streetAddress,
+      dateOfBirth: form.value.dateOfBirth,
+      streetAddress: form.value.streetAddress,
       city: form.value.city,
       province: form.value.province,
-      postal: form.value.postalCode,
+      postalCode: form.value.postalCode,
       country: form.value.country,
       status: form.value.status,
       additionalInfo: form.value.additionalInfo,

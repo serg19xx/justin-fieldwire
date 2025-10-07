@@ -357,8 +357,8 @@ function resetSettings() {
 }
 
 const canEditProject = computed(() => {
-  const userType = authStore.currentUser?.user_type
-  const canEdit = userType === 'Project Manager' || userType === 'System Administrator'
+  const userType = authStore.currentUser?.role_code
+  const canEdit = userType === 'project_manager' || userType === 'admin'
   console.log('🔧 canEditProject check:', { userType, canEdit, currentUser: authStore.currentUser })
 
   // Temporary: always return true for debugging
@@ -2704,6 +2704,7 @@ watch(
           }
         : null
     "
+    :file="selectedFile"
     @close="closeFileUploadDialog"
     @upload="handleFileUpload"
   />

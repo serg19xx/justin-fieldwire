@@ -1,7 +1,7 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { projectHrApi, type ProjectWorker, type ProjectTeamMember } from '@/core/utils/project-hr-api'
+import { hrResourcesApi, type WorkerUser } from '@/core/utils/hr-api'
 import { useAuthStore } from '@/core/stores/auth'
 
 // Props
@@ -9,8 +9,8 @@ interface Props {
   projectId?: number
   taskId?: number
   mode: 'project' | 'task' | 'general' // Режим: для проекта, задачи или общий пул
-  onWorkerSelected?: (worker: ProjectWorker) => void
-  onWorkersInvited?: (workers: ProjectWorker[]) => void
+  onWorkerSelected?: (worker: WorkerUser) => void
+  onWorkersInvited?: (workers: WorkerUser[]) => void
   onClose?: () => void
 }
 
@@ -18,8 +18,8 @@ const props = defineProps<Props>()
 
 // Emits
 const emit = defineEmits<{
-  workerSelected: [worker: ProjectWorker]
-  workersInvited: [workers: ProjectWorker[]]
+  workerSelected: [worker: WorkerUser]
+  workersInvited: [workers: WorkerUser[]]
   close: []
 }>()
 
@@ -37,9 +37,9 @@ const skillsFilter = ref<string[]>([])
 const isFiltersOpen = ref(false)
 
 // Available workers
-const availableWorkers = ref<ProjectWorker[]>([])
-const selectedWorkers = ref<ProjectWorker[]>([])
-const projectTeam = ref<ProjectTeamMember[]>([])
+const availableWorkers = ref<WorkerUser[]>([])
+const selectedWorkers = ref<WorkerUser[]>([])
+const projectTeam = ref<unknown[]>([])
 
 // Computed
 const filteredWorkers = computed(() => {
@@ -59,23 +59,23 @@ const filteredWorkers = computed(() => {
 
   // User type filter
   if (userTypeFilter.value) {
-    filtered = filtered.filter((worker) => worker.user_type === userTypeFilter.value)
+    filtered = filtered.filter((worker) => worker.role_code === userTypeFilter.value)
   }
 
   // Status filter
   if (statusFilter.value) {
-    filtered = filtered.filter((worker) => worker.status === statusFilter.value)
+    filtered = filtered.filter((worker) => worker.status === Number(statusFilter.value))
   }
 
   // Availability filter
   if (availabilityFilter.value) {
-    filtered = filtered.filter((worker) => worker.availability_status === availabilityFilter.value)
+    filtered = filtered.filter((worker) => worker.status === (availabilityFilter.value === 'available' ? 1 : 0))
   }
 
   // Skills filter
   if (skillsFilter.value.length > 0) {
     filtered = filtered.filter((worker) =>
-      skillsFilter.value.some((skill) => worker.skills?.includes(skill)),
+      skillsFilter.value.some((skill) => worker.job_title?.toLowerCase().includes(skill.toLowerCase())),
     )
   }
 
@@ -84,18 +84,9 @@ const filteredWorkers = computed(() => {
 
 // Check if worker is already in project team
 const isWorkerInTeam = (workerId: number) => {
-  return projectTeam.value.some((member) => member.user_id === workerId)
+  return projectTeam.value.some((member: unknown) => (member as { id: number }).id === workerId)
 }
 
-// Check active filters
-const hasActiveFilters = computed(() => {
-  return (
-    userTypeFilter.value !== '' ||
-    statusFilter.value !== '' ||
-    availabilityFilter.value !== '' ||
-    skillsFilter.value.length > 0
-  )
-})
 
 // Load available workers
 async function loadAvailableWorkers() {
@@ -105,23 +96,24 @@ async function loadAvailableWorkers() {
   try {
     console.log('👥 Loading project workers for', props.mode)
 
-    const response = await projectHrApi.getAvailableWorkers(
+    const response = await hrResourcesApi.getAllWorkerUsers(
+      1,
+      100,
       {
-        project_id: props.projectId || null,
-        status: 'active',
-        availability: 'available',
-      },
-      { page: 1, limit: 100 }
+        project_id: props.projectId || undefined,
+        status: '1',
+        view_mode: 'registered',
+      }
     )
 
     if ('workers' in response && Array.isArray(response.workers)) {
       // Filter based on user role and mode
       availableWorkers.value = response.workers.filter((worker) => {
         // Exclude system administrators and other project managers for PM
-        if (authStore.currentUser?.user_type === 'Project Manager') {
+        if (authStore.currentUser?.role_code === 'project_manager') {
           return (
-            worker.user_type !== 'System Administrator' &&
-            worker.user_type !== 'Project Manager' &&
+            worker.role_code !== 'admin' &&
+            worker.role_code !== 'project_manager' &&
             worker.invitation_status === 'registered'
           )
         }
@@ -145,7 +137,7 @@ async function loadAvailableWorkers() {
 async function loadProjectTeam() {
   if (props.mode === 'project' && props.projectId) {
     try {
-      projectTeam.value = await projectHrApi.getProjectTeam(props.projectId)
+      projectTeam.value = await hrResourcesApi.getProjectTeam(props.projectId)
       console.log('✅ Project team loaded:', projectTeam.value.length)
     } catch (err) {
       console.error('❌ Error loading project team:', err)
@@ -154,7 +146,7 @@ async function loadProjectTeam() {
 }
 
 // Select worker
-function selectWorker(worker: ProjectWorker) {
+function selectWorker(worker: WorkerUser) {
   if (selectedWorkers.value.some((w) => w.id === worker.id)) {
     // Remove from selected
     selectedWorkers.value = selectedWorkers.value.filter((w) => w.id !== worker.id)
@@ -176,15 +168,10 @@ async function sendInvitations() {
 
     // Send invitations for each selected worker
     const invitations = selectedWorkers.value.map((worker) =>
-      projectHrApi.sendProjectInvitation({
+      hrResourcesApi.inviteWorkerUser({
         email: worker.email,
-        first_name: worker.first_name,
-        last_name: worker.last_name,
-        phone: worker.phone,
-        user_type: worker.user_type,
+        role: worker.role_code,
         project_id: props.projectId,
-        task_id: props.taskId,
-        message: `You have been invited to join ${props.mode === 'project' ? 'project' : 'task'} team.`,
       })
     )
 
@@ -238,16 +225,12 @@ function getRoleColor(userType: string): string {
 }
 
 // Get availability status
-function getAvailabilityStatus(worker: ProjectWorker): { text: string; color: string } {
-  switch (worker.availability_status) {
-    case 'available':
-      return { text: 'Available', color: 'bg-green-100 text-green-800' }
-    case 'busy':
-      return { text: 'Busy', color: 'bg-red-100 text-red-800' }
-    case 'on_leave':
-      return { text: 'On Leave', color: 'bg-yellow-100 text-yellow-800' }
-    case 'unavailable':
-      return { text: 'Unavailable', color: 'bg-gray-100 text-gray-800' }
+function getAvailabilityStatus(worker: WorkerUser): { text: string; color: string } {
+  switch (worker.status) {
+    case 1:
+      return { text: 'Active', color: 'bg-green-100 text-green-800' }
+    case 0:
+      return { text: 'Inactive', color: 'bg-red-100 text-red-800' }
     default:
       return { text: 'Unknown', color: 'bg-gray-100 text-gray-800' }
   }
@@ -481,7 +464,7 @@ watch([searchQuery, userTypeFilter, statusFilter, availabilityFilter, skillsFilt
               :key="worker.id"
               @click="selectWorker(worker)"
               class="cursor-pointer hover:bg-gray-50"
-              :class="{ 
+              :class="{
                 'bg-blue-50': selectedWorkers.some((w) => w.id === worker.id),
                 'bg-yellow-50': isWorkerInTeam(worker.id)
               }"
@@ -514,16 +497,16 @@ watch([searchQuery, userTypeFilter, statusFilter, availabilityFilter, skillsFilt
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-48">
                 <span
-                  :class="getRoleColor(worker.user_type)"
+                  :class="getRoleColor(worker.role_code)"
                   class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                 >
-                  {{ worker.user_type }}
+                  {{ worker.role_name }}
                 </span>
                 <div class="text-sm text-gray-500 truncate mt-1">
                   {{ worker.job_title || '—' }}
                 </div>
-                <div v-if="worker.skills && worker.skills.length > 0" class="text-xs text-gray-400 mt-1">
-                  Skills: {{ worker.skills.join(', ') }}
+                <div v-if="worker.job_title" class="text-xs text-gray-400 mt-1">
+                  Job: {{ worker.job_title }}
                 </div>
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-32">
@@ -536,10 +519,10 @@ watch([searchQuery, userTypeFilter, statusFilter, availabilityFilter, skillsFilt
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-40">
                 <div class="text-sm text-gray-900">
-                  ${{ worker.hourly_rate || '—' }}/hr
+                  Rate: N/A
                 </div>
                 <div class="text-sm text-gray-500">
-                  {{ worker.experience_years || 0 }} years exp
+                  Experience: N/A
                 </div>
               </td>
             </tr>
@@ -555,7 +538,7 @@ watch([searchQuery, userTypeFilter, statusFilter, availabilityFilter, skillsFilt
             :key="worker.id"
             @click="selectWorker(worker)"
             class="p-4 hover:bg-gray-50 cursor-pointer"
-            :class="{ 
+            :class="{
               'bg-blue-50': selectedWorkers.some((w) => w.id === worker.id),
               'bg-yellow-50': isWorkerInTeam(worker.id)
             }"
@@ -593,10 +576,10 @@ watch([searchQuery, userTypeFilter, statusFilter, availabilityFilter, skillsFilt
                 <!-- Role and Status -->
                 <div class="flex flex-wrap items-center gap-2 mb-2">
                   <span
-                    :class="getRoleColor(worker.user_type)"
+                    :class="getRoleColor(worker.role_code)"
                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                   >
-                    {{ worker.user_type }}
+                    {{ worker.role_name }}
                   </span>
                   <span
                     :class="getAvailabilityStatus(worker).color"
@@ -611,15 +594,15 @@ watch([searchQuery, userTypeFilter, statusFilter, availabilityFilter, skillsFilt
                   <p class="text-xs text-gray-500">
                     {{ worker.job_title || 'No job title specified' }}
                   </p>
-                  <p v-if="worker.skills && worker.skills.length > 0" class="text-xs text-gray-400">
-                    Skills: {{ worker.skills.join(', ') }}
+                  <p v-if="worker.job_title" class="text-xs text-gray-400">
+                    Job: {{ worker.job_title }}
                   </p>
                 </div>
 
                 <!-- Rate and Experience -->
                 <div class="mb-2">
                   <p class="text-xs text-gray-500">
-                    Rate: ${{ worker.hourly_rate || '—' }}/hr | Experience: {{ worker.experience_years || 0 }} years
+                    Rate: N/A | Experience: N/A
                   </p>
                 </div>
               </div>
@@ -638,6 +621,8 @@ watch([searchQuery, userTypeFilter, statusFilter, availabilityFilter, skillsFilt
 
 <style scoped>
 .project-hr-manager {
-  @apply space-y-4;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 </style>

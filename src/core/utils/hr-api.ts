@@ -1,8 +1,8 @@
 import { api } from './api'
 import type { ProjectTeamMember } from './project-api'
 
-// Worker interface for global system
-export interface Worker {
+// WorkerUser interface for global system
+export interface WorkerUser {
   id: number
   email: string
   first_name: string
@@ -87,13 +87,16 @@ export const hrResourcesApi = {
       }
     } catch (error: unknown) {
       console.error('Error fetching users:', error)
-      if (error.response) {
-        console.error('Response status:', error.response.status)
-        console.error('Response data:', error.response.data)
-        console.error('Response headers:', error.response.headers)
+      const apiError = error as {
+        response?: { status?: number; data?: unknown; headers?: unknown }
+      }
+      if (apiError.response) {
+        console.error('Response status:', apiError.response.status)
+        console.error('Response data:', apiError.response.data)
+        console.error('Response headers:', apiError.response.headers)
 
         // Если 500 ошибка, возвращаем mock данные для тестирования
-        if (error.response.status === 500) {
+        if (apiError.response.status === 500) {
           console.warn('⚠️ Backend error 500 - using mock data for testing')
           return {
             users: [
@@ -107,7 +110,7 @@ export const hrResourcesApi = {
                 name: 'John Doe',
                 email: 'john@example.com',
                 user_type: 'worker',
-                job_title: 'Construction Worker',
+                job_title: 'Construction WorkerUser',
                 status: 1,
               },
               {
@@ -138,7 +141,7 @@ export const hrResourcesApi = {
   },
 
   // Invite worker
-  async inviteWorker(invitationData: {
+  async inviteWorkerUser(invitationData: {
     email: string
     role: string
     project_id?: number
@@ -150,9 +153,10 @@ export const hrResourcesApi = {
       return { success: true, message: 'Invitation sent successfully' }
     } catch (error: unknown) {
       console.error('Error sending invitation:', error)
+      const apiError = error as { response?: { data?: { message?: string } } }
       return {
         success: false,
-        message: error.response?.data?.message || 'Failed to send invitation',
+        message: apiError.response?.data?.message || 'Failed to send invitation',
       }
     }
   },
@@ -171,7 +175,7 @@ export const hrResourcesApi = {
   },
 
   // Get all workers (global system) with pagination and filters
-  async getAllWorkers(
+  async getAllWorkerUsers(
     page: number = 1,
     limit: number = 20,
     filters: {
@@ -190,7 +194,7 @@ export const hrResourcesApi = {
       sort_order?: 'ASC' | 'DESC'
     } = {},
   ): Promise<{
-    workers: Worker[]
+    workers: WorkerUser[]
     pagination: {
       current_page: number
       per_page: number
@@ -262,37 +266,74 @@ export const hrResourcesApi = {
       }
     } catch (error: unknown) {
       console.error('Error fetching all workers:', error)
-      if (error.response?.status === 401) {
+      const apiError = error as { response?: { status?: number } }
+      if (apiError.response?.status === 401) {
         console.error('❌ Unauthorized - check authentication token')
-      } else if (error.response?.status === 500) {
+      } else if (apiError.response?.status === 500) {
         console.warn('⚠️ Backend error 500 - using mock data for testing')
         return {
           workers: [
             {
               id: 1,
-              project_id: 1,
-              user_id: 1,
-              role: 'worker',
-              added_at: '2024-01-01T00:00:00Z',
-              added_by: 1,
-              name: 'John Doe',
               email: 'john@example.com',
-              user_type: 'worker',
+              first_name: 'John',
+              last_name: 'Doe',
+              phone: '',
+              role_id: 1,
               job_title: 'Construction Worker',
               status: 1,
+              status_reason: null,
+              status_details: null,
+              additional_info: null,
+              avatar_url: null,
+              two_factor_enabled: false,
+              two_factor_secret: null,
+              last_login: null,
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+              invitation_status: 'registered',
+              invitation_sent_at: '2024-01-01T00:00:00Z',
+              invitation_expires_at: '2024-01-01T00:00:00Z',
+              invited_by: 1,
+              registration_completed_at: '2024-01-01T00:00:00Z',
+              invitation_attempts: 0,
+              last_reminder_sent_at: null,
+              archived_at: null,
+              role_code: 'worker',
+              role_name: 'Worker',
+              role_category: 'task',
+              role_description: null,
             },
             {
               id: 2,
-              project_id: 1,
-              user_id: 2,
-              role: 'foreman',
-              added_at: '2024-01-01T00:00:00Z',
-              added_by: 1,
-              name: 'Jane Smith',
               email: 'jane@example.com',
-              user_type: 'foreman',
+              first_name: 'Jane',
+              last_name: 'Smith',
+              phone: '',
+              role_id: 2,
               job_title: 'Foreman',
               status: 1,
+              status_reason: null,
+              status_details: null,
+              additional_info: null,
+              avatar_url: null,
+              two_factor_enabled: false,
+              two_factor_secret: null,
+              last_login: null,
+              created_at: '2024-01-01T00:00:00Z',
+              updated_at: '2024-01-01T00:00:00Z',
+              invitation_status: 'registered',
+              invitation_sent_at: '2024-01-01T00:00:00Z',
+              invitation_expires_at: '2024-01-01T00:00:00Z',
+              invited_by: 1,
+              registration_completed_at: '2024-01-01T00:00:00Z',
+              invitation_attempts: 0,
+              last_reminder_sent_at: null,
+              archived_at: null,
+              role_code: 'foreman',
+              role_name: 'Foreman',
+              role_category: 'task',
+              role_description: null,
             },
           ],
           pagination: {

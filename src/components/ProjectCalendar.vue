@@ -50,8 +50,8 @@ const showDependencyIndicators = ref(true)
 // Computed property to determine if user can see dependency indicators
 const canSeeDependencyIndicators = computed(() => {
   // Show indicators for managers, supervisors, and admins
-  const userRole = authStore.currentUser?.user_type
-  const showForRoles = ['System Administrator', 'Project Manager', 'Supervisor']
+  const userRole = authStore.currentUser?.role_code
+  const showForRoles = ['admin', 'project_manager', 'supervisor']
 
   // Also check if user has project management permissions
   const hasProjectManagementPermissions = authStore.checkPermission('manage_projects') ||

@@ -1,7 +1,7 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { hrResourcesApi } from '@/core/utils/hr-api'
+import { hrResourcesApi, type WorkerUser } from '@/core/utils/hr-api'
 // import { type ProjectTeamMember } from '@/core/utils/project-api'
 // import { useAuthStore } from '@/core/stores/auth'
 
@@ -12,12 +12,12 @@ interface Props {
   mode: 'project' | 'task' // Режим: для проекта или для задачи
 }
 
-// const props = defineProps<Props>()
+defineProps<Props>()
 
 // Emits
 const emit = defineEmits<{
-  workerSelected: [worker: Worker]
-  workersInvited: [workers: Worker[]]
+  workerSelected: [worker: WorkerUser]
+  workersInvited: [workers: WorkerUser[]]
   close: []
 }>()
 
@@ -33,8 +33,8 @@ const statusFilter = ref('')
 const isFiltersOpen = ref(false)
 
 // Available workers (excluding admins and other PMs)
-const availableWorkers = ref<Worker[]>([])
-const selectedWorkers = ref<Worker[]>([])
+const availableWorkers = ref<WorkerUser[]>([])
+const selectedWorkers = ref<WorkerUser[]>([])
 
 // Computed
 const filteredWorkers = computed(() => {
@@ -84,16 +84,17 @@ async function loadAvailableWorkers() {
   try {
     console.log('👥 Loading available workers for PM')
 
-    const response = await hrResourcesApi.getAllUsers(1, 100, {
-      status: 'active',
+    const response = await hrResourcesApi.getAllWorkerUsers(1, 100, {
+      status: '1',
+      view_mode: 'registered',
     })
 
-    if ('users' in response && Array.isArray(response.users)) {
+    if ('workers' in response && Array.isArray(response.workers)) {
       // Фильтруем: исключаем администраторов и других менеджеров проектов
-      availableWorkers.value = response.users.filter(
+      availableWorkers.value = response.workers.filter(
         (worker) =>
-          worker.user_type !== 'System Administrator' &&
-          worker.user_type !== 'Project Manager' &&
+          worker.role_code !== 'admin' &&
+          worker.role_code !== 'project_manager' &&
           worker.invitation_status === 'registered',
       )
 
@@ -111,7 +112,7 @@ async function loadAvailableWorkers() {
 }
 
 // Выбор работника
-function selectWorker(worker: Worker) {
+function selectWorker(worker: WorkerUser) {
   if (selectedWorkers.value.some((w) => w.id === worker.id)) {
     // Убираем из выбранных
     selectedWorkers.value = selectedWorkers.value.filter((w) => w.id !== worker.id)
@@ -160,17 +161,17 @@ function toggleFilters() {
 }
 
 // Получение цвета роли
-function getRoleColor(userType: string): string {
-  switch (userType) {
-    case 'Foreman':
+function getRoleColor(roleCode: string): string {
+  switch (roleCode) {
+    case 'foreman':
       return 'bg-blue-100 text-blue-800'
-    case 'Worker':
+    case 'worker':
       return 'bg-green-100 text-green-800'
-    case 'Trade Contractor':
+    case 'trade_contractor':
       return 'bg-yellow-100 text-yellow-800'
-    case 'Inspector':
+    case 'inspector':
       return 'bg-purple-100 text-purple-800'
-    case 'General Contractor':
+    case 'general_contractor':
       return 'bg-orange-100 text-orange-800'
     default:
       return 'bg-gray-100 text-gray-800'
@@ -178,7 +179,7 @@ function getRoleColor(userType: string): string {
 }
 
 // Получение статуса работника
-function getWorkerStatus(worker: Worker): { text: string; color: string } {
+function getWorkerStatus(worker: WorkerUser): { text: string; color: string } {
   if (worker.status === 1) {
     return { text: 'Available', color: 'bg-green-100 text-green-800' }
   } else {
@@ -418,10 +419,10 @@ watch([searchQuery, skillFilter, statusFilter], () => {
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-48">
                 <span
-                  :class="getRoleColor(worker.user_type)"
+                  :class="getRoleColor(worker.role_code)"
                   class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                 >
-                  {{ worker.user_type }}
+                  {{ worker.role_name }}
                 </span>
                 <div class="text-sm text-gray-500 truncate mt-1">
                   {{ worker.job_title || '—' }}
@@ -492,10 +493,10 @@ watch([searchQuery, skillFilter, statusFilter], () => {
                 <!-- Role and Status -->
                 <div class="flex flex-wrap items-center gap-2 mb-2">
                   <span
-                    :class="getRoleColor(worker.user_type)"
+                    :class="getRoleColor(worker.role_code)"
                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                   >
-                    {{ worker.user_type }}
+                    {{ worker.role_name }}
                   </span>
                   <span
                     :class="getWorkerStatus(worker).color"
@@ -537,6 +538,8 @@ watch([searchQuery, skillFilter, statusFilter], () => {
 
 <style scoped>
 .pm-resource-manager {
-  @apply space-y-4;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 </style>

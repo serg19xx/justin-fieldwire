@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { type ProjectTeamMember } from '@/core/utils/project-api'
+import { type WorkerUser, hrResourcesApi } from '@/core/utils/hr-api'
 
 // Extended worker type with role for team management
-interface WorkerWithRole extends Worker {
+interface WorkerUserWithRole extends WorkerUser {
   role?: string
 }
 
@@ -27,20 +28,20 @@ const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
 const searchQuery = ref('')
-const selectedUsers = ref<WorkerWithRole[]>([])
+const selectedUsers = ref<WorkerUserWithRole[]>([])
 
 // Available workers (excluding those already in team)
-const availableWorkers = ref<Worker[]>([])
-const filteredWorkers = computed(() => {
-  if (!searchQuery.value.trim()) return availableWorkers.value
+const availableWorkerUsers = ref<WorkerUser[]>([])
+const filteredWorkerUsers = computed(() => {
+  if (!searchQuery.value.trim()) return availableWorkerUsers.value
 
   const query = searchQuery.value.toLowerCase()
-  return availableWorkers.value.filter(
+  return availableWorkerUsers.value.filter(
     (worker) =>
       worker.first_name?.toLowerCase().includes(query) ||
       worker.last_name?.toLowerCase().includes(query) ||
       worker.email?.toLowerCase().includes(query) ||
-      worker.user_type?.toLowerCase().includes(query),
+      worker.job_title?.toLowerCase().includes(query),
   )
 })
 
@@ -84,7 +85,7 @@ function getDefaultRoleForUserType(userType: string): string {
 
 
 // Load available workers
-async function loadAvailableWorkers() {
+async function loadAvailableWorkerUsers() {
   if (!props.projectId) return
 
   loading.value = true
@@ -94,12 +95,12 @@ async function loadAvailableWorkers() {
     console.log('👥 Loading available workers for project:', props.projectId)
 
     // Get all workers
-    const response = await workersApi.getAll(1, 100)
+    const response = await hrResourcesApi.getAllUsers(1, 100)
 
     if ('workers' in response && Array.isArray(response.workers)) {
       // Filter out workers who are already in the team
       const existingUserIds = props.existingTeamMembers.map((member) => member.user_id)
-      availableWorkers.value = response.workers.filter(
+      availableWorkerUsers.value = response.workers.filter(
         (worker) =>
           !existingUserIds.includes(worker.id) &&
           worker.invitation_status === 'registered' &&
@@ -108,14 +109,14 @@ async function loadAvailableWorkers() {
           worker.user_type !== 'Project Manager' // Exclude project managers
       )
 
-      console.log('✅ Available workers loaded:', availableWorkers.value.length)
+      console.log('✅ Available workers loaded:', availableWorkerUsers.value.length)
     } else {
       throw new Error('Invalid response format')
     }
   } catch (err: unknown) {
     console.error('❌ Error loading workers:', err)
     error.value = 'Failed to load available workers'
-    availableWorkers.value = []
+    availableWorkerUsers.value = []
   } finally {
     loading.value = false
   }
@@ -136,7 +137,7 @@ async function addTeamMembers() {
 
     // Add all selected users with their individual roles
     const promises = selectedUsers.value.map((user) =>
-      projectsApi.addTeamMember(props.projectId, user.id, user.role || 'member'),
+      hrResourcesApi.addTeamMember(props.projectId, user.id, user.role || 'member'),
     )
 
     const newMembers = await Promise.all(promises)
@@ -168,7 +169,7 @@ watch(
   () => props.isOpen,
   (isOpen) => {
     if (isOpen) {
-      loadAvailableWorkers()
+      loadAvailableWorkerUsers()
     }
   },
 )
@@ -178,45 +179,45 @@ watch(
   () => props.existingTeamMembers,
   () => {
     if (props.isOpen) {
-      loadAvailableWorkers()
+      loadAvailableWorkerUsers()
     }
   },
   { deep: true },
 )
 
 // Get user display name
-function getUserDisplayName(worker: Worker): string {
+function getUserDisplayName(worker: WorkerUser): string {
   const name = [worker.first_name, worker.last_name].filter(Boolean).join(' ')
   return name || worker.email || 'Unknown User'
 }
 
 // Get user type display
-function getUserTypeDisplay(worker: Worker): string {
-  return worker.user_type || 'Unknown Type'
+function getUserTypeDisplay(worker: WorkerUser): string {
+  return worker.role_id ? 'Worker' : 'Unknown Type'
 }
 
 // Toggle user selection
-function toggleUserSelection(worker: Worker) {
+function toggleUserSelection(worker: WorkerUser) {
   const index = selectedUsers.value.findIndex((u) => u.id === worker.id)
   if (index > -1) {
     selectedUsers.value.splice(index, 1)
   } else {
     // Auto-set role based on user type
-    const defaultRole = getDefaultRoleForUserType(worker.user_type)
+    const defaultRole = getDefaultRoleForUserType('worker')
     selectedUsers.value.push({
       ...worker,
       role: defaultRole
-    } as WorkerWithRole)
+    } as WorkerUserWithRole)
   }
 }
 
 // Check if user is selected
-function isUserSelected(worker: Worker): boolean {
+function isUserSelected(worker: WorkerUser): boolean {
   return selectedUsers.value.some((u) => u.id === worker.id)
 }
 
 // Update user role
-function updateUserRole(user: WorkerWithRole, newRole: string) {
+function updateUserRole(user: WorkerUserWithRole, newRole: string) {
   const index = selectedUsers.value.findIndex((u) => u.id === user.id)
   if (index > -1) {
     selectedUsers.value[index] = { ...selectedUsers.value[index], role: newRole }
@@ -225,12 +226,12 @@ function updateUserRole(user: WorkerWithRole, newRole: string) {
 
 // Select all filtered users
 function selectAllFiltered() {
-  const newSelections = filteredWorkers.value
+  const newSelections = filteredWorkerUsers.value
     .filter((worker) => !selectedUsers.value.some((u) => u.id === worker.id))
     .map(worker => ({
       ...worker,
-      role: getDefaultRoleForUserType(worker.user_type)
-    } as WorkerWithRole))
+      role: getDefaultRoleForUserType('worker')
+    } as WorkerUserWithRole))
   selectedUsers.value.push(...newSelections)
 }
 
@@ -297,7 +298,7 @@ function clearAllSelections() {
           <!-- Search -->
           <div class="mb-4">
             <label for="search" class="block text-sm font-medium text-gray-700 mb-2">
-              Search Workers
+              Search WorkerUsers
             </label>
             <input
               id="search"
@@ -317,7 +318,7 @@ function clearAllSelections() {
             <div class="flex items-center justify-between mb-3">
               <div>
                 <h4 class="text-sm font-medium text-blue-900">
-                  Selected Workers ({{ selectedUsers.length }})
+                  Selected WorkerUsers ({{ selectedUsers.length }})
                 </h4>
                 <p class="text-xs text-gray-500 mt-1">
                   Roles are auto-assigned based on profession. You can change them if needed.
@@ -372,17 +373,17 @@ function clearAllSelections() {
             </div>
           </div>
 
-          <!-- Workers list -->
+          <!-- WorkerUsers list -->
           <div class="mb-4">
             <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-medium text-gray-700"> Available Workers </label>
+              <label class="block text-sm font-medium text-gray-700"> Available WorkerUsers </label>
               <div class="flex space-x-2">
                 <button
-                  v-if="filteredWorkers.length > 0"
+                  v-if="filteredWorkerUsers.length > 0"
                   @click="selectAllFiltered"
                   class="text-xs text-blue-600 hover:text-blue-800 underline"
                 >
-                  Select all ({{ filteredWorkers.length }})
+                  Select all ({{ filteredWorkerUsers.length }})
                 </button>
                 <button
                   v-if="selectedUsers.length > 0"
@@ -420,13 +421,13 @@ function clearAllSelections() {
               </div>
             </div>
 
-            <!-- Workers list -->
+            <!-- WorkerUsers list -->
             <div
-              v-else-if="filteredWorkers.length > 0"
+              v-else-if="filteredWorkerUsers.length > 0"
               class="max-h-60 overflow-y-auto border border-gray-200 rounded-md"
             >
               <div
-                v-for="worker in filteredWorkers"
+                v-for="worker in filteredWorkerUsers"
                 :key="worker.id"
                 @click="toggleUserSelection(worker)"
                 :class="[

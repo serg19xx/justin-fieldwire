@@ -1,621 +1,3 @@
-<script setup lang="ts">
-import { ref, reactive, onMounted, computed, watch } from 'vue'
-import { useAuthStore } from '@/core/stores/auth'
-
-import ImageCropper from '@/components/ImageCropper.vue'
-
-// Component name
-defineOptions({
-  name: 'AccountSettings',
-})
-
-const authStore = useAuthStore()
-
-// User data
-const user = computed(() => authStore.currentUser)
-const userAvatar = computed(() => user.value?.avatarUrl || '/default-avatar.png')
-
-// State
-const isLoading = ref(false)
-const isUpdating = ref(false)
-const errorMessage = ref('')
-const successMessage = ref('')
-
-
-const showAvatarEditor = ref(false)
-const showImageCropper = ref(false)
-
-const avatarKey = ref(0) // For forcing image refresh
-const showInactiveReasonFields = ref(false) // New state for showing reason fields
-
-// Tab management
-const activeTab = ref('basic')
-const tabs = [
-  { id: 'basic', name: 'Basic Info', icon: '👤' },
-  { id: 'professional', name: 'Professional', icon: '💼' },
-  { id: 'emergency', name: 'Emergency', icon: '🚨' },
-  { id: 'system', name: 'System', icon: '⚙️' }
-]
-
-// Functions will be defined below
-
-// Profile form
-const profileForm = reactive({
-  first_name: '',
-  last_name: '',
-  phone: '',
-  job_title: '',
-  additional_info: '',
-  user_type: '',
-  company: '',
-  department: '',
-  location: '',
-  isActive: true,
-  inactive_reason: '',
-  inactive_reason_details: '',
-  // Extended profile fields
-  resume: '',
-  experience_years: '',
-  specialization: '',
-  certifications: '',
-  emergency_contact: '',
-  emergency_phone: '',
-  skills: '',
-  bio: '',
-  linkedin_url: '',
-  portfolio_url: '',
-})
-
-// Validation errors
-const validationErrors = reactive({
-  first_name: '',
-  last_name: '',
-  phone: '',
-  job_title: '',
-  user_type: '',
-})
-
-// Validation rules with proper typing
-interface ValidationRule {
-  required?: boolean
-  minLength?: number
-  maxLength?: number
-  pattern?: RegExp
-}
-
-const validationRules: Record<string, ValidationRule> = {
-  first_name: {
-    required: true,
-    minLength: 2,
-    maxLength: 50,
-    pattern: /^[a-zA-Zа-яА-Я\s'-]+$/,
-  },
-  last_name: {
-    required: true,
-    minLength: 2,
-    maxLength: 50,
-    pattern: /^[a-zA-Zа-яА-Я\s'-]+$/,
-  },
-  phone: {
-    required: false,
-    pattern: /^[\+]?[1-9][\d]{0,15}$/,
-  },
-}
-
-// Validation functions
-function validateField(fieldName: string, value: string): string {
-  const rules = validationRules[fieldName as keyof typeof validationRules]
-  if (!rules) return ''
-
-  // Required validation
-  if (rules.required && !value.trim()) {
-    return `${fieldName.replace('_', ' ')} is required`
-  }
-
-  // Min length validation
-  if (rules.minLength && value.length < rules.minLength) {
-    return `${fieldName.replace('_', ' ')} must be at least ${rules.minLength} characters`
-  }
-
-  // Max length validation
-  if (rules.maxLength && value.length > rules.maxLength) {
-    return `${fieldName.replace('_', ' ')} must be no more than ${rules.maxLength} characters`
-  }
-
-  // Pattern validation
-  if (rules.pattern && value && !rules.pattern.test(value)) {
-    if (fieldName === 'phone') {
-      return 'Please enter a valid phone number'
-    }
-    return `Please enter a valid ${fieldName.replace('_', ' ')}`
-  }
-
-  return ''
-}
-
-function validateForm(): boolean {
-  let isValid = true
-
-  // Clear previous errors
-  Object.keys(validationErrors).forEach((key) => {
-    validationErrors[key as keyof typeof validationErrors] = ''
-  })
-
-  // Validate each field (only string fields that have validation rules)
-  Object.keys(profileForm).forEach((fieldName) => {
-    if (
-      validationRules[fieldName] &&
-      typeof profileForm[fieldName as keyof typeof profileForm] === 'string'
-    ) {
-      const error = validateField(
-        fieldName,
-        profileForm[fieldName as keyof typeof profileForm] as string,
-      )
-      if (error) {
-        validationErrors[fieldName as keyof typeof validationErrors] = error
-        isValid = false
-      }
-    }
-  })
-
-  return isValid
-}
-
-// Clear validation errors when user types
-function clearValidationError(fieldName: string) {
-  if (validationErrors[fieldName as keyof typeof validationErrors]) {
-    validationErrors[fieldName as keyof typeof validationErrors] = ''
-  }
-}
-
-// Computed
-const fullName = computed(() => {
-  return `${profileForm.first_name} ${profileForm.last_name}`.trim() || 'Not specified'
-})
-
-
-const hasAvatar = computed(() => {
-  return !!userAvatar.value
-})
-
-const isLocalAvatar = computed(() => {
-  return userAvatar.value?.startsWith('data:')
-})
-
-// Load profile data
-async function loadProfile() {
-  isLoading.value = true
-  errorMessage.value = ''
-
-  try {
-    // Always use data from login, don't call getProfile() to avoid overwriting role data
-    console.log('✅ Using data from login, skipping getProfile() to preserve role information')
-    // Just populate form with existing data from login
-    if (authStore.currentUser?.name) {
-      profileForm.first_name = authStore.currentUser.name.split(' ')[0] || ''
-      profileForm.last_name = authStore.currentUser.name.split(' ').slice(1).join(' ') || ''
-    }
-    profileForm.phone = authStore.currentUser?.phone || ''
-    profileForm.job_title = authStore.currentUser?.job_title || ''
-    profileForm.additional_info = authStore.currentUser?.additional_info || ''
-    profileForm.isActive = authStore.currentUser?.isActive !== undefined ? authStore.currentUser.isActive : true
-
-    console.log('✅ Profile loaded from login data')
-  } catch (error) {
-    console.error('❌ Load profile error:', error)
-    errorMessage.value = 'Failed to load profile'
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// Update profile with validation (removed user_type and job_title from editable fields)
-async function updateProfile() {
-  // Clear previous messages
-  errorMessage.value = ''
-  successMessage.value = ''
-
-  // Validate form
-  if (!validateForm()) {
-    errorMessage.value = 'Please fix the validation errors below'
-    return
-  }
-
-  isUpdating.value = true
-
-  try {
-    const result = await authStore.updateProfile({
-      first_name: profileForm.first_name.trim(),
-      last_name: profileForm.last_name.trim(),
-      phone: profileForm.phone.trim(),
-      // user_type and job_title are now read-only, so we don't send them
-      additional_info: profileForm.additional_info.trim(),
-      company: profileForm.company.trim(),
-      department: profileForm.department.trim(),
-      location: profileForm.location.trim(),
-    })
-
-    if (result.success) {
-      successMessage.value = 'Profile updated successfully!'
-      console.log('✅ Profile updated successfully')
-
-      // Clear validation errors after successful update
-      Object.keys(validationErrors).forEach((key) => {
-        validationErrors[key as keyof typeof validationErrors] = ''
-      })
-    } else {
-      errorMessage.value = result.error || 'Failed to update profile'
-      console.log('❌ Failed to update profile:', result.error)
-    }
-  } catch (error) {
-    console.error('❌ Update profile error:', error)
-    errorMessage.value = 'Failed to update profile'
-  } finally {
-    isUpdating.value = false
-  }
-}
-
-// Avatar editor functions
-function closeAvatarEditor() {
-  showAvatarEditor.value = false
-}
-
-async function saveAvatarFromEditor(avatarDataUrl: string) {
-  try {
-    console.log('🔄 Starting avatar save from editor...')
-    console.log('📄 Avatar data URL received, length:', avatarDataUrl.length)
-
-    // Store data URL directly in localStorage and update user
-    if (authStore.currentUser) {
-      authStore.currentUser.avatarUrl = avatarDataUrl
-      localStorage.setItem('user', JSON.stringify(authStore.currentUser))
-
-      console.log('✅ Avatar saved as data URL')
-      successMessage.value = 'Avatar updated successfully!'
-      showAvatarEditor.value = false
-
-      // Force image refresh
-      avatarKey.value++
-
-      // Force re-render
-      console.log('🔄 Current user avatar after update:', authStore.currentUser.avatarUrl)
-    } else {
-      errorMessage.value = 'User not found'
-    }
-  } catch (error) {
-    console.error('❌ Save avatar error:', error)
-    errorMessage.value = 'Failed to save avatar'
-  }
-}
-
-// Image Cropper functions
-function openImageCropper() {
-  showImageCropper.value = true
-}
-
-// Enhanced avatar upload with validation
-function validateImageFile(file: File): { valid: boolean; error?: string } {
-  const maxSize = 5 * 1024 * 1024 // 5MB
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
-
-  if (file.size > maxSize) {
-    return { valid: false, error: 'File size must be less than 5MB' }
-  }
-
-  if (!allowedTypes.includes(file.type)) {
-    return { valid: false, error: 'Only JPG, PNG, and WebP formats are allowed' }
-  }
-
-  return { valid: true }
-}
-
-// Compress image before upload
-function compressImage(file: File, maxWidth: number = 800, quality: number = 0.8): Promise<File> {
-  return new Promise((resolve) => {
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    const img = new Image()
-
-    img.onload = () => {
-      const ratio = Math.min(maxWidth / img.width, maxWidth / img.height)
-      canvas.width = img.width * ratio
-      canvas.height = img.height * ratio
-
-      ctx?.drawImage(img, 0, 0, canvas.width, canvas.height)
-
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const compressedFile = new File([blob], file.name, { type: file.type })
-          resolve(compressedFile)
-        } else {
-          resolve(file)
-        }
-      }, file.type, quality)
-    }
-
-    img.src = URL.createObjectURL(file)
-  })
-}
-
-async function handleImageCrop(file: File) {
-  try {
-    console.log('🔄 Starting avatar save from cropper...')
-    console.log('📄 Cropped file received:', file.name, file.size, file.type)
-
-    // Validate file
-    const validation = validateImageFile(file)
-    if (!validation.valid) {
-      errorMessage.value = validation.error || 'Invalid file'
-      return
-    }
-
-    // Compress image
-    const compressedFile = await compressImage(file)
-    console.log('📦 Compressed file:', compressedFile.name, compressedFile.size, compressedFile.type)
-
-    // Convert file to data URL
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const avatarDataUrl = e.target?.result as string
-
-      if (authStore.currentUser) {
-        authStore.currentUser.avatarUrl = avatarDataUrl
-        localStorage.setItem('user', JSON.stringify(authStore.currentUser))
-
-        console.log('✅ Avatar saved as data URL from cropper')
-        successMessage.value = 'Avatar updated successfully!'
-        showImageCropper.value = false
-
-        // Force image refresh
-        avatarKey.value++
-      } else {
-        errorMessage.value = 'User not found'
-      }
-    }
-    reader.readAsDataURL(compressedFile)
-  } catch (error) {
-    console.error('❌ Save avatar from cropper error:', error)
-    errorMessage.value = 'Failed to save avatar'
-  }
-}
-
-function handleImageCropCancel() {
-  showImageCropper.value = false
-}
-
-// Toggle 2FA
-async function toggleTwoFactor() {
-  console.log('🔄 toggleTwoFactor called!')
-  console.log('🔄 Current 2FA status:', authStore.currentUser?.twoFactorEnabled)
-
-  const newStatus = !authStore.currentUser?.twoFactorEnabled
-  console.log('🔄 New 2FA status will be:', newStatus)
-
-  try {
-    // Use the toggle API endpoint
-    const response = await fetch('http://localhost:8000/api/v1/2fa/toggle', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-      body: JSON.stringify({
-        user_id: authStore.currentUser?.id,
-        enabled: newStatus ? 1 : 0,
-      }),
-    })
-
-    const result = await response.json()
-    console.log('📥 2FA toggle response:', result)
-
-    if (result.status === 'success') {
-      // Update local state
-      if (authStore.currentUser) {
-        authStore.currentUser.twoFactorEnabled = newStatus
-      }
-      successMessage.value = `2FA ${newStatus ? 'enabled' : 'disabled'} successfully!`
-      console.log('✅ 2FA status updated to:', newStatus)
-    } else {
-      errorMessage.value = result.message || 'Failed to toggle 2FA'
-      console.log('❌ 2FA toggle failed:', result.message)
-    }
-  } catch (error) {
-    console.error('❌ 2FA toggle error:', error)
-    errorMessage.value = 'Failed to toggle 2FA'
-  }
-}
-
-// Add work status functions
-async function toggleWorkStatus() {
-  console.log('🔄 toggleWorkStatus called!')
-  console.log('🔄 Current profileForm.isActive:', profileForm.isActive)
-
-  const newStatus = !profileForm.isActive
-  console.log('🔄 New status will be:', newStatus)
-
-  if (!newStatus) {
-    // Setting to inactive - show reason fields immediately
-    console.log('🔄 Setting to inactive - showing reason fields')
-    showInactiveReasonFields.value = true
-    // Don't update status yet - wait for user to fill in reason
-  } else {
-    // Setting to active - hide reason fields and update immediately
-    console.log('🔄 Setting to active - hiding reason fields and updating status')
-    showInactiveReasonFields.value = false
-    // Clear reason fields when going active
-    profileForm.inactive_reason = ''
-    profileForm.inactive_reason_details = ''
-    console.log('🔄 Calling updateWorkStatus...')
-    await updateWorkStatus(newStatus)
-
-    // Force hide fields after update (in case backend didn't change the status)
-    showInactiveReasonFields.value = false
-  }
-}
-
-async function updateWorkStatus(newStatus: boolean) {
-  console.log('🔄 updateWorkStatus called with newStatus:', newStatus)
-  console.log('🔄 Current profileForm.isActive:', profileForm.isActive)
-
-  // Validate that reason is provided when setting to inactive
-  if (!newStatus && !profileForm.inactive_reason) {
-    errorMessage.value = 'Please select a reason for being inactive'
-    return
-  }
-
-  isUpdating.value = true
-
-  try {
-    console.log('📤 Sending work status update to backend:', {
-      isActive: newStatus,
-      inactive_reason: newStatus ? '' : profileForm.inactive_reason,
-      inactive_reason_details: newStatus ? '' : profileForm.inactive_reason_details,
-    })
-
-    const result = await authStore.updateWorkStatus({
-      isActive: newStatus,
-      inactive_reason: newStatus ? '' : profileForm.inactive_reason,
-      inactive_reason_details: newStatus ? '' : profileForm.inactive_reason_details,
-    })
-
-    console.log('📥 Backend response:', result)
-
-    if (result.success) {
-      // Update form with data from backend response
-      if (result.workStatus) {
-        console.log('🔄 Updating profileForm with workStatus:', result.workStatus)
-        profileForm.isActive = result.workStatus.isActive
-        profileForm.inactive_reason = result.workStatus.inactive_reason || ''
-        profileForm.inactive_reason_details = result.workStatus.inactive_reason_details || ''
-
-        console.log('✅ profileForm.isActive set to:', profileForm.isActive)
-        console.log('✅ profileForm.inactive_reason set to:', profileForm.inactive_reason)
-
-        // Also update the authStore currentUser to keep everything in sync
-        if (authStore.currentUser) {
-          authStore.currentUser.isActive = result.workStatus.isActive
-          authStore.currentUser.inactive_reason = result.workStatus.inactive_reason
-          authStore.currentUser.inactive_reason_details = result.workStatus.inactive_reason_details
-          console.log('✅ authStore.currentUser.isActive set to:', authStore.currentUser.isActive)
-        }
-      } else {
-        // Fallback to the status we sent
-        profileForm.isActive = newStatus
-      }
-
-      // Always hide reason fields after update
-      showInactiveReasonFields.value = false
-
-      successMessage.value = newStatus
-        ? 'Status updated to Active. You are now available for work.'
-        : 'Status updated to Inactive. You will not receive new work assignments.'
-
-      // Clear reason fields when going active
-      if (newStatus) {
-        profileForm.inactive_reason = ''
-        profileForm.inactive_reason_details = ''
-      }
-    } else {
-      errorMessage.value = result.error || 'Failed to update work status'
-    }
-  } catch (error) {
-    console.error('❌ Update work status error:', error)
-    errorMessage.value = 'Failed to update work status'
-  } finally {
-    isUpdating.value = false
-  }
-}
-
-// Save inactive status function
-async function saveInactiveStatus() {
-  if (!profileForm.inactive_reason) {
-    errorMessage.value = 'Please select a reason for being inactive'
-    return
-  }
-
-  await updateWorkStatus(false)
-
-  // Hide fields after saving inactive status
-  showInactiveReasonFields.value = false
-}
-
-// Cancel inactive status function
-function cancelInactiveStatus() {
-  showInactiveReasonFields.value = false
-  profileForm.inactive_reason = ''
-  profileForm.inactive_reason_details = ''
-  // Reset status back to active if user cancels
-  profileForm.isActive = true
-}
-
-// Handle avatar image events
-function handleAvatarError(event: Event) {
-  console.log('❌ Avatar image failed to load:', userAvatar.value)
-  console.log('🚫 Error event:', event)
-  console.log('🔍 Current user avatar URL:', authStore.currentUser?.avatarUrl)
-  console.log('🔍 Is local avatar:', isLocalAvatar.value)
-}
-
-function handleAvatarLoad(event: Event) {
-  console.log('✅ Avatar image loaded successfully:', userAvatar.value)
-  console.log('📸 Load event:', event)
-  console.log(
-    '🖼️ Image dimensions:',
-    (event.target as HTMLImageElement).naturalWidth,
-    'x',
-    (event.target as HTMLImageElement).naturalHeight,
-  )
-}
-
-// Load profile on mount
-onMounted(() => {
-  console.log('🚀 AccountView mounted - loading profile...')
-  console.log('👤 Current user:', authStore.currentUser)
-  console.log('🔍 ROLE DEBUG:')
-  console.log('  - role_category:', authStore.currentUser?.role_category)
-  console.log('  - role_code:', authStore.currentUser?.role_code)
-  console.log('  - user_type:', authStore.currentUser?.user_type)
-  console.log('  - typeof role_category:', typeof authStore.currentUser?.role_category)
-  console.log('🔍 FULL USER OBJECT:')
-  console.log('  - All keys:', Object.keys(authStore.currentUser || {}))
-  console.log('  - Full object:', JSON.stringify(authStore.currentUser, null, 2))
-  console.log('🔍 LOCALSTORAGE DEBUG:')
-  console.log('  - localStorage user:', localStorage.getItem('user'))
-  console.log('  - localStorage token:', localStorage.getItem('token'))
-
-  // Debug: Clear storage button
-  if (typeof window !== 'undefined') {
-    (window as unknown as Window & { clearAuthStorage: () => void }).clearAuthStorage = () => {
-      localStorage.removeItem('user')
-      localStorage.removeItem('authToken')
-      location.reload()
-    }
-    console.log('🔧 Debug: Call clearAuthStorage() to clear storage and reload')
-  }
-  console.log('🖼️ User avatar URL:', authStore.currentUser?.avatarUrl)
-  console.log('🖼️ Has avatar:', hasAvatar.value)
-
-  // Ensure inactive reason fields are hidden by default
-  showInactiveReasonFields.value = false
-
-  loadProfile()
-})
-
-// Watch for changes in work status and hide/show inactive reason fields accordingly
-watch(
-  () => profileForm.isActive,
-  (newStatus) => {
-    if (newStatus) {
-      // If status becomes active, hide inactive reason fields
-      showInactiveReasonFields.value = false
-      // Clear inactive reason fields when going active
-      profileForm.inactive_reason = ''
-      profileForm.inactive_reason_details = ''
-    }
-  },
-)
-</script>
-
 <template>
   <div class="min-h-screen bg-gray-50 py-8">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -635,35 +17,41 @@ watch(
       </div>
 
       <!-- Profile Content -->
-      <div v-else class="space-y-8">
+      <div v-else class="space-y-6">
         <!-- Tab Navigation -->
         <div class="bg-white shadow rounded-lg">
           <div class="border-b border-gray-200">
-            <!-- Desktop Tabs -->
-            <nav class="hidden md:flex -mb-px space-x-8 px-6" aria-label="Tabs">
+            <!-- Desktop Navigation -->
+            <nav class="hidden sm:flex space-x-8 px-6" aria-label="Tabs">
               <button
                 v-for="tab in tabs"
                 :key="tab.id"
-                @click="activeTab = tab.id"
+                @click="setActiveTab(tab.id)"
                 :class="[
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                  'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2'
+                  'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2'
                 ]"
               >
                 <span>{{ tab.icon }}</span>
-                <span>{{ tab.name }}</span>
+                {{ tab.name }}
               </button>
             </nav>
 
-            <!-- Mobile Dropdown -->
-            <div class="md:hidden">
+            <!-- Mobile Navigation -->
+            <div class="sm:hidden px-4 py-3">
               <select
-                v-model="activeTab"
-                class="w-full px-4 py-3 text-sm border-0 bg-transparent focus:outline-none focus:ring-0"
+                :value="activeTab"
+                @change="setActiveTab(($event.target as HTMLSelectElement).value)"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900"
               >
-                <option v-for="tab in tabs" :key="tab.id" :value="tab.id">
+                <option
+                  v-for="tab in tabs"
+                  :key="tab.id"
+                  :value="tab.id"
+                  class="bg-white text-gray-900"
+                >
                   {{ tab.icon }} {{ tab.name }}
                 </option>
               </select>
@@ -679,94 +67,46 @@ watch(
 
             <!-- Avatar Section -->
             <div class="mb-8">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Profile Picture</h3>
-              <p class="text-sm text-gray-600 mb-4">Upload a professional photo. Supported formats: JPG, PNG, WebP (max 5MB)</p>
-            </div>
-            <!-- Image Cropper (when active) -->
-            <div v-if="showImageCropper" class="mb-6">
-              <div class="bg-gray-50 rounded-lg p-4">
-                <div class="flex items-center justify-between mb-4">
-                  <h3 class="text-lg font-medium text-gray-900">Edit Profile Picture</h3>
-                  <button
-                    @click="handleImageCropCancel"
-                    class="text-gray-500 hover:text-gray-700 text-sm flex items-center gap-1"
-                  >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                      />
-                    </svg>
-                    Back
-                  </button>
-                </div>
-                <ImageCropper
-                  :aspect-ratio="1"
-                  :quality="0.9"
-                  format="image/jpeg"
-                  :initial-image="userAvatar"
-                  @crop="handleImageCrop"
-                  @cancel="handleImageCropCancel"
+              <div class="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6">
+              <!-- Avatar Widget -->
+              <AvatarWidget
+                  :key="avatarKey"
+                :initial-avatar="userAvatar"
+                :full-photo-url="fullPhotoUrl"
+                upload-url="/api/upload-avatar"
+                @avatar-updated="handleAvatarUpdated"
+                  @avatar-saved="handleAvatarSaved"
                 />
-              </div>
-            </div>
 
-            <!-- Avatar Display and Controls -->
-            <div v-else class="flex items-center space-x-6">
-              <!-- Current Avatar -->
-              <div class="flex-shrink-0">
-                <div
-                  class="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden"
-                >
-                  <img
-                    v-if="hasAvatar"
-                    :key="avatarKey"
-                    :src="userAvatar"
-                    :alt="fullName"
-                    class="w-full h-full object-cover object-center rounded-full"
-                    style="aspect-ratio: 1/1"
-                    @error="handleAvatarError"
-                    @load="handleAvatarLoad"
-                  />
-                  <svg
-                    v-else
-                    class="w-10 h-10 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
-                </div>
-                <p class="text-xs text-gray-500 mt-2 text-center">Profile Picture</p>
-              </div>
+                <!-- User Info -->
+                <div class="flex-1 text-left w-full">
+                  <h4 class="text-sm font-semibold text-gray-900 mb-3">{{ fullName }}</h4>
 
-              <!-- Avatar Info and Controls -->
-              <div class="flex-1">
-                <div class="space-y-3">
-                  <p class="text-sm text-gray-600">
-                    {{ hasAvatar ? 'Your current profile picture' : 'No profile picture set' }}
-                  </p>
+                  <!-- Additional User Information - Mobile First -->
+                  <div class="space-y-3 text-xs text-gray-600 sm:grid sm:grid-cols-2 sm:gap-x-8 sm:gap-y-3">
+                    <!-- Mobile: Single Column, Desktop: Two Columns -->
+                    <div class="space-y-3">
+                      <p v-if="profileForm.gender" class="flex items-start">
+                        <span class="w-16 sm:w-20 text-gray-500 flex-shrink-0">Gender:</span>
+                        <span class="ml-2">{{ profileForm.gender }}</span>
+                      </p>
 
-                  <div class="flex space-x-3">
-                    <button
-                      @click="openImageCropper"
-                      class="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      {{ hasAvatar ? 'Edit Picture' : 'Add Picture' }}
-                    </button>
+                      <p v-if="profileForm.birth_date || profileForm.age" class="flex items-start">
+                        <span class="w-16 sm:w-20 text-gray-500 flex-shrink-0">Age:</span>
+                        <span class="ml-2">{{ profileForm.birth_date || profileForm.age || 'Not specified' }}</span>
+                      </p>
+
+                      <p v-if="profileForm.specialization || profileForm.job_title" class="flex items-start">
+                        <span class="w-16 sm:w-20 text-gray-500 flex-shrink-0">Specialty:</span>
+                        <span class="ml-2">{{ profileForm.specialization || profileForm.job_title || 'Not specified' }}</span>
+                      </p>
+                    </div>
+
+                    <!-- Right Column (Desktop only) -->
+                    <div class="space-y-3">
+
+                    </div>
                   </div>
-
-                  <p class="text-xs text-gray-500">
-                    Upload and crop your profile picture. Supported formats: JPG, PNG, GIF (max 5MB)
-                  </p>
                 </div>
               </div>
             </div>
@@ -780,7 +120,7 @@ watch(
                   <div>
                     <p class="text-sm text-gray-600">
                       {{
-                        profileForm.isActive
+                        profileForm.status
                           ? 'Active - Available for work'
                           : 'Inactive - Not available for work'
                       }}
@@ -793,15 +133,15 @@ watch(
                       @click="toggleWorkStatus"
                       :disabled="isUpdating"
                       class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                      :class="profileForm.isActive ? 'bg-blue-600' : 'bg-gray-200'"
+                      :class="profileForm.status ? 'bg-blue-600' : 'bg-gray-200'"
                     >
                       <span
                         class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                        :class="profileForm.isActive ? 'translate-x-6' : 'translate-x-1'"
+                        :class="profileForm.status ? 'translate-x-6' : 'translate-x-1'"
                       />
                     </button>
                     <span class="ml-3 text-sm font-medium text-gray-900">
-                      {{ profileForm.isActive ? 'Active' : 'Inactive' }}
+                      {{ profileForm.status ? 'Active' : 'Inactive' }}
                     </span>
                   </div>
                 </div>
@@ -826,11 +166,11 @@ watch(
                     </div>
                     <div class="ml-3">
                       <h4 class="text-sm font-medium text-gray-900">
-                        {{ profileForm.isActive ? 'Active Status' : 'Inactive Status' }}
+                        {{ profileForm.status ? 'Active Status' : 'Inactive Status' }}
                       </h4>
                       <p class="text-sm text-gray-600 mt-1">
                         {{
-                          profileForm.isActive
+                          profileForm.status
                             ? 'You are currently available for new projects and tasks. Managers can assign work to you.'
                             : 'You are currently not available for new work. You will not receive new project assignments or tasks.'
                         }}
@@ -840,7 +180,6 @@ watch(
                 </div>
 
                 <!-- Status Change Reason (when setting to inactive) -->
-                <!-- Debug: showInactiveReasonFields = {{ showInactiveReasonFields }}, profileForm.isActive = {{ profileForm.isActive }} -->
                 <div v-if="showInactiveReasonFields" class="space-y-3">
                   <div
                     v-if="showInactiveReasonFields"
@@ -852,12 +191,12 @@ watch(
                     </p>
                   </div>
 
-                  <label for="inactive_reason" class="block text-sm font-medium text-gray-700">
+                  <label for="status_reason" class="block text-sm font-medium text-gray-700">
                     Reason for being inactive
                   </label>
                   <select
-                    id="inactive_reason"
-                    v-model="profileForm.inactive_reason"
+                    id="status_reason"
+                    v-model="profileForm.status_reason"
                     class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select a reason</option>
@@ -869,83 +208,94 @@ watch(
                   </select>
 
                   <label
-                    v-if="profileForm.inactive_reason"
-                    for="inactive_reason_details"
+                    v-if="profileForm.status_reason"
+                    for="status_details"
                     class="block text-sm font-medium text-gray-700"
                   >
                     {{
-                      profileForm.inactive_reason === 'other'
+                      profileForm.status_reason === 'other'
                         ? 'Please specify the reason'
                         : 'Additional details (optional)'
                     }}
                   </label>
 
                   <textarea
-                    v-if="profileForm.inactive_reason"
-                    v-model="profileForm.inactive_reason_details"
+                    v-if="profileForm.status_reason"
+                    v-model="profileForm.status_details"
                     rows="2"
                     class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     :placeholder="
-                      profileForm.inactive_reason === 'other'
+                      profileForm.status_reason === 'other'
                         ? 'Please specify the reason...'
                         : 'Additional details (optional)...'
                     "
                   ></textarea>
 
+                  <!-- Inactive Until Date -->
+                  <div v-if="profileForm.status_reason" class="space-y-2">
+                    <label
+                      for="status_end_at"
+                      class="block text-sm font-medium text-gray-700"
+                    >
+                      Unavailable until (optional)
+                    </label>
+                    <input
+                      id="status_end_at"
+                      v-model="profileForm.status_end_at"
+                      type="date"
+                      class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      :min="new Date().toISOString().split('T')[0]"
+                      @click.stop
+                      @focus.stop
+                      @touchstart.stop
+                      @touchend.stop
+                      @mousedown.stop
+                      @mouseup.stop
+                    />
+                  </div>
+
                   <!-- Save Inactive Status Button -->
                   <div
-                    v-if="showInactiveReasonFields && profileForm.inactive_reason"
+                    v-if="showInactiveReasonFields && profileForm.status_reason"
                     class="flex justify-end space-x-3"
                   >
                     <button
-                      @click="cancelInactiveStatus"
-                      :disabled="isUpdating"
-                      class="px-4 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      @click="showInactiveReasonFields = false"
+                      class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       Cancel
                     </button>
                     <button
                       @click="saveInactiveStatus"
                       :disabled="isUpdating"
-                      class="px-4 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      class="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
                     >
                       <span v-if="isUpdating">Saving...</span>
                       <span v-else>Save Inactive Status</span>
                     </button>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Profile Information -->
-        <div class="bg-white shadow rounded-lg p-6">
-          <h2 class="text-xl font-semibold text-gray-900 mb-6">Profile Information</h2>
+        <!-- Divider -->
+        <div class="border-t border-gray-200 my-8"></div>
 
+        <!-- Profile Information -->
           <form @submit.prevent="updateProfile" class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <!-- First Name -->
               <div>
-                <label for="first_name" class="block text-sm font-medium text-gray-700">
-                  First Name <span class="text-red-500">*</span>
+                  <label for="first_name" class="block text-sm font-medium text-gray-700 mb-2">
+                    First Name *
                 </label>
                 <input
                   id="first_name"
                   v-model="profileForm.first_name"
                   type="text"
-                  class="mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  :class="
-                    validationErrors.first_name ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  "
+                    required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter your first name"
-                  @input="clearValidationError('first_name')"
-                  @blur="
-                    validationErrors.first_name = validateField(
-                      'first_name',
-                      profileForm.first_name,
-                    )
-                  "
                 />
                 <p v-if="validationErrors.first_name" class="mt-1 text-sm text-red-600">
                   {{ validationErrors.first_name }}
@@ -954,22 +304,16 @@ watch(
 
               <!-- Last Name -->
               <div>
-                <label for="last_name" class="block text-sm font-medium text-gray-700">
-                  Last Name <span class="text-red-500">*</span>
+                  <label for="last_name" class="block text-sm font-medium text-gray-700 mb-2">
+                    Last Name *
                 </label>
                 <input
                   id="last_name"
                   v-model="profileForm.last_name"
                   type="text"
-                  class="mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  :class="
-                    validationErrors.last_name ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                  "
+                    required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter your last name"
-                  @input="clearValidationError('last_name')"
-                  @blur="
-                    validationErrors.last_name = validateField('last_name', profileForm.last_name)
-                  "
                 />
                 <p v-if="validationErrors.last_name" class="mt-1 text-sm text-red-600">
                   {{ validationErrors.last_name }}
@@ -978,201 +322,219 @@ watch(
 
               <!-- Phone -->
               <div>
-                <label for="phone" class="block text-sm font-medium text-gray-700">
+                  <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">
                   Phone Number
                 </label>
                 <input
                   id="phone"
                   v-model="profileForm.phone"
                   type="tel"
-                  class="mt-1 block w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  :class="validationErrors.phone ? 'border-red-300 bg-red-50' : 'border-gray-300'"
-                  placeholder="+1234567890"
-                  @input="clearValidationError('phone')"
-                  @blur="validationErrors.phone = validateField('phone', profileForm.phone)"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="(xxx) xxx-xxxx"
+                    @input="formatPhone"
                 />
                 <p v-if="validationErrors.phone" class="mt-1 text-sm text-red-600">
                   {{ validationErrors.phone }}
                 </p>
               </div>
 
-              <!-- Company -->
+              <!-- Gender -->
               <div>
-                <label for="company" class="block text-sm font-medium text-gray-700">
-                  Company
+                <label for="gender" class="block text-sm font-medium text-gray-700 mb-2">
+                  Gender
                 </label>
-                <input
-                  id="company"
-                  v-model="profileForm.company"
-                  type="text"
-                  class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter your company name"
-                />
+                <select
+                  id="gender"
+                  v-model="profileForm.gender"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+                <p v-if="validationErrors.gender" class="mt-1 text-sm text-red-600">
+                  {{ validationErrors.gender }}
+                </p>
               </div>
 
-              <!-- Department -->
+              <!-- Date of Birth -->
               <div>
-                <label for="department" class="block text-sm font-medium text-gray-700">
-                  Department
+                <label for="birth_date" class="block text-sm font-medium text-gray-700 mb-2">
+                  Date of Birth
                 </label>
                 <input
-                  id="department"
-                  v-model="profileForm.department"
-                  type="text"
-                  class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter your department"
+                  id="birth_date"
+                  v-model="profileForm.birth_date"
+                  type="date"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
+                <p v-if="validationErrors.birth_date" class="mt-1 text-sm text-red-600">
+                  {{ validationErrors.birth_date }}
+                </p>
               </div>
 
-              <!-- Location -->
+              <!-- Job Title -->
               <div>
-                <label for="location" class="block text-sm font-medium text-gray-700">
-                  Location
+                <label for="job_title" class="block text-sm font-medium text-gray-700 mb-2">
+                  Job Title *
                 </label>
                 <input
-                  id="location"
-                  v-model="profileForm.location"
+                  id="job_title"
+                  v-model="profileForm.job_title"
                   type="text"
-                  class="block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter your location"
+                  required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter your job title"
                 />
+                <p v-if="validationErrors.job_title" class="mt-1 text-sm text-red-600">
+                  {{ validationErrors.job_title }}
+                </p>
               </div>
+
+              <!-- City -->
+              <div>
+                <label for="city" class="block text-sm font-medium text-gray-700 mb-2">
+                  City *
+                </label>
+                <input
+                  id="city"
+                  v-model="profileForm.city"
+                  type="text"
+                  placeholder="Enter your city"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  maxlength="100"
+                />
+                <p v-if="validationErrors.city" class="mt-1 text-sm text-red-600">
+                  {{ validationErrors.city }}
+                </p>
+              </div>
+
             </div>
 
-            <!-- Read-only fields section -->
+            <!-- Cultural & Language Information section -->
             <div class="border-t pt-6">
               <h3 class="text-lg font-medium text-gray-900 mb-4">
-                Account Information (Read Only)
+                Cultural & Language Information
               </h3>
-              <p class="text-sm text-gray-600 mb-4">
-                These fields are managed by administrators and cannot be changed from your profile.
+              <p class="text-sm text-gray-600 mb-6">
+                This information helps form effective work teams based on cultural compatibility and language skills.
               </p>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- User Type (Read Only) -->
+                <!-- Nationality -->
                 <div>
-                  <label class="block text-sm font-medium text-gray-700"> User Type </label>
-                  <div
-                    class="mt-1 flex items-center px-3 py-2 bg-gray-50 border border-gray-200 rounded-md"
-                  >
-                    <span class="text-gray-900">
-                      {{ profileForm.user_type || 'Not specified' }}
-                    </span>
-                    <svg
-                      class="ml-2 w-4 h-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
-                  <p class="mt-1 text-xs text-gray-500">
-                    Contact an administrator to change your user type
+                  <label for="nationality" class="block text-sm font-medium text-gray-700 mb-2">
+                    Nationality
+                  </label>
+                  <input
+                    id="nationality"
+                    v-model="profileForm.nationality"
+                    type="text"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your nationality"
+                  />
+                  <p v-if="validationErrors.nationality" class="mt-1 text-sm text-red-600">
+                    {{ validationErrors.nationality }}
                   </p>
                 </div>
 
-                <!-- Job Title (Read Only) -->
+                <!-- Country of Origin -->
                 <div>
-                  <label class="block text-sm font-medium text-gray-700"> Job Title </label>
-                  <div
-                    class="mt-1 flex items-center px-3 py-2 bg-gray-50 border border-gray-200 rounded-md"
-                  >
-                    <span class="text-gray-900">
-                      {{ profileForm.job_title || 'Not specified' }}
-                    </span>
-                    <svg
-                      class="ml-2 w-4 h-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
-                  <p class="mt-1 text-xs text-gray-500">
-                    Contact an administrator to change your job title
+                  <label for="country_of_origin" class="block text-sm font-medium text-gray-700 mb-2">
+                    Country of Origin
+                  </label>
+                  <input
+                    id="country_of_origin"
+                    v-model="profileForm.country_of_origin"
+                    type="text"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your country of origin"
+                  />
+                  <p v-if="validationErrors.country_of_origin" class="mt-1 text-sm text-red-600">
+                    {{ validationErrors.country_of_origin }}
                   </p>
                 </div>
 
-                <!-- Role (Read Only) -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700"> Role </label>
-                  <div
-                    class="mt-1 flex items-center px-3 py-2 bg-gray-50 border border-gray-200 rounded-md"
+                <!-- Workforce Group -->
+                <div class="md:col-span-2">
+                  <label for="workforce_group" class="block text-sm font-medium text-gray-700 mb-2">
+                    Workforce Group *
+                  </label>
+                  <select
+                    id="workforce_group"
+                    v-model="profileForm.workforce_group"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <span class="text-gray-900 capitalize">
-                      {{ authStore.currentUser?.role_code || 'Not specified' }}
-                    </span>
-                    <svg
-                      class="ml-2 w-4 h-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
-                  <p class="mt-1 text-xs text-gray-500">
-                    Your role determines your permissions in the system
+                    <option value="">Select workforce group</option>
+                    <option v-for="group in WORKFORCE_GROUPS" :key="group.value" :value="group.value">
+                      {{ group.label }}
+                    </option>
+                  </select>
+                  <p v-if="validationErrors.workforce_group" class="mt-1 text-sm text-red-600">
+                    {{ validationErrors.workforce_group }}
                   </p>
                 </div>
 
-                <!-- Email (Read Only) -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700"> Email </label>
-                  <div
-                    class="mt-1 flex items-center px-3 py-2 bg-gray-50 border border-gray-200 rounded-md"
-                  >
-                    <span class="text-gray-900">
-                      {{ authStore.currentUser?.email || 'Not specified' }}
-                    </span>
-                    <svg
-                      class="ml-2 w-4 h-4 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
+                <!-- Languages -->
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Languages *
+                  </label>
+                  <div class="space-y-3">
+                    <div v-for="(language, index) in profileForm.languages" :key="index" class="flex items-center space-x-3">
+                      <select
+                        v-model="language.language_id"
+                        class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Select language</option>
+                        <option v-for="lang in AVAILABLE_LANGUAGES" :key="lang.id" :value="lang.id">
+                          {{ lang.name }}
+                        </option>
+                      </select>
+                      <select
+                        v-model="language.prof_level"
+                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Level</option>
+                        <option v-for="level in PROFICIENCY_LEVELS" :key="level.value" :value="level.value">
+                          {{ level.label }}
+                        </option>
+                      </select>
+                      <button
+                        type="button"
+                        @click="removeLanguage(index)"
+                        class="px-3 py-2 text-red-600 hover:text-red-800 focus:outline-none"
+                      >
+                        Remove
+                      </button>
                   </div>
-                  <p class="mt-1 text-xs text-gray-500">
-                    Email address cannot be changed from profile
+                    <button
+                      type="button"
+                      @click="addLanguage"
+                      class="px-4 py-2 text-blue-600 hover:text-blue-800 focus:outline-none border border-blue-300 rounded-md"
+                    >
+                      + Add Language
+                    </button>
+                  </div>
+                  <p v-if="validationErrors.languages" class="mt-1 text-sm text-red-600">
+                    {{ validationErrors.languages }}
                   </p>
                 </div>
               </div>
-            </div>
+                </div>
+
+            <!-- Read-only fields section -->
 
             <!-- Additional Info -->
             <div>
-              <label for="additional_info" class="block text-sm font-medium text-gray-700">
+                <label for="additional_info" class="block text-sm font-medium text-gray-700 mb-2">
                 Additional Information
               </label>
               <textarea
                 id="additional_info"
                 v-model="profileForm.additional_info"
                 rows="3"
-                class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Any additional information about yourself"
               ></textarea>
             </div>
@@ -1191,230 +553,500 @@ watch(
           </form>
         </div>
 
-        <!-- Security Settings -->
-        <div class="bg-white shadow rounded-lg p-6">
-          <h2 class="text-xl font-semibold text-gray-900 mb-6">Security Settings</h2>
-
-          <div class="space-y-6">
-            <!-- 2FA Status -->
-            <div class="flex items-center justify-between">
-              <div>
-                <h3 class="text-lg font-medium text-gray-900">Two-Factor Authentication</h3>
-                <p class="text-sm text-gray-600">
-                  {{ authStore.currentUser?.twoFactorEnabled ? 'Enabled' : 'Disabled' }}
-                </p>
-              </div>
-
-              <div class="flex items-center">
-                <!-- 2FA Toggle Switch -->
-                <button
-                  @click="toggleTwoFactor"
-                  :disabled="isUpdating"
-                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  :class="authStore.currentUser?.twoFactorEnabled ? 'bg-blue-600' : 'bg-gray-200'"
-                >
-                  <span
-                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                    :class="
-                      authStore.currentUser?.twoFactorEnabled ? 'translate-x-6' : 'translate-x-1'
-                    "
-                  ></span>
-                </button>
-                <span class="ml-3 text-sm font-medium text-gray-900">
-                  {{ authStore.currentUser?.twoFactorEnabled ? 'ON' : 'OFF' }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Account Info -->
-            <div class="border-t pt-6">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Account Information</h3>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span class="font-medium text-gray-700">Email:</span>
-                  <span class="ml-2 text-gray-900">{{ authStore.currentUser?.email }}</span>
-                </div>
-
-                <div>
-                  <span class="font-medium text-gray-700">Role:</span>
-                  <span class="ml-2 text-gray-900">{{ authStore.currentUser?.role_code }}</span>
-                </div>
-
-                <div>
-                  <span class="font-medium text-gray-700">Status:</span>
-                  <span class="ml-2 text-gray-900">{{
-                    authStore.currentUser?.isActive ? 'Active' : 'Inactive'
-                  }}</span>
-                </div>
-
-                <div>
-                  <span class="font-medium text-gray-700">Last Login:</span>
-                  <span class="ml-2 text-gray-900">{{
-                    authStore.currentUser?.lastLogin || 'Never'
-                  }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-
-          <!-- Professional Tab -->
-          <div v-if="activeTab === 'professional'" class="p-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6">Professional Information</h2>
-            <p class="text-gray-600 mb-6">Your professional background and expertise</p>
-
-            <form @submit.prevent="updateProfile" class="space-y-6">
-              <!-- Resume/Bio -->
-              <div>
-                <label for="bio" class="block text-sm font-medium text-gray-700 mb-2">
-                  Professional Bio
-                </label>
-                <textarea
-                  id="bio"
-                  v-model="profileForm.bio"
-                  rows="4"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Tell us about your professional background..."
-                ></textarea>
-              </div>
-
-              <!-- Experience -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label for="experience_years" class="block text-sm font-medium text-gray-700 mb-2">
-                    Years of Experience
-                  </label>
-                  <input
-                    id="experience_years"
-                    v-model="profileForm.experience_years"
-                    type="number"
-                    min="0"
-                    max="50"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="5"
-                  />
-                </div>
-
-                <div>
-                  <label for="specialization" class="block text-sm font-medium text-gray-700 mb-2">
-                    Specialization
-                  </label>
-                  <input
-                    id="specialization"
-                    v-model="profileForm.specialization"
-                    type="text"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g., Electrical, Plumbing, HVAC"
-                  />
-                </div>
-              </div>
-
-              <!-- Skills -->
-              <div>
-                <label for="skills" class="block text-sm font-medium text-gray-700 mb-2">
-                  Skills & Certifications
-                </label>
-                <textarea
-                  id="skills"
-                  v-model="profileForm.skills"
-                  rows="3"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="List your skills, certifications, and qualifications..."
-                ></textarea>
-              </div>
-
-              <!-- Links -->
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label for="linkedin_url" class="block text-sm font-medium text-gray-700 mb-2">
-                    LinkedIn Profile
-                  </label>
-                  <input
-                    id="linkedin_url"
-                    v-model="profileForm.linkedin_url"
-                    type="url"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="https://linkedin.com/in/yourname"
-                  />
-                </div>
-
-                <div>
-                  <label for="portfolio_url" class="block text-sm font-medium text-gray-700 mb-2">
-                    Portfolio/Website
-                  </label>
-                  <input
-                    id="portfolio_url"
-                    v-model="profileForm.portfolio_url"
-                    type="url"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="https://yourportfolio.com"
-                  />
-                </div>
-              </div>
-
-              <div class="flex justify-end">
-                <button
-                  type="submit"
-                  :disabled="isUpdating"
-                  class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                >
-                  <span v-if="isUpdating">Updating...</span>
-                  <span v-else>Update Professional Info</span>
-                </button>
-              </div>
-            </form>
-          </div>
 
           <!-- Emergency Tab -->
-          <div v-if="activeTab === 'emergency'" class="p-6">
-            <h2 class="text-xl font-semibold text-gray-900 mb-6">Emergency Contacts</h2>
-            <p class="text-gray-600 mb-6">Contact information for emergency situations</p>
+        <div v-if="activeTab === 'emergency'" class="p-6 max-w-4xl mx-auto">
+            <h2 class="text-xl font-semibold text-gray-900 mb-6">Emergency Information</h2>
+            <p class="text-gray-600 mb-6">This information will be used in case of emergency situations on the construction site.</p>
 
-            <form @submit.prevent="updateProfile" class="space-y-6">
+            <!-- Emergency Contacts Section -->
+            <div class="mb-8">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Emergency Contacts</h3>
+
+              <!-- Primary Contact Row -->
+              <div class="mb-4">
+                <h4 class="text-md font-medium text-gray-800 mb-3">Primary Contact</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                    <input
+                      v-model="profileForm.emergency_data.primary_contact_name"
+                      type="text"
+                      placeholder="Full name"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                    <input
+                      v-model="profileForm.emergency_data.primary_contact_phone"
+                      type="text"
+                      placeholder="(xxx) xxx-xxxx"
+                      @input="formatPhone($event, 'primary_contact_phone')"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <p v-if="validationErrors.primary_contact_phone" class="mt-1 text-sm text-red-600">{{ validationErrors.primary_contact_phone }}</p>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Relationship</label>
+                    <input
+                      v-model="profileForm.emergency_data.primary_contact_relationship"
+                      type="text"
+                      placeholder="Wife, Mother, Brother, etc."
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Secondary Contact Row -->
+              <div class="mb-4">
+                <h4 class="text-md font-medium text-gray-800 mb-3">Secondary Contact (Optional)</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                    <input
+                      v-model="profileForm.emergency_data.secondary_contact_name"
+                      type="text"
+                      placeholder="Full name"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                    <input
+                      v-model="profileForm.emergency_data.secondary_contact_phone"
+                      type="text"
+                      placeholder="(xxx) xxx-xxxx"
+                      @input="formatPhone($event, 'secondary_contact_phone')"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <p v-if="validationErrors.secondary_contact_phone" class="mt-1 text-sm text-red-600">{{ validationErrors.secondary_contact_phone }}</p>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Relationship</label>
+                    <input
+                      v-model="profileForm.emergency_data.secondary_contact_relationship"
+                      type="text"
+                      placeholder="Friend, Colleague, etc."
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Medical Information Section -->
+            <div class="mb-8">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Medical Information</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label for="emergency_contact" class="block text-sm font-medium text-gray-700 mb-2">
-                    Emergency Contact Name
-                  </label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Blood Type</label>
                   <input
-                    id="emergency_contact"
-                    v-model="profileForm.emergency_contact"
+                    v-model="profileForm.emergency_data.blood_type"
                     type="text"
+                    placeholder="A+, B-, O+, AB-, etc."
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Full name of emergency contact"
                   />
                 </div>
-
                 <div>
-                  <label for="emergency_phone" class="block text-sm font-medium text-gray-700 mb-2">
-                    Emergency Contact Phone
-                  </label>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Allergies</label>
                   <input
-                    id="emergency_phone"
-                    v-model="profileForm.emergency_phone"
-                    type="tel"
+                    v-model="profileForm.emergency_data.allergies"
+                    type="text"
+                    placeholder="Penicillin, dust, latex, etc."
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="+1234567890"
+                  />
+                </div>
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Medical Conditions</label>
+                  <input
+                    v-model="profileForm.emergency_data.medical_conditions"
+                    type="text"
+                    placeholder="Diabetes, asthma, heart condition, etc."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Current Medications</label>
+                  <input
+                    v-model="profileForm.emergency_data.medications"
+                    type="text"
+                    placeholder="Insulin, aspirin, blood pressure medication, etc."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Additional Medical Notes</label>
+                  <textarea
+                    v-model="profileForm.emergency_data.medical_notes"
+                    rows="3"
+                    placeholder="Any additional medical information that could be important in an emergency..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Insurance Information Section -->
+            <div class="mb-8">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Insurance Information</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Insurance Company</label>
+                  <input
+                    v-model="profileForm.emergency_data.insurance_company"
+                    type="text"
+                    placeholder="Company name"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Policy Number</label>
+                  <input
+                    v-model="profileForm.emergency_data.policy_number"
+                    type="text"
+                    placeholder="Policy number"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Emergency Contact at Insurance</label>
+                  <input
+                    v-model="profileForm.emergency_data.insurance_emergency_contact"
+                    type="text"
+                    placeholder="Phone number or contact person"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               </div>
+            </div>
 
-              <div class="flex justify-end">
-                <button
-                  type="submit"
-                  :disabled="isUpdating"
-                  class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                >
-                  <span v-if="isUpdating">Updating...</span>
-                  <span v-else>Update Emergency Contacts</span>
-                </button>
+            <!-- Save Button -->
+            <div class="flex justify-end">
+              <button
+                @click="updateEmergencyData"
+                :disabled="isUpdating"
+                class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+              >
+                {{ isUpdating ? 'Saving...' : 'Save Emergency Information' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Professional Tab -->
+        <div v-if="activeTab === 'professional'" class="p-6 max-w-4xl mx-auto">
+
+            <!-- Work Experience Section -->
+            <div class="mb-8">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Work Experience</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Total Years of Experience</label>
+                  <input
+                    v-model="profileForm.professional_data.total_experience"
+                    type="number"
+                    placeholder="Years"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Specialized Experience</label>
+                  <input
+                    v-model="profileForm.professional_data.specialized_experience"
+                    type="text"
+                    placeholder="e.g., High-rise construction, residential, commercial"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Previous Employers</label>
+                  <textarea
+                    v-model="profileForm.professional_data.previous_employers"
+                    rows="3"
+                    placeholder="List your previous employers and positions..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  ></textarea>
+                </div>
+                <div class="md:col-span-2">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Professional References</label>
+                  <textarea
+                    v-model="profileForm.professional_data.references"
+                    rows="3"
+                    placeholder="Name, position, company, contact information..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  ></textarea>
+                </div>
               </div>
-            </form>
+            </div>
+
+            <!-- Education Section -->
+            <div class="mb-8">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Education</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Highest Education Level</label>
+                  <select
+                    v-model="profileForm.professional_data.education_level"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select education level</option>
+                    <option value="high_school">High School Diploma</option>
+                    <option value="trade_school">Trade School/College</option>
+                    <option value="apprenticeship">Apprenticeship Program</option>
+                    <option value="university">University Degree</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Institution Name</label>
+                  <input
+                    v-model="profileForm.professional_data.institution_name"
+                    type="text"
+                    placeholder="School/College/University name"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Graduation Year</label>
+                  <input
+                    v-model="profileForm.professional_data.graduation_year"
+                    type="number"
+                    placeholder="YYYY"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Field of Study</label>
+                  <input
+                    v-model="profileForm.professional_data.field_of_study"
+                    type="text"
+                    placeholder="e.g., Construction Management, Civil Engineering"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Certifications Section -->
+            <div class="mb-8">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Certifications & Licenses</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Red Seal Certification</label>
+                  <select
+                    v-model="profileForm.professional_data.red_seal"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select status</option>
+                    <option value="certified">Certified</option>
+                    <option value="apprentice">Apprentice</option>
+                    <option value="none">Not applicable</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Provincial Trade Certificate</label>
+                  <input
+                    v-model="profileForm.professional_data.provincial_certificate"
+                    type="text"
+                    placeholder="Certificate number and province"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Driver's License Class</label>
+                  <select
+                    v-model="profileForm.professional_data.drivers_license"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select class</option>
+                    <option value="G1">G1 (Learner's Permit)</option>
+                    <option value="G2">G2 (Probationary)</option>
+                    <option value="G">G (Full License)</option>
+                    <option value="D">D (Commercial)</option>
+                    <option value="A">A (Motorcycle)</option>
+                    <option value="none">No license</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Union Membership</label>
+                  <input
+                    v-model="profileForm.professional_data.union_membership"
+                    type="text"
+                    placeholder="Union name and local number"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Safety Certifications Section -->
+            <div class="mb-8">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Safety Certifications</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">WHMIS Certificate</label>
+                  <select
+                    v-model="profileForm.professional_data.whmis"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select status</option>
+                    <option value="current">Current</option>
+                    <option value="expired">Expired</option>
+                    <option value="none">Not certified</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">First Aid/CPR</label>
+                  <select
+                    v-model="profileForm.professional_data.first_aid"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select status</option>
+                    <option value="current">Current</option>
+                    <option value="expired">Expired</option>
+                    <option value="none">Not certified</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Fall Protection</label>
+                  <select
+                    v-model="profileForm.professional_data.fall_protection"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select status</option>
+                    <option value="current">Current</option>
+                    <option value="expired">Expired</option>
+                    <option value="none">Not certified</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Confined Space Entry</label>
+                  <select
+                    v-model="profileForm.professional_data.confined_space"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select status</option>
+                    <option value="current">Current</option>
+                    <option value="expired">Expired</option>
+                    <option value="none">Not certified</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Lockout/Tagout</label>
+                  <select
+                    v-model="profileForm.professional_data.lockout_tagout"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select status</option>
+                    <option value="current">Current</option>
+                    <option value="expired">Expired</option>
+                    <option value="none">Not certified</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Other Safety Certifications</label>
+                  <textarea
+                    v-model="profileForm.professional_data.other_safety"
+                    rows="3"
+                    placeholder="List other safety certifications..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Skills & Equipment Section -->
+            <div class="mb-8">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Skills & Equipment</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Specialized Skills</label>
+                  <textarea
+                    v-model="profileForm.professional_data.specialized_skills"
+                    rows="3"
+                    placeholder="e.g., Welding, electrical work, plumbing, concrete work..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  ></textarea>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Equipment & Tools</label>
+                  <textarea
+                    v-model="profileForm.professional_data.equipment_tools"
+                    rows="3"
+                    placeholder="Equipment and tools you can operate..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  ></textarea>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Willing to Travel</label>
+                  <select
+                    v-model="profileForm.professional_data.travel_willingness"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select option</option>
+                    <option value="local">Local only</option>
+                    <option value="provincial">Within province</option>
+                    <option value="national">Across Canada</option>
+                    <option value="international">International</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Availability</label>
+                  <select
+                    v-model="profileForm.professional_data.availability"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select availability</option>
+                    <option value="full_time">Full-time</option>
+                    <option value="part_time">Part-time</option>
+                    <option value="contract">Contract</option>
+                    <option value="seasonal">Seasonal</option>
+                    <option value="on_call">On-call</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Professional Summary Section -->
+            <div class="mb-8">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Professional Summary</h3>
+              <div class="grid grid-cols-1 gap-6">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Professional Summary</label>
+                  <textarea
+                    v-model="profileForm.professional_data.professional_summary"
+                    rows="4"
+                    placeholder="Brief description of your professional background, key achievements, and what makes you unique as a construction professional..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  ></textarea>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Key Projects</label>
+                  <textarea
+                    v-model="profileForm.professional_data.key_projects"
+                    rows="3"
+                    placeholder="Describe your most significant projects or achievements..."
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Save Button -->
+            <div class="flex justify-end">
+              <button
+                @click="updateProfessionalData"
+                :disabled="isUpdating"
+                class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+              >
+                {{ isUpdating ? 'Saving...' : 'Save Professional Information' }}
+              </button>
+            </div>
           </div>
 
           <!-- System Tab -->
-          <div v-if="activeTab === 'system'" class="p-6">
+        <div v-if="activeTab === 'system'" class="p-6 max-w-4xl mx-auto">
             <h2 class="text-xl font-semibold text-gray-900 mb-6">System Settings</h2>
             <p class="text-gray-600 mb-6">Security and account settings</p>
 
@@ -1424,50 +1056,27 @@ watch(
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm text-gray-600">
-                    {{ authStore.currentUser?.twoFactorEnabled ? 'Enabled' : 'Disabled' }}
+                    {{ authStore.currentUser?.two_factor_enabled ? 'Enabled' : 'Disabled' }}
                   </p>
                 </div>
                 <button
                   @click="toggleTwoFactor"
                   :disabled="isUpdating"
                   class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  :class="authStore.currentUser?.twoFactorEnabled ? 'bg-blue-600' : 'bg-gray-200'"
+                  :class="authStore.currentUser?.two_factor_enabled ? 'bg-blue-600' : 'bg-gray-200'"
                 >
                   <span
                     class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
                     :class="
-                      authStore.currentUser?.twoFactorEnabled ? 'translate-x-6' : 'translate-x-1'
+                      authStore.currentUser?.two_factor_enabled ? 'translate-x-6' : 'translate-x-1'
                     "
                   ></span>
                 </button>
               </div>
             </div>
 
-            <!-- Work Status Section -->
+            <!-- Account Information -->
             <div class="mb-8">
-              <h3 class="text-lg font-medium text-gray-900 mb-4">Work Status</h3>
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-sm text-gray-600">
-                    {{ profileForm.isActive ? 'Active - Available for work' : 'Inactive - Not available for work' }}
-                  </p>
-                </div>
-                <button
-                  @click="toggleWorkStatus"
-                  :disabled="isUpdating"
-                  class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  :class="profileForm.isActive ? 'bg-blue-600' : 'bg-gray-200'"
-                >
-                  <span
-                    class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
-                    :class="profileForm.isActive ? 'translate-x-6' : 'translate-x-1'"
-                  ></span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Account Info -->
-            <div class="border-t pt-6">
               <h3 class="text-lg font-medium text-gray-900 mb-4">Account Information</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
@@ -1481,13 +1090,13 @@ watch(
                 <div>
                   <span class="font-medium text-gray-700">Status:</span>
                   <span class="ml-2 text-gray-900">{{
-                    authStore.currentUser?.isActive ? 'Active' : 'Inactive'
+                    authStore.currentUser?.status ? 'Active' : 'Inactive'
                   }}</span>
                 </div>
                 <div>
                   <span class="font-medium text-gray-700">Last Login:</span>
                   <span class="ml-2 text-gray-900">{{
-                    authStore.currentUser?.lastLogin || 'Never'
+                    authStore.currentUser?.last_login || 'Never'
                   }}</span>
                 </div>
               </div>
@@ -1497,13 +1106,820 @@ watch(
       </div>
     </div>
   </div>
-
-  <!-- Avatar Editor Dialog -->
-  <AvatarEditor
-    :is-open="showAvatarEditor"
-    :current-avatar="userAvatar"
-    @close="closeAvatarEditor"
-    @save="saveAvatarFromEditor"
-  />
-
 </template>
+
+<script setup lang="ts">
+import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { useAuthStore } from '@/core/stores/auth'
+import { useProfileStore, WORKFORCE_GROUPS, AVAILABLE_LANGUAGES, PROFICIENCY_LEVELS } from '@/core/stores/profile'
+import { api } from '@/core/utils/api'
+import AvatarWidget from './AvatarWidget.vue'
+
+// Component name
+defineOptions({
+  name: 'AccountSettings',
+})
+
+const authStore = useAuthStore()
+const profileStore = useProfileStore()
+
+// User data
+const user = computed(() => authStore.currentUser)
+const userAvatar = computed(() => {
+  return profileStore.profile?.avatar_url || user.value?.avatar_url || '/default-avatar.png'
+})
+
+// State
+const isLoading = ref(false)
+const isUpdating = ref(false)
+const errorMessage = ref('')
+const successMessage = ref('')
+
+
+const avatarKey = ref(0) // For forcing image refresh
+const showInactiveReasonFields = ref(false) // New state for showing reason fields
+
+// Tab management
+const activeTab = ref<string>('basic')
+const tabs = [
+  { id: 'basic', name: 'Basic Info', icon: '👤' },
+  { id: 'professional', name: 'Professional', icon: '💼' },
+  { id: 'emergency', name: 'Emergency', icon: '🚨' },
+  { id: 'system', name: 'System', icon: '⚙️' }
+]
+
+// Profile form
+const profileForm = reactive({
+  first_name: '',
+  last_name: '',
+  phone: '',
+  job_title: '',
+  additional_info: '',
+  status: true,
+  status_reason: '',
+  status_details: '',
+  status_end_at: '',
+  // Extended profile fields
+  resume: '',
+  experience_years: '',
+  specialization: 'Civil Engineer',
+  certifications: '',
+  emergency_contact: '',
+  emergency_phone: '',
+  skills: '',
+  bio: '',
+  linkedin_url: '',
+  portfolio_url: '',
+  // Additional fields
+  gender: 'Male',
+  birth_date: '1985-03-15',
+  age: '39 years old',
+  // Cultural and language fields
+  nationality: '',
+  country_of_origin: '',
+  workforce_group: '',
+  city: '',
+  emergency_data: {} as Record<string, string>,
+  professional_data: {} as Record<string, string>,
+  languages: [] as Array<{ language_id: number; prof_level: 'Basic' | 'Intermediate' | 'Fluent'; worker_id: number }>,
+})
+
+// Validation errors
+const validationErrors = reactive({
+  first_name: '',
+  last_name: '',
+  phone: '',
+  job_title: '',
+  gender: '',
+  birth_date: '',
+  nationality: '',
+  country_of_origin: '',
+  workforce_group: '',
+  city: '',
+  languages: '',
+  primary_contact_phone: '',
+  secondary_contact_phone: '',
+})
+
+// Validation rules with proper typing
+interface ValidationRule {
+  required?: boolean
+  minLength?: number
+  maxLength?: number
+  pattern?: RegExp
+  message?: string
+  custom?: (value: unknown) => string
+}
+
+const validationRules: Record<string, ValidationRule> = {
+  first_name: {
+    required: true,
+    minLength: 2,
+    maxLength: 50,
+    pattern: /^[a-zA-Zа-яА-Я\s'-]+$/,
+  },
+  last_name: {
+    required: true,
+    minLength: 2,
+    maxLength: 50,
+    pattern: /^[a-zA-Zа-яА-Я\s'-]+$/,
+  },
+  phone: {
+    required: true,
+    pattern: /^\(\d{3}\) \d{3}-\d{4}$/,
+  },
+  job_title: {
+    required: true,
+    maxLength: 100,
+  },
+  gender: {
+    required: true,
+  },
+  birth_date: {
+    required: true,
+  },
+  nationality: {
+    maxLength: 100,
+    pattern: /^[a-zA-Zа-яА-Я\s'-]+$/,
+  },
+  country_of_origin: {
+    maxLength: 100,
+    pattern: /^[a-zA-Zа-яА-Я\s'-]+$/,
+  },
+  workforce_group: {
+    required: true,
+  },
+  city: {
+    required: true,
+    maxLength: 100,
+  },
+  languages: {
+    required: true,
+    custom: (value: unknown) => {
+      // Only validate if languages are provided
+      if (Array.isArray(value) && value.length > 0) {
+        // Check if all languages have both language_id and prof_level
+        for (const lang of value) {
+          if (!lang.language_id || !lang.prof_level) {
+            return 'All languages must have both language and proficiency level selected'
+          }
+        }
+
+        // Check for duplicate languages
+        const languageIds = value.map(lang => lang.language_id)
+        const uniqueIds = new Set(languageIds)
+        if (languageIds.length !== uniqueIds.size) {
+          return 'Duplicate languages are not allowed'
+        }
+      }
+
+      return ''
+    }
+  },
+  // Emergency contact phone validation
+  primary_contact_phone: {
+    pattern: /^\(\d{3}\) \d{3}-\d{4}$/,
+    message: 'Phone must be in format (xxx) xxx-xxxx'
+  },
+  secondary_contact_phone: {
+    pattern: /^\(\d{3}\) \d{3}-\d{4}$/,
+    message: 'Phone must be in format (xxx) xxx-xxxx'
+  }
+}
+
+// Computed properties
+const fullName = computed(() => {
+  return `${profileForm.first_name} ${profileForm.last_name}`.trim()
+})
+
+const fullPhotoUrl = computed(() => {
+  return user.value?.full_img_url || user.value?.avatar_url || '/default-avatar.png'
+})
+
+// Functions
+function validateField(fieldName: string, value: unknown): string {
+  const rule = validationRules[fieldName]
+  if (!rule) return ''
+
+  // Handle emergency_data phone fields
+  if (fieldName === 'primary_contact_phone') {
+    const phoneValue = profileForm.emergency_data?.primary_contact_phone || ''
+    if (phoneValue && !rule.pattern?.test(phoneValue)) {
+      return rule.message || 'Invalid phone format'
+    }
+    return ''
+  }
+
+  if (fieldName === 'secondary_contact_phone') {
+    const phoneValue = profileForm.emergency_data?.secondary_contact_phone || ''
+    if (phoneValue && !rule.pattern?.test(phoneValue)) {
+      return rule.message || 'Invalid phone format'
+    }
+    return ''
+  }
+
+  // console.log(`🔍 Validating ${fieldName}:`, value, 'Rule:', rule)
+
+  // Check required fields
+  if (rule.required) {
+    if (!value) {
+      const fieldNames: Record<string, string> = {
+        'first_name': 'First name',
+        'last_name': 'Last name',
+        'phone': 'Phone number',
+        'job_title': 'Job title',
+        'gender': 'Gender',
+        'birth_date': 'Date of birth',
+        'nationality': 'Nationality',
+        'country_of_origin': 'Country of origin',
+        'workforce_group': 'Workforce group',
+        'city': 'City',
+        'languages': 'Languages'
+      }
+      return `${fieldNames[fieldName] || fieldName.replace('_', ' ')} is required`
+    }
+
+    // For strings, check if empty after trimming
+    if (typeof value === 'string' && !value.trim()) {
+      const fieldNames: Record<string, string> = {
+        'first_name': 'First name',
+        'last_name': 'Last name',
+        'phone': 'Phone number',
+        'job_title': 'Job title',
+        'gender': 'Gender',
+        'birth_date': 'Date of birth',
+        'nationality': 'Nationality',
+        'country_of_origin': 'Country of origin',
+        'workforce_group': 'Workforce group',
+        'city': 'City',
+        'languages': 'Languages'
+      }
+      return `${fieldNames[fieldName] || fieldName.replace('_', ' ')} is required`
+    }
+
+    // For arrays, check if empty
+    if (Array.isArray(value) && value.length === 0) {
+      const fieldNames: Record<string, string> = {
+        'first_name': 'First name',
+        'last_name': 'Last name',
+        'phone': 'Phone number',
+        'job_title': 'Job title',
+        'gender': 'Gender',
+        'birth_date': 'Date of birth',
+        'nationality': 'Nationality',
+        'country_of_origin': 'Country of origin',
+        'workforce_group': 'Workforce group',
+        'city': 'City',
+        'languages': 'Languages'
+      }
+      return `${fieldNames[fieldName] || fieldName.replace('_', ' ')} is required`
+    }
+  }
+
+  if (rule.minLength && typeof value === 'string' && value.length < rule.minLength) {
+    return `${fieldName.replace('_', ' ')} must be at least ${rule.minLength} characters`
+  }
+
+  if (rule.maxLength && typeof value === 'string' && value.length > rule.maxLength) {
+    return `${fieldName.replace('_', ' ')} must be no more than ${rule.maxLength} characters`
+  }
+
+  if (rule.pattern && typeof value === 'string' && value && !rule.pattern.test(value)) {
+    if (fieldName === 'phone') {
+      return 'Phone number must be in format (xxx) xxx-xxxx'
+    }
+    return `${fieldName.replace('_', ' ')} format is invalid`
+  }
+
+  if (rule.custom) {
+    const customError = rule.custom(value)
+    if (customError) {
+      return customError
+    }
+  }
+
+  return ''
+}
+
+function validateForm(): boolean {
+  let isValid = true
+  console.log('🔍 Validating form...')
+
+  Object.keys(validationRules).forEach((field) => {
+    const value = profileForm[field as keyof typeof profileForm]
+    const error = validateField(field, value)
+    validationErrors[field as keyof typeof validationErrors] = error
+    if (error) {
+      console.log(`❌ Validation error for ${field}:`, error, 'Value:', value)
+      isValid = false
+    } else {
+      console.log(`✅ ${field} is valid:`, value)
+    }
+  })
+
+  console.log('🔍 Form validation result:', isValid)
+  return isValid
+}
+
+async function updateProfile() {
+  console.log('🔄 updateProfile called')
+  if (!validateForm()) {
+    console.log('❌ Form validation failed')
+    errorMessage.value = 'Please fix the validation errors'
+    return
+  }
+
+  console.log('✅ Form validation passed')
+  isUpdating.value = true
+  errorMessage.value = ''
+  successMessage.value = ''
+
+  try {
+    // Фильтруем языки - убираем те, у которых не выбран уровень
+    const validLanguages = profileForm.languages.filter(lang =>
+      lang.prof_level && lang.prof_level.trim() !== ''
+    )
+
+    // Используем profile store для обновления профиля
+    const result = await profileStore.updateProfile({
+      first_name: profileForm.first_name,
+      last_name: profileForm.last_name,
+      phone: profileForm.phone,
+      job_title: profileForm.job_title,
+      additional_info: profileForm.additional_info,
+      gender: profileForm.gender,
+      birth_date: profileForm.birth_date,
+      nationality: profileForm.nationality,
+      country_of_origin: profileForm.country_of_origin,
+      workforce_group: profileForm.workforce_group,
+      city: profileForm.city,
+      languages: validLanguages
+    })
+
+    console.log('📥 Profile update result:', result)
+
+    if (result.success) {
+      console.log('✅ Profile updated successfully')
+      successMessage.value = 'Profile updated successfully!'
+    } else {
+      console.log('❌ Profile update failed:', result.error)
+      errorMessage.value = result.error || 'Failed to update profile'
+    }
+  } catch (error) {
+    console.log('❌ Profile update error:', error)
+    errorMessage.value = 'Failed to update profile'
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+async function updateEmergencyData() {
+  console.log('🔄 updateEmergencyData called')
+  if (!validateEmergencyForm()) {
+    console.log('❌ Emergency form validation failed')
+    errorMessage.value = 'Please fix the validation errors'
+    return
+  }
+
+  isUpdating.value = true
+  errorMessage.value = ''
+  successMessage.value = ''
+
+  try {
+    console.log('📤 Account.vue - emergency data before sending:', profileForm.emergency_data)
+    console.log('📤 Account.vue - emergency data JSON:', JSON.stringify(profileForm.emergency_data, null, 2))
+
+    // Construct the JSON payload with named object
+    const jsonPayload = {
+      data: {
+        primary_contact_name: profileForm.emergency_data.primary_contact_name || '',
+        primary_contact_phone: profileForm.emergency_data.primary_contact_phone || '',
+        primary_contact_relationship: profileForm.emergency_data.primary_contact_relationship || '',
+        secondary_contact_name: profileForm.emergency_data.secondary_contact_name || '',
+        secondary_contact_phone: profileForm.emergency_data.secondary_contact_phone || '',
+        secondary_contact_relationship: profileForm.emergency_data.secondary_contact_relationship || '',
+        blood_type: profileForm.emergency_data.blood_type || '',
+        allergies: profileForm.emergency_data.allergies || '',
+        medical_conditions: profileForm.emergency_data.medical_conditions || '',
+        medications: profileForm.emergency_data.medications || '',
+        medical_notes: profileForm.emergency_data.medical_notes || '',
+        insurance_company: profileForm.emergency_data.insurance_company || '',
+        policy_number: profileForm.emergency_data.policy_number || '',
+        insurance_emergency_contact: profileForm.emergency_data.insurance_emergency_contact || ''
+      }
+    }
+
+    console.log('📤 Emergency data JSON payload:', JSON.stringify(jsonPayload, null, 2))
+
+    // Call API directly for now
+    const response = await api.put('/api/v1/profile/emergency', jsonPayload)
+    console.log('📥 Emergency data update response:', response.data)
+
+    const result = {
+      success: response.data.status === 'success',
+      data: response.data.data,
+      error: response.data.status !== 'success' ? response.data.message : undefined
+    }
+    console.log('📥 Emergency data update result:', result)
+
+    if (result.success) {
+      successMessage.value = 'Emergency data updated successfully'
+    } else {
+      errorMessage.value = result.error || 'Failed to update emergency data'
+    }
+  } catch (error) {
+    console.log('❌ Emergency data update error:', error)
+    errorMessage.value = 'Failed to update emergency data'
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+function validateEmergencyForm(): boolean {
+  let isValid = true
+  console.log('🔍 Validating emergency form...')
+
+  // Validate emergency phone fields
+  const emergencyPhoneFields = ['primary_contact_phone', 'secondary_contact_phone']
+  emergencyPhoneFields.forEach((field) => {
+    const error = validateField(field, null)
+    validationErrors[field as keyof typeof validationErrors] = error
+    if (error) {
+      console.log(`❌ Validation error for ${field}:`, error)
+      isValid = false
+    } else {
+      console.log(`✅ ${field} is valid`)
+    }
+  })
+
+  console.log('🔍 Emergency form validation result:', isValid)
+  return isValid
+}
+
+async function updateProfessionalData() {
+  console.log('🔄 updateProfessionalData called')
+
+  isUpdating.value = true
+  errorMessage.value = ''
+  successMessage.value = ''
+
+  try {
+    console.log('📤 Account.vue - professional data before sending:', profileForm.professional_data)
+    console.log('📤 Account.vue - professional data JSON:', JSON.stringify(profileForm.professional_data, null, 2))
+
+    // Construct the JSON payload with named object
+    const jsonPayload = {
+      data: profileForm.professional_data
+    }
+
+    console.log('📤 Professional data JSON payload:', JSON.stringify(jsonPayload, null, 2))
+
+    // Call API directly
+    const response = await api.put('/api/v1/profile/professional', jsonPayload)
+    console.log('📥 Professional data update response:', response.data)
+
+    const result = {
+      success: response.data.status === 'success',
+      data: response.data.data,
+      error: response.data.status !== 'success' ? response.data.message : undefined
+    }
+    console.log('📥 Professional data update result:', result)
+
+    if (result.success) {
+      successMessage.value = 'Professional data updated successfully'
+    } else {
+      errorMessage.value = result.error || 'Failed to update professional data'
+    }
+  } catch (error) {
+    console.log('❌ Professional data update error:', error)
+    errorMessage.value = 'Failed to update professional data'
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+function setActiveTab(tabId: string) {
+  activeTab.value = tabId
+}
+
+// Phone formatting function
+function formatPhone(event: Event, fieldName?: string) {
+  const target = event.target as HTMLInputElement
+  let value = target.value.replace(/\D/g, '') // Remove all non-digits
+
+  if (value.length >= 6) {
+    value = `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`
+  } else if (value.length >= 3) {
+    value = `(${value.slice(0, 3)}) ${value.slice(3)}`
+  } else if (value.length > 0) {
+    value = `(${value}`
+  }
+
+  if (fieldName === 'primary_contact_phone') {
+    profileForm.emergency_data.primary_contact_phone = value
+  } else if (fieldName === 'secondary_contact_phone') {
+    profileForm.emergency_data.secondary_contact_phone = value
+  } else {
+    profileForm.phone = value
+  }
+}
+
+// Language management functions
+function addLanguage() {
+  console.log('🔍 Adding new language')
+  profileForm.languages.push({
+    language_id: 0,
+    prof_level: 'Basic' as 'Basic' | 'Intermediate' | 'Fluent',
+    worker_id: authStore.currentUser?.id || 0
+  })
+  console.log('🔍 Languages after adding:', profileForm.languages)
+}
+
+function removeLanguage(index: number) {
+  profileForm.languages.splice(index, 1)
+}
+
+// Avatar functions
+function handleAvatarUpdated(avatarData: { croppedAvatar: string; fullImage: string } | string) {
+  try {
+    if (typeof avatarData === 'string') {
+      // Old format - just avatar URL
+      if (authStore.currentUser) {
+        authStore.currentUser.avatar_url = avatarData
+        localStorage.setItem('user', JSON.stringify(authStore.currentUser))
+      }
+    } else {
+      // New format - object with croppedAvatar and fullImage
+      if (authStore.currentUser) {
+        authStore.currentUser.avatar_url = avatarData.croppedAvatar
+        ;(authStore.currentUser as { full_img_url?: string }).full_img_url = avatarData.fullImage
+        localStorage.setItem('user', JSON.stringify(authStore.currentUser))
+      }
+    }
+
+    successMessage.value = 'Avatar updated successfully!'
+    avatarKey.value++
+
+  } catch (error) {
+    // Проверяем, если ошибка связана с размером файла
+    if (error instanceof Error && error.message.includes('File size too large')) {
+      errorMessage.value = 'Image file is too large. Please try with a smaller image or crop it more.'
+    } else {
+      errorMessage.value = 'Failed to update avatar'
+    }
+  }
+}
+
+async function handleAvatarSaved(avatarData: { croppedAvatar: string; fullImage: string }) {
+  try {
+    if (authStore.currentUser) {
+        authStore.currentUser.avatar_url = avatarData.croppedAvatar
+      ;(authStore.currentUser as { full_img_url?: string }).full_img_url = avatarData.fullImage
+      localStorage.setItem('user', JSON.stringify(authStore.currentUser))
+    }
+
+    successMessage.value = 'Avatar updated successfully!'
+    avatarKey.value++
+
+  } catch (error) {
+
+    // Проверяем, если ошибка связана с размером файла
+    if (error instanceof Error && error.message.includes('File size too large')) {
+      errorMessage.value = 'Image file is too large. Please try with a smaller image or crop it more.'
+    } else {
+      errorMessage.value = 'Failed to update avatar'
+    }
+  }
+}
+
+
+// 2FA functions
+async function toggleTwoFactor() {
+  isUpdating.value = true
+  try {
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    if (authStore.currentUser) {
+      authStore.currentUser.two_factor_enabled = !authStore.currentUser.two_factor_enabled
+    }
+
+    successMessage.value = `Two-factor authentication ${authStore.currentUser?.two_factor_enabled ? 'enabled' : 'disabled'}`
+  } catch {
+    errorMessage.value = 'Failed to update two-factor authentication'
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+// Work status functions
+async function toggleWorkStatus() {
+  const newStatus = !profileForm.status
+  console.log('🔄 toggleWorkStatus called, newStatus:', newStatus)
+
+  if (newStatus) {
+    // Setting to active - automatically save
+    console.log('🔄 Setting to active, calling saveActiveStatus')
+    await saveActiveStatus()
+  } else {
+    // Setting to inactive - show reason fields
+    console.log('🔄 Setting to inactive, showing reason fields')
+    profileForm.status = false
+    showInactiveReasonFields.value = true
+  }
+}
+
+async function saveActiveStatus() {
+  console.log('🔄 saveActiveStatus called')
+  isUpdating.value = true
+  try {
+    // Используем profile store для обновления статуса
+    const result = await profileStore.updateWorkStatus({
+      status: true,
+      status_reason: '',
+      status_details: '',
+      status_end_at: ''
+    })
+
+    if (result.success) {
+      // Обновляем локальное состояние
+      profileForm.status = true
+      showInactiveReasonFields.value = false
+      successMessage.value = 'Status updated to active'
+    } else {
+      errorMessage.value = result.error || 'Failed to update status'
+    }
+  } catch {
+    errorMessage.value = 'Failed to update status'
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+async function saveInactiveStatus() {
+  isUpdating.value = true
+  try {
+    // Используем profile store для обновления статуса
+    const result = await profileStore.updateWorkStatus({
+      status: false,
+      status_reason: profileForm.status_reason,
+      status_details: profileForm.status_details,
+      status_end_at: profileForm.status_end_at
+    })
+
+    if (result.success) {
+      // Обновляем локальное состояние
+      profileForm.status = false
+      showInactiveReasonFields.value = false
+      successMessage.value = 'Status updated to inactive'
+    } else {
+      errorMessage.value = result.error || 'Failed to update status'
+    }
+  } catch {
+    errorMessage.value = 'Failed to update status'
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+// Load user data
+onMounted(async () => {
+  isLoading.value = true
+  try {
+    // Загружаем полный профиль с сервера
+    const response = await api.get('/api/v1/profile')
+
+    if (response.data && response.data.data && response.data.data.user) {
+      const userData = response.data.data.user
+
+      console.log('📥 Server response data:', userData)
+      console.log('📥 dob from server:', userData.dob)
+
+      // Заполняем форму данными с сервера
+      profileForm.first_name = userData.first_name || ''
+      profileForm.last_name = userData.last_name || ''
+      profileForm.phone = userData.phone || ''
+      profileForm.job_title = userData.job_title || ''
+      profileForm.status = userData.status
+      profileForm.gender = userData.gender || ''
+      profileForm.birth_date = userData.dob || ''
+      profileForm.age = userData.age || ''
+      profileForm.specialization = userData.specialization || ''
+      profileForm.nationality = userData.nationality || ''
+      profileForm.country_of_origin = userData.country_of_origin || ''
+      profileForm.workforce_group = userData.workforce_group || ''
+      profileForm.city = userData.city || ''
+      // Load emergency data
+      console.log('📥 Emergency data from server:', userData.emergency)
+      if (userData.emergency) {
+        // If emergency is a JSON string, parse it
+        if (typeof userData.emergency === 'string') {
+          try {
+            profileForm.emergency_data = JSON.parse(userData.emergency)
+            console.log('📥 Parsed emergency data:', profileForm.emergency_data)
+          } catch (error) {
+            console.log('❌ Error parsing emergency data:', error)
+            profileForm.emergency_data = {}
+          }
+        } else {
+          profileForm.emergency_data = userData.emergency
+        }
+      } else {
+        profileForm.emergency_data = {}
+      }
+
+      // Load professional data
+      console.log('📥 Professional data from server:', userData.professional)
+      if (userData.professional) {
+        // If professional is a JSON string, parse it
+        if (typeof userData.professional === 'string') {
+          try {
+            profileForm.professional_data = JSON.parse(userData.professional)
+            console.log('📥 Parsed professional data:', profileForm.professional_data)
+          } catch (error) {
+            console.log('❌ Error parsing professional data:', error)
+            profileForm.professional_data = {}
+          }
+        } else {
+          profileForm.professional_data = userData.professional
+        }
+      } else {
+        profileForm.professional_data = {}
+      }
+
+      profileForm.languages = userData.languages || []
+
+
+      // Обновляем authStore с полными данными пользователя
+      if (authStore.currentUser) {
+        authStore.currentUser.first_name = userData.first_name || ''
+        authStore.currentUser.last_name = userData.last_name || ''
+        authStore.currentUser.phone = userData.phone || ''
+        authStore.currentUser.job_title = userData.job_title || ''
+        authStore.currentUser.gender = userData.gender || ''
+        authStore.currentUser.birth_date = userData.dob || ''
+        authStore.currentUser.age = userData.age || ''
+        authStore.currentUser.specialization = userData.specialization || ''
+
+        // Обновляем URL изображений, если они есть
+        if (userData.avatar_url) {
+          authStore.currentUser.avatar_url = userData.avatar_url.startsWith('http')
+            ? userData.avatar_url
+            : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${userData.avatar_url}`
+        }
+        if (userData.full_img_url) {
+          authStore.currentUser.full_img_url = userData.full_img_url.startsWith('http')
+            ? userData.full_img_url
+            : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${userData.full_img_url}`
+        }
+
+        // Сохраняем обновленные данные в localStorage
+        localStorage.setItem('user', JSON.stringify(authStore.currentUser))
+      }
+
+    } else {
+      // Fallback to authStore data
+      if (authStore.currentUser) {
+        // Разбиваем name на first_name и last_name
+        const fullName = authStore.currentUser.name || ''
+        const nameParts = fullName.split(' ')
+        profileForm.first_name = nameParts[0] || ''
+        profileForm.last_name = nameParts.slice(1).join(' ') || ''
+        profileForm.phone = authStore.currentUser.phone || ''
+        profileForm.job_title = authStore.currentUser.job_title || ''
+        profileForm.status = authStore.currentUser.status ?? true
+      }
+    }
+  } catch (error) {
+    console.error('❌ Failed to load user profile:', error)
+    errorMessage.value = 'Failed to load user data'
+
+    // Fallback to authStore data
+    if (authStore.currentUser) {
+      const fullName = authStore.currentUser.name || ''
+      const nameParts = fullName.split(' ')
+      profileForm.first_name = nameParts[0] || ''
+      profileForm.last_name = nameParts.slice(1).join(' ') || ''
+      profileForm.phone = authStore.currentUser.phone || ''
+      profileForm.job_title = authStore.currentUser.job_title || ''
+      profileForm.status = authStore.currentUser.status ?? true
+    }
+  } finally {
+    isLoading.value = false
+  }
+})
+
+// Watch for tab changes to clear messages
+watch(activeTab, () => {
+  errorMessage.value = ''
+  successMessage.value = ''
+})
+
+// Watch for inactive reason changes
+watch(() => profileForm.status_reason, (newReason) => {
+  if (!newReason) {
+    profileForm.status_details = ''
+    profileForm.status_end_at = ''
+  }
+})
+</script>

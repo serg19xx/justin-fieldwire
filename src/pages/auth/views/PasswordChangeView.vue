@@ -81,7 +81,8 @@ async function handlePasswordChange() {
     }
   } catch (error: unknown) {
     console.error('Password change error:', error)
-    errorMessage.value = error.response?.data?.message || 'Failed to change password'
+    const apiError = error as { response?: { data?: { message?: string } } }
+    errorMessage.value = apiError.response?.data?.message || 'Failed to change password'
   } finally {
     isLoading.value = false
   }

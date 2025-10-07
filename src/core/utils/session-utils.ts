@@ -52,18 +52,19 @@ export async function checkSessionWithAPI(token: string): Promise<SessionCheckRe
     console.error('❌ Session check API error:', error)
 
     // Handle 401 Unauthorized
-    if (error.response?.status === 401) {
+    const apiError = error as { response?: { status?: number; data?: { message?: string } } }
+    if (apiError.response?.status === 401) {
       console.log('🔒 Session check returned 401 - token invalid')
       return { isValid: false, error: 'Unauthorized' }
     }
 
     // Handle network errors
-    if (!error.response) {
+    if (!apiError.response) {
       console.log('🌐 Network error during session check')
       return { isValid: false, error: 'Network error' }
     }
 
-    return { isValid: false, error: error.response?.data?.message || 'Session check failed' }
+    return { isValid: false, error: apiError.response?.data?.message || 'Session check failed' }
   }
 }
 
@@ -96,7 +97,7 @@ export function checkSessionLocally(token: string): SessionCheckResult {
       user: {
         id: payload.user_id,
         email: payload.email,
-        name: payload.name || payload.email,
+        name: (payload.name as string) || payload.email,
       },
     }
   } catch (error) {

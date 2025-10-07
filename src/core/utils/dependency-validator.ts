@@ -74,7 +74,7 @@ export function checkDependencyConstraints(
 
     // Calculate constraint violation
     const constraint: DependencyConstraint = {
-      taskId: String(taskData.id || 'new'),
+      taskId: 'id' in taskData ? String(taskData.id) : 'new',
       predecessorId,
       type: depType,
       lagDays,

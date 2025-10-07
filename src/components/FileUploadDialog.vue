@@ -1,14 +1,14 @@
 <template>
   <div
     v-if="isOpen"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4"
     @click.self="closeDialog"
   >
-    <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
       <!-- Header -->
-      <div class="px-6 py-4 border-b border-gray-200">
+      <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
         <div class="flex items-center justify-between">
-          <h3 class="text-lg font-semibold text-gray-900">
+          <h3 class="text-base sm:text-lg font-semibold text-gray-900">
             {{ title }}
           </h3>
           <button @click="closeDialog" class="text-gray-400 hover:text-gray-600 transition-colors">
@@ -25,7 +25,7 @@
       </div>
 
       <!-- Content -->
-      <div class="px-6 py-4">
+      <div class="px-4 sm:px-6 py-3 sm:py-4">
         <!-- File Info -->
         <div v-if="fileInfo" class="mb-4 p-4 bg-gray-50 rounded-lg">
           <div class="flex items-center space-x-3">
@@ -175,6 +175,7 @@ interface Props {
   isOpen: boolean
   title: string
   fileInfo: FileInfo | null
+  file: File | null
 }
 
 interface Emits {
@@ -241,10 +242,10 @@ async function handleSubmit() {
 
     // Create a File object with the new name
     const file = new File(
-      [props.fileInfo as Blob],
-      `${formData.value.fileName}.${getFileExtension(props.fileInfo.name)}`,
+      [props.file!],
+      `${formData.value.fileName}.${getFileExtension(props.fileInfo!.name)}`,
       {
-        type: props.fileInfo.type,
+        type: props.fileInfo!.type,
       },
     )
 

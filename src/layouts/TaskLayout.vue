@@ -13,12 +13,8 @@
             {{ isMobileMenuOpen ? '✕' : '☰' }}
           </button>
           <RouterLink to="/" class="hover:opacity-80">
-            <h1 class="text-lg font-semibold text-white hidden lg:block">FieldWire - Task</h1>
+            <h1 class="text-lg font-semibold text-white hidden lg:block">FieldWire</h1>
           </RouterLink>
-          <div class="hidden md:flex items-center space-x-2">
-            <span class="text-xs font-medium text-orange-100 uppercase tracking-wider">Task Executor</span>
-            <div class="w-2 h-2 bg-orange-300 rounded-full"></div>
-          </div>
         </div>
 
         <!-- Desktop Navigation -->
@@ -50,11 +46,7 @@
         <div class="flex items-center space-x-2">
           <div class="relative user-menu">
             <button @click="toggleUserMenu" class="p-1 rounded-full hover:bg-orange-700">
-              <div class="w-8 h-8 bg-orange-800 rounded-full flex items-center justify-center">
-                <span class="text-white text-sm font-medium">{{
-                  authStore.currentUser?.name?.charAt(0) || 'U'
-                }}</span>
-              </div>
+              <TopBarAvatar />
             </button>
             <div
               v-if="isUserMenuOpen"
@@ -137,6 +129,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
+import TopBarAvatar from '@/components/TopBarAvatar.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

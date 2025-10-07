@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { api } from '@/core/utils/api'
 import { useAuthStore } from '@/core/stores/auth'
 
 interface Props {
   isOpen: boolean
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const emit = defineEmits<{
   close: []
   success: []
@@ -54,8 +53,8 @@ async function enableTwoFactor() {
         errorMessage.value = 'Failed to enable 2FA'
       }
     } else {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to enable 2FA'
-      errorMessage.value = errorMessage
+      const errorMsg = error instanceof Error ? error.message : 'Failed to enable 2FA'
+      errorMessage.value = errorMsg
     }
   } finally {
     isLoading.value = false

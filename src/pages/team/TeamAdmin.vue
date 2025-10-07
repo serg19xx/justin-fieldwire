@@ -3,13 +3,13 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import InviteBuilderDialog from '@/components/InviteBuilderDialog.vue'
 import { hrResourcesApi } from '@/core/utils/hr-api'
-import { type Worker } from '@/core/utils/hr-api'
+import { type WorkerUser } from '@/core/utils/hr-api'
 import { type UserType } from '@/core/utils/constants'
 
 // Store (removed unused variables)
 
 // Project workers data
-const builders = ref<Worker[]>([])
+const builders = ref<WorkerUser[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -84,7 +84,7 @@ async function loadBuilders() {
 
     console.log('🔍 Filters being sent to API:', filters)
 
-    const response = await hrResourcesApi.getAllWorkers(1, 50, filters)
+    const response = await hrResourcesApi.getAllWorkerUsers(1, 50, filters)
 
     if ('workers' in response && Array.isArray(response.workers)) {
       builders.value = response.workers
@@ -93,7 +93,7 @@ async function loadBuilders() {
 
       // Логируем статусы приглашений для отладки
       const statusCounts = builders.value.reduce(
-        (acc: Record<string, number>, builder: Worker) => {
+        (acc: Record<string, number>, builder: WorkerUser) => {
           acc[builder.invitation_status] = (acc[builder.invitation_status] || 0) + 1
           return acc
         },
@@ -169,7 +169,7 @@ function isJobTitleRequired(userType: UserType): boolean {
 }
 
 // Get job title display with validation
-function getJobTitleDisplay(builder: Worker): string {
+function getJobTitleDisplay(builder: WorkerUser): string {
   if (builder.job_title) {
     return builder.job_title
   }
@@ -182,7 +182,7 @@ function getJobTitleDisplay(builder: Worker): string {
 }
 
 // Get job title display class
-function getJobTitleClass(builder: Worker): string {
+function getJobTitleClass(builder: WorkerUser): string {
   if (builder.job_title) {
     return 'text-sm text-gray-900'
   }
@@ -232,13 +232,13 @@ function toggleViewMode() {
   invitationStatusFilter.value = ''
 }
 
-function handleWorkerSelected(worker: Worker) {
-  console.log('Worker selected:', worker)
+function handleWorkerUserSelected(worker: WorkerUser) {
+  console.log('WorkerUser selected:', worker)
   // Здесь можно добавить логику для выбора работника
 }
 
-function handleWorkersInvited(workers: Worker[]) {
-  console.log('Workers invited:', workers)
+function handleWorkerUsersInvited(workers: WorkerUser[]) {
+  console.log('WorkerUsers invited:', workers)
   // Здесь можно добавить логику для отправки приглашений
 }
 
@@ -253,7 +253,7 @@ function handleInviteSent(data: {
   console.log('Invitation sent to:', data.email)
 
   // Добавляем нового работника в список без обращения к серверу
-  const newBuilder: Worker = {
+  const newBuilder: WorkerUser = {
     id: Date.now(), // Временный ID
     email: data.email,
     first_name: data.firstName,
@@ -390,7 +390,7 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
             @click="openInviteDialog"
             class="bg-blue-600 text-white px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-md hover:bg-blue-700 transition-colors text-xs sm:text-sm"
           >
-            + Add Worker
+            + Add WorkerUser
           </button>
         </div>
       </div>
@@ -495,7 +495,7 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
       </div>
     </div>
 
-    <!-- Workers Table -->
+    <!-- WorkerUsers Table -->
     <div v-if="!loading && !error" class="bg-white shadow rounded-lg overflow-hidden">
       <!-- Desktop Table -->
       <div class="hidden md:block overflow-x-auto">
@@ -711,8 +711,8 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
         <PMResourceManager
           :project-id="0"
           :mode="hrManagerMode"
-          @worker-selected="handleWorkerSelected"
-          @workers-invited="handleWorkersInvited"
+          @worker-selected="handleWorkerUserSelected"
+          @workers-invited="handleWorkerUsersInvited"
           @close="closeInviteDialog"
         />
       </div>

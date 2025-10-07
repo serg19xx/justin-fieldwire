@@ -17,7 +17,7 @@
       </div>
       <span v-else class="w-4"></span>
 
-      <span class="text-sm">{{ getFolderIcon(folder.name) }}</span>
+      <span class="text-sm">{{ getFolderIcon() }}</span>
       <span class="text-sm truncate flex-1 text-gray-900" :title="folder.name">{{ folder.name }}</span>
     </div>
 

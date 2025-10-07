@@ -20,7 +20,7 @@ export interface AddressFields {
  * @returns true if the field has valid content
  */
 export function isValidAddressField(value: string | null | undefined): boolean {
-  return value && value !== '' && value.trim() !== '' && value !== null && value !== undefined
+  return !!(value && value.trim() !== '')
 }
 
 /**
@@ -63,7 +63,7 @@ export function buildAddress(
  * @returns Formatted address string
  */
 export function buildPhysicianAddress(physician: Record<string, unknown>): string {
-  return buildAddress(physician, {
+  return buildAddress(physician as AddressFields, {
     unitNumber: 'unitNumb',
     streetNumber: 'streetNumber',
   })
@@ -75,7 +75,7 @@ export function buildPhysicianAddress(physician: Record<string, unknown>): strin
  * @returns Formatted address string
  */
 export function buildPharmacyAddress(pharmacy: Record<string, unknown>): string {
-  return buildAddress(pharmacy, {
+  return buildAddress(pharmacy as AddressFields, {
     unitNumber: 'unitNumb',
     streetNumber: 'street',
   })
@@ -87,7 +87,7 @@ export function buildPharmacyAddress(pharmacy: Record<string, unknown>): string 
  * @returns Formatted address string
  */
 export function buildPatientAddress(patient: Record<string, unknown>): string {
-  return buildAddress(patient, {
+  return buildAddress(patient as AddressFields, {
     unitNumber: 'address1',
     streetNumber: 'address2',
   })
@@ -99,7 +99,7 @@ export function buildPatientAddress(patient: Record<string, unknown>): string {
  * @returns Formatted address string
  */
 export function buildDriverAddress(driver: Record<string, unknown>): string {
-  return buildAddress(driver, {
+  return buildAddress(driver as AddressFields, {
     unitNumber: 'unitNumber',
     streetNumber: 'streetAddress',
   })
@@ -111,7 +111,7 @@ export function buildDriverAddress(driver: Record<string, unknown>): string {
  * @returns Formatted address string
  */
 export function buildClinicAddress(clinic: Record<string, unknown>): string {
-  return buildAddress(clinic, {
+  return buildAddress(clinic as AddressFields, {
     unitNumber: 'unitNumber',
     streetNumber: 'streetAddress',
   })
@@ -123,7 +123,7 @@ export function buildClinicAddress(clinic: Record<string, unknown>): string {
  * @returns Formatted address string
  */
 export function buildMedicalClinicAddress(clinic: Record<string, unknown>): string {
-  return buildAddress(clinic, {
+  return buildAddress(clinic as AddressFields, {
     unitNumber: 'unitNumb',
     streetNumber: 'streetName',
   })

@@ -9,22 +9,6 @@ import {
 } from '@/core/utils/session-manager'
 import { isTokenExpired } from '@/core/utils/jwt-utils'
 
-// Helper function to get current environment
-function getCurrentEnvironment(): string {
-  if (typeof window === 'undefined') {
-    return 'development'
-  }
-
-  const hostname = window.location.hostname
-
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'development'
-  } else if (hostname.includes('staging') || hostname.includes('dev')) {
-    return 'staging'
-  } else {
-    return 'production'
-  }
-}
 
 export interface User {
   id: number
@@ -42,22 +26,26 @@ export interface User {
     | 'contractor'
     | 'inspector'
   role_name?: string
-  twoFactorEnabled: boolean
-  isActive: boolean
-  lastLogin?: string
+  two_factor_enabled: boolean
+  twoFactorEnabled?: boolean // Added for backward compatibility
+  status: boolean
+  isActive?: boolean // Added for backward compatibility
+  last_login?: string
   permissions?: string[]
-  avatarUrl?: string
+  avatar_url?: string
+  full_img_url?: string
   // Добавляем дополнительные поля профиля
   phone?: string
   job_title?: string
-  user_type?: string
   additional_info?: string
-  company?: string
-  department?: string
-  location?: string
+  gender?: string
+  birth_date?: string
+  age?: string
+  specialization?: string
   // Добавляем поля для статуса работы
   inactive_reason?: string
   inactive_reason_details?: string
+  inactive_until?: string
 }
 
 export interface Invitation {
@@ -128,17 +116,27 @@ export const useAuthStore = defineStore('auth', () => {
         id: user.id,
         email: user.email,
         name: user.name,
-        user_type: user.role_code,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        phone: user.phone,
+        job_title: user.job_title,
         role_category: user.role_category,
         role_code: user.role_code,
-        twoFactorEnabled: user.two_factor_enabled,
-        isActive: isUserActive(user.status),
-        lastLogin: user.last_login,
+        two_factor_enabled: user.two_factor_enabled,
+        twoFactorEnabled: user.two_factor_enabled, // Add compatibility field
+        status: isUserActive(user.status),
+        isActive: isUserActive(user.status), // Add compatibility field
+        last_login: user.last_login,
         permissions: getPermissionsForRole(user.role_code),
-        avatarUrl: user.avatar_url
+        avatar_url: user.avatar_url
           ? user.avatar_url.startsWith('http')
             ? user.avatar_url
             : `${apiConfig.baseURL}${user.avatar_url}`
+          : undefined,
+        full_img_url: user.full_img_url
+          ? user.full_img_url.startsWith('http')
+            ? user.full_img_url
+            : `${apiConfig.baseURL}${user.full_img_url}`
           : undefined,
       }
 
@@ -165,7 +163,7 @@ export const useAuthStore = defineStore('auth', () => {
         isAuthenticated.value = true
         localStorage.setItem('user', JSON.stringify(frontendUser))
         console.log('✅ Login successful for user:', frontendUser.email)
-        console.log('🖼️ Avatar URL after login:', frontendUser.avatarUrl)
+        console.log('🖼️ Avatar URL after login:', frontendUser.avatar_url)
 
         // Initialize session manager after successful login
         initializeSessionManager({
@@ -285,12 +283,11 @@ export const useAuthStore = defineStore('auth', () => {
           id: user.id,
           email: user.email,
           name: user.name,
-          user_type: user.role_code,
           role_category: user.role_category,
           role_code: user.role_code,
-          twoFactorEnabled: user.two_factor_enabled,
-          isActive: isUserActive(user.status),
-          lastLogin: user.last_login,
+          two_factor_enabled: user.two_factor_enabled,
+          status: isUserActive(user.status),
+          last_login: user.last_login,
           permissions: getPermissionsForRole(user.role_code),
         }
 
@@ -360,7 +357,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (response.data.status === 'success') {
         // Обновляем статус пользователя
         if (currentUser.value) {
-          currentUser.value.twoFactorEnabled = true
+          currentUser.value.two_factor_enabled = true
           localStorage.setItem('user', JSON.stringify(currentUser.value))
         }
         console.log('✅ 2FA enabled successfully')
@@ -399,7 +396,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (response.data.status === 'success') {
         // Обновляем статус пользователя
         if (currentUser.value) {
-          currentUser.value.twoFactorEnabled = false
+          currentUser.value.two_factor_enabled = false
           localStorage.setItem('user', JSON.stringify(currentUser.value))
         }
         console.log('✅ 2FA disabled successfully')
@@ -506,32 +503,44 @@ export const useAuthStore = defineStore('auth', () => {
           id: backendUser.id,
           email: backendUser.email,
           name: backendUser.name,
+          first_name: backendUser.first_name,
+          last_name: backendUser.last_name,
           role_category: backendUser.role_category,
           role_code: backendUser.role_code,
-          twoFactorEnabled: isTwoFactorEnabled(backendUser.two_factor_enabled),
-          isActive: isUserActive(backendUser.status),
-          lastLogin: backendUser.last_login,
+          two_factor_enabled: isTwoFactorEnabled(backendUser.two_factor_enabled),
+          twoFactorEnabled: isTwoFactorEnabled(backendUser.two_factor_enabled), // Add compatibility field
+          status: isUserActive(backendUser.status),
+          isActive: isUserActive(backendUser.status), // Add compatibility field
+          last_login: backendUser.last_login,
           permissions: getPermissionsForRole(backendUser.role_code),
-          avatarUrl: backendUser.avatar_url
+          avatar_url: backendUser.avatar_url
             ? backendUser.avatar_url.startsWith('http')
               ? backendUser.avatar_url
               : `${apiConfig.baseURL}${backendUser.avatar_url}`
             : undefined,
+          full_img_url: backendUser.full_img_url
+            ? backendUser.full_img_url.startsWith('http')
+              ? backendUser.full_img_url
+              : `${apiConfig.baseURL}${backendUser.full_img_url}`
+            : undefined,
           // Добавляем дополнительные поля
           phone: backendUser.phone,
           job_title: backendUser.job_title,
-          user_type: backendUser.role_code,
           additional_info: backendUser.additional_info,
-          company: backendUser.company,
-          department: backendUser.department,
-          location: backendUser.location,
+          gender: backendUser.gender,
+          birth_date: backendUser.birth_date,
+          age: backendUser.age,
+          specialization: backendUser.specialization,
+          inactive_reason: backendUser.inactive_reason,
+          inactive_reason_details: backendUser.inactive_reason_details,
+          inactive_until: backendUser.inactive_until,
         }
 
         // Don't update currentUser - keep login data intact
         // Only return profile data for editing
 
         console.log('✅ Profile fetched successfully')
-        console.log('🖼️ Avatar URL:', frontendUser.avatarUrl)
+        console.log('🖼️ Avatar URL:', frontendUser.avatar_url)
         return { success: true, user: frontendUser }
       } else {
         console.log('❌ Failed to fetch profile')
@@ -551,136 +560,6 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch profile'
-      return { success: false, error: errorMessage }
-    }
-  }
-
-  async function updateProfile(profileData: {
-    first_name?: string
-    last_name?: string
-    phone?: string
-    job_title?: string
-    additional_info?: string
-    user_type?: string
-    company?: string
-    department?: string
-    location?: string
-  }): Promise<{ success: boolean; user?: User; error?: string }> {
-    try {
-      console.log('📝 Updating user profile:', profileData)
-
-      const response = await api.put('/api/v1/profile', profileData)
-
-      console.log('✅ Update profile response:', response.data)
-
-      if (response.data.status === 'success') {
-        const backendUser = response.data.data.user
-        const frontendUser: User = {
-          id: backendUser.id,
-          email: backendUser.email,
-          name: backendUser.name,
-          role_category: backendUser.role_category,
-          role_code: backendUser.role_code,
-          twoFactorEnabled: isTwoFactorEnabled(backendUser.two_factor_enabled),
-          isActive: isUserActive(backendUser.status),
-          lastLogin: backendUser.last_login,
-          permissions: getPermissionsForRole(backendUser.role_code),
-          avatarUrl: backendUser.avatar_url
-            ? backendUser.avatar_url.startsWith('http')
-              ? backendUser.avatar_url
-              : `${apiConfig.baseURL}${backendUser.avatar_url}`
-            : undefined,
-          // Добавляем дополнительные поля
-          phone: backendUser.phone,
-          job_title: backendUser.job_title,
-          user_type: backendUser.role_code,
-          additional_info: backendUser.additional_info,
-          company: backendUser.company,
-          department: backendUser.department,
-          location: backendUser.location,
-        }
-
-        // Update current user
-        currentUser.value = frontendUser
-        localStorage.setItem('user', JSON.stringify(frontendUser))
-
-        console.log('✅ Profile updated successfully')
-        console.log('🖼️ Avatar URL:', frontendUser.avatarUrl)
-        return { success: true, user: frontendUser }
-      } else {
-        console.log('❌ Failed to update profile')
-        return { success: false, error: response.data.message }
-      }
-    } catch (error: unknown) {
-      console.error('❌ Update profile error:', error)
-
-      // Обработка ошибок от бэкенда
-      if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { data?: { message?: string } } }
-        if (axiosError.response?.data?.message) {
-          return { success: false, error: axiosError.response.data.message }
-        }
-      }
-
-      const errorMessage = error instanceof Error ? error.message : 'Failed to update profile'
-      return { success: false, error: errorMessage }
-    }
-  }
-
-  async function uploadAvatar(
-    file: File,
-  ): Promise<{ success: boolean; avatarUrl?: string; error?: string }> {
-    try {
-      console.log('📸 Uploading avatar:', file.name)
-
-      const formData = new FormData()
-      formData.append('avatar', file)
-
-      const response = await api.post('/api/v1/profile/avatar', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      })
-
-      console.log('✅ Upload avatar response:', response.data)
-
-      if (response.data.status === 'success') {
-        const avatarUrl = response.data.data.avatar_url
-        // Check if it's a relative path and add baseURL if needed
-        const fullAvatarUrl = avatarUrl.startsWith('http')
-          ? avatarUrl
-          : `${apiConfig.baseURL}${avatarUrl}`
-
-        // Update current user avatar with full URL
-        if (currentUser.value) {
-          currentUser.value.avatarUrl = fullAvatarUrl
-          localStorage.setItem('user', JSON.stringify(currentUser.value))
-        }
-
-        console.log('✅ Avatar uploaded successfully')
-        console.log('🔗 Avatar URL from server:', avatarUrl)
-        console.log('🔗 Full URL:', fullAvatarUrl)
-        console.log('🌍 Environment:', getCurrentEnvironment())
-        console.log('🔗 Base URL:', apiConfig.baseURL)
-        console.log('📁 File size:', file.size, 'bytes')
-        console.log('📁 File type:', file.type)
-        return { success: true, avatarUrl: fullAvatarUrl }
-      } else {
-        console.log('❌ Failed to upload avatar')
-        return { success: false, error: response.data.message }
-      }
-    } catch (error: unknown) {
-      console.error('❌ Upload avatar error:', error)
-
-      // Обработка ошибок от бэкенда
-      if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { data?: { message?: string } } }
-        if (axiosError.response?.data?.message) {
-          return { success: false, error: axiosError.response.data.message }
-        }
-      }
-
-      const errorMessage = error instanceof Error ? error.message : 'Failed to upload avatar'
       return { success: false, error: errorMessage }
     }
   }
@@ -735,7 +614,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (response.data.status === 'success') {
         // Обновляем статус пользователя
         if (currentUser.value) {
-          currentUser.value.twoFactorEnabled = false
+          currentUser.value.two_factor_enabled = false
           localStorage.setItem('user', JSON.stringify(currentUser.value))
         }
         console.log('✅ 2FA disabled successfully from profile')
@@ -832,62 +711,6 @@ export const useAuthStore = defineStore('auth', () => {
 
     if (currentUser.value.permissions.includes('all')) return true
     return currentUser.value.permissions.includes(permission)
-  }
-
-  // Update work status
-  async function updateWorkStatus(statusData: {
-    isActive: boolean
-    inactive_reason?: string
-    inactive_reason_details?: string
-  }): Promise<{
-    success: boolean
-    user?: User
-    workStatus?: {
-      isActive: boolean
-      inactive_reason?: string
-      inactive_reason_details?: string
-      updated_at?: string
-    }
-    error?: string
-  }> {
-    try {
-      console.log('📝 Updating work status:', statusData)
-
-      const response = await api.put('/api/v1/profile/work-status', statusData)
-
-      console.log('✅ Update work status response:', response.data)
-
-      if (response.data.status === 'success') {
-        const workStatus = response.data.data.work_status
-
-        // Update current user's work status
-        if (currentUser.value) {
-          currentUser.value.isActive = workStatus.isActive
-          currentUser.value.inactive_reason = workStatus.inactive_reason
-          currentUser.value.inactive_reason_details = workStatus.inactive_reason_details
-          localStorage.setItem('user', JSON.stringify(currentUser.value))
-        }
-
-        console.log('✅ Work status updated successfully')
-        return { success: true, workStatus, user: currentUser.value || undefined }
-      } else {
-        console.log('❌ Failed to update work status')
-        return { success: false, error: response.data.message }
-      }
-    } catch (error: unknown) {
-      console.error('❌ Update work status error:', error)
-
-      // Обработка ошибок от бэкенда
-      if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { data?: { message?: string } } }
-        if (axiosError.response?.data?.message) {
-          return { success: false, error: axiosError.response.data.message }
-        }
-      }
-
-      const errorMessage = error instanceof Error ? error.message : 'Failed to update work status'
-      return { success: false, error: errorMessage }
-    }
   }
 
   // Initialize from localStorage and token
@@ -1044,11 +867,8 @@ export const useAuthStore = defineStore('auth', () => {
     checkPermission,
     initializeAuth,
     getProfile,
-    updateProfile,
-    uploadAvatar,
     enableTwoFactorFromProfile,
     disableTwoFactorFromProfile,
-    updateWorkStatus,
     refreshToken,
     shouldRefreshToken,
   }

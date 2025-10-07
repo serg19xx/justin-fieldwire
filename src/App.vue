@@ -10,10 +10,6 @@
 
     <!-- Dynamic Layouts based on user role -->
     <template v-else-if="authStore.isAuthenticated">
-      <!-- Debug info -->
-      <div class="fixed top-0 left-0 bg-black text-white p-2 z-50 text-xs">
-        Job: {{ authStore.currentUser?.job_title }} | Role: {{ authStore.currentUser?.role_category }}
-      </div>
 
       <!-- Global Layout for global users -->
       <GlobalLayout v-if="authStore.currentUser?.role_category === 'global'">

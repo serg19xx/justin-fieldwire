@@ -1,16 +1,16 @@
 <template>
   <div
     v-if="isOpen"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4"
     @click="closeDialog"
   >
     <div
-      class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+      class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
       @click.stop
     >
       <!-- Header -->
-      <div class="flex items-center justify-between p-6 border-b border-gray-200">
-        <h2 class="text-xl font-semibold text-gray-900">
+      <div class="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200">
+        <h2 class="text-lg sm:text-xl font-semibold text-gray-900">
           {{
             mode === 'create'
               ? 'Create New Task'
@@ -32,7 +32,7 @@
       </div>
 
       <!-- Content -->
-      <div class="p-6">
+      <div class="p-4 sm:p-6">
         <form @submit.prevent="handleSubmit">
           <!-- Task Name -->
           <div class="mb-4">
@@ -472,11 +472,11 @@ const canManageProject = computed(() => {
   if (!authStore.currentUser) return false
 
   // Simplified logic - allow all Project Managers and System Administrators
-  const canManage = authStore.currentUser.user_type === 'System Administrator' ||
-         authStore.currentUser.user_type === 'Project Manager'
+  const canManage = authStore.currentUser.role_code === 'admin' ||
+         authStore.currentUser.role_code === 'project_manager'
 
   console.log('🔧 TaskDialog canManageProject check:', {
-    userType: authStore.currentUser.user_type,
+    roleCode: authStore.currentUser.role_code,
     canManage,
     currentUser: authStore.currentUser
   })
@@ -968,7 +968,7 @@ function validateTaskData(): boolean {
   console.log('👤 User permissions:', {
     currentUser: authStore.currentUser?.name,
     userId: authStore.currentUser?.id,
-    userType: authStore.currentUser?.user_type,
+    roleCode: authStore.currentUser?.role_code,
     projectInfo: projectInfo.value,
     isProjectOwner: isProjectOwner.value,
     canManageProject: canManageProject.value

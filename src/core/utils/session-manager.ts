@@ -14,17 +14,18 @@ export interface SessionManagerConfig {
 
 export class SessionManager {
   private config: SessionManagerConfig
-  private checkIntervalId: NodeJS.Timeout | null = null
+  private checkIntervalId: number | null = null
   private lastActivityTime: number = Date.now()
   private isActive: boolean = false
   private activityListeners: (() => void)[] = []
 
   constructor(config: SessionManagerConfig) {
     this.config = {
-      checkInterval: 5 * 60 * 1000, // 5 minutes
-      activityCheckInterval: 60 * 1000, // 1 minute
-      useAPI: true,
-      ...config,
+      checkInterval: config.checkInterval ?? 5 * 60 * 1000, // 5 minutes
+      activityCheckInterval: config.activityCheckInterval ?? 60 * 1000, // 1 minute
+      useAPI: config.useAPI ?? true,
+      onSessionExpired: config.onSessionExpired,
+      onSessionValid: config.onSessionValid,
     }
 
     this.setupActivityListeners()
