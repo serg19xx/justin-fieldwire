@@ -101,8 +101,16 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       // Бэкенд возвращает данные в поле data
-      const { data } = response.data
-      const { user, token, requires_2fa } = data
+      console.log('📥 Full response.data:', response.data)
+      console.log('📥 response.data.data:', response.data.data)
+
+      const responseData = response.data.data || response.data
+      console.log('📥 responseData:', responseData)
+
+      const { user, token, requires_2fa } = responseData
+      console.log('📥 After destructuring - user:', user)
+      console.log('📥 After destructuring - token:', token)
+      console.log('📥 After destructuring - requires_2fa:', requires_2fa)
 
       console.log('👤 User data from backend:', user)
       console.log('🔐 Token from backend:', token ? 'present' : 'missing')

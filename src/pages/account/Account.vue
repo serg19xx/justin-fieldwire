@@ -521,7 +521,7 @@
                   </p>
                 </div>
               </div>
-                </div>
+            </div>
 
             <!-- Read-only fields section -->
 
@@ -567,7 +567,7 @@
               <div class="mb-4">
                 <h4 class="text-md font-medium text-gray-800 mb-3">Primary Contact</h4>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
+              <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
                     <input
                       v-model="profileForm.emergency_data.primary_contact_name"
@@ -575,7 +575,7 @@
                       placeholder="Full name"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
-                  </div>
+              </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
                     <input
@@ -586,8 +586,8 @@
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                     <p v-if="validationErrors.primary_contact_phone" class="mt-1 text-sm text-red-600">{{ validationErrors.primary_contact_phone }}</p>
-                  </div>
-                  <div>
+              </div>
+                <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Relationship</label>
                     <input
                       v-model="profileForm.emergency_data.primary_contact_relationship"
@@ -597,13 +597,13 @@
                     />
                   </div>
                 </div>
-              </div>
+                </div>
 
               <!-- Secondary Contact Row -->
               <div class="mb-4">
                 <h4 class="text-md font-medium text-gray-800 mb-3">Secondary Contact (Optional)</h4>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
+                <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
                     <input
                       v-model="profileForm.emergency_data.secondary_contact_name"
@@ -611,8 +611,8 @@
                       placeholder="Full name"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
-                  </div>
-                  <div>
+                </div>
+                <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Phone</label>
                     <input
                       v-model="profileForm.emergency_data.secondary_contact_phone"
@@ -622,8 +622,8 @@
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                     <p v-if="validationErrors.secondary_contact_phone" class="mt-1 text-sm text-red-600">{{ validationErrors.secondary_contact_phone }}</p>
-                  </div>
-                  <div>
+                </div>
+                <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">Relationship</label>
                     <input
                       v-model="profileForm.emergency_data.secondary_contact_relationship"
@@ -631,24 +631,24 @@
                       placeholder="Friend, Colleague, etc."
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
-                  </div>
                 </div>
               </div>
             </div>
+          </div>
 
             <!-- Medical Information Section -->
             <div class="mb-8">
               <h3 class="text-lg font-medium text-gray-900 mb-4">Medical Information</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
+              <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Blood Type</label>
                   <input
                     v-model="profileForm.emergency_data.blood_type"
                     type="text"
                     placeholder="A+, B-, O+, AB-, etc."
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
-                </div>
+              </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Allergies</label>
                   <input
@@ -675,18 +675,18 @@
                     placeholder="Insulin, aspirin, blood pressure medication, etc."
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
-                </div>
+              </div>
                 <div class="md:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-2">Additional Medical Notes</label>
-                  <textarea
+                <textarea
                     v-model="profileForm.emergency_data.medical_notes"
-                    rows="3"
+                  rows="3"
                     placeholder="Any additional medical information that could be important in an emergency..."
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  ></textarea>
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                ></textarea>
                 </div>
               </div>
-            </div>
+              </div>
 
             <!-- Insurance Information Section -->
             <div class="mb-8">
@@ -719,19 +719,19 @@
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
+                </div>
               </div>
-            </div>
 
             <!-- Save Button -->
-            <div class="flex justify-end">
-              <button
+              <div class="flex justify-end">
+                <button
                 @click="updateEmergencyData"
-                :disabled="isUpdating"
+                  :disabled="isUpdating"
                 class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-              >
+                >
                 {{ isUpdating ? 'Saving...' : 'Save Emergency Information' }}
-              </button>
-            </div>
+                </button>
+              </div>
           </div>
 
           <!-- Professional Tab -->
@@ -745,9 +745,12 @@
                   <label class="block text-sm font-medium text-gray-700 mb-2">Total Years of Experience</label>
                   <input
                     v-model="profileForm.professional_data.total_experience"
-                    type="number"
+                    type="text"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
                     placeholder="Years"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    @input="cleanNumericInput"
                   />
                 </div>
                 <div>
@@ -778,7 +781,7 @@
                   ></textarea>
                 </div>
               </div>
-            </div>
+                </div>
 
             <!-- Education Section -->
             <div class="mb-8">
@@ -791,11 +794,11 @@
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select education level</option>
-                    <option value="high_school">High School Diploma</option>
-                    <option value="trade_school">Trade School/College</option>
-                    <option value="apprenticeship">Apprenticeship Program</option>
-                    <option value="university">University Degree</option>
-                    <option value="other">Other</option>
+                    <option>High School Diploma</option>
+                    <option>Trade School/College</option>
+                    <option>Apprenticeship Program</option>
+                    <option>University Degree</option>
+                    <option>Other</option>
                   </select>
                 </div>
                 <div>
@@ -811,9 +814,12 @@
                   <label class="block text-sm font-medium text-gray-700 mb-2">Graduation Year</label>
                   <input
                     v-model="profileForm.professional_data.graduation_year"
-                    type="number"
+                    type="text"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
                     placeholder="YYYY"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    @input="cleanGraduationYear"
                   />
                 </div>
                 <div>
@@ -825,8 +831,8 @@
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
+                </div>
               </div>
-            </div>
 
             <!-- Certifications Section -->
             <div class="mb-8">
@@ -839,9 +845,9 @@
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select status</option>
-                    <option value="certified">Certified</option>
-                    <option value="apprentice">Apprentice</option>
-                    <option value="none">Not applicable</option>
+                    <option>Certified</option>
+                    <option>Apprentice</option>
+                    <option>Not applicable</option>
                   </select>
                 </div>
                 <div>
@@ -891,9 +897,9 @@
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select status</option>
-                    <option value="current">Current</option>
-                    <option value="expired">Expired</option>
-                    <option value="none">Not certified</option>
+                    <option>Current</option>
+                    <option>Expired</option>
+                    <option>Not certified</option>
                   </select>
                 </div>
                 <div>
@@ -903,9 +909,9 @@
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select status</option>
-                    <option value="current">Current</option>
-                    <option value="expired">Expired</option>
-                    <option value="none">Not certified</option>
+                    <option>Current</option>
+                    <option>Expired</option>
+                    <option>Not certified</option>
                   </select>
                 </div>
                 <div>
@@ -915,9 +921,9 @@
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select status</option>
-                    <option value="current">Current</option>
-                    <option value="expired">Expired</option>
-                    <option value="none">Not certified</option>
+                    <option>Current</option>
+                    <option>Expired</option>
+                    <option>Not certified</option>
                   </select>
                 </div>
                 <div>
@@ -927,9 +933,9 @@
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select status</option>
-                    <option value="current">Current</option>
-                    <option value="expired">Expired</option>
-                    <option value="none">Not certified</option>
+                    <option>Current</option>
+                    <option>Expired</option>
+                    <option>Not certified</option>
                   </select>
                 </div>
                 <div>
@@ -939,9 +945,9 @@
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select status</option>
-                    <option value="current">Current</option>
-                    <option value="expired">Expired</option>
-                    <option value="none">Not certified</option>
+                    <option>Current</option>
+                    <option>Expired</option>
+                    <option>Not certified</option>
                   </select>
                 </div>
                 <div>
@@ -985,10 +991,10 @@
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select option</option>
-                    <option value="local">Local only</option>
-                    <option value="provincial">Within province</option>
-                    <option value="national">Across Canada</option>
-                    <option value="international">International</option>
+                    <option>Local only</option>
+                    <option>Within province</option>
+                    <option>Across Canada</option>
+                    <option>International</option>
                   </select>
                 </div>
                 <div>
@@ -998,11 +1004,11 @@
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select availability</option>
-                    <option value="full_time">Full-time</option>
-                    <option value="part_time">Part-time</option>
-                    <option value="contract">Contract</option>
-                    <option value="seasonal">Seasonal</option>
-                    <option value="on_call">On-call</option>
+                    <option>Full-time</option>
+                    <option>Part-time</option>
+                    <option>Contract</option>
+                    <option>Seasonal</option>
+                    <option>On-call</option>
                   </select>
                 </div>
               </div>
@@ -1034,15 +1040,15 @@
             </div>
 
             <!-- Save Button -->
-            <div class="flex justify-end">
-              <button
+              <div class="flex justify-end">
+                <button
                 @click="updateProfessionalData"
-                :disabled="isUpdating"
+                  :disabled="isUpdating"
                 class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
-              >
+                >
                 {{ isUpdating ? 'Saving...' : 'Save Professional Information' }}
-              </button>
-            </div>
+                </button>
+              </div>
           </div>
 
           <!-- System Tab -->
@@ -1073,6 +1079,77 @@
                   ></span>
                 </button>
               </div>
+            </div>
+
+            <!-- Change Password Section -->
+            <div class="mb-8">
+              <h3 class="text-lg font-medium text-gray-900 mb-4">Change Password</h3>
+
+              <!-- Password requirements info -->
+              <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                <h4 class="text-sm font-medium text-blue-900 mb-2">Password Requirements:</h4>
+                <ul class="text-sm text-blue-800 space-y-1">
+                  <li>• Minimum 8 characters</li>
+                  <li>• At least one uppercase letter (A-Z)</li>
+                  <li>• At least one lowercase letter (a-z)</li>
+                  <li>• At least one number (0-9)</li>
+                  <li>• At least one special character (@$!%*?&)</li>
+                </ul>
+              </div>
+
+              <!-- Success/Error messages -->
+              <div v-if="successMessage" class="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
+                <p class="text-sm text-green-800">{{ successMessage }}</p>
+              </div>
+              <div v-if="errorMessage" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+                <p class="text-sm text-red-800">{{ errorMessage }}</p>
+              </div>
+
+              <form @submit.prevent="changePassword" class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+                  <input
+                    v-model="passwordForm.currentPassword"
+                    type="password"
+                    required
+                    autocomplete="off"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter current password"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                  <input
+                    v-model="passwordForm.newPassword"
+                    type="password"
+                    required
+                    minlength="8"
+                    autocomplete="off"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter new password"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+                  <input
+                    v-model="passwordForm.confirmPassword"
+                    type="password"
+                    required
+                    autocomplete="off"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Confirm new password"
+                  />
+                </div>
+                <div class="flex justify-end">
+                  <button
+                    type="submit"
+                    :disabled="isUpdating || !isPasswordFormValid"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {{ isUpdating ? 'Updating...' : 'Change Password' }}
+                  </button>
+                </div>
+              </form>
             </div>
 
             <!-- Account Information -->
@@ -1129,6 +1206,15 @@ const userAvatar = computed(() => {
   return profileStore.profile?.avatar_url || user.value?.avatar_url || '/default-avatar.png'
 })
 
+// Password form validation
+const isPasswordFormValid = computed(() => {
+  return passwordForm.currentPassword.trim() !== '' &&
+         passwordForm.newPassword.trim() !== '' &&
+         passwordForm.confirmPassword.trim() !== '' &&
+         passwordForm.newPassword === passwordForm.confirmPassword &&
+         passwordForm.newPassword.length >= 8
+})
+
 // State
 const isLoading = ref(false)
 const isUpdating = ref(false)
@@ -1180,8 +1266,40 @@ const profileForm = reactive({
   workforce_group: '',
   city: '',
   emergency_data: {} as Record<string, string>,
-  professional_data: {} as Record<string, string>,
+  professional_data: {
+    total_experience: '',
+    specialized_experience: '',
+    previous_employers: '',
+    references: '',
+    education_level: '',
+    institution_name: '',
+    graduation_year: '',
+    field_of_study: '',
+    red_seal: '',
+    provincial_certificate: '',
+    drivers_license: '',
+    union_membership: '',
+    whmis: '',
+    first_aid: '',
+    fall_protection: '',
+    confined_space: '',
+    lockout_tagout: '',
+    other_safety: '',
+    specialized_skills: '',
+    equipment_tools: '',
+    travel_willingness: '',
+    availability: '',
+    professional_summary: '',
+    key_projects: ''
+  } as Record<string, string>,
   languages: [] as Array<{ language_id: number; prof_level: 'Basic' | 'Intermediate' | 'Fluent'; worker_id: number }>,
+})
+
+// Password form
+const passwordForm = reactive({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: ''
 })
 
 // Validation errors
@@ -1556,8 +1674,68 @@ function validateEmergencyForm(): boolean {
   return isValid
 }
 
+function validateProfessionalData(): boolean {
+  let isValid = true
+  console.log('🔍 Validating professional data...')
+
+  // Validate numeric fields
+  const numericFields = ['total_experience', 'graduation_year']
+  numericFields.forEach((field) => {
+    const value = profileForm.professional_data[field]
+    if (value && value.toString().trim() !== '') {
+      const numValue = Number(value)
+      if (isNaN(numValue) || numValue < 0) {
+        console.log(`❌ Validation error for ${field}: Must be a valid positive number`)
+        isValid = false
+      }
+    }
+  })
+
+  // Validate year field specifically
+  const graduationYear = profileForm.professional_data.graduation_year
+  if (graduationYear && graduationYear.toString().trim() !== '') {
+    const year = Number(graduationYear)
+    const currentYear = new Date().getFullYear()
+    if (isNaN(year) || year < 1900 || year > currentYear + 5) {
+      console.log(`❌ Validation error for graduation_year: Must be a valid year between 1900 and ${currentYear + 5}`)
+      isValid = false
+    }
+  }
+
+  // Validate experience field specifically
+  const totalExperience = profileForm.professional_data.total_experience
+  if (totalExperience && totalExperience.toString().trim() !== '') {
+    const experience = Number(totalExperience)
+    if (isNaN(experience) || experience < 0 || experience > 100) {
+      console.log(`❌ Validation error for total_experience: Must be a valid number between 0 and 100`)
+      isValid = false
+    }
+  }
+
+  console.log('🔍 Professional data validation result:', isValid)
+  return isValid
+}
+
 async function updateProfessionalData() {
   console.log('🔄 updateProfessionalData called')
+
+  // Validate professional data
+  if (!validateProfessionalData()) {
+    console.log('❌ Professional data validation failed')
+    errorMessage.value = 'Please fix the validation errors'
+    return
+  }
+
+  // Check if any data is provided
+  const hasData = Object.values(profileForm.professional_data).some(value =>
+    value && value.toString().trim() !== ''
+  )
+
+  if (!hasData) {
+    console.log('❌ No professional data provided')
+    errorMessage.value = 'Please fill in at least one field before saving'
+    return
+  }
 
   isUpdating.value = true
   errorMessage.value = ''
@@ -1566,10 +1744,35 @@ async function updateProfessionalData() {
   try {
     console.log('📤 Account.vue - professional data before sending:', profileForm.professional_data)
     console.log('📤 Account.vue - professional data JSON:', JSON.stringify(profileForm.professional_data, null, 2))
+    console.log('📤 Account.vue - references field value:', profileForm.professional_data.references)
 
-    // Construct the JSON payload with named object
+    // Simple atomic fields - NO JSON objects
     const jsonPayload = {
-      data: profileForm.professional_data
+      user_id: user.value?.id || 0,
+      total_experience: parseInt(profileForm.professional_data.total_experience) || 0,
+      education_level: profileForm.professional_data.education_level || '',
+      field_of_study: profileForm.professional_data.field_of_study || '',
+      institution_name: profileForm.professional_data.institution_name || '',
+      graduation_year: parseInt(profileForm.professional_data.graduation_year) || null,
+      professional_summary: profileForm.professional_data.professional_summary || '',
+      specialized_skills: profileForm.professional_data.specialized_skills || '',
+      specialized_experience: profileForm.professional_data.specialized_experience || '',
+      key_projects: profileForm.professional_data.key_projects || '',
+      previous_employers: profileForm.professional_data.previous_employers || '',
+      references: profileForm.professional_data.references || '',
+      availability: profileForm.professional_data.availability || '',
+      travel_willingness: profileForm.professional_data.travel_willingness || '',
+      drivers_license: profileForm.professional_data.drivers_license || '',
+      red_seal: profileForm.professional_data.red_seal || '',
+      provincial_certificate: profileForm.professional_data.provincial_certificate || '',
+      union_membership: profileForm.professional_data.union_membership || '',
+      equipment_tools: profileForm.professional_data.equipment_tools || '',
+      whmis: profileForm.professional_data.whmis || '',
+      first_aid: profileForm.professional_data.first_aid || '',
+      fall_protection: profileForm.professional_data.fall_protection || '',
+      confined_space: profileForm.professional_data.confined_space || '',
+      lockout_tagout: profileForm.professional_data.lockout_tagout || '',
+      other_safety: profileForm.professional_data.other_safety || ''
     }
 
     console.log('📤 Professional data JSON payload:', JSON.stringify(jsonPayload, null, 2))
@@ -1602,6 +1805,131 @@ function setActiveTab(tabId: string) {
   activeTab.value = tabId
 }
 
+// Clean numeric input - SIMPLE AND EFFECTIVE
+function cleanNumericInput(event: Event) {
+  const target = event.target as HTMLInputElement
+  let value = target.value
+
+  // Remove ALL non-numeric characters
+  value = value.replace(/[^0-9]/g, '')
+
+  // Limit to 3 digits for experience
+  if (value.length > 3) {
+    value = value.slice(0, 3)
+  }
+
+  // Limit to 100
+  const numValue = parseInt(value)
+  if (numValue > 100) {
+    value = '100'
+  }
+
+  // Update the field immediately
+  profileForm.professional_data.total_experience = value
+}
+
+// Clean graduation year input
+function cleanGraduationYear(event: Event) {
+  const target = event.target as HTMLInputElement
+  let value = target.value
+
+  // Remove ALL non-numeric characters
+  value = value.replace(/[^0-9]/g, '')
+
+  // Limit to 4 digits for year
+  if (value.length > 4) {
+    value = value.slice(0, 4)
+  }
+
+  // Update the field immediately
+  profileForm.professional_data.graduation_year = value
+}
+
+// Load professional data from GET /api/v1/profile/professional
+async function loadProfessionalData() {
+  try {
+    console.log('📥 Loading professional data from /api/v1/profile/professional')
+    const response = await api.get('/api/v1/profile/professional')
+
+    if (response.data && response.data.data) {
+      const professionalData = response.data.data
+      console.log('📥 Professional data from server:', professionalData)
+      console.log('📥 References from server:', professionalData.references)
+
+      // Convert server data to form values
+      profileForm.professional_data = convertServerToForm(professionalData)
+      console.log('📥 Mapped professional data to form:', profileForm.professional_data)
+      console.log('📥 Mapped references to form:', profileForm.professional_data.references)
+    } else {
+      console.log('📥 No professional data found, initializing empty structure')
+      initializeEmptyProfessionalData()
+    }
+  } catch (error) {
+    console.log('❌ Error loading professional data:', error)
+    initializeEmptyProfessionalData()
+  }
+}
+
+// Convert server values to form keys (for loading)
+function convertServerToForm(serverData: Record<string, unknown>) {
+  return {
+    total_experience: String(serverData.total_experience || ''),
+    education_level: String(serverData.education_level || ''),
+    field_of_study: String(serverData.field_of_study || ''),
+    institution_name: String(serverData.institution_name || ''),
+    graduation_year: String(serverData.graduation_year || ''),
+    professional_summary: String(serverData.professional_summary || ''),
+    specialized_skills: String(serverData.specialized_skills || ''),
+    specialized_experience: String(serverData.specialized_experience || ''),
+    key_projects: String(serverData.key_projects || ''),
+    previous_employers: String(serverData.previous_employers || ''),
+    references: String(serverData.references || ''),
+    availability: String(serverData.availability || ''),
+    travel_willingness: String(serverData.travel_willingness || ''),
+    drivers_license: String(serverData.drivers_license || ''),
+    red_seal: String(serverData.red_seal || ''),
+    provincial_certificate: String(serverData.provincial_certificate || ''),
+    union_membership: String(serverData.union_membership || ''),
+    equipment_tools: String(serverData.equipment_tools || ''),
+    whmis: String(serverData.whmis || ''),
+    first_aid: String(serverData.first_aid || ''),
+    fall_protection: String(serverData.fall_protection || ''),
+    confined_space: String(serverData.confined_space || ''),
+    lockout_tagout: String(serverData.lockout_tagout || ''),
+    other_safety: String(serverData.other_safety || '')
+  }
+}
+
+// Initialize empty professional data structure
+function initializeEmptyProfessionalData() {
+  profileForm.professional_data = {
+    total_experience: '',
+    education_level: '',
+    field_of_study: '',
+    institution_name: '',
+    graduation_year: '',
+    professional_summary: '',
+    specialized_skills: '',
+    specialized_experience: '',
+    key_projects: '',
+    previous_employers: '',
+    references: '',
+    availability: '',
+    travel_willingness: '',
+    drivers_license: '',
+    red_seal: '',
+    provincial_certificate: '',
+    union_membership: '',
+    equipment_tools: '',
+    whmis: '',
+    first_aid: '',
+    fall_protection: '',
+    confined_space: '',
+    lockout_tagout: '',
+    other_safety: ''
+  }
+}
+
 // Phone formatting function
 function formatPhone(event: Event, fieldName?: string) {
   const target = event.target as HTMLInputElement
@@ -1623,6 +1951,8 @@ function formatPhone(event: Event, fieldName?: string) {
     profileForm.phone = value
   }
 }
+
+
 
 // Language management functions
 function addLanguage() {
@@ -1696,17 +2026,119 @@ async function handleAvatarSaved(avatarData: { croppedAvatar: string; fullImage:
 // 2FA functions
 async function toggleTwoFactor() {
   isUpdating.value = true
-  try {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+  errorMessage.value = ''
+  successMessage.value = ''
 
-    if (authStore.currentUser) {
-      authStore.currentUser.two_factor_enabled = !authStore.currentUser.two_factor_enabled
+  try {
+    console.log('🔄 Toggling 2FA for user:', authStore.currentUser?.id)
+    const newValue = !authStore.currentUser?.two_factor_enabled
+    console.log('🔄 Current value:', authStore.currentUser?.two_factor_enabled)
+    console.log('🔄 New value:', newValue)
+    console.log('🔄 Sending to:', 'POST /api/v1/2fa/toggle')
+    console.log('🔄 Payload:', { enabled: newValue })
+
+    const response = await api.post('/api/v1/2fa/toggle', {
+      enabled: newValue
+    })
+
+    console.log('📥 Full response:', response)
+    console.log('📥 Response status:', response.status)
+    console.log('📥 Response data:', response.data)
+    console.log('📥 Response data type:', typeof response.data)
+
+    // Expected format: { status: 'success', message: '...', data: { two_factor_enabled: true/false } }
+    if (response.data && response.data.status === 'success') {
+      if (authStore.currentUser) {
+        authStore.currentUser.two_factor_enabled = newValue
+      }
+      successMessage.value = response.data.message || `Two-factor authentication ${newValue ? 'enabled' : 'disabled'}`
+      console.log('✅ 2FA toggled successfully')
+    } else {
+      throw new Error(response.data?.message || 'Failed to update 2FA')
     }
 
-    successMessage.value = `Two-factor authentication ${authStore.currentUser?.two_factor_enabled ? 'enabled' : 'disabled'}`
-  } catch {
-    errorMessage.value = 'Failed to update two-factor authentication'
+  } catch (error) {
+    console.error('❌ Error toggling 2FA:', error)
+    const apiError = error as { response?: { status?: number; data?: { status?: string; message?: string } } }
+
+    // Check if error response has status 'error'
+    if (apiError.response?.data?.status === 'error') {
+      errorMessage.value = apiError.response.data.message || 'Failed to update two-factor authentication'
+    } else {
+      errorMessage.value = apiError.response?.data?.message || 'Failed to update two-factor authentication'
+    }
+  } finally {
+    isUpdating.value = false
+  }
+}
+
+// Password change function
+async function changePassword() {
+  isUpdating.value = true
+  errorMessage.value = ''
+  successMessage.value = ''
+
+  try {
+    console.log('🔄 Changing password for user:', authStore.currentUser?.id)
+
+    // Validate passwords match
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      errorMessage.value = 'New passwords do not match'
+      return
+    }
+
+    // Validate password length
+    if (passwordForm.newPassword.length < 8) {
+      errorMessage.value = 'New password must be at least 8 characters long'
+      return
+    }
+
+    const response = await api.post('/api/v1/profile/change-password', {
+      current_password: passwordForm.currentPassword,
+      new_password: passwordForm.newPassword
+    })
+
+    console.log('📥 Password change response:', response.data)
+
+    // Expected format: { status: 'success', message: 'Password changed successfully' }
+    if (response.data && response.data.status === 'success') {
+      successMessage.value = response.data.message || 'Password changed successfully'
+      // Clear form
+      passwordForm.currentPassword = ''
+      passwordForm.newPassword = ''
+      passwordForm.confirmPassword = ''
+      console.log('✅ Password changed successfully')
+
+      // Auto-clear success message after 5 seconds
+      setTimeout(() => {
+        successMessage.value = ''
+      }, 5000)
+    } else {
+      throw new Error(response.data?.message || 'Failed to change password')
+    }
+  } catch (error) {
+    console.error('❌ Error changing password:', error)
+    const apiError = error as { response?: { status?: number; data?: { status?: string; message?: string } } }
+
+    console.log('📥 Error response:', apiError.response)
+    console.log('📥 Error response data:', apiError.response?.data)
+
+    // Check if error response has status 'error'
+    if (apiError.response?.data?.status === 'error') {
+      // Show server error message
+      errorMessage.value = apiError.response.data.message || 'Failed to change password'
+    } else if (apiError.response?.status === 401) {
+      errorMessage.value = 'Current password is incorrect'
+    } else if (apiError.response?.status === 400) {
+      errorMessage.value = 'Password does not meet requirements'
+    } else {
+      errorMessage.value = apiError.response?.data?.message || 'Failed to change password. Please check your current password.'
+    }
+
+    // Auto-clear error after 10 seconds
+    setTimeout(() => {
+      errorMessage.value = ''
+    }, 10000)
   } finally {
     isUpdating.value = false
   }
@@ -1828,24 +2260,8 @@ onMounted(async () => {
         profileForm.emergency_data = {}
       }
 
-      // Load professional data
-      console.log('📥 Professional data from server:', userData.professional)
-      if (userData.professional) {
-        // If professional is a JSON string, parse it
-        if (typeof userData.professional === 'string') {
-          try {
-            profileForm.professional_data = JSON.parse(userData.professional)
-            console.log('📥 Parsed professional data:', profileForm.professional_data)
-          } catch (error) {
-            console.log('❌ Error parsing professional data:', error)
-            profileForm.professional_data = {}
-          }
-        } else {
-          profileForm.professional_data = userData.professional
-        }
-      } else {
-        profileForm.professional_data = {}
-      }
+      // Load professional data from separate endpoint
+      await loadProfessionalData()
 
       profileForm.languages = userData.languages || []
 
@@ -1860,6 +2276,9 @@ onMounted(async () => {
         authStore.currentUser.birth_date = userData.dob || ''
         authStore.currentUser.age = userData.age || ''
         authStore.currentUser.specialization = userData.specialization || ''
+        authStore.currentUser.two_factor_enabled = userData.two_factor_enabled || false
+
+        console.log('📥 Updated 2FA status in authStore:', authStore.currentUser.two_factor_enabled)
 
         // Обновляем URL изображений, если они есть
         if (userData.avatar_url) {
@@ -1920,6 +2339,39 @@ watch(() => profileForm.status_reason, (newReason) => {
   if (!newReason) {
     profileForm.status_details = ''
     profileForm.status_end_at = ''
+  }
+})
+
+// Watch for total_experience changes and force numeric only
+watch(() => profileForm.professional_data.total_experience, (newValue) => {
+  if (newValue && typeof newValue === 'string') {
+    const numericOnly = newValue.replace(/[^0-9]/g, '')
+    if (numericOnly !== newValue) {
+      profileForm.professional_data.total_experience = numericOnly
+    }
+    // Limit to 3 digits
+    if (numericOnly.length > 3) {
+      profileForm.professional_data.total_experience = numericOnly.slice(0, 3)
+    }
+    // Limit to 100
+    const numValue = parseInt(numericOnly)
+    if (numValue > 100) {
+      profileForm.professional_data.total_experience = '100'
+    }
+  }
+})
+
+// Watch for graduation_year changes and force numeric only
+watch(() => profileForm.professional_data.graduation_year, (newValue) => {
+  if (newValue && typeof newValue === 'string') {
+    const numericOnly = newValue.replace(/[^0-9]/g, '')
+    if (numericOnly !== newValue) {
+      profileForm.professional_data.graduation_year = numericOnly
+    }
+    // Limit to 4 digits
+    if (numericOnly.length > 4) {
+      profileForm.professional_data.graduation_year = numericOnly.slice(0, 4)
+    }
   }
 })
 </script>
