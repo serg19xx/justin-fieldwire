@@ -101,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import LoginForm from '../components/LoginForm.vue'
 import TwoFactorDialog from '@/components/TwoFactorDialog.vue'
@@ -124,10 +124,19 @@ function handleShowTwoFactor(user: { role_category?: string }) {
   showTwoFactor.value = true
 }
 
-function handleTwoFactorSuccess() {
+async function handleTwoFactorSuccess() {
+  console.log('🎉 2FA verification successful, redirecting to dashboard...')
   showTwoFactor.value = false
-  // Перенаправляем на главную страницу - CategoryRouter сам определит нужный дашборд
-  router.push('/')
+  
+  // Wait for the next tick to ensure auth state is updated
+  await nextTick()
+  
+  // Use replace instead of push to avoid back button issues
+  // Add a small delay to ensure auth store is fully updated
+  setTimeout(() => {
+    console.log('🚀 Redirecting to dashboard...')
+    router.replace('/')
+  }, 100)
 }
 
 async function handleRecovery() {

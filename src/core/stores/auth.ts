@@ -304,6 +304,11 @@ export const useAuthStore = defineStore('auth', () => {
         isAuthenticated.value = true
         localStorage.setItem('user', JSON.stringify(updatedUser))
         console.log('✅ 2FA verification successful - user authenticated')
+        console.log('🔍 Auth state after 2FA:', { 
+          isAuthenticated: isAuthenticated.value, 
+          hasUser: !!currentUser.value,
+          userEmail: currentUser.value?.email 
+        })
 
         // Initialize session manager after successful 2FA verification
         initializeSessionManager({
@@ -328,6 +333,14 @@ export const useAuthStore = defineStore('auth', () => {
         // Start session monitoring
         startSessionManager()
 
+        // Force reactivity update
+        await new Promise(resolve => setTimeout(resolve, 0))
+        
+        console.log('🔍 Final auth state check:', { 
+          isAuthenticated: isAuthenticated.value, 
+          hasUser: !!currentUser.value 
+        })
+        
         return { success: true }
       } else {
         console.log('❌ No token or user data in 2FA response')

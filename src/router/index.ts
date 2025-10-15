@@ -126,6 +126,13 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
 
+  console.log('🛡️ Router guard:', { 
+    to: to.path, 
+    from: from.path, 
+    isAuthenticated: authStore.isAuthenticated,
+    hasUser: !!authStore.currentUser 
+  })
+
   // Allow access to login and password change pages
   if (to.path === '/login' || to.path === '/password-change') {
     next()
@@ -134,16 +141,19 @@ router.beforeEach((to, from, next) => {
 
   // Redirect to login if not authenticated
   if (!authStore.isAuthenticated) {
+    console.log('❌ Not authenticated, redirecting to login')
     next('/login')
     return
   }
 
   // Redirect to dashboard if already logged in and trying to access login
   if (to.path === '/login' && authStore.isAuthenticated) {
+    console.log('✅ Already authenticated, redirecting to dashboard')
     next('/dashboard')
     return
   }
 
+  console.log('✅ Access granted to:', to.path)
   next()
 })
 
