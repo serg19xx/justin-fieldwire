@@ -760,6 +760,10 @@ export const useAuthStore = defineStore('auth', () => {
           isAuthenticated.value = true
           console.log('✅ Auth initialized from localStorage')
           console.log('👤 Current user:', user.email)
+          console.log('🔍 Auth state after init:', { 
+            isAuthenticated: isAuthenticated.value, 
+            hasUser: !!currentUser.value 
+          })
 
           // Initialize session manager
           initializeSessionManager({

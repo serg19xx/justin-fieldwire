@@ -101,12 +101,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, nextTick } from 'vue'
+import { ref, reactive, nextTick, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/core/stores/auth'
 import LoginForm from '../components/LoginForm.vue'
 import TwoFactorDialog from '@/components/TwoFactorDialog.vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const recoveryForm = reactive({
   email: '',
@@ -118,6 +120,25 @@ const showTwoFactor = ref(false)
 const twoFactorUser = ref<{ role_category?: string } | null>(null)
 const errorMessage = ref('')
 const successMessage = ref('')
+
+// Check if user is already authenticated and redirect
+onMounted(() => {
+  if (authStore.isAuthenticated) {
+    console.log('🚀 User already authenticated, redirecting to dashboard')
+    router.replace('/dashboard')
+  }
+})
+
+// Watch for authentication state changes
+watch(
+  () => authStore.isAuthenticated,
+  (isAuthenticated) => {
+    if (isAuthenticated) {
+      console.log('🔐 Authentication state changed to true, redirecting to dashboard')
+      router.replace('/dashboard')
+    }
+  }
+)
 
 function handleShowTwoFactor(user: { role_category?: string }) {
   twoFactorUser.value = user

@@ -133,23 +133,24 @@ router.beforeEach((to, from, next) => {
     hasUser: !!authStore.currentUser 
   })
 
-  // Allow access to login and password change pages
+  // If user is authenticated and trying to access login page, redirect to dashboard
+  if (to.path === '/login' && authStore.isAuthenticated) {
+    console.log('✅ Already authenticated, redirecting to dashboard')
+    next('/dashboard')
+    return
+  }
+
+  // Allow access to login and password change pages for non-authenticated users
   if (to.path === '/login' || to.path === '/password-change') {
+    console.log('✅ Access to auth page granted')
     next()
     return
   }
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated and trying to access protected routes
   if (!authStore.isAuthenticated) {
     console.log('❌ Not authenticated, redirecting to login')
     next('/login')
-    return
-  }
-
-  // Redirect to dashboard if already logged in and trying to access login
-  if (to.path === '/login' && authStore.isAuthenticated) {
-    console.log('✅ Already authenticated, redirecting to dashboard')
-    next('/dashboard')
     return
   }
 
