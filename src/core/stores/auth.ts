@@ -173,6 +173,22 @@ export const useAuthStore = defineStore('auth', () => {
         console.log('✅ Login successful for user:', frontendUser.email)
         console.log('🖼️ Avatar URL after login:', frontendUser.avatar_url)
 
+        // Load full profile data if avatar is missing
+        if (!frontendUser.avatar_url) {
+          try {
+            console.log('🖼️ Loading full profile data for missing avatar after login...')
+            const profileResult = await getProfile()
+            if (profileResult.success && profileResult.user) {
+              // Update current user with full profile data
+              currentUser.value = { ...currentUser.value, ...profileResult.user }
+              localStorage.setItem('user', JSON.stringify(currentUser.value))
+              console.log('✅ Full profile loaded after login, avatar URL:', currentUser.value.avatar_url)
+            }
+          } catch (error) {
+            console.warn('⚠️ Failed to load full profile after login:', error)
+          }
+        }
+
         // Initialize session manager after successful login
         initializeSessionManager({
           checkInterval: 5 * 60 * 1000, // 5 minutes
@@ -309,6 +325,20 @@ export const useAuthStore = defineStore('auth', () => {
           hasUser: !!currentUser.value,
           userEmail: currentUser.value?.email 
         })
+
+        // Load full profile data including avatar
+        try {
+          console.log('🖼️ Loading full profile data for avatar...')
+          const profileResult = await getProfile()
+          if (profileResult.success && profileResult.user) {
+            // Update current user with full profile data
+            currentUser.value = { ...currentUser.value, ...profileResult.user }
+            localStorage.setItem('user', JSON.stringify(currentUser.value))
+            console.log('✅ Full profile loaded, avatar URL:', currentUser.value.avatar_url)
+          }
+        } catch (error) {
+          console.warn('⚠️ Failed to load full profile, using basic user data:', error)
+        }
 
         // Initialize session manager after successful 2FA verification
         initializeSessionManager({
@@ -787,6 +817,22 @@ export const useAuthStore = defineStore('auth', () => {
 
           // Start session monitoring
           startSessionManager()
+
+          // Load full profile data if avatar is missing
+          if (currentUser.value && !currentUser.value.avatar_url) {
+            try {
+              console.log('🖼️ Loading full profile data for missing avatar...')
+              const profileResult = await getProfile()
+              if (profileResult.success && profileResult.user) {
+                // Update current user with full profile data
+                currentUser.value = { ...currentUser.value, ...profileResult.user }
+                localStorage.setItem('user', JSON.stringify(currentUser.value))
+                console.log('✅ Full profile loaded on init, avatar URL:', currentUser.value.avatar_url)
+              }
+            } catch (error) {
+              console.warn('⚠️ Failed to load full profile on init:', error)
+            }
+          }
         } else {
           // User data corrupted, clear everything
           console.log('❌ User data corrupted, logging out')
