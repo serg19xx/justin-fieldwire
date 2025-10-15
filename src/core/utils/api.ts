@@ -41,6 +41,12 @@ api.interceptors.response.use(
           onSessionExpired?.()
         } else {
           console.log('⚠️ 401 but token not expired - may be server issue')
+          console.log('🔍 Token details:', {
+            token: token ? `${token.substring(0, 20)}...` : 'No token',
+            url: error.config?.url,
+            method: error.config?.method,
+            headers: error.config?.headers
+          })
         }
       } else {
         console.log('🔒 401 on login/logout/check-session page or request - not redirecting')

@@ -1,5 +1,6 @@
 import { api } from './api'
 import type { ProjectTeamMember } from './project-api'
+import { useAuthStore } from '../stores/auth'
 
 // WorkerUser interface for global system
 export interface WorkerUser {
@@ -211,6 +212,16 @@ export const hrResourcesApi = {
     try {
       console.log('🔍 Getting all workers from global system')
       console.log('📋 Parameters:', { page, limit, filters })
+      
+      // Check current user info
+      const authStore = useAuthStore()
+      console.log('👤 Current user info:', {
+        id: authStore.currentUser?.id,
+        email: authStore.currentUser?.email,
+        role_code: authStore.currentUser?.role_code,
+        role_category: authStore.currentUser?.role_category,
+        isAuthenticated: authStore.isAuthenticated
+      })
 
       // Строим query параметры
       const params = new URLSearchParams()
@@ -233,6 +244,9 @@ export const hrResourcesApi = {
       if (filters.sort_by) params.append('sort_by', filters.sort_by)
       if (filters.sort_order) params.append('sort_order', filters.sort_order)
 
+      console.log('🔍 Making request to workers endpoint with params:', params.toString())
+      console.log('🔍 Full URL:', `/api/v1/workers?${params.toString()}`)
+      
       const response = await api.get(`/api/v1/workers?${params.toString()}`)
       console.log('✅ All workers response:', response.data)
 
