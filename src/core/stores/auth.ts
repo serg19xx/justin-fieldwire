@@ -281,9 +281,8 @@ export const useAuthStore = defineStore('auth', () => {
 
       console.log('✅ 2FA response:', response.data)
 
-      // Бэкенд возвращает данные в поле data
-      const { data } = response.data
-      const { token, user } = data
+      // Бэкенд возвращает данные напрямую в response.data
+      const { token, user } = response.data
 
       if (token && user) {
         // Обновляем данные пользователя из ответа

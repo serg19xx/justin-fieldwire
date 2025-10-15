@@ -57,6 +57,11 @@ const showAddTeamMemberDialog = ref(false)
 // Export state
 const isExporting = ref(false)
 
+// Task edit panel state
+const isTaskEditPanelOpen = ref(false)
+const editingTask = ref<Task | null>(null)
+const editingMode = ref<'create' | 'edit'>('edit')
+
 // Search state
 const selectedTask = ref<Task | null>(null)
 const searchQuery = ref('')
@@ -1593,6 +1598,36 @@ function handleTaskDuplicate(task: unknown) {
   // TODO: Show notification or update UI
 }
 
+// Handle edit panel open/close
+function handleEditPanelOpen(isOpen: boolean, task?: Task | null, mode?: 'create' | 'edit') {
+  isTaskEditPanelOpen.value = isOpen
+  editingTask.value = task || null
+  editingMode.value = mode || 'edit'
+}
+
+// Handle actions from header buttons
+function handleCloseEditPanel() {
+  if (calendarRef.value && typeof calendarRef.value.closeTaskEditPanel === 'function') {
+    calendarRef.value.closeTaskEditPanel()
+  }
+}
+
+function handleDeleteFromHeader() {
+  if (editingTask.value && calendarRef.value) {
+    if (typeof calendarRef.value.handleTaskEditPanelDelete === 'function') {
+      calendarRef.value.handleTaskEditPanelDelete(String(editingTask.value.id))
+    }
+  }
+}
+
+function handleDuplicateFromHeader() {
+  if (editingTask.value && calendarRef.value) {
+    if (typeof calendarRef.value.handleTaskEditPanelDuplicate === 'function') {
+      calendarRef.value.handleTaskEditPanelDuplicate(editingTask.value)
+    }
+  }
+}
+
 // Helper functions
 function getPriorityColor(priority?: string) {
   if (!priority) return 'bg-gray-100 text-gray-800'
@@ -1851,7 +1886,7 @@ watch(
       <div class="bg-white shadow-sm border-b border-gray-200 px-6 py-2">
         <div class="flex items-center justify-between">
           <!-- Dynamic Action Buttons -->
-          <div>
+          <div class="flex-1 flex items-center">
             <!-- Plans Section Buttons -->
             <template v-if="activeSection === 'plans'">
               <div class="flex items-center space-x-2">
@@ -1966,8 +2001,8 @@ watch(
               </div>
             </template>
 
-            <!-- Tasks Section Buttons -->
-            <template v-else-if="activeSection === 'tasks'">
+            <!-- Tasks Section Buttons - Normal Mode -->
+            <template v-else-if="activeSection === 'tasks' && !isTaskEditPanelOpen">
               <div class="flex items-center space-x-2">
                 <button
                   @click="exportTasksToICalLocal"
@@ -1984,6 +2019,51 @@ watch(
                   <span v-else>📅</span>
                   <span>{{ isExporting ? 'Exporting...' : 'Export iCal' }}</span>
                 </button>
+              </div>
+            </template>
+
+            <!-- Tasks Section Buttons - Edit Panel Mode -->
+            <template v-else-if="activeSection === 'tasks' && isTaskEditPanelOpen">
+              <div class="flex items-center justify-between flex-1">
+                <div class="flex items-center space-x-3">
+                  <button
+                    @click="handleCloseEditPanel"
+                    class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+                    title="Close edit panel"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M15 19l-7-7 7-7"
+                      ></path>
+                    </svg>
+                  </button>
+                  <div class="border-l border-gray-300 h-8"></div>
+                  <div>
+                    <h3 class="text-sm font-semibold text-gray-900">
+                      {{ editingMode === 'create' ? 'Create New Task' : 'Edit Task' }}
+                    </h3>
+                    <p v-if="editingTask" class="text-xs text-gray-500">{{ editingTask.name }}</p>
+                  </div>
+                </div>
+                <div v-if="editingMode === 'edit' && canEditProject" class="flex items-center space-x-2">
+                  <button
+                    @click="handleDuplicateFromHeader"
+                    class="px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-1"
+                  >
+                    <span>📋</span>
+                    <span>Duplicate</span>
+                  </button>
+                  <button
+                    @click="handleDeleteFromHeader"
+                    class="px-3 py-1.5 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center space-x-1"
+                  >
+                    <span>🗑️</span>
+                    <span>Delete</span>
+                  </button>
+                </div>
               </div>
             </template>
 
@@ -2045,7 +2125,7 @@ watch(
           </div>
 
           <!-- Search Bar -->
-          <div class="w-64 relative">
+          <div v-if="!isTaskEditPanelOpen" class="w-64 relative">
             <input
               v-model="searchQuery"
               type="text"
@@ -2194,6 +2274,7 @@ watch(
               @event-resize="handleEventResize"
               @task-update="handleTaskUpdate"
               @task-duplicate="handleTaskDuplicate"
+              @editPanelOpen="handleEditPanelOpen"
             />
             <!-- Loading state for tasks -->
             <div v-else class="flex items-center justify-center h-64">

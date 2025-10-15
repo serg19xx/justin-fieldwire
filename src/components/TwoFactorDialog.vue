@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useAuthStore } from '@/core/stores/auth'
 
 interface Props {
@@ -21,9 +21,40 @@ const code = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
+const resendTimer = ref(0)
+const canResend = ref(true)
 
 // Computed
 const userEmail = computed(() => authStore.currentUser?.email || '')
+
+// Watch for dialog opening to reset state
+watch(
+  () => props.isOpen,
+  (newValue) => {
+    if (newValue) {
+      step.value = 'delivery'
+      code.value = ''
+      errorMessage.value = ''
+      successMessage.value = ''
+      resendTimer.value = 0
+      canResend.value = true
+    }
+  },
+)
+
+// Resend timer countdown
+function startResendTimer() {
+  canResend.value = false
+  resendTimer.value = 60
+
+  const interval = setInterval(() => {
+    resendTimer.value--
+    if (resendTimer.value <= 0) {
+      clearInterval(interval)
+      canResend.value = true
+    }
+  }, 1000)
+}
 
 async function handleSendCode() {
   if (!userEmail.value) {
@@ -42,6 +73,7 @@ async function handleSendCode() {
     if (result.success) {
       successMessage.value = `Verification code sent to your ${deliveryMethod.value === 'sms' ? 'phone' : 'email'}`
       step.value = 'code'
+      startResendTimer() // Start the resend timer
       console.log('✅ Code sent successfully')
     } else {
       errorMessage.value = result.error || 'Failed to send verification code'
@@ -50,6 +82,35 @@ async function handleSendCode() {
   } catch (error) {
     console.error('❌ Send code error:', error)
     errorMessage.value = 'Failed to send verification code'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function handleResendCode() {
+  if (!canResend.value) return
+
+  errorMessage.value = ''
+  successMessage.value = ''
+
+  isLoading.value = true
+
+  try {
+    console.log('🔁 Resending 2FA code via:', deliveryMethod.value)
+
+    const result = await authStore.sendTwoFactorCode(userEmail.value, deliveryMethod.value)
+
+    if (result.success) {
+      successMessage.value = 'Verification code resent successfully'
+      startResendTimer()
+      console.log('✅ Code resent successfully')
+    } else {
+      errorMessage.value = result.error || 'Failed to resend verification code'
+      console.log('❌ Failed to resend code:', result.error)
+    }
+  } catch (error) {
+    console.error('❌ Resend code error:', error)
+    errorMessage.value = 'Failed to resend verification code'
   } finally {
     isLoading.value = false
   }
@@ -229,7 +290,7 @@ function handleKeydown(event: KeyboardEvent) {
           </div>
 
           <!-- Code Input -->
-          <div class="mb-6">
+          <div class="mb-4">
             <input
               v-model="code"
               @keydown="handleKeydown"
@@ -239,6 +300,21 @@ function handleKeydown(event: KeyboardEvent) {
               class="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-2xl font-mono tracking-widest focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               :disabled="isLoading"
             />
+          </div>
+
+          <!-- Resend Code Link -->
+          <div class="mb-6 text-center">
+            <button
+              v-if="canResend"
+              @click="handleResendCode"
+              :disabled="isLoading"
+              class="text-sm text-blue-600 hover:text-blue-800 underline disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Resend code
+            </button>
+            <span v-else class="text-sm text-gray-500">
+              Resend code in {{ resendTimer }}s
+            </span>
           </div>
 
           <!-- Action Buttons -->

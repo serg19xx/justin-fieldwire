@@ -13,6 +13,8 @@ import { projectApi, type Project } from '@/core/utils/project-api'
 import { checkProjectBounds } from '@/core/utils/project-bounds-checker'
 import { checkDependencyConstraints } from '@/core/utils/dependency-validator'
 import TaskDialog from './TaskDialog.vue'
+import TaskViewDialog from './TaskViewDialog.vue'
+import TaskEditPanel from './TaskEditPanel.vue'
 import MilestoneDialog from './MilestoneDialog.vue'
 import SimpleBoundsDialog from './SimpleBoundsDialog.vue'
 import DependencyValidationDialog from './DependencyValidationDialog.vue'
@@ -39,6 +41,7 @@ const emit = defineEmits<{
   taskUpdate: [task: Task]
   taskDuplicate: [task: Task]
   openProjectSettings: []
+  editPanelOpen: [isOpen: boolean, task?: Task | null, mode?: 'create' | 'edit']
 }>()
 
 // Auth store for user role checking
@@ -213,6 +216,19 @@ const taskDialog = ref({
   initialDate: undefined as string | undefined,
 })
 
+// Task view dialog state (read-only)
+const taskViewDialog = ref({
+  isOpen: false,
+  task: null as Task | null,
+})
+
+// Task edit panel state (full-screen edit)
+const taskEditPanel = ref({
+  isOpen: false,
+  mode: 'create' as 'create' | 'edit',
+  task: null as Task | null,
+})
+
 // Milestone dialog state
 const milestoneDialog = ref({
   isOpen: false,
@@ -373,15 +389,16 @@ const calendarOptions = ref({
           now - lastEventClick.value.time < 500) {
         console.log('📅 Event double-clicked detected:', eventInfo.event.title)
         console.log('🔧 Time between clicks:', now - lastEventClick.value.time, 'ms')
-        const mode = props.canEdit ? 'edit' : 'view'
-        console.log('🔧 Opening dialog for double-click in mode:', mode, 'canEdit:', props.canEdit)
         console.log('🔧 Event ID:', eventId, 'Type:', typeof eventId)
         // Check if it's a milestone or regular task
         const task = tasks.value.find(t => String(t.id) === String(eventId))
         if (task && task.milestone) {
+          // Open milestone dialog for milestones
+          const mode = props.canEdit ? 'edit' : 'view'
           openMilestoneDialog(mode, eventId)
         } else {
-          openTaskDialog(mode, eventId)
+          // Open TaskViewDialog for regular tasks (always read-only on double-click)
+          openTaskViewDialog(eventId)
         }
         lastEventClick.value = null // Reset
       } else {
@@ -1829,7 +1846,14 @@ function editTask(task: Task) {
   if (task.milestone) {
     openMilestoneDialog('edit', task.id)
   } else {
-    openTaskDialog('edit', task.id)
+    // Open TaskEditPanel instead of TaskDialog
+    taskEditPanel.value = {
+      isOpen: true,
+      mode: 'edit',
+      task,
+    }
+    // Notify parent that edit panel is open
+    emit('editPanelOpen', true, task, 'edit')
   }
 }
 
@@ -2065,6 +2089,69 @@ function closeTaskDialog() {
   taskDialog.value.isOpen = false
   taskDialog.value.task = null
   taskDialog.value.initialDate = undefined
+}
+
+// TaskViewDialog functions
+function openTaskViewDialog(taskId: string) {
+  console.log('🔧 Opening task view dialog for task:', taskId)
+  const task = tasks.value.find(t => String(t.id) === String(taskId))
+  if (task) {
+    console.log('🔧 Found task for view:', task.name)
+    taskViewDialog.value = {
+      isOpen: true,
+      task,
+    }
+  } else {
+    console.log('❌ Task not found:', taskId)
+  }
+}
+
+function closeTaskViewDialog() {
+  taskViewDialog.value.isOpen = false
+  taskViewDialog.value.task = null
+}
+
+// TaskEditPanel functions
+function closeTaskEditPanel() {
+  taskEditPanel.value.isOpen = false
+  taskEditPanel.value.task = null
+  // Notify parent that edit panel is closed
+  emit('editPanelOpen', false, null, undefined)
+}
+
+async function handleTaskEditPanelSave(taskData: Partial<Task>) {
+  console.log('💾 Saving task from edit panel:', taskData)
+
+  if (taskEditPanel.value.mode === 'edit' && taskEditPanel.value.task) {
+    // Update existing task - add the task id to the data
+    const updatedData = {
+      ...taskData,
+      id: taskEditPanel.value.task.id,
+    }
+    // Temporarily set taskDialog mode to 'edit' for handleTaskSave
+    const previousMode = taskDialog.value.mode
+    taskDialog.value.mode = 'edit'
+    await handleTaskSave(updatedData)
+    taskDialog.value.mode = previousMode
+  } else {
+    // Create new task
+    taskDialog.value.mode = 'create'
+    await handleTaskSave(taskData as TaskCreateUpdate)
+  }
+
+  closeTaskEditPanel()
+}
+
+async function handleTaskEditPanelDelete(taskId: string) {
+  console.log('🗑️ Deleting task from edit panel:', taskId)
+  await handleTaskDelete(taskId)
+  closeTaskEditPanel()
+}
+
+async function handleTaskEditPanelDuplicate(task: Task) {
+  console.log('📋 Duplicating task from edit panel:', task.name)
+  await handleTaskDuplicate(task)
+  closeTaskEditPanel()
 }
 
 function closeMilestoneDialog() {
@@ -2372,12 +2459,17 @@ defineExpose({
   searchResults,
   currentSearchIndex,
   isSearchActive,
+  closeTaskEditPanel,
+  handleTaskEditPanelDelete,
+  handleTaskEditPanelDuplicate,
+  duplicateTask,
 })
 </script>
 
 <template>
-  <!-- Legend Section -->
-  <div class="px-4 py-1 bg-transparent text-xs text-gray-600">
+  <div class="relative flex-1 flex flex-col h-full">
+    <!-- Legend Section -->
+    <div class="px-4 py-1 bg-transparent text-xs text-gray-600">
     <div class="flex items-center justify-center space-x-6">
       <!-- Status Legend -->
       <div class="flex items-center space-x-2 text-xs border border-gray-300 rounded-md px-3 py-1 bg-gray-50">
@@ -2508,6 +2600,14 @@ defineExpose({
               title="Add new milestone"
             >
               🎯 Add Milestone
+            </button>
+            <button
+              v-if="selectedTask"
+              @click="editTask(selectedTask)"
+              class="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
+              title="Edit selected task"
+            >
+              ✏️ Edit
             </button>
             <button
               v-if="selectedTask"
@@ -2855,6 +2955,29 @@ defineExpose({
       @open-project-settings="handleOpenProjectSettings"
     />
 
+    <!-- Task View Dialog (Read-Only) -->
+    <TaskViewDialog
+      :is-open="taskViewDialog.isOpen"
+      :task="taskViewDialog.task"
+      :available-tasks="tasks"
+      :can-edit="canEdit"
+      @close="closeTaskViewDialog"
+    />
+
+    <!-- Task Edit Panel (Full-Screen) -->
+    <TaskEditPanel
+      :is-open="taskEditPanel.isOpen"
+      :mode="taskEditPanel.mode"
+      :task="taskEditPanel.task"
+      :project-id="projectId"
+      :available-tasks="tasks"
+      :can-manage-project="canEdit"
+      @close="closeTaskEditPanel"
+      @save="handleTaskEditPanelSave"
+      @delete="handleTaskEditPanelDelete"
+      @duplicate="handleTaskEditPanelDuplicate"
+    />
+
     <!-- Milestone Dialog -->
     <MilestoneDialog
       :is-open="milestoneDialog.isOpen"
@@ -2899,6 +3022,7 @@ defineExpose({
       @adjust="handleDependencyAdjust"
     />
 
+  </div>
   </div>
 </template>
 
