@@ -1,13 +1,32 @@
 <template>
-  <div class="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-    <div class="sm:mx-auto sm:w-full sm:max-w-md">
+  <div class="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-orange-600 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+    <!-- Background Pattern -->
+    <div class="absolute inset-0 opacity-10">
+      <div class="absolute top-10 left-10 w-32 h-32 border-2 border-white rounded-lg transform rotate-12"></div>
+      <div class="absolute top-32 right-20 w-24 h-24 border-2 border-white rounded-full"></div>
+      <div class="absolute bottom-20 left-1/4 w-40 h-40 border-2 border-white transform -rotate-12"></div>
+      <div class="absolute bottom-32 right-1/3 w-28 h-28 border-2 border-white rounded-lg transform rotate-45"></div>
+      <div class="absolute top-1/2 left-10 w-20 h-20 border-2 border-white rounded-full"></div>
+      <div class="absolute top-1/3 right-10 w-36 h-36 border-2 border-white transform -rotate-12"></div>
+    </div>
+    
+    <!-- Construction Icons -->
+    <div class="absolute inset-0 opacity-5">
+      <div class="absolute top-20 left-1/3 text-6xl">🏗️</div>
+      <div class="absolute top-1/2 right-1/4 text-5xl">🔨</div>
+      <div class="absolute bottom-1/4 left-1/5 text-4xl">⚒️</div>
+      <div class="absolute top-1/4 right-1/5 text-5xl">🏭</div>
+      <div class="absolute bottom-20 right-1/3 text-4xl">📐</div>
+    </div>
+    <div class="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
       <div class="text-center">
-        <h1 class="text-3xl font-bold text-gray-900">FieldWire</h1>
-        <p class="mt-2 text-sm text-gray-600">Construction project management system</p>
+        <h1 class="text-4xl font-bold text-white drop-shadow-lg">FieldWire</h1>
+        <p class="mt-2 text-sm text-blue-100">Construction project management system</p>
+        <div class="mt-4 text-2xl">🏗️</div>
       </div>
     </div>
 
-    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+    <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
       <!-- Login Form -->
       <LoginForm
         v-if="!showRecovery && !showTwoFactor"
@@ -16,7 +35,7 @@
       />
 
       <!-- Recovery Form -->
-      <div v-else-if="showRecovery" class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
+      <div v-else-if="showRecovery" class="max-w-md mx-auto bg-white/95 backdrop-blur-sm rounded-lg shadow-xl p-6 border border-white/20">
         <div class="text-center mb-6">
           <h2 class="text-xl font-bold text-gray-900">Password Recovery</h2>
           <p class="text-gray-600 mt-2">Enter your email to recover your password</p>
