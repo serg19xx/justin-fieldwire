@@ -36,32 +36,46 @@
 
         <form @submit.prevent="handleResetPassword" class="space-y-4">
           <div>
-            <label for="new-password" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="reset-new-password" class="block text-sm font-medium text-gray-700 mb-1">
               New Password
             </label>
             <input
-              id="new-password"
+              id="reset-new-password"
               v-model="resetForm.newPassword"
               type="password"
               required
               minlength="8"
+              autocomplete="new-password"
               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400"
               placeholder="Enter new password"
             />
           </div>
 
           <div>
-            <label for="confirm-password" class="block text-sm font-medium text-gray-700 mb-1">
+            <label for="reset-confirm-password" class="block text-sm font-medium text-gray-700 mb-1">
               Confirm New Password
             </label>
             <input
-              id="confirm-password"
+              id="reset-confirm-password"
               v-model="resetForm.confirmPassword"
               type="password"
               required
+              autocomplete="new-password"
               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400"
               placeholder="Confirm new password"
             />
+          </div>
+
+          <!-- Password Requirements -->
+          <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <h4 class="text-sm font-medium text-blue-900 mb-2">Password Requirements:</h4>
+            <ul class="text-xs text-blue-800 space-y-1">
+              <li>• Minimum 8 characters</li>
+              <li>• At least one uppercase letter (A-Z)</li>
+              <li>• At least one lowercase letter (a-z)</li>
+              <li>• At least one number (0-9)</li>
+              <li>• At least one special character (@$!%*?&)</li>
+            </ul>
           </div>
 
           <button
@@ -121,9 +135,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
+import { api } from '@/core/utils/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -147,15 +162,57 @@ async function handleResetPassword() {
   try {
     console.log('🔐 Resetting password with token:', token.value ? 'present' : 'missing')
 
-    const result = await (authStore as typeof authStore & {
-      resetPassword: (data: { token: string; newPassword: string; confirmPassword: string }) => Promise<{ success: boolean; error?: string }>
-    }).resetPassword({
+    console.log('🔧 Using direct API call as workaround')
+
+    // Validate passwords match
+    if (resetForm.newPassword !== resetForm.confirmPassword) {
+      errorMessage.value = 'New passwords do not match'
+      return
+    }
+
+    // Validate password strength
+    const password = resetForm.newPassword
+    const errors = []
+
+    if (password.length < 8) {
+      errors.push('at least 8 characters')
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      errors.push('at least one uppercase letter (A-Z)')
+    }
+
+    if (!/[a-z]/.test(password)) {
+      errors.push('at least one lowercase letter (a-z)')
+    }
+
+    if (!/[0-9]/.test(password)) {
+      errors.push('at least one number (0-9)')
+    }
+
+    if (!/[@$!%*?&]/.test(password)) {
+      errors.push('at least one special character (@$!%*?&)')
+    }
+
+    if (errors.length > 0) {
+      errorMessage.value = `Password must contain: ${errors.join(', ')}`
+      return
+    }
+
+    console.log('📤 Sending reset password request:')
+    console.log('🔑 Token:', token.value)
+    console.log('🔑 New password:', resetForm.newPassword)
+    console.log('🔑 Confirm password:', resetForm.confirmPassword)
+
+    const response = await api.post('/api/v1/auth/reset-password', {
       token: token.value,
-      newPassword: resetForm.newPassword,
-      confirmPassword: resetForm.confirmPassword
+      new_password: resetForm.newPassword,
+      confirm_password: resetForm.confirmPassword,
     })
 
-    if (result.success) {
+    console.log('✅ Reset password response:', response.data)
+
+    if (response.data.status === 'success') {
       successMessage.value = 'Password reset successfully! Redirecting to login...'
       console.log('✅ Password reset successfully')
 
@@ -164,26 +221,65 @@ async function handleResetPassword() {
         router.push('/login')
       }, 2000)
     } else {
-      errorMessage.value = result.error || 'Failed to reset password'
-      console.log('❌ Password reset failed:', result.error)
+      errorMessage.value = response.data.message || 'Failed to reset password'
+      console.log('❌ Password reset failed:', response.data.message)
     }
   } catch (error) {
     console.error('❌ Reset password error:', error)
-    errorMessage.value = 'An error occurred while resetting password'
+
+    // Show detailed error information
+    if (error.response) {
+      console.log('🔍 Error response status:', error.response.status)
+      console.log('🔍 Error response data:', error.response.data)
+      console.log('🔍 Error response headers:', error.response.headers)
+
+      if (error.response.data && error.response.data.message) {
+        errorMessage.value = error.response.data.message
+      } else {
+        errorMessage.value = `Server error: ${error.response.status}`
+      }
+    } else if (error.request) {
+      console.log('🔍 Error request:', error.request)
+      errorMessage.value = 'Network error - please check your connection'
+    } else {
+      console.log('🔍 Error message:', error.message)
+      errorMessage.value = 'An unexpected error occurred'
+    }
   } finally {
     isLoading.value = false
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  console.log('🔍 ResetPasswordView mounted')
+  console.log('🔍 Route query:', route.query)
+  console.log('🔍 Route params:', route.params)
+  console.log('🔍 Full route:', route)
+
+  // Clear form fields
+  resetForm.newPassword = ''
+  resetForm.confirmPassword = ''
+  errorMessage.value = ''
+  successMessage.value = ''
+
+  // Force clear after DOM update
+  await nextTick()
+  resetForm.newPassword = ''
+  resetForm.confirmPassword = ''
+
   const urlToken = route.query.token as string
+  console.log('🔍 URL token:', urlToken)
+
   if (!urlToken) {
-    console.log('❌ No reset token found, redirecting to login')
-    router.push('/login')
-    return
+    console.log('❌ No reset token found, but continuing for testing')
+    errorMessage.value = 'Invalid or missing token.'
+    // TEMPORARY: Don't redirect for testing
+    // setTimeout(() => {
+    //   router.replace('/login')
+    // }, 3000)
+    // return
   }
   token.value = urlToken
   console.log('✅ Reset token found:', urlToken ? 'present' : 'missing')
 })
 </script>
-</template>

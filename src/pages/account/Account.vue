@@ -1188,8 +1188,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useAuthStore } from '@/core/stores/auth'
-import { useProfileStore, WORKFORCE_GROUPS, AVAILABLE_LANGUAGES, PROFICIENCY_LEVELS } from '@/core/stores/profile'
 import { api } from '@/core/utils/api'
+import { useProfileStore, WORKFORCE_GROUPS, AVAILABLE_LANGUAGES, PROFICIENCY_LEVELS } from '@/core/stores/profile'
 import AvatarWidget from './AvatarWidget.vue'
 
 // Component name
@@ -2080,13 +2080,58 @@ async function changePassword() {
 
   try {
     console.log('🔄 Changing password for user:', authStore.currentUser?.id)
+    console.log('🔍 AuthStore methods:', Object.keys(authStore))
+    console.log('🔍 All authStore properties:', authStore)
+    console.log('🔍 changePassword function exists:', typeof (authStore as any).changePassword)
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await (authStore as any).changePassword({
-      currentPassword: passwordForm.currentPassword,
-      newPassword: passwordForm.newPassword,
-      confirmPassword: passwordForm.confirmPassword
+    // Temporary workaround - call API directly
+    console.log('🔧 Using direct API call as workaround')
+
+    // Validate passwords match
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      throw new Error('New passwords do not match')
+    }
+
+    // Validate password strength
+    const password = passwordForm.newPassword
+    const errors = []
+
+    if (password.length < 8) {
+      errors.push('at least 8 characters')
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      errors.push('at least one uppercase letter (A-Z)')
+    }
+
+    if (!/[a-z]/.test(password)) {
+      errors.push('at least one lowercase letter (a-z)')
+    }
+
+    if (!/[0-9]/.test(password)) {
+      errors.push('at least one number (0-9)')
+    }
+
+    if (!/[@$!%*?&]/.test(password)) {
+      errors.push('at least one special character (@$!%*?&)')
+    }
+
+    if (errors.length > 0) {
+      throw new Error(`Password must contain: ${errors.join(', ')}`)
+    }
+
+    const response = await api.post('/api/v1/profile/change-password', {
+      current_password: passwordForm.currentPassword,
+      new_password: passwordForm.newPassword,
+      confirm_password: passwordForm.confirmPassword,
     })
+
+    console.log('✅ Change password response:', response.data)
+
+    const result = {
+      success: response.data.status === 'success',
+      error: response.data.status !== 'success' ? response.data.message : undefined
+    }
 
     if (result.success) {
       successMessage.value = 'Password changed successfully'

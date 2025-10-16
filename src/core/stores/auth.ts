@@ -1004,7 +1004,7 @@ export const useAuthStore = defineStore('auth', () => {
         return { success: false, error: 'New password must be at least 8 characters long' }
       }
 
-      const response = await api.post('/api/v1/auth/change-password', {
+      const response = await api.post('/api/v1/auth/reset-password', {
         token: data.token,
         new_password: data.newPassword,
         confirm_password: data.confirmPassword,

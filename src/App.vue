@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen" @click="handleClickOutside">
-    <!-- Redirect unauthenticated users to login -->
-    <div v-if="!authStore.isAuthenticated && route.path !== '/login'" class="flex items-center justify-center min-h-screen">
+    <!-- Redirect unauthenticated users to login (except for auth pages) -->
+    <div v-if="!authStore.isAuthenticated && !['/login', '/reset-password', '/password-change'].includes(route.path)" class="flex items-center justify-center min-h-screen">
       <div class="text-center">
         <h1 class="text-2xl font-bold text-gray-800 mb-4">Redirecting to login...</h1>
         <p class="text-gray-600 mb-6">Please wait...</p>
@@ -49,9 +49,10 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-// Auto-redirect unauthenticated users to login
+// Auto-redirect unauthenticated users to login (except for auth pages)
 watch(() => authStore.isAuthenticated, (isAuthenticated) => {
-  if (!isAuthenticated && route.path !== '/login') {
+  const authPages = ['/login', '/reset-password', '/password-change']
+  if (!isAuthenticated && !authPages.includes(route.path)) {
     console.log('🔒 User not authenticated, redirecting to login')
     router.replace('/login')
   }
