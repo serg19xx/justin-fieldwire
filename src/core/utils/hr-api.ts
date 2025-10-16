@@ -64,12 +64,16 @@ export const hrResourcesApi = {
       console.log('✅ Team API response:', response.data)
       console.log('🔍 Response status:', response.status)
       console.log('🔍 Response headers:', response.headers)
+      console.log('🔍 Full response.data structure:', JSON.stringify(response.data, null, 2))
+      console.log('🔍 response.data.data:', response.data.data)
+      console.log('🔍 response.data.workers:', response.data.workers)
 
       // Check if response has the expected structure
       if (response.data && response.data.data && response.data.data.workers) {
         const workers = response.data.data.workers
         const pagination = response.data.data.pagination
 
+        console.log('✅ Using response.data.data.workers structure')
         return {
           users: workers,
           pagination: pagination,
@@ -81,9 +85,10 @@ export const hrResourcesApi = {
           current_page: 1,
           per_page: 100,
           total: workers.length,
-          last_page: 1
+          last_page: 1,
         }
 
+        console.log('✅ Using response.data.workers structure')
         return {
           users: workers,
           pagination: pagination,
@@ -226,7 +231,7 @@ export const hrResourcesApi = {
     try {
       console.log('🔍 Getting all workers from global system')
       console.log('📋 Parameters:', { page, limit, filters })
-      
+
       // Check current user info
       const authStore = useAuthStore()
       console.log('👤 Current user info:', {
@@ -260,7 +265,7 @@ export const hrResourcesApi = {
 
       console.log('🔍 Making request to workers endpoint with params:', params.toString())
       console.log('🔍 Full URL:', `/api/v1/workers?${params.toString()}`)
-      
+
       const response = await api.get(`/api/v1/workers?${params.toString()}`)
       console.log('✅ All workers response:', response.data)
 

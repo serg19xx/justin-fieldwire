@@ -97,10 +97,11 @@ async function loadAvailableWorkerUsers() {
     // Get all workers
     const response = await hrResourcesApi.getAllUsers(1, 100)
 
-    if ('workers' in response && Array.isArray(response.workers)) {
+    if (('workers' in response && Array.isArray(response.workers)) || ('users' in response && Array.isArray(response.users))) {
       // Filter out workers who are already in the team
       const existingUserIds = props.existingTeamMembers.map((member) => member.user_id)
-      availableWorkerUsers.value = response.workers.filter(
+      const workers = response.workers || response.users
+      availableWorkerUsers.value = workers.filter(
         (worker) =>
           !existingUserIds.includes(worker.id) &&
           worker.invitation_status === 'registered' &&
