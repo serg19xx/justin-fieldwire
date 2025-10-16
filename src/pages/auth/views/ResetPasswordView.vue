@@ -160,9 +160,6 @@ async function handleResetPassword() {
   successMessage.value = ''
 
   try {
-    console.log('🔐 Resetting password with token:', token.value ? 'present' : 'missing')
-
-    console.log('🔧 Using direct API call as workaround')
 
     // Validate passwords match
     if (resetForm.newPassword !== resetForm.confirmPassword) {
@@ -199,10 +196,6 @@ async function handleResetPassword() {
       return
     }
 
-    console.log('📤 Sending reset password request:')
-    console.log('🔑 Token:', token.value)
-    console.log('🔑 New password:', resetForm.newPassword)
-    console.log('🔑 Confirm password:', resetForm.confirmPassword)
 
     const response = await api.post('/api/v1/auth/reset-password', {
       token: token.value,
@@ -210,11 +203,8 @@ async function handleResetPassword() {
       confirm_password: resetForm.confirmPassword,
     })
 
-    console.log('✅ Reset password response:', response.data)
-
     if (response.data.status === 'success') {
       successMessage.value = 'Password reset successfully! Redirecting to login...'
-      console.log('✅ Password reset successfully')
 
       // Redirect to login after 2 seconds
       setTimeout(() => {
@@ -222,27 +212,20 @@ async function handleResetPassword() {
       }, 2000)
     } else {
       errorMessage.value = response.data.message || 'Failed to reset password'
-      console.log('❌ Password reset failed:', response.data.message)
     }
   } catch (error) {
-    console.error('❌ Reset password error:', error)
+    console.error('Reset password error:', error)
 
     // Show detailed error information
     if (error.response) {
-      console.log('🔍 Error response status:', error.response.status)
-      console.log('🔍 Error response data:', error.response.data)
-      console.log('🔍 Error response headers:', error.response.headers)
-
       if (error.response.data && error.response.data.message) {
         errorMessage.value = error.response.data.message
       } else {
         errorMessage.value = `Server error: ${error.response.status}`
       }
     } else if (error.request) {
-      console.log('🔍 Error request:', error.request)
       errorMessage.value = 'Network error - please check your connection'
     } else {
-      console.log('🔍 Error message:', error.message)
       errorMessage.value = 'An unexpected error occurred'
     }
   } finally {
@@ -251,11 +234,6 @@ async function handleResetPassword() {
 }
 
 onMounted(async () => {
-  console.log('🔍 ResetPasswordView mounted')
-  console.log('🔍 Route query:', route.query)
-  console.log('🔍 Route params:', route.params)
-  console.log('🔍 Full route:', route)
-
   // Clear form fields
   resetForm.newPassword = ''
   resetForm.confirmPassword = ''
@@ -268,18 +246,14 @@ onMounted(async () => {
   resetForm.confirmPassword = ''
 
   const urlToken = route.query.token as string
-  console.log('🔍 URL token:', urlToken)
 
   if (!urlToken) {
-    console.log('❌ No reset token found, but continuing for testing')
     errorMessage.value = 'Invalid or missing token.'
-    // TEMPORARY: Don't redirect for testing
-    // setTimeout(() => {
-    //   router.replace('/login')
-    // }, 3000)
-    // return
+    setTimeout(() => {
+      router.replace('/login')
+    }, 3000)
+    return
   }
   token.value = urlToken
-  console.log('✅ Reset token found:', urlToken ? 'present' : 'missing')
 })
 </script>

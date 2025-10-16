@@ -1112,7 +1112,9 @@
                     v-model="passwordForm.currentPassword"
                     type="password"
                     required
-                    autocomplete="off"
+                    autocomplete="new-password"
+                    id="current-password-field"
+                    name="current-password-field"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Enter current password"
                   />
@@ -1124,7 +1126,7 @@
                     type="password"
                     required
                     minlength="8"
-                    autocomplete="off"
+                    autocomplete="new-password"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Enter new password"
                   />
@@ -1135,7 +1137,7 @@
                     v-model="passwordForm.confirmPassword"
                     type="password"
                     required
-                    autocomplete="off"
+                    autocomplete="new-password"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Confirm new password"
                   />
@@ -1186,7 +1188,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, watch } from 'vue'
+import { ref, reactive, onMounted, computed, watch, nextTick } from 'vue'
 import { useAuthStore } from '@/core/stores/auth'
 import { api } from '@/core/utils/api'
 import { useProfileStore, WORKFORCE_GROUPS, AVAILABLE_LANGUAGES, PROFICIENCY_LEVELS } from '@/core/stores/profile'
@@ -2239,6 +2241,30 @@ async function saveInactiveStatus() {
 
 // Load user data
 onMounted(async () => {
+  // Clear password form fields
+  passwordForm.currentPassword = ''
+  passwordForm.newPassword = ''
+  passwordForm.confirmPassword = ''
+
+  // Force clear after DOM update
+  await nextTick()
+  passwordForm.currentPassword = ''
+  passwordForm.newPassword = ''
+  passwordForm.confirmPassword = ''
+
+  // Additional forced clear after a short delay
+  setTimeout(() => {
+    passwordForm.currentPassword = ''
+    passwordForm.newPassword = ''
+    passwordForm.confirmPassword = ''
+
+    // Also clear the actual DOM input
+    const currentPasswordInput = document.getElementById('current-password-field') as HTMLInputElement
+    if (currentPasswordInput) {
+      currentPasswordInput.value = ''
+    }
+  }, 100)
+
   isLoading.value = true
   try {
     // Загружаем полный профиль с сервера

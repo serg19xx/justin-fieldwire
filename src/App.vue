@@ -52,9 +52,14 @@ const authStore = useAuthStore()
 // Auto-redirect unauthenticated users to login (except for auth pages)
 watch(() => authStore.isAuthenticated, (isAuthenticated) => {
   const authPages = ['/login', '/reset-password', '/password-change']
+
   if (!isAuthenticated && !authPages.includes(route.path)) {
-    console.log('🔒 User not authenticated, redirecting to login')
-    router.replace('/login')
+    // Add small delay to allow router to navigate first
+    setTimeout(() => {
+      if (!authPages.includes(route.path)) {
+        router.replace('/login')
+      }
+    }, 100)
   }
 }, { immediate: true })
 
