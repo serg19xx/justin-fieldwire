@@ -115,7 +115,7 @@
                   {{ project.priority }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {{ project.prj_managger || 'Unassigned' }}
+                  {{ project.manager_name || 'Unassigned' }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <div class="flex space-x-2">
