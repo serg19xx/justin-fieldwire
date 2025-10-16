@@ -74,6 +74,20 @@ export const hrResourcesApi = {
           users: workers,
           pagination: pagination,
         }
+      } else if (response.data && response.data.workers) {
+        // Alternative structure: response.data.workers directly
+        const workers = response.data.workers
+        const pagination = response.data.pagination || {
+          current_page: 1,
+          per_page: 100,
+          total: workers.length,
+          last_page: 1
+        }
+
+        return {
+          users: workers,
+          pagination: pagination,
+        }
       } else {
         console.warn('⚠️ API returned unexpected structure:', response.data)
         return {

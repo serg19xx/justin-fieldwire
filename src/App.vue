@@ -53,15 +53,21 @@ const authStore = useAuthStore()
 watch(() => authStore.isAuthenticated, (isAuthenticated) => {
   const authPages = ['/login', '/reset-password', '/password-change']
 
-  if (!isAuthenticated && !authPages.includes(route.path)) {
-    // Add small delay to allow router to navigate first
+  // Don't redirect if we're on an auth page
+  if (authPages.includes(route.path)) {
+    return
+  }
+
+  if (!isAuthenticated) {
+    // Add delay to allow router to navigate first
     setTimeout(() => {
+      // Double-check we're still not on an auth page
       if (!authPages.includes(route.path)) {
         router.replace('/login')
       }
-    }, 100)
+    }, 200)
   }
-}, { immediate: true })
+}, { immediate: false }) // Changed from true to false
 
 // Close user menu when clicking outside
 function handleClickOutside(event: Event) {
