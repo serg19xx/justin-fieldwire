@@ -37,8 +37,9 @@
       <!-- Recovery Form -->
       <div v-else-if="showRecovery" class="max-w-md mx-auto bg-white/95 backdrop-blur-sm rounded-lg shadow-xl p-6 border border-white/20">
         <div class="text-center mb-6">
-          <h2 class="text-xl font-bold text-gray-900">Password Recovery</h2>
+          <h2 class="text-2xl font-bold text-gray-900">Password Recovery</h2>
           <p class="text-gray-600 mt-2">Enter your email to recover your password</p>
+          <div class="mt-3 text-2xl">🔑</div>
         </div>
 
         <form @submit.prevent="handleRecovery" class="space-y-4">
@@ -51,7 +52,7 @@
               v-model="recoveryForm.email"
               type="email"
               required
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400"
               placeholder="Enter your email"
             />
           </div>
@@ -59,7 +60,7 @@
           <button
             type="submit"
             :disabled="isLoading"
-            class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="w-full bg-gradient-to-r from-blue-600 to-orange-500 text-white py-3 px-4 rounded-lg hover:from-blue-700 hover:to-orange-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 transition-all duration-200 shadow-lg"
           >
             <span v-if="isLoading" class="flex items-center justify-center">
               <svg
@@ -90,20 +91,20 @@
 
         <div
           v-if="errorMessage"
-          class="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded"
+          class="mt-4 p-3 bg-red-50 border border-red-200 text-red-800 rounded-lg"
         >
           {{ errorMessage }}
         </div>
 
         <div
           v-if="successMessage"
-          class="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded"
+          class="mt-4 p-3 bg-green-50 border border-green-200 text-green-800 rounded-lg"
         >
           {{ successMessage }}
         </div>
 
         <div class="mt-6 text-center">
-          <button @click="showRecovery = false" class="text-sm text-blue-600 hover:text-blue-800">
+          <button @click="showRecovery = false" class="text-sm text-blue-600 hover:text-blue-800 underline transition-colors duration-200">
             ← Back to login
           </button>
         </div>
