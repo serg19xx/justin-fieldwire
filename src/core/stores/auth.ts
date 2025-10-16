@@ -184,7 +184,10 @@ export const useAuthStore = defineStore('auth', () => {
               // Update current user with full profile data
               currentUser.value = { ...currentUser.value, ...profileResult.user }
               localStorage.setItem('user', JSON.stringify(currentUser.value))
-              console.log('✅ Full profile loaded after login, avatar URL:', currentUser.value.avatar_url)
+              console.log(
+                '✅ Full profile loaded after login, avatar URL:',
+                currentUser.value.avatar_url,
+              )
             }
           } catch (error) {
             console.warn('⚠️ Failed to load full profile after login:', error)
@@ -322,10 +325,10 @@ export const useAuthStore = defineStore('auth', () => {
         isAuthenticated.value = true
         localStorage.setItem('user', JSON.stringify(updatedUser))
         console.log('✅ 2FA verification successful - user authenticated')
-        console.log('🔍 Auth state after 2FA:', { 
-          isAuthenticated: isAuthenticated.value, 
+        console.log('🔍 Auth state after 2FA:', {
+          isAuthenticated: isAuthenticated.value,
           hasUser: !!currentUser.value,
-          userEmail: currentUser.value?.email 
+          userEmail: currentUser.value?.email,
         })
 
         // Load full profile data including avatar
@@ -366,13 +369,13 @@ export const useAuthStore = defineStore('auth', () => {
         startSessionManager()
 
         // Force reactivity update
-        await new Promise(resolve => setTimeout(resolve, 0))
-        
-        console.log('🔍 Final auth state check:', { 
-          isAuthenticated: isAuthenticated.value, 
-          hasUser: !!currentUser.value 
+        await new Promise((resolve) => setTimeout(resolve, 0))
+
+        console.log('🔍 Final auth state check:', {
+          isAuthenticated: isAuthenticated.value,
+          hasUser: !!currentUser.value,
         })
-        
+
         return { success: true }
       } else {
         console.log('❌ No token or user data in 2FA response')
@@ -792,9 +795,9 @@ export const useAuthStore = defineStore('auth', () => {
           isAuthenticated.value = true
           console.log('✅ Auth initialized from localStorage')
           console.log('👤 Current user:', user.email)
-          console.log('🔍 Auth state after init:', { 
-            isAuthenticated: isAuthenticated.value, 
-            hasUser: !!currentUser.value 
+          console.log('🔍 Auth state after init:', {
+            isAuthenticated: isAuthenticated.value,
+            hasUser: !!currentUser.value,
           })
 
           // Initialize session manager
@@ -829,7 +832,10 @@ export const useAuthStore = defineStore('auth', () => {
                 // Update current user with full profile data
                 currentUser.value = { ...currentUser.value, ...profileResult.user }
                 localStorage.setItem('user', JSON.stringify(currentUser.value))
-                console.log('✅ Full profile loaded on init, avatar URL:', currentUser.value.avatar_url)
+                console.log(
+                  '✅ Full profile loaded on init, avatar URL:',
+                  currentUser.value.avatar_url,
+                )
               }
             } catch (error) {
               console.warn('⚠️ Failed to load full profile on init:', error)
@@ -946,12 +952,14 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Password recovery function
-  async function requestPasswordRecovery(email: string): Promise<{ success: boolean; error?: string }> {
+  async function requestPasswordRecovery(
+    email: string,
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       console.log('📧 Requesting password recovery for:', email)
-      
+
       const response = await api.post('/api/v1/auth/forgot-password', {
-        email: email
+        email: email,
       })
 
       console.log('✅ Password recovery response:', response.data)
@@ -973,6 +981,102 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       const errorMessage = error instanceof Error ? error.message : 'Failed to send recovery email'
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  // Reset password function (for forgot password flow)
+  async function resetPassword(data: {
+    token: string
+    newPassword: string
+    confirmPassword: string
+  }): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('🔐 Resetting password with token')
+
+      // Validate passwords match
+      if (data.newPassword !== data.confirmPassword) {
+        return { success: false, error: 'New passwords do not match' }
+      }
+
+      // Validate password strength
+      if (data.newPassword.length < 8) {
+        return { success: false, error: 'New password must be at least 8 characters long' }
+      }
+
+      const response = await api.post('/api/v1/auth/change-password', {
+        token: data.token,
+        new_password: data.newPassword,
+        confirm_password: data.confirmPassword,
+      })
+
+      console.log('✅ Reset password response:', response.data)
+
+      if (response.data.status === 'success') {
+        return { success: true }
+      } else {
+        return { success: false, error: response.data.message || 'Failed to reset password' }
+      }
+    } catch (error: unknown) {
+      console.error('❌ Reset password error:', error)
+
+      // Handle backend errors
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string } } }
+        if (axiosError.response?.data?.message) {
+          return { success: false, error: axiosError.response.data.message }
+        }
+      }
+
+      const errorMessage = error instanceof Error ? error.message : 'Failed to reset password'
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  // Change password function (for authenticated users)
+  async function changePassword(data: {
+    currentPassword: string
+    newPassword: string
+    confirmPassword: string
+  }): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('🔐 Changing password for user:', currentUser.value?.email)
+
+      // Validate passwords match
+      if (data.newPassword !== data.confirmPassword) {
+        return { success: false, error: 'New passwords do not match' }
+      }
+
+      // Validate password strength
+      if (data.newPassword.length < 8) {
+        return { success: false, error: 'New password must be at least 8 characters long' }
+      }
+
+      const response = await api.post('/api/v1/profile/change-password', {
+        current_password: data.currentPassword,
+        new_password: data.newPassword,
+        confirm_password: data.confirmPassword,
+      })
+
+      console.log('✅ Change password response:', response.data)
+
+      if (response.data.status === 'success') {
+        return { success: true }
+      } else {
+        return { success: false, error: response.data.message || 'Failed to change password' }
+      }
+    } catch (error: unknown) {
+      console.error('❌ Change password error:', error)
+
+      // Handle backend errors
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string } } }
+        if (axiosError.response?.data?.message) {
+          return { success: false, error: axiosError.response.data.message }
+        }
+      }
+
+      const errorMessage = error instanceof Error ? error.message : 'Failed to change password'
       return { success: false, error: errorMessage }
     }
   }
@@ -1007,5 +1111,7 @@ export const useAuthStore = defineStore('auth', () => {
     refreshToken,
     shouldRefreshToken,
     requestPasswordRecovery,
+    resetPassword,
+    changePassword,
   }
 })

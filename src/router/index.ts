@@ -16,6 +16,11 @@ const router = createRouter({
       component: () => import('@/pages/auth/views/PasswordChangeView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: () => import('@/pages/auth/views/ResetPasswordView.vue'),
+    },
 
     // Main application routes
     {
@@ -126,11 +131,11 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const authStore = useAuthStore()
 
-  console.log('🛡️ Router guard:', { 
-    to: to.path, 
-    from: from.path, 
+  console.log('🛡️ Router guard:', {
+    to: to.path,
+    from: from.path,
     isAuthenticated: authStore.isAuthenticated,
-    hasUser: !!authStore.currentUser 
+    hasUser: !!authStore.currentUser,
   })
 
   // If user is authenticated and trying to access login page, redirect to dashboard
@@ -140,8 +145,8 @@ router.beforeEach((to, from, next) => {
     return
   }
 
-  // Allow access to login and password change pages for non-authenticated users
-  if (to.path === '/login' || to.path === '/password-change') {
+  // Allow access to login, password change, and reset password pages for non-authenticated users
+  if (to.path === '/login' || to.path === '/password-change' || to.path === '/reset-password') {
     console.log('✅ Access to auth page granted')
     next()
     return

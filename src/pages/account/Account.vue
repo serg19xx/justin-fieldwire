@@ -2081,28 +2081,15 @@ async function changePassword() {
   try {
     console.log('🔄 Changing password for user:', authStore.currentUser?.id)
 
-    // Validate passwords match
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      errorMessage.value = 'New passwords do not match'
-      return
-    }
-
-    // Validate password length
-    if (passwordForm.newPassword.length < 8) {
-      errorMessage.value = 'New password must be at least 8 characters long'
-      return
-    }
-
-    const response = await api.post('/api/v1/profile/change-password', {
-      current_password: passwordForm.currentPassword,
-      new_password: passwordForm.newPassword
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result = await (authStore as any).changePassword({
+      currentPassword: passwordForm.currentPassword,
+      newPassword: passwordForm.newPassword,
+      confirmPassword: passwordForm.confirmPassword
     })
 
-    console.log('📥 Password change response:', response.data)
-
-    // Expected format: { status: 'success', message: 'Password changed successfully' }
-    if (response.data && response.data.status === 'success') {
-      successMessage.value = response.data.message || 'Password changed successfully'
+    if (result.success) {
+      successMessage.value = 'Password changed successfully'
       // Clear form
       passwordForm.currentPassword = ''
       passwordForm.newPassword = ''
@@ -2114,26 +2101,17 @@ async function changePassword() {
         successMessage.value = ''
       }, 5000)
     } else {
-      throw new Error(response.data?.message || 'Failed to change password')
+      errorMessage.value = result.error || 'Failed to change password'
+      console.log('❌ Password change failed:', result.error)
+
+      // Auto-clear error after 10 seconds
+      setTimeout(() => {
+        errorMessage.value = ''
+      }, 10000)
     }
   } catch (error) {
     console.error('❌ Error changing password:', error)
-    const apiError = error as { response?: { status?: number; data?: { status?: string; message?: string } } }
-
-    console.log('📥 Error response:', apiError.response)
-    console.log('📥 Error response data:', apiError.response?.data)
-
-    // Check if error response has status 'error'
-    if (apiError.response?.data?.status === 'error') {
-      // Show server error message
-      errorMessage.value = apiError.response.data.message || 'Failed to change password'
-    } else if (apiError.response?.status === 401) {
-      errorMessage.value = 'Current password is incorrect'
-    } else if (apiError.response?.status === 400) {
-      errorMessage.value = 'Password does not meet requirements'
-    } else {
-      errorMessage.value = apiError.response?.data?.message || 'Failed to change password. Please check your current password.'
-    }
+    errorMessage.value = 'An unexpected error occurred while changing password'
 
     // Auto-clear error after 10 seconds
     setTimeout(() => {
