@@ -186,14 +186,26 @@ async function handleRecovery() {
   successMessage.value = ''
 
   try {
-    // TODO: Implement password recovery
-    successMessage.value = 'Password recovery link has been sent to your email'
-    setTimeout(() => {
-      showRecovery.value = false
-      successMessage.value = ''
-    }, 3000)
+    console.log('📧 Sending password recovery request for:', recoveryForm.email)
+    
+    const result = await authStore.requestPasswordRecovery(recoveryForm.email)
+    
+    if (result.success) {
+      successMessage.value = 'Password recovery link has been sent to your email'
+      console.log('✅ Password recovery email sent successfully')
+      
+      // Clear the form and hide recovery form after 3 seconds
+      setTimeout(() => {
+        showRecovery.value = false
+        successMessage.value = ''
+        recoveryForm.email = ''
+      }, 3000)
+    } else {
+      errorMessage.value = result.error || 'Failed to send recovery email'
+      console.log('❌ Password recovery failed:', result.error)
+    }
   } catch (error) {
-    console.error('Recovery error:', error)
+    console.error('❌ Recovery error:', error)
     errorMessage.value = 'An error occurred while sending the recovery link'
   } finally {
     isLoading.value = false

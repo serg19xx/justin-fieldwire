@@ -62,6 +62,8 @@ export interface Invitation {
 export const useAuthStore = defineStore('auth', () => {
   const currentUser = ref<User | null>(null)
   const isAuthenticated = ref(false)
+  const isLoading = ref(false)
+  const error = ref<string | null>(null)
   const invitations = ref<Invitation[]>([])
 
   // Mock users data
@@ -941,5 +943,69 @@ export const useAuthStore = defineStore('auth', () => {
     disableTwoFactorFromProfile,
     refreshToken,
     shouldRefreshToken,
+  }
+
+  // Password recovery function
+  async function requestPasswordRecovery(email: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('📧 Requesting password recovery for:', email)
+      
+      const response = await api.post('/api/v1/auth/forgot-password', {
+        email: email
+      })
+
+      console.log('✅ Password recovery response:', response.data)
+
+      if (response.data.status === 'success') {
+        return { success: true }
+      } else {
+        return { success: false, error: response.data.message || 'Failed to send recovery email' }
+      }
+    } catch (error: unknown) {
+      console.error('❌ Password recovery error:', error)
+
+      // Handle backend errors
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: { message?: string } } }
+        if (axiosError.response?.data?.message) {
+          return { success: false, error: axiosError.response.data.message }
+        }
+      }
+
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send recovery email'
+      return { success: false, error: errorMessage }
+    }
+  }
+
+  return {
+    // State
+    currentUser,
+    isAuthenticated,
+    isLoading,
+    error,
+    users,
+    invitations,
+
+    // Computed
+    isAdmin,
+    isManager,
+    canManageUsers,
+    canManageProjects,
+
+    // Actions
+    login,
+    sendTwoFactorCode,
+    verifyTwoFactor,
+    enableTwoFactor,
+    disableTwoFactor,
+    logout,
+    checkPermission,
+    initializeAuth,
+    getProfile,
+    enableTwoFactorFromProfile,
+    disableTwoFactorFromProfile,
+    refreshToken,
+    shouldRefreshToken,
+    requestPasswordRecovery,
   }
 })
