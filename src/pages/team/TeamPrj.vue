@@ -1,6 +1,6 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import InviteBuilderDialog from '@/components/InviteBuilderDialog.vue'
 import { hrResourcesApi } from '@/core/utils/hr-api'
@@ -24,9 +24,56 @@ const statusFilter = ref('')
 const invitationStatusFilter = ref('')
 const isFiltersOpen = ref(false)
 
-// Computed filtered builders - теперь просто возвращаем данные с сервера
+// Computed filtered builders - фильтруем по viewMode и другим фильтрам
 const filteredBuilders = computed(() => {
-  return builders.value
+  let filtered = builders.value
+
+  // Фильтр по режиму просмотра (Registered/Pending)
+  if (viewMode.value === 'registered') {
+    filtered = filtered.filter(builder => builder.invitation_status === 'registered')
+  } else if (viewMode.value === 'pending') {
+    filtered = filtered.filter(builder => builder.invitation_status === 'invited')
+  }
+
+  // Фильтр по типу пользователя
+  if (userTypeFilter.value && userTypeFilter.value !== '') {
+    filtered = filtered.filter(builder => builder.role_code === userTypeFilter.value)
+  }
+
+  // Фильтр по статусу
+  if (statusFilter.value && statusFilter.value !== '') {
+    filtered = filtered.filter(builder => builder.status.toString() === statusFilter.value)
+  }
+
+  // Фильтр по статусу приглашения
+  if (invitationStatusFilter.value && invitationStatusFilter.value !== '') {
+    filtered = filtered.filter(builder => builder.invitation_status === invitationStatusFilter.value)
+  }
+
+  // Поиск по тексту
+  if (searchQuery.value && searchQuery.value.trim() !== '') {
+    const query = searchQuery.value.trim().toLowerCase()
+    filtered = filtered.filter(builder =>
+      builder.first_name.toLowerCase().includes(query) ||
+      builder.last_name.toLowerCase().includes(query) ||
+      builder.email.toLowerCase().includes(query) ||
+      (builder.job_title && builder.job_title.toLowerCase().includes(query))
+    )
+  }
+
+  console.log('🔍 Filtered builders:', {
+    total: builders.value.length,
+    filtered: filtered.length,
+    viewMode: viewMode.value,
+    filters: {
+      userType: userTypeFilter.value,
+      status: statusFilter.value,
+      invitationStatus: invitationStatusFilter.value,
+      search: searchQuery.value
+    }
+  })
+
+  return filtered
 })
 
 // Computed для проверки активных фильтров
@@ -35,6 +82,7 @@ const hasActiveFilters = computed(() => {
     userTypeFilter.value !== '' || statusFilter.value !== '' || invitationStatusFilter.value !== ''
   )
 })
+
 
 // Функция загрузки данных с базы данных
 async function loadBuilders() {
@@ -67,10 +115,8 @@ async function loadBuilders() {
 
     if (invitationStatusFilter.value && invitationStatusFilter.value !== '') {
       filters.invitation_status = invitationStatusFilter.value
-    } else {
-      // Если фильтр по статусу приглашения не выбран, используем режим просмотра
-      filters.view_mode = viewMode.value
     }
+    // Убираем view_mode фильтр - загружаем все данные и фильтруем на клиенте
 
     if (userTypeFilter.value && userTypeFilter.value !== '') {
       filters.role_code = userTypeFilter.value
@@ -96,10 +142,25 @@ async function loadBuilders() {
 
     const response = await hrResourcesApi.getAllWorkerUsers(1, 50, filters)
 
+    console.log('🔍 Full API response:', response)
+
     if ('workers' in response && Array.isArray(response.workers)) {
       builders.value = response.workers
 
       console.log('✅ Project workers loaded from database:', builders.value.length)
+      console.log('📋 Workers data:', builders.value.map(w => ({
+        id: w.id,
+        email: w.email,
+        name: `${w.first_name} ${w.last_name}`,
+        invitation_status: w.invitation_status
+      })))
+
+      // Проверяем на дублирование email адресов
+      const emails = builders.value.map(w => w.email)
+      const uniqueEmails = [...new Set(emails)]
+      console.log('📧 All emails:', emails)
+      console.log('🔍 Unique emails:', uniqueEmails)
+      console.log('⚠️ Duplicate emails detected:', emails.length !== uniqueEmails.length)
 
       // Логируем статусы приглашений для отладки
       const statusCounts = builders.value.reduce(
@@ -122,10 +183,8 @@ async function loadBuilders() {
   }
 }
 
-// Сброс при изменении фильтров
-watch([searchQuery, userTypeFilter, statusFilter, invitationStatusFilter], () => {
-  loadBuilders()
-})
+// Фильтрация теперь происходит в computed свойстве filteredBuilders
+// Нет необходимости в watcher для перезагрузки данных
 
 // Загрузка данных при монтировании
 onMounted(() => {
@@ -236,11 +295,19 @@ function closeInviteDialog() {
 }
 
 function toggleViewMode() {
+  console.log('🔄 Toggle view mode clicked!')
+  console.log('📊 Current viewMode:', viewMode.value)
+
   viewMode.value = viewMode.value === 'registered' ? 'pending' : 'registered'
+
+  console.log('📊 New viewMode:', viewMode.value)
+
   // Сбрасываем фильтры при переключении режимов
   userTypeFilter.value = ''
   statusFilter.value = ''
   invitationStatusFilter.value = ''
+
+  console.log('✅ View mode changed to:', viewMode.value, '- filtering will happen automatically via computed property')
 }
 
 function handleWorkerUserSelected(worker: WorkerUser) {

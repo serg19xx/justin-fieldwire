@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import api from '@/core/utils/api'
-import { USER_TYPE_OPTIONS } from '@/core/utils/constants'
+import { getRoles } from '@/core/utils/hr-api'
 
 interface Props {
   isOpen: boolean
@@ -31,13 +31,59 @@ const phone = ref('')
 const isLoading = ref(false)
 const error = ref('')
 
+// Phone formatting function
+function formatPhoneNumber(value: string): string {
+  // Remove all non-digit characters
+  const digits = value.replace(/\D/g, '')
+
+  // If empty, return empty
+  if (!digits) return ''
+
+  // If starts with 1, format as +1NNNNNNNNNN
+  if (digits.startsWith('1') && digits.length <= 11) {
+    return `+1${digits.slice(1)}`
+  }
+
+  // If doesn't start with 1, add +1 prefix
+  if (digits.length <= 10) {
+    return `+1${digits}`
+  }
+
+  // If too long, truncate to 10 digits after +1
+  return `+1${digits.slice(0, 10)}`
+}
+
+function handlePhoneInput(event: Event) {
+  const target = event.target as HTMLInputElement
+  const formatted = formatPhoneNumber(target.value)
+  phone.value = formatted
+}
+
+// Roles from database
+const availableRoles = ref<Array<{
+  id: number
+  code: string
+  name: string
+  category: string
+  description: string
+}>>([])
+
+// Load roles from database
+onMounted(async () => {
+  try {
+    console.log('🔍 Loading roles for invitation dialog...')
+    availableRoles.value = await getRoles()
+    console.log('✅ Roles loaded:', availableRoles.value.length)
+  } catch (error) {
+    console.error('❌ Failed to load roles:', error)
+    // Fallback to empty array
+    availableRoles.value = []
+  }
+})
+
 // Specializations for different user types
 const specializationsByType = {
-  'General Contractor': [
-    'Foreman',
-    'General Labourer'
-  ],
-  'Trade Contractor': [
+  'contractor': [
     'HVAC',
     'Electrician',
     'Plumbing',
@@ -56,6 +102,15 @@ const specializationsByType = {
     'Painter',
     'Ceiling & T-Bar',
     'Millwork'
+  ],
+  'foreman': [
+    'Foreman',
+    'General Labourer'
+  ],
+  'worker': [
+    'General Labourer',
+    'Skilled Worker',
+    'Apprentice'
   ]
 }
 
@@ -112,14 +167,27 @@ async function sendInvitation() {
   isLoading.value = true
 
   try {
-    const response = await api.post('/api/v1/workers/invite', {
+    // Find the selected role to get the role_id
+    const selectedRole = availableRoles.value.find(role => role.code === userType.value)
+    if (!selectedRole) {
+      error.value = 'Invalid user type selected'
+      return
+    }
+
+    const inviteData = {
       email: email.value.trim(),
       first_name: firstName.value.trim(),
       last_name: lastName.value.trim(),
-      user_type: userType.value,
+      role_id: selectedRole.id, // Send role_id as number
+      user_type: userType.value, // Keep user_type as string for compatibility
       job_title: specialization.value || null,
       phone: phone.value.trim() || null,
-    })
+    }
+
+    console.log('📤 Sending invitation with data:', inviteData)
+    console.log('🔍 Selected role:', selectedRole)
+
+    const response = await api.post('/api/v1/workers/invite', inviteData)
 
     if (response.data.success) {
       emit('invite-sent', {
@@ -246,10 +314,13 @@ function closeDialog() {
                   id="phone"
                   v-model="phone"
                   type="tel"
-                  placeholder="Enter phone number (optional)"
+                  @input="handlePhoneInput"
+                  placeholder="+1__________ (optional)"
                   class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   :disabled="isLoading"
+                  maxlength="12"
                 />
+                <p class="mt-1 text-xs text-gray-500">Format: +1 followed by 10 digits (e.g., +1234567890)</p>
               </div>
 
               <!-- User Type Select -->
@@ -266,8 +337,8 @@ function closeDialog() {
                   required
                 >
                   <option value="">Select user type</option>
-                  <option v-for="type in USER_TYPE_OPTIONS" :key="type" :value="type">
-                    {{ type }}
+                  <option v-for="role in availableRoles" :key="role.id" :value="role.code">
+                    {{ role.name }} ({{ role.category }})
                   </option>
                 </select>
               </div>

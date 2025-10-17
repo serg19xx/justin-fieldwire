@@ -1,16 +1,12 @@
 <template>
   <div class="min-h-screen" @click="handleClickOutside">
-    <!-- Redirect unauthenticated users to login (except for auth pages) -->
-    <div v-if="!authStore.isAuthenticated && !['/login', '/reset-password', '/password-change'].includes(route.path)" class="flex items-center justify-center min-h-screen">
-      <div class="text-center">
-        <h1 class="text-2xl font-bold text-gray-800 mb-4">Redirecting to login...</h1>
-        <p class="text-gray-600 mb-6">Please wait...</p>
-      </div>
-    </div>
+    <!-- Auth pages (login, password change, reset password) -->
+    <template v-if="['/login', '/reset-password', '/password-change'].includes(route.path)">
+      <RouterView />
+    </template>
 
     <!-- Dynamic Layouts based on user role -->
     <template v-else-if="authStore.isAuthenticated">
-
       <!-- Global Layout for global users -->
       <GlobalLayout v-if="authStore.currentUser?.role_category === 'global'">
         <RouterView />
@@ -32,8 +28,15 @@
       </ProjectLayout>
     </template>
 
-    <!-- Show router content for login page -->
-    <RouterView v-else />
+    <!-- Redirect unauthenticated users to login -->
+    <template v-else>
+      <div class="flex items-center justify-center min-h-screen">
+        <div class="text-center">
+          <h1 class="text-2xl font-bold text-gray-800 mb-4">Redirecting to login...</h1>
+          <p class="text-gray-600 mb-6">Please wait...</p>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -67,7 +70,7 @@ watch(() => authStore.isAuthenticated, (isAuthenticated) => {
       }
     }, 200)
   }
-}, { immediate: false }) // Changed from true to false
+}, { immediate: false })
 
 // Close user menu when clicking outside
 function handleClickOutside(event: Event) {

@@ -83,7 +83,13 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(
     email: string,
     password: string,
-  ): Promise<{ success: boolean; user?: User; requires2FA?: boolean; error?: string }> {
+  ): Promise<{
+    success: boolean
+    user?: User
+    requires2FA?: boolean
+    requiresPasswordChange?: boolean
+    error?: string
+  }> {
     try {
       console.log('🌐 Making login request to:', `${api.defaults.baseURL}/api/v1/auth/login`)
       console.log('📧 Email:', email)
@@ -150,7 +156,63 @@ export const useAuthStore = defineStore('auth', () => {
           : undefined,
       }
 
-      // Токен сохраняем только если НЕ требуется 2FA
+      // Log invitation status for debugging
+      console.log('🔍 Invitation status check:', {
+        invitation_status: user.invitation_status,
+        is_temporary_password: user.is_temporary_password,
+        password_must_change: user.password_must_change,
+        first_login: user.first_login,
+      })
+
+      // Check if invitation is expired - block login completely
+      if (user.invitation_status === 'expired') {
+        console.log('❌ Invitation expired for user:', frontendUser.email)
+        return {
+          success: false,
+          error:
+            'Your invitation has expired. Please contact your administrator to resend the invitation.',
+        }
+      }
+
+      // Check if user needs to change temporary password
+      // Only redirect if user has specific invitation-related flags
+      const needsPasswordChange =
+        user.is_temporary_password ||
+        user.password_must_change ||
+        user.first_login ||
+        // Check invitation_status - only 'invited' requires password change
+        user.invitation_status === 'invited'
+
+      console.log('🔍 Password change check result:', needsPasswordChange)
+
+      if (needsPasswordChange) {
+        // User needs to change temporary password - DON'T save token or set authenticated
+        // But save token temporarily for password change request
+        if (token) {
+          localStorage.setItem('tempAuthToken', token)
+          console.log('🔑 Token saved temporarily for password change')
+        }
+
+        // Save user data to localStorage for password change process
+        localStorage.setItem('user', JSON.stringify(frontendUser))
+        currentUser.value = frontendUser
+        console.log('🔑 User needs to change temporary password:', frontendUser.email)
+        console.log('🔑 User data saved to localStorage for password change')
+        console.log('🔍 Password change reasons:', {
+          is_temporary_password: user.is_temporary_password,
+          password_must_change: user.password_must_change,
+          first_login: user.first_login,
+          last_login: user.last_login,
+          invitation_status: user.invitation_status,
+          invitation_status_check: user.invitation_status === 'invited',
+          registration_completed_at: user.registration_completed_at,
+          role_id: user.role_id,
+        })
+        console.log('⚠️ Token NOT saved permanently - user must change password first')
+        return { success: true, requiresPasswordChange: true, user: frontendUser }
+      }
+
+      // Токен сохраняем только если НЕ требуется 2FA и НЕ требуется смена пароля
       // При 2FA токен будет сохранен после успешной верификации
       if (token && !requires_2fa) {
         localStorage.setItem('authToken', token)
@@ -1081,37 +1143,4 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return {
-    // State
-    currentUser,
-    isAuthenticated,
-    isLoading,
-    error,
-    users,
-    invitations,
-
-    // Computed
-    isAdmin,
-    isManager,
-    canManageUsers,
-    canManageProjects,
-
-    // Actions
-    login,
-    sendTwoFactorCode,
-    verifyTwoFactor,
-    enableTwoFactor,
-    disableTwoFactor,
-    logout,
-    checkPermission,
-    initializeAuth,
-    getProfile,
-    enableTwoFactorFromProfile,
-    disableTwoFactorFromProfile,
-    refreshToken,
-    shouldRefreshToken,
-    requestPasswordRecovery,
-    resetPassword,
-    changePassword,
-  }
 })

@@ -124,8 +124,25 @@ async function handleLogin() {
 
   try {
     const result = await authStore.login(loginForm.email, loginForm.password)
+    console.log('🔍 Login result:', result)
 
     if (result.success) {
+      if (result.requiresPasswordChange && result.user) {
+        // Пользователь должен сменить временный пароль
+        console.log('🔑 Redirecting to password change page')
+        console.log('🔍 User data:', result.user)
+        console.log('🔍 Current route before redirect:', router.currentRoute.value.path)
+
+        try {
+          await router.push('/password-change')
+          console.log('✅ Router.push completed successfully')
+          console.log('🔍 Current route after redirect:', router.currentRoute.value.path)
+        } catch (error) {
+          console.error('❌ Router.push failed:', error)
+        }
+        return
+      }
+
       if (result.requires2FA && result.user) {
         // Показать диалог 2FA
         emit('showTwoFactor', result.user as unknown as Record<string, unknown>)

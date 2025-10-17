@@ -452,3 +452,49 @@ export const hrResourcesApi = {
     }
   },
 }
+
+// Get all available roles from database
+export async function getRoles(): Promise<Array<{
+  id: number
+  code: string
+  name: string
+  category: string
+  description: string
+}>> {
+  try {
+    console.log('🔍 Fetching roles from API...')
+    const response = await api.get('/api/v1/roles')
+    console.log('✅ Roles API response:', response.data)
+
+    if (response.data && response.data.data && Array.isArray(response.data.data)) {
+      return response.data.data
+    } else if (response.data && Array.isArray(response.data)) {
+      return response.data
+    } else {
+      console.warn('⚠️ Unexpected roles response structure:', response.data)
+      return getFallbackRoles()
+    }
+  } catch (error) {
+    console.error('❌ Error fetching roles from API, using fallback:', error)
+    return getFallbackRoles()
+  }
+}
+
+// Fallback roles based on database structure you provided
+function getFallbackRoles(): Array<{
+  id: number
+  code: string
+  name: string
+  category: string
+  description: string
+}> {
+  return [
+    { id: 9, code: 'admin', name: 'Administrator', category: 'global', description: 'Full system access' },
+    { id: 10, code: 'project_manager', name: 'Project Manager', category: 'project', description: 'Manages projects and teams' },
+    { id: 11, code: 'architect', name: 'Architect', category: 'project', description: 'Designs and plans projects' },
+    { id: 12, code: 'foreman', name: 'Foreman', category: 'task', description: 'Supervises workers on site' },
+    { id: 13, code: 'worker', name: 'Worker', category: 'task', description: 'Performs construction tasks' },
+    { id: 14, code: 'contractor', name: 'Contractor', category: 'task', description: 'Independent contractor' },
+    { id: 15, code: 'inspector', name: 'Inspector', category: 'task', description: 'Quality and safety inspector' }
+  ]
+}

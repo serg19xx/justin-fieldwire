@@ -1127,9 +1127,16 @@
                     required
                     minlength="8"
                     autocomplete="new-password"
+                    @input="validatePassword(passwordForm.newPassword)"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    :class="{ 'border-red-300': passwordErrors.length > 0 }"
                     placeholder="Enter new password"
                   />
+                  <div v-if="passwordErrors.length > 0" class="mt-1">
+                    <ul class="text-sm text-red-600 space-y-1">
+                      <li v-for="error in passwordErrors" :key="error">• {{ error }}</li>
+                    </ul>
+                  </div>
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
@@ -1138,9 +1145,14 @@
                     type="password"
                     required
                     autocomplete="new-password"
+                    @input="validateConfirmPassword()"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    :class="{ 'border-red-300': confirmPasswordError }"
                     placeholder="Confirm new password"
                   />
+                  <div v-if="confirmPasswordError" class="mt-1">
+                    <p class="text-sm text-red-600">{{ confirmPasswordError }}</p>
+                  </div>
                 </div>
                 <div class="flex justify-end">
                   <button
@@ -1303,6 +1315,46 @@ const passwordForm = reactive({
   newPassword: '',
   confirmPassword: ''
 })
+
+// Password validation
+const passwordErrors = ref<string[]>([])
+const confirmPasswordError = ref('')
+
+function validatePassword(password: string): string[] {
+  const errors: string[] = []
+
+  if (password.length < 8) {
+    errors.push('Password must be at least 8 characters long')
+  }
+
+  if (!/(?=.*[a-z])/.test(password)) {
+    errors.push('Password must contain at least one lowercase letter')
+  }
+
+  if (!/(?=.*[A-Z])/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter')
+  }
+
+  if (!/(?=.*\d)/.test(password)) {
+    errors.push('Password must contain at least one number')
+  }
+
+  if (!/(?=.*[@$!%*?&])/.test(password)) {
+    errors.push('Password must contain at least one special character (@$!%*?&)')
+  }
+
+  // Update the reactive errors array
+  passwordErrors.value = errors
+  return errors
+}
+
+function validateConfirmPassword(): void {
+  if (passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword) {
+    confirmPasswordError.value = 'Passwords do not match'
+  } else {
+    confirmPasswordError.value = ''
+  }
+}
 
 // Validation errors
 const validationErrors = reactive({
@@ -2084,7 +2136,7 @@ async function changePassword() {
     console.log('🔄 Changing password for user:', authStore.currentUser?.id)
     console.log('🔍 AuthStore methods:', Object.keys(authStore))
     console.log('🔍 All authStore properties:', authStore)
-    console.log('🔍 changePassword function exists:', typeof (authStore as any).changePassword)
+    console.log('🔍 changePassword function exists:', typeof (authStore as Record<string, unknown>).changePassword)
 
     // Temporary workaround - call API directly
     console.log('🔧 Using direct API call as workaround')
@@ -2245,6 +2297,8 @@ onMounted(async () => {
   passwordForm.currentPassword = ''
   passwordForm.newPassword = ''
   passwordForm.confirmPassword = ''
+  passwordErrors.value = []
+  confirmPasswordError.value = ''
 
   // Force clear after DOM update
   await nextTick()

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { api } from '@/core/utils/api'
+import { useAuthStore } from '@/core/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -39,7 +40,21 @@ function validatePassword(password: string): string[] {
     errors.push('Password must contain at least one number')
   }
 
+  if (!/(?=.*[@$!%*?&])/.test(password)) {
+    errors.push('Password must contain at least one special character (@$!%*?&)')
+  }
+
+  // Update the reactive errors array
+  passwordErrors.value = errors
   return errors
+}
+
+function validateConfirmPassword(): void {
+  if (passwordForm.confirmPassword && passwordForm.password !== passwordForm.confirmPassword) {
+    confirmPasswordError.value = 'Passwords do not match'
+  } else {
+    confirmPasswordError.value = ''
+  }
 }
 
 function validateForm(): boolean {
@@ -64,21 +79,94 @@ async function handlePasswordChange() {
   successMessage.value = ''
 
   try {
-    const response = await api.post('/api/v1/registration/complete', {
-      token: token.value,
-      password: passwordForm.password,
-    })
+    let response
 
-    if (response.data.status === 'success') {
-      successMessage.value = 'Password changed successfully! Redirecting to dashboard...'
-
-      // Redirect to dashboard after successful password change
-      setTimeout(() => {
-        router.push('/dashboard')
-      }, 2000)
+    if (token.value) {
+      // Password reset scenario - using token from email
+      console.log('🔧 Using password reset endpoint with token')
+      response = await api.post('/api/v1/registration/complete', {
+        token: token.value,
+        password: passwordForm.password,
+      })
     } else {
-      errorMessage.value = response.data.message || 'Failed to change password'
+      // Invited user scenario - need to get token from auth store
+      console.log('🔧 Using invited user password change endpoint')
+
+      // Get the token that was received during login but not saved
+      const tempToken = localStorage.getItem('tempAuthToken') // We'll need to store this temporarily
+
+      if (tempToken) {
+        // Temporarily set the token for this request
+        api.defaults.headers.common['Authorization'] = `Bearer ${tempToken}`
+        console.log('🔑 Using temporary token for password change')
+      }
+
+      response = await api.post('/api/v1/auth/change-password', {
+        new_password: passwordForm.password,
+        confirm_password: passwordForm.confirmPassword,
+      })
+
+      // DON'T clear the token yet - we need it for auth state update
+      if (tempToken) {
+        delete api.defaults.headers.common['Authorization']
+        console.log('🔑 Temporary token cleared from headers (keeping in localStorage)')
+      }
     }
+
+      if (response.data.status === 'success') {
+        successMessage.value = 'Password changed successfully! Redirecting to dashboard...'
+
+        // Update auth state after successful password change
+        console.log('✅ Password changed successfully, updating auth state...')
+
+        // For invited users, we need to set the user as authenticated
+        if (!token.value) {
+          // This is an invited user scenario - update auth store
+          const authStore = useAuthStore()
+
+          // Get the user data that was stored during login
+          const savedUser = localStorage.getItem('user')
+          console.log('🔍 Saved user from localStorage:', savedUser ? 'exists' : 'missing')
+
+          if (savedUser) {
+            const user = JSON.parse(savedUser)
+
+            // Save the permanent token that was used for the password change
+            const tempToken = localStorage.getItem('tempAuthToken')
+            console.log('🔍 Temp token before saving:', tempToken ? 'exists' : 'missing')
+
+            if (tempToken) {
+              localStorage.setItem('authToken', tempToken)
+              api.defaults.headers.common['Authorization'] = `Bearer ${tempToken}`
+              localStorage.removeItem('tempAuthToken') // Clean up temp token
+              console.log('🔑 Permanent token saved after password change')
+              console.log('🔍 Auth token after save:', localStorage.getItem('authToken') ? 'exists' : 'missing')
+            } else {
+              console.error('❌ No temp token found for permanent save!')
+            }
+
+            // Re-initialize auth state properly
+            console.log('🔄 Re-initializing auth state...')
+            await authStore.initializeAuth()
+
+            console.log('✅ Auth state re-initialized for invited user:', user.email)
+            console.log('🔍 Final auth state:', {
+              isAuthenticated: authStore.isAuthenticated,
+              hasUser: !!authStore.currentUser,
+              userEmail: authStore.currentUser?.email
+            })
+          } else {
+            console.error('❌ No saved user found in localStorage!')
+          }
+        }
+
+        // Redirect to dashboard after successful password change
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 2000)
+      } else {
+        errorMessage.value = response.data.message || 'Failed to change password'
+      }
   } catch (error: unknown) {
     console.error('Password change error:', error)
     const apiError = error as { response?: { data?: { message?: string } } }
@@ -88,14 +176,41 @@ async function handlePasswordChange() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  console.log('🔍 PasswordChangeView mounted!')
+  console.log('🔍 Current route:', route.path)
+  console.log('🔍 Route query:', route.query)
+
+  // Clear form fields to ensure they are empty
+  passwordForm.password = ''
+  passwordForm.confirmPassword = ''
+  errorMessage.value = ''
+  successMessage.value = ''
+  passwordErrors.value = []
+  confirmPasswordError.value = ''
+
+  // Force DOM update to clear any browser autofill
+  await nextTick()
+
+  // Additional clearing with direct DOM manipulation
+  setTimeout(() => {
+    const passwordInput = document.getElementById('password') as HTMLInputElement
+    const confirmInput = document.getElementById('confirmPassword') as HTMLInputElement
+    if (passwordInput) passwordInput.value = ''
+    if (confirmInput) confirmInput.value = ''
+  }, 100)
+
   const urlToken = route.query.token as string
-  if (!urlToken) {
-    // No token - redirect to login
-    router.push('/login')
-    return
+
+  if (urlToken) {
+    // Password reset scenario - token from email
+    console.log('✅ Token found in URL - password reset scenario:', urlToken)
+    token.value = urlToken
+  } else {
+    // Invited user scenario - no token needed
+    console.log('✅ No token in URL - invited user scenario')
+    // Don't redirect - this is for invited users
   }
-  token.value = urlToken
 })
 </script>
 
@@ -162,6 +277,18 @@ onMounted(() => {
           </div>
         </div>
 
+        <!-- Password Requirements -->
+        <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <h4 class="text-sm font-medium text-blue-900 mb-2">Password Requirements:</h4>
+          <ul class="text-sm text-blue-800 space-y-1">
+            <li>• Minimum 8 characters</li>
+            <li>• At least one uppercase letter (A-Z)</li>
+            <li>• At least one lowercase letter (a-z)</li>
+            <li>• At least one number (0-9)</li>
+            <li>• At least one special character (@$!%*?&)</li>
+          </ul>
+        </div>
+
         <!-- Password Change Form -->
         <form @submit.prevent="handlePasswordChange" class="space-y-6">
           <div>
@@ -174,6 +301,8 @@ onMounted(() => {
                 v-model="passwordForm.password"
                 type="password"
                 required
+                autocomplete="new-password"
+                @input="validatePassword(passwordForm.password)"
                 class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 :class="{ 'border-red-300': passwordErrors.length > 0 }"
               />
@@ -195,6 +324,8 @@ onMounted(() => {
                 v-model="passwordForm.confirmPassword"
                 type="password"
                 required
+                autocomplete="new-password"
+                @input="validateConfirmPassword()"
                 class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 :class="{ 'border-red-300': confirmPasswordError }"
               />

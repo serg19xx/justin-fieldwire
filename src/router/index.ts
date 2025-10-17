@@ -14,7 +14,7 @@ const router = createRouter({
       path: '/password-change',
       name: 'password-change',
       component: () => import('@/pages/auth/views/PasswordChangeView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: false }, // Allow access for users with temporary passwords
     },
     {
       path: '/reset-password',
