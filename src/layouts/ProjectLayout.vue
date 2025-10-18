@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-100">
+  <div class="bg-gray-100">
     <!-- Project Header -->
     <header
       class="bg-green-600 shadow-sm border-b border-green-700 h-12 fixed top-0 left-0 right-0 z-50"
@@ -133,7 +133,7 @@
     </div>
 
     <!-- Main content -->
-    <main class="pt-12 min-h-screen" style="margin-top: 0; padding-top: 1.5rem;">
+    <main class="pt-12" style="margin-top: 0; padding-top: 1.5rem;">
       <slot />
     </main>
   </div>
