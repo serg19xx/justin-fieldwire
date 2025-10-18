@@ -1,8 +1,8 @@
 <template>
   <component :is="layoutComponent">
-    <div class="space-y-4 px-4 pt-4 pb-4 md:space-y-6 md:px-6 md:pt-6 md:pb-6">
+    <div class="px-4 pt-4 md:px-6 md:pt-6" style="margin-top: 0; padding-top: 1rem; padding-bottom: 0;">
       <!-- Search and Filters -->
-      <div class="bg-white shadow rounded-lg p-3 sm:p-4">
+      <div class="bg-white shadow rounded-lg p-2 sm:p-3" style="margin-bottom: 0.5rem;">
         <div class="flex flex-col sm:flex-row gap-4">
           <!-- Search -->
           <div class="flex-1">
@@ -10,22 +10,59 @@
               v-model="searchQuery"
               type="text"
               placeholder="Search projects..."
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              class="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             />
           </div>
 
           <!-- Filters -->
           <div class="flex gap-2">
-            <select
-              v-model="statusFilter"
-              class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            >
-              <option value="">All Statuses</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-              <option value="pending">Pending</option>
-              <option value="on-hold">On Hold</option>
-            </select>
+            <!-- Status Filter -->
+            <div class="relative">
+              <select
+                v-model="statusFilter"
+                class="px-2 py-1 pr-6 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-700 appearance-none cursor-pointer"
+              >
+                <option value="" class="text-gray-500">All Statuses</option>
+                <option value="active" class="text-gray-700">Active</option>
+                <option value="completed" class="text-gray-700">Completed</option>
+                <option value="pending" class="text-gray-700">Pending</option>
+                <option value="on-hold" class="text-gray-700">On Hold</option>
+              </select>
+              <!-- Dropdown Arrow -->
+              <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Sort Dropdown -->
+            <div class="relative">
+              <select
+                v-model="sortBy"
+                class="px-2 py-1 pr-6 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-700 appearance-none cursor-pointer"
+              >
+                <option value="" class="text-gray-500">Sort by...</option>
+                <option value="name-asc" class="text-gray-700">↑ Project Name (A-Z)</option>
+                <option value="name-desc" class="text-gray-700">↓ Project Name (Z-A)</option>
+                <option value="client-asc" class="text-gray-700">↑ Client (A-Z)</option>
+                <option value="client-desc" class="text-gray-700">↓ Client (Z-A)</option>
+                <option value="status-asc" class="text-gray-700">↑ Status (A-Z)</option>
+                <option value="status-desc" class="text-gray-700">↓ Status (Z-A)</option>
+                <option value="progress-asc" class="text-gray-700">↑ Progress (0-100%)</option>
+                <option value="progress-desc" class="text-gray-700">↓ Progress (100-0%)</option>
+                <option value="priority-asc" class="text-gray-700">↑ Priority (Low-High)</option>
+                <option value="priority-desc" class="text-gray-700">↓ Priority (High-Low)</option>
+                <option value="manager-asc" class="text-gray-700">↑ Manager (A-Z)</option>
+                <option value="manager-desc" class="text-gray-700">↓ Manager (Z-A)</option>
+              </select>
+              <!-- Dropdown Arrow -->
+              <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -37,43 +74,43 @@
       </div>
 
       <!-- Projects Table -->
-      <div v-else class="bg-white shadow rounded-lg overflow-hidden">
+      <div v-else class="bg-white shadow rounded-lg overflow-hidden" style="margin-bottom: 0; margin-top: 0;">
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
                 <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-6 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Project
                 </th>
                 <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-6 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Client
                 </th>
                 <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-6 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Status
                 </th>
                 <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-6 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Progress
                 </th>
                 <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-6 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Priority
                 </th>
                 <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-6 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Manager
                 </th>
                 <th
-                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-6 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Actions
                 </th>
@@ -81,7 +118,7 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="project in filteredProjects" :key="project.id" class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-6 py-1 whitespace-nowrap">
                   <div>
                     <div class="text-sm font-medium text-gray-900">{{ project.prj_name }}</div>
                     <div class="text-sm text-gray-500">
@@ -89,10 +126,10 @@
                     </div>
                   </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td class="px-6 py-1 whitespace-nowrap text-sm text-gray-900">
                   {{ project.address }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-6 py-1 whitespace-nowrap">
                   <span
                     :class="getStatusClass(project.status)"
                     class="px-2 py-1 text-xs font-medium rounded-full"
@@ -100,7 +137,7 @@
                     {{ getStatusDisplay(project.status) }}
                   </span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-6 py-1 whitespace-nowrap">
                   <div class="flex items-center">
                     <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
                       <div
@@ -111,13 +148,13 @@
                     <span class="text-sm text-gray-900">0%</span>
                   </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td class="px-6 py-1 whitespace-nowrap text-sm text-gray-900">
                   {{ project.priority }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td class="px-6 py-1 whitespace-nowrap text-sm text-gray-900">
                   {{ project.manager_name || 'Unassigned' }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                <td class="px-6 py-1 whitespace-nowrap text-sm font-medium">
                   <div class="flex space-x-2">
                     <button
                       @click="viewProject(project.id)"
@@ -140,7 +177,7 @@
       </div>
 
       <!-- Empty State -->
-      <div v-if="filteredProjects.length === 0" class="text-center py-12">
+      <div v-if="filteredProjects.length === 0" class="text-center py-8" style="padding-bottom: 0; margin-bottom: 0;">
         <svg
           class="mx-auto h-12 w-12 text-gray-400"
           fill="none"
@@ -194,6 +231,7 @@ const projects = ref<ApiProject[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref('')
+const sortBy = ref('')
 
 // Computed properties
 const filteredProjects = computed(() => {
@@ -212,6 +250,12 @@ const filteredProjects = computed(() => {
   // Filter by status
   if (statusFilter.value) {
     filtered = filtered.filter((project) => project.status === statusFilter.value)
+  }
+
+  // Apply sorting (placeholder - logic to be implemented later)
+  if (sortBy.value) {
+    console.log('Sort by:', sortBy.value)
+    // TODO: Implement sorting logic when needed
   }
 
   return filtered

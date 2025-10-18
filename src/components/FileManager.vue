@@ -1,9 +1,9 @@
 <template>
   <div class="h-full flex flex-col overflow-hidden" @keydown="handleKeydown" tabindex="0">
     <!-- Two Panel Layout -->
-    <div class="flex-1 flex min-h-0">
+    <div class="flex-1 flex h-full">
       <!-- Left Panel - Folder Tree -->
-      <div class="w-64 border-r border-gray-200 bg-gray-50 flex flex-col min-h-0">
+      <div class="w-64 border-r border-gray-200 bg-gray-50 flex flex-col h-full">
         <div class="flex-1 overflow-y-auto p-3">
           <div class="space-y-1">
             <FolderTreeNode
@@ -22,7 +22,7 @@
       </div>
 
       <!-- Right Panel - Content -->
-      <div class="flex-1 flex flex-col min-h-0" style="width: calc(100% - 256px)">
+      <div class="flex-1 flex flex-col h-full" style="width: calc(100% - 256px)">
         <!-- Content Area -->
         <div class="flex-1 overflow-y-auto overflow-x-auto p-3">
           <!-- Icons View -->
@@ -187,10 +187,10 @@
                     display: flex;
                     cursor: pointer;
                     border-bottom: 1px solid #eee;
-                    width: 1200px;
+                    width: 100%;
                   "
                 >
-                  <div style="width: 400px; padding: 8px; display: flex; align-items: center">
+                  <div style="flex: 1; padding: 8px; display: flex; align-items: center">
                     <span style="margin-right: 12px; font-size: 18px">{{
                       getFolderIcon()
                     }}</span>
@@ -207,8 +207,8 @@
                       >{{ folder.name }}</span
                     >
                   </div>
-                  <div style="width: 100px; text-align: right; padding: 8px; color: #6b7280"></div>
-                  <div style="width: 120px; text-align: right; padding: 8px">
+                  <div style="width: 100px; min-width: 100px; text-align: right; padding: 8px; color: #6b7280"></div>
+                  <div style="width: 120px; min-width: 120px; text-align: right; padding: 8px">
                     <span
                       style="
                         background: #f3f4f6;
@@ -221,11 +221,11 @@
                       >Folder</span
                     >
                   </div>
-                  <div style="width: 180px; text-align: right; padding: 8px; color: #6b7280">
+                  <div style="width: 180px; min-width: 180px; text-align: right; padding: 8px; color: #6b7280">
                     {{ formatDate(folder.created_at) }}
                   </div>
-                  <div style="width: 300px; padding: 8px; color: #6b7280"></div>
-                  <div style="width: 100px; text-align: right; padding: 8px">
+                  <div style="width: 300px; min-width: 300px; padding: 8px; color: #6b7280"></div>
+                  <div style="width: 100px; min-width: 100px; text-align: right; padding: 8px">
                     <button
                       style="
                         color: #2563eb;
@@ -258,10 +258,10 @@
                     display: flex;
                     cursor: pointer;
                     border-bottom: 1px solid #eee;
-                    width: 1200px;
+                    width: 100%;
                   "
                 >
-                  <div style="width: 400px; padding: 8px; display: flex; align-items: center">
+                  <div style="flex: 1; padding: 8px; display: flex; align-items: center">
                     <span style="margin-right: 12px; font-size: 18px">{{
                       getFileIcon(file.mime_type, file.file_name).icon
                     }}</span>
@@ -278,10 +278,10 @@
                       >{{ truncateFileName(file.file_name, 35) }}</span
                     >
                   </div>
-                  <div style="width: 100px; text-align: right; padding: 8px; color: #111827">
+                  <div style="width: 100px; min-width: 100px; text-align: right; padding: 8px; color: #111827">
                     {{ formatFileSize(file.file_size) }}
                   </div>
-                  <div style="width: 120px; text-align: right; padding: 8px">
+                  <div style="width: 120px; min-width: 120px; text-align: right; padding: 8px">
                     <span
                       class="text-xs font-bold px-2 py-1 rounded shadow-sm"
                       :class="[
@@ -295,10 +295,10 @@
                       {{ getFileIcon(file.mime_type, file.file_name).label }}
                     </span>
                   </div>
-                  <div style="width: 180px; text-align: right; padding: 8px; color: #6b7280">
+                  <div style="width: 180px; min-width: 180px; text-align: right; padding: 8px; color: #6b7280">
                     {{ formatDate(file.updated_at) }}
                   </div>
-                  <div style="width: 300px; padding: 8px; color: #6b7280">
+                  <div style="width: 300px; min-width: 300px; padding: 8px; color: #6b7280">
                     <span v-if="file.description" style="color: #6b7280">{{
                       file.description.length <= 30
                         ? file.description
@@ -318,7 +318,7 @@
                       >Click to add</span
                     >
                   </div>
-                  <div style="width: 100px; text-align: right; padding: 8px">
+                  <div style="width: 100px; min-width: 100px; text-align: right; padding: 8px">
                     <button
                       @click.stop="
                         startDescriptionEdit({

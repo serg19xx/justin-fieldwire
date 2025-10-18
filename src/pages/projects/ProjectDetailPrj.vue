@@ -1695,11 +1695,11 @@ watch(
 </script>
 
 <template>
-  <div class="flex h-screen bg-gray-100">
+  <div class="flex bg-gray-100" style="margin-top: 0; padding-top: 0;">
     <!-- Left Sidebar -->
-    <div class="w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col">
+    <div class="w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col fixed left-0 top-12 h-screen overflow-y-auto" style="height: calc(100vh - 3rem);">
       <!-- Project Selector Header -->
-      <div class="p-4 border-b border-gray-200">
+      <div class="p-4 border-b border-gray-200" style="margin-top: 0; padding-top: 1rem;">
         <div v-if="loading" class="animate-pulse">
           <div class="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
           <div class="h-3 bg-gray-200 rounded w-1/2"></div>
@@ -1881,9 +1881,9 @@ watch(
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col overflow-hidden">
+    <div class="flex-1 flex flex-col ml-64" style="margin-top: 0; padding-top: 0;">
       <!-- Content Header -->
-      <div class="bg-white shadow-sm border-b border-gray-200 px-6 py-2">
+      <div class="bg-white shadow-sm border-b border-gray-200 px-6 py-2 fixed top-12 left-64 right-0 z-40" style="margin-top: 0; padding-top: 0.5rem; padding-bottom: 0.5rem;">
         <div class="flex items-center justify-between">
           <!-- Dynamic Action Buttons -->
           <div class="flex-1 flex items-center">
@@ -2177,7 +2177,7 @@ watch(
       </div>
 
       <!-- Content Body -->
-      <div class="flex-1 overflow-y-auto px-6 pb-6">
+      <div class="flex-1 overflow-y-auto px-6 pt-16" style="padding-bottom: 0;">
         <!-- Loading State -->
         <div v-if="loading" class="flex items-center justify-center h-full">
           <div class="text-center">
@@ -2233,14 +2233,13 @@ watch(
         <!-- Content based on active section -->
         <div
           v-else-if="project"
-          class="flex-1 flex flex-col overflow-hidden"
-          style="height: calc(100vh - 120px)"
+          class="flex-1 flex flex-col"
         >
           <!-- Plans Section -->
-          <div v-if="activeSection === 'plans'" class="flex-1 flex flex-col overflow-hidden h-full">
+          <div v-if="activeSection === 'plans'" class="flex-1 flex flex-col">
             <!-- Folder Manager -->
-            <div class="bg-white rounded-lg shadow flex-1 w-full overflow-hidden mt-4 mb-4 h-full">
-              <div class="h-full p-4">
+            <div class="bg-white rounded-lg shadow w-full mt-4" style="margin-bottom: 0; height: calc(100vh - 8rem);">
+              <div class="p-4" style="height: calc(100vh - 8rem);">
                 <FileManager
                   v-if="project?.id"
                   :key="fileManagerKey"
@@ -2248,6 +2247,7 @@ watch(
                   :project-id="project.id"
                   :initial-path="currentFolderPath"
                   :view-mode="viewMode"
+                  style="height: calc(100vh - 12rem);"
                   @file-selected="(file: File) => handleFilesSelected([file])"
                   @folder-created="handleFolderCreated"
                   @file-uploaded="handleFileUploaded"
@@ -2261,7 +2261,7 @@ watch(
           </div>
 
           <!-- Tasks Section -->
-          <div v-else-if="activeSection === 'tasks'" class="flex-1 flex flex-col overflow-hidden">
+          <div v-else-if="activeSection === 'tasks'" class="flex-1 flex flex-col">
             <!-- Calendar Component -->
             <ProjectCalendar
               v-if="project && project.id"
@@ -2307,14 +2307,14 @@ watch(
           </div>
 
           <!-- Photos Section -->
-          <div v-else-if="activeSection === 'photos'" class="flex-1 flex flex-col overflow-hidden">
+          <div v-else-if="activeSection === 'photos'" class="flex-1 flex flex-col">
             <div class="bg-white rounded-lg shadow p-6">
               <p class="text-gray-500">Photos content will be implemented here</p>
             </div>
           </div>
 
           <!-- Team Section -->
-          <div v-else-if="activeSection === 'team'" class="flex-1 flex flex-col overflow-hidden">
+          <div v-else-if="activeSection === 'team'" class="flex-1 flex flex-col">
             <!-- Team Members List -->
             <div class="bg-white rounded-lg shadow">
               <!-- Loading State -->
@@ -2532,7 +2532,7 @@ watch(
           <!-- Settings Section -->
           <div
             v-else-if="activeSection === 'settings'"
-            class="flex-1 flex flex-col overflow-hidden"
+            class="flex-1 flex flex-col"
           >
             <div class="flex items-center justify-between">
               <h2 class="text-xl font-semibold text-gray-900">Project Settings</h2>

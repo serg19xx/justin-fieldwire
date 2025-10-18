@@ -9,6 +9,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: false, // Temporarily disabled for development due to CORS
 })
 
 // Функция для тестирования эндпоинта

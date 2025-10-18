@@ -2,7 +2,13 @@
  * Session Manager - handles automatic session checking and logout
  */
 
-import { checkSessionWithAPI, checkSessionLocally, getStoredToken } from './session-utils'
+import {
+  checkSessionWithAPI,
+  checkSessionLocally,
+  getStoredToken,
+  shouldRefreshToken,
+  refreshAccessToken,
+} from './session-utils'
 
 export interface SessionManagerConfig {
   checkInterval: number // Interval in milliseconds (default: 5 minutes)
@@ -18,10 +24,12 @@ export class SessionManager {
   private lastActivityTime: number = Date.now()
   private isActive: boolean = false
   private activityListeners: (() => void)[] = []
+  private lastActivityUpdate: number = 0
+  private activityThrottleMs: number = 1000 // Update activity max once per second
 
   constructor(config: SessionManagerConfig) {
     this.config = {
-      checkInterval: config.checkInterval ?? 5 * 60 * 1000, // 5 minutes
+      checkInterval: config.checkInterval ?? 5 * 60 * 1000, // 5 minutes (check frequently)
       activityCheckInterval: config.activityCheckInterval ?? 60 * 1000, // 1 minute
       useAPI: config.useAPI ?? true,
       onSessionExpired: config.onSessionExpired,
@@ -46,6 +54,9 @@ export class SessionManager {
 
     this.isActive = true
     this.lastActivityTime = Date.now()
+
+    console.log('🕐 Session manager started at:', new Date(this.lastActivityTime).toISOString())
+    console.log('🕐 Last activity time set to:', new Date(this.lastActivityTime).toISOString())
 
     // Start periodic session checks
     this.startPeriodicChecks()
@@ -107,23 +118,61 @@ export class SessionManager {
         return true
       } else {
         console.log('❌ Session is invalid:', result.error)
-        console.log('🔒 Calling onSessionExpired callback...')
-        this.config.onSessionExpired()
+        console.log('⚠️ Auto-logout disabled - user stays logged in')
+        // this.config.onSessionExpired() // Disabled - no auto logout
         return false
       }
     } catch (error) {
       console.error('❌ Session check error:', error)
-      console.log('🔒 Calling onSessionExpired callback due to error...')
-      this.config.onSessionExpired()
+      console.log('⚠️ Auto-logout disabled - user stays logged in despite error')
+      // this.config.onSessionExpired() // Disabled - no auto logout
       return false
     }
   }
 
   /**
-   * Update last activity time
+   * Update last activity time (with throttling and token refresh)
    */
   updateActivity(): void {
-    this.lastActivityTime = Date.now()
+    const now = Date.now()
+
+    // Throttle activity updates to prevent spam
+    if (now - this.lastActivityUpdate < this.activityThrottleMs) {
+      return // Skip this update
+    }
+
+    const oldTime = this.lastActivityTime
+    this.lastActivityTime = now
+    this.lastActivityUpdate = now
+
+    // Activity logging disabled
+    // console.log('🖱️ Activity detected...')
+
+    // Check if token needs refresh due to activity
+    this.checkAndRefreshToken()
+  }
+
+  /**
+   * Check if token needs refresh and refresh it if necessary
+   */
+  private async checkAndRefreshToken(): Promise<void> {
+    try {
+      // Token refresh check disabled
+      // console.log('🔍 Checking if token needs refresh...')
+
+      const needsRefresh = shouldRefreshToken(5)
+      // console.log('🔍 Should refresh token (expires within 5 min):', needsRefresh)
+
+      if (needsRefresh) {
+        // Refresh tokens disabled - user will be logged out when token expires
+        console.log('⚠️ Token expires soon - user will be logged out')
+      }
+      // else {
+      //   console.log('⏰ Token is still valid, no refresh needed')
+      // }
+    } catch (error) {
+      console.error('❌ Error during token refresh check:', error)
+    }
   }
 
   /**
@@ -149,16 +198,21 @@ export class SessionManager {
       const minutesSinceActivity = Math.floor(timeSinceLastActivity / 1000 / 60)
 
       console.log(`⏰ Session check - ${minutesSinceActivity} minutes since last activity`)
+      console.log('🕐 Current time:', new Date().toISOString())
+      console.log('🕐 Last activity time:', new Date(this.lastActivityTime).toISOString())
+      console.log('🕐 Time since last activity (ms):', timeSinceLastActivity)
 
       // Check if user has been inactive for too long
       if (!this.isUserActive()) {
         console.log('😴 User inactive for 30+ minutes - forcing logout')
+        console.log('🔍 isUserActive() returned false')
         this.config.onSessionExpired()
         return
       }
 
       // User is active - check session validity
       console.log('🔄 User is active - checking session validity...')
+      console.log('🔍 isUserActive() returned true')
       await this.checkSession()
     }, this.config.checkInterval)
   }
@@ -175,7 +229,8 @@ export class SessionManager {
    * Setup activity event listeners
    */
   private setupActivityListeners(): void {
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click']
+    // Reduced events to prevent spam - only track meaningful user interactions
+    const events = ['mousedown', 'keypress', 'scroll', 'touchstart', 'click']
 
     const activityHandler = () => {
       this.updateActivity()
@@ -187,6 +242,8 @@ export class SessionManager {
         document.removeEventListener(event, activityHandler, true)
       })
     })
+
+    console.log('🎯 Activity listeners set up for events:', events)
   }
 
   /**

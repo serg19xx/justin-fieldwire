@@ -18,3 +18,4 @@ authStore.initializeAuth().catch((error) => {
 })
 
 app.mount('#app')
+

@@ -62,8 +62,6 @@ export interface Invitation {
 export const useAuthStore = defineStore('auth', () => {
   const currentUser = ref<User | null>(null)
   const isAuthenticated = ref(false)
-  const isLoading = ref(false)
-  const error = ref<string | null>(null)
   const invitations = ref<Invitation[]>([])
 
   // Mock users data
@@ -1011,6 +1009,9 @@ export const useAuthStore = defineStore('auth', () => {
     disableTwoFactorFromProfile,
     refreshToken,
     shouldRefreshToken,
+    requestPasswordRecovery,
+    resetPassword,
+    changePassword,
   }
 
   // Password recovery function

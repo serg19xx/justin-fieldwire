@@ -3,6 +3,7 @@ interface ApiConfig {
   baseURL: string
   timeout: number
   headers: Record<string, string>
+  withCredentials: boolean
 }
 
 const environments = {
@@ -12,6 +13,7 @@ const environments = {
     headers: {
       'Content-Type': 'application/json',
     },
+    withCredentials: false, // Temporarily disabled for development due to CORS
   },
   staging: {
     baseURL: import.meta.env.VITE_API_URL || 'https://fwapi.medicalcontractor.ca',
@@ -19,6 +21,7 @@ const environments = {
     headers: {
       'Content-Type': 'application/json',
     },
+    withCredentials: true,
   },
   production: {
     baseURL: import.meta.env.VITE_API_URL || 'https://fwapi.medicalcontractor.ca',
@@ -26,6 +29,7 @@ const environments = {
     headers: {
       'Content-Type': 'application/json',
     },
+    withCredentials: true,
   },
 }
 

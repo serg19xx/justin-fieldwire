@@ -7,6 +7,8 @@
 
 html, body {
   height: 100%;
+  margin: 0;
+  padding: 0;
 }
 
 #app {
@@ -14,6 +16,8 @@ html, body {
   min-height: 100vh;
   font-weight: normal;
   background-color: #f9fafb;
+  margin: 0;
+  padding: 0;
 }
 
 a,
@@ -29,5 +33,7 @@ a,
     background-color: hsla(160, 100%, 37%, 0.2);
   }
 }
+
+
 
 

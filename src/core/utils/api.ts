@@ -21,35 +21,25 @@ api.interceptors.response.use(
   async (error) => {
     console.error('API Error:', error)
 
-    // Handle 401 Unauthorized errors
+    // Handle 401 Unauthorized errors - auto logout disabled
     if (error.response?.status === 401) {
-      console.log('🔒 401 Unauthorized - token may be expired')
+      console.log('🔒 401 Unauthorized - auto logout disabled')
 
-      // Don't redirect if we're already on login page or if it's a login/logout request
-      const isLoginRequest = error.config?.url?.includes('/auth/login')
-      const isLogoutRequest = error.config?.url?.includes('/auth/logout')
-      const isCheckSessionRequest = error.config?.url?.includes('/auth/check-session')
-      const isLoginPage = window.location.pathname === '/login'
+      // Auto logout disabled - user stays logged in
+      console.log('⚠️ 401 error - auto logout disabled, user stays logged in')
 
-      if (!isLoginRequest && !isLogoutRequest && !isCheckSessionRequest && !isLoginPage) {
-        console.log('🔒 401 error - triggering session expiration')
-
-        // Check if token is actually expired
-        const token = localStorage.getItem('authToken')
-        if (token && isTokenExpired(token)) {
-          console.log('❌ Token is expired - calling logout')
-          onSessionExpired?.()
-        } else {
-          console.log('⚠️ 401 but token not expired - may be server issue')
-          console.log('🔍 Token details:', {
-            token: token ? `${token.substring(0, 20)}...` : 'No token',
-            url: error.config?.url,
-            method: error.config?.method,
-            headers: error.config?.headers
-          })
-        }
+      // Check if token is actually expired for logging
+      const token = localStorage.getItem('authToken')
+      if (token && isTokenExpired(token)) {
+        console.log('❌ Token is expired but auto logout disabled')
       } else {
-        console.log('🔒 401 on login/logout/check-session page or request - not redirecting')
+        console.log('⚠️ 401 but token not expired - may be server issue')
+        console.log('🔍 Token details:', {
+          token: token ? `${token.substring(0, 20)}...` : 'No token',
+          url: error.config?.url,
+          method: error.config?.method,
+          headers: error.config?.headers,
+        })
       }
     }
 
@@ -143,6 +133,15 @@ api.interceptors.request.use(
     return Promise.reject(error)
   },
 )
+
+// Response interceptor disabled - refresh tokens not working
+// api.interceptors.response.use(
+//   (response) => response,
+//   async (error) => {
+//     // Refresh token logic disabled
+//     return Promise.reject(error)
+//   }
+// )
 
 // Auth API for invitation token validation
 export const authApi = {
