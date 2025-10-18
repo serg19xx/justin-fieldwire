@@ -21,7 +21,7 @@ const environments = {
     headers: {
       'Content-Type': 'application/json',
     },
-    withCredentials: true,
+    withCredentials: false, // Temporarily disabled due to CORS issues
   },
   production: {
     baseURL: import.meta.env.VITE_API_URL || 'https://fwapi.medicalcontractor.ca',
@@ -29,7 +29,7 @@ const environments = {
     headers: {
       'Content-Type': 'application/json',
     },
-    withCredentials: true,
+    withCredentials: false, // Temporarily disabled due to CORS issues
   },
 }
 
