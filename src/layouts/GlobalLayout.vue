@@ -75,7 +75,7 @@
     </header>
 
     <!-- Main content -->
-    <main class="pt-12 min-h-screen">
+    <main class="pt-8 min-h-screen">
       <slot />
     </main>
   </div>
