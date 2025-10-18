@@ -7,6 +7,11 @@
 
     <!-- Dynamic Layouts based on user role -->
     <template v-else-if="authStore.isAuthenticated">
+      <!-- Debug info -->
+      <div v-if="false" class="fixed top-0 left-0 bg-red-500 text-white p-2 z-50">
+        Role: {{ authStore.currentUser?.role_category }} | Code: {{ authStore.currentUser?.role_code }}
+      </div>
+
       <!-- Global Layout for global users -->
       <GlobalLayout v-if="authStore.currentUser?.role_category === 'global'">
         <RouterView />
@@ -32,8 +37,8 @@
     <template v-else>
       <div class="flex items-center justify-center min-h-screen">
         <div class="text-center">
-          <h1 class="text-2xl font-bold text-gray-800 mb-4">Redirecting to login...</h1>
-          <p class="text-gray-600 mb-6">Please wait...</p>
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p class="text-gray-600">Loading...</p>
         </div>
       </div>
     </template>
@@ -62,15 +67,10 @@ watch(() => authStore.isAuthenticated, (isAuthenticated) => {
   }
 
   if (!isAuthenticated) {
-    // Add delay to allow router to navigate first
-    setTimeout(() => {
-      // Double-check we're still not on an auth page
-      if (!authPages.includes(route.path)) {
-        router.replace('/login')
-      }
-    }, 200)
+    // Immediate redirect to login
+    router.replace('/login')
   }
-}, { immediate: false })
+}, { immediate: true })
 
 // Close user menu when clicking outside
 function handleClickOutside(event: Event) {

@@ -1,6 +1,6 @@
 <template>
   <component :is="layoutComponent">
-    <div class="px-4 pt-4 md:px-6 md:pt-6" style="margin-top: 0; padding-top: 1rem; padding-bottom: 0;">
+    <div class="px-4 md:px-6" style="margin-top: 0; padding-bottom: 0;">
       <!-- Search and Filters -->
       <div class="bg-white shadow rounded-lg p-2 sm:p-3" style="margin-bottom: 0.5rem;">
         <div class="flex flex-col sm:flex-row gap-4">
@@ -73,52 +73,133 @@
         <p class="mt-2 text-gray-600">Loading projects...</p>
       </div>
 
+      <!-- Pagination Top -->
+      <div v-if="!loading" class="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-200 sm:px-6">
+        <div class="flex-1 flex justify-between sm:hidden">
+          <button
+            @click="goToPage(currentPage - 1)"
+            :disabled="currentPage <= 1"
+            class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <button
+            @click="goToPage(currentPage + 1)"
+            :disabled="currentPage >= totalPages"
+            class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div class="flex items-center space-x-4">
+            <p class="text-sm text-gray-700">
+              Showing
+              <span class="font-medium">{{ startIndex + 1 }}</span>
+              to
+              <span class="font-medium">{{ endIndex }}</span>
+              of
+              <span class="font-medium">{{ totalItems }}</span>
+              results
+            </p>
+            <div class="flex items-center space-x-2">
+              <label for="page-size-top" class="text-sm text-gray-700">Show:</label>
+              <select
+                id="page-size-top"
+                v-model="itemsPerPage"
+                @change="changePageSize(itemsPerPage)"
+                class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              <button
+                @click="goToPage(currentPage - 1)"
+                :disabled="currentPage <= 1"
+                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span class="sr-only">Previous</span>
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+              </button>
+              <button
+                v-for="page in totalPages"
+                :key="page"
+                @click="goToPage(page)"
+                :class="[
+                  'relative inline-flex items-center px-4 py-2 border text-sm font-medium',
+                  page === currentPage
+                    ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                    : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                ]"
+              >
+                {{ page }}
+              </button>
+              <button
+                @click="goToPage(currentPage + 1)"
+                :disabled="currentPage >= totalPages"
+                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span class="sr-only">Next</span>
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </nav>
+          </div>
+        </div>
+      </div>
+
       <!-- Projects Table -->
-      <div v-else class="bg-white shadow rounded-lg overflow-hidden" style="margin-bottom: 0; margin-top: 0;">
+      <div v-if="!loading" class="bg-white shadow rounded-lg overflow-hidden" style="margin-bottom: 0; margin-top: 0;">
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
                 <th
-                  class="px-6 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48"
                 >
                   Project
                 </th>
                 <th
-                  class="px-6 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64"
                 >
                   Client
                 </th>
                 <th
-                  class="px-6 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32"
                 >
                   Status
                 </th>
                 <th
-                  class="px-6 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32"
                 >
                   Progress
                 </th>
                 <th
-                  class="px-6 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32"
                 >
                   Priority
                 </th>
                 <th
-                  class="px-6 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48"
                 >
                   Manager
                 </th>
                 <th
-                  class="px-6 py-1 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32"
                 >
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="project in filteredProjects" :key="project.id" class="hover:bg-gray-50">
-                <td class="px-6 py-1 whitespace-nowrap">
+              <tr v-for="project in paginatedProjects" :key="project.id" class="hover:bg-gray-50">
+                <td class="px-4 py-4 whitespace-nowrap w-48">
                   <div>
                     <div class="text-sm font-medium text-gray-900">{{ project.prj_name }}</div>
                     <div class="text-sm text-gray-500">
@@ -126,10 +207,10 @@
                     </div>
                   </div>
                 </td>
-                <td class="px-6 py-1 whitespace-nowrap text-sm text-gray-900">
+                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 w-64">
                   {{ project.address }}
                 </td>
-                <td class="px-6 py-1 whitespace-nowrap">
+                <td class="px-4 py-4 whitespace-nowrap w-32">
                   <span
                     :class="getStatusClass(project.status)"
                     class="px-2 py-1 text-xs font-medium rounded-full"
@@ -137,7 +218,7 @@
                     {{ getStatusDisplay(project.status) }}
                   </span>
                 </td>
-                <td class="px-6 py-1 whitespace-nowrap">
+                <td class="px-4 py-4 whitespace-nowrap w-32">
                   <div class="flex items-center">
                     <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
                       <div
@@ -148,13 +229,13 @@
                     <span class="text-sm text-gray-900">0%</span>
                   </div>
                 </td>
-                <td class="px-6 py-1 whitespace-nowrap text-sm text-gray-900">
+                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 w-32">
                   {{ project.priority }}
                 </td>
-                <td class="px-6 py-1 whitespace-nowrap text-sm text-gray-900">
+                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 w-48">
                   {{ project.manager_name || 'Unassigned' }}
                 </td>
-                <td class="px-6 py-1 whitespace-nowrap text-sm font-medium">
+                <td class="px-4 py-4 whitespace-nowrap text-sm font-medium w-32">
                   <div class="flex space-x-2">
                     <button
                       @click="viewProject(project.id)"
@@ -176,8 +257,89 @@
         </div>
       </div>
 
+      <!-- Pagination Bottom -->
+      <div v-if="!loading" class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+        <div class="flex-1 flex justify-between sm:hidden">
+          <button
+            @click="goToPage(currentPage - 1)"
+            :disabled="currentPage <= 1"
+            class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <button
+            @click="goToPage(currentPage + 1)"
+            :disabled="currentPage >= totalPages"
+            class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div class="flex items-center space-x-4">
+            <p class="text-sm text-gray-700">
+              Showing
+              <span class="font-medium">{{ startIndex + 1 }}</span>
+              to
+              <span class="font-medium">{{ endIndex }}</span>
+              of
+              <span class="font-medium">{{ totalItems }}</span>
+              results
+            </p>
+            <div class="flex items-center space-x-2">
+              <label for="page-size" class="text-sm text-gray-700">Show:</label>
+              <select
+                id="page-size"
+                v-model="itemsPerPage"
+                @change="changePageSize(itemsPerPage)"
+                class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              <button
+                @click="goToPage(currentPage - 1)"
+                :disabled="currentPage <= 1"
+                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span class="sr-only">Previous</span>
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+              </button>
+              <button
+                v-for="page in totalPages"
+                :key="page"
+                @click="goToPage(page)"
+                :class="[
+                  'relative inline-flex items-center px-4 py-2 border text-sm font-medium',
+                  page === currentPage
+                    ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                    : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                ]"
+              >
+                {{ page }}
+              </button>
+              <button
+                @click="goToPage(currentPage + 1)"
+                :disabled="currentPage >= totalPages"
+                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span class="sr-only">Next</span>
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </nav>
+          </div>
+        </div>
+      </div>
+
       <!-- Empty State -->
-      <div v-if="filteredProjects.length === 0" class="text-center py-8" style="padding-bottom: 0; margin-bottom: 0;">
+      <div v-if="paginatedProjects.length === 0" class="text-center py-8" style="padding-bottom: 0; margin-bottom: 0;">
         <svg
           class="mx-auto h-12 w-12 text-gray-400"
           fill="none"
@@ -233,6 +395,11 @@ const searchQuery = ref('')
 const statusFilter = ref('')
 const sortBy = ref('')
 
+// Pagination
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
+const pageSizeOptions = [10, 25, 50, 100]
+
 // Computed properties
 const filteredProjects = computed(() => {
   let filtered = projects.value
@@ -259,6 +426,16 @@ const filteredProjects = computed(() => {
   }
 
   return filtered
+})
+
+// Pagination computed properties
+const totalItems = computed(() => filteredProjects.value.length)
+const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage.value))
+const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage.value)
+const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage.value, totalItems.value))
+
+const paginatedProjects = computed(() => {
+  return filteredProjects.value.slice(startIndex.value, endIndex.value)
 })
 
 // Methods
@@ -323,6 +500,18 @@ function viewProject(projectId: number) {
 function editProject(projectId: number) {
   // TODO: Implement edit functionality
   console.log('Edit project:', projectId)
+}
+
+// Pagination functions
+function goToPage(page: number) {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
+}
+
+function changePageSize(newSize: number) {
+  itemsPerPage.value = newSize
+  currentPage.value = 1 // Reset to first page when changing page size
 }
 
 // Lifecycle

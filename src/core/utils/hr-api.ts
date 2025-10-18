@@ -2,37 +2,125 @@ import { api } from './api'
 import type { ProjectTeamMember } from './project-api'
 import { useAuthStore } from '../stores/auth'
 
+// Professional data interface
+export interface ProfessionalData {
+  id: number
+  user_id: number
+  total_experience: number
+  education_level: string
+  field_of_study: string
+  institution_name: string
+  graduation_year: number
+  professional_summary: string
+  specialized_skills: string
+  specialized_experience: string
+  key_projects: string
+  previous_employers: string
+  references: string
+  availability: string
+  travel_willingness: string
+  drivers_license: string
+  red_seal: string | null
+  provincial_certificate: string | null
+  union_membership: string | null
+  equipment_tools: string | null
+  whmis: string
+  first_aid: string | null
+  fall_protection: string | null
+  confined_space: string | null
+  lockout_tagout: string | null
+  other_safety: string | null
+  created_at: string
+  updated_at: string
+}
+
+// Language interface
+export interface Language {
+  id: number
+  name: string
+  prof_level: string
+}
+
+// Project interface
+export interface Project {
+  id: number
+  name: string
+  address: string
+  date_start: string
+  date_end: string
+  priority: string
+  status: string
+  prj_manager: number
+  manager: {
+    id: number
+    first_name: string
+    last_name: string
+    email: string
+    phone: string | null
+    avatar_url: string
+    full_img_url: string
+  }
+  created_at: string
+  updated_at: string
+  role_in_project: string
+  assigned_at: string
+}
+
 // WorkerUser interface for global system
 export interface WorkerUser {
   id: number
   email: string
   first_name: string
   last_name: string
-  phone: string
-  role_id: number
-  job_title: string
+  dob: string | null
+  gender: string | null
+  nationality: string | null
+  country_of_origin: string | null
+  workforce_group: string | null
+  phone: string | null
+  role_id: number | null
+  job_title: string | null
+  city: string | null
   status: number
+  emergency: any | null
+  status_changed_at: string
+  status_end_at: string | null
   status_reason: string | null
   status_details: string | null
   additional_info: string | null
+  full_img_url: string | null
   avatar_url: string | null
-  two_factor_enabled: boolean
-  two_factor_secret: string | null
-  last_login: string | null
   created_at: string
   updated_at: string
   invitation_status: 'invited' | 'registered' | 'expired'
-  invitation_sent_at: string
-  invitation_expires_at: string
-  invited_by: number
+  invitation_sent_at: string | null
+  invitation_expires_at: string | null
+  invited_by: number | null
   registration_completed_at: string | null
   invitation_attempts: number
   last_reminder_sent_at: string | null
   archived_at: string | null
-  role_code: string
-  role_name: string
-  role_category: string
-  role_description: string | null
+  code: string | null
+  name: string | null
+  category: string | null
+  description: string | null
+  role: {
+    id: number | null
+    code: string | null
+    name: string | null
+    category: string | null
+  }
+  professional_data: ProfessionalData[]
+  projects: Project[]
+  languages: Language[]
+  // Legacy fields for backward compatibility
+  two_factor_enabled?: boolean
+  two_factor_secret?: string | null
+  last_login?: string | null
+  role_code?: string
+  role_name?: string
+  role_category?: string
+  role_description?: string | null
 }
 
 // HR Resources API - Get all available users for HR management

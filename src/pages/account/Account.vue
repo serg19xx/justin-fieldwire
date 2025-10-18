@@ -1,14 +1,6 @@
 <template>
-  <div class="min-h-screen bg-gray-50 py-8">
+  <div class="min-h-screen bg-gray-50">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-      <!-- Success/Error Messages -->
-      <div v-if="successMessage" class="mb-6 bg-green-50 border border-green-200 rounded-md p-4">
-        <p class="text-sm text-green-800">{{ successMessage }}</p>
-      </div>
-
-      <div v-if="errorMessage" class="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
-        <p class="text-sm text-red-800">{{ errorMessage }}</p>
-      </div>
 
       <!-- Loading State -->
       <div v-if="isLoading" class="flex justify-center items-center py-12">
@@ -254,6 +246,35 @@
                     />
                   </div>
 
+                  <!-- Success/Error Messages for Inactive Status -->
+                  <div v-if="successMessage && !errorMessage" class="mb-4 bg-green-50 border border-green-200 rounded-md p-4">
+                    <div class="flex justify-between items-start">
+                      <p class="text-sm text-green-800">{{ successMessage }}</p>
+                      <button
+                        @click="successMessage = ''"
+                        class="ml-3 text-green-600 hover:text-green-800 transition-colors"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div v-if="errorMessage" class="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
+                    <div class="flex justify-between items-start">
+                      <p class="text-sm text-red-800">{{ errorMessage }}</p>
+                      <button
+                        @click="errorMessage = ''"
+                        class="ml-3 text-red-600 hover:text-red-800 transition-colors"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
                   <!-- Save Inactive Status Button -->
                   <div
                     v-if="showInactiveReasonFields && profileForm.status_reason"
@@ -330,7 +351,7 @@
                   v-model="profileForm.phone"
                   type="tel"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="(xxx) xxx-xxxx"
+                    placeholder="+1xxxxxxxxxx"
                     @input="formatPhone"
                 />
                 <p v-if="validationErrors.phone" class="mt-1 text-sm text-red-600">
@@ -540,6 +561,35 @@
             </div>
 
             <!-- Submit Button -->
+            <!-- Success/Error Messages for Profile -->
+            <div v-if="successMessage && !errorMessage" class="mb-4 bg-green-50 border border-green-200 rounded-md p-4">
+              <div class="flex justify-between items-start">
+                <p class="text-sm text-green-800">{{ successMessage }}</p>
+                <button
+                  @click="successMessage = ''"
+                  class="ml-3 text-green-600 hover:text-green-800 transition-colors"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div v-if="errorMessage" class="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
+              <div class="flex justify-between items-start">
+                <p class="text-sm text-red-800">{{ errorMessage }}</p>
+                <button
+                  @click="errorMessage = ''"
+                  class="ml-3 text-red-600 hover:text-red-800 transition-colors"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
             <div class="flex justify-end">
               <button
                 type="submit"
@@ -581,7 +631,7 @@
                     <input
                       v-model="profileForm.emergency_data.primary_contact_phone"
                       type="text"
-                      placeholder="(xxx) xxx-xxxx"
+                      placeholder="+1xxxxxxxxxx"
                       @input="formatPhone($event, 'primary_contact_phone')"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -617,7 +667,7 @@
                     <input
                       v-model="profileForm.emergency_data.secondary_contact_phone"
                       type="text"
-                      placeholder="(xxx) xxx-xxxx"
+                      placeholder="+1xxxxxxxxxx"
                       @input="formatPhone($event, 'secondary_contact_phone')"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -721,6 +771,35 @@
                 </div>
                 </div>
               </div>
+
+            <!-- Success/Error Messages for Emergency Data -->
+            <div v-if="successMessage && !errorMessage" class="mb-4 bg-green-50 border border-green-200 rounded-md p-4">
+              <div class="flex justify-between items-start">
+                <p class="text-sm text-green-800">{{ successMessage }}</p>
+                <button
+                  @click="successMessage = ''"
+                  class="ml-3 text-green-600 hover:text-green-800 transition-colors"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div v-if="errorMessage" class="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
+              <div class="flex justify-between items-start">
+                <p class="text-sm text-red-800">{{ errorMessage }}</p>
+                <button
+                  @click="errorMessage = ''"
+                  class="ml-3 text-red-600 hover:text-red-800 transition-colors"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
 
             <!-- Save Button -->
               <div class="flex justify-end">
@@ -1039,6 +1118,35 @@
               </div>
             </div>
 
+            <!-- Success/Error Messages for Professional Data -->
+            <div v-if="successMessage && !errorMessage" class="mb-4 bg-green-50 border border-green-200 rounded-md p-4">
+              <div class="flex justify-between items-start">
+                <p class="text-sm text-green-800">{{ successMessage }}</p>
+                <button
+                  @click="successMessage = ''"
+                  class="ml-3 text-green-600 hover:text-green-800 transition-colors"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div v-if="errorMessage" class="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
+              <div class="flex justify-between items-start">
+                <p class="text-sm text-red-800">{{ errorMessage }}</p>
+                <button
+                  @click="errorMessage = ''"
+                  class="ml-3 text-red-600 hover:text-red-800 transition-colors"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
             <!-- Save Button -->
               <div class="flex justify-end">
                 <button
@@ -1154,6 +1262,35 @@
                     <p class="text-sm text-red-600">{{ confirmPasswordError }}</p>
                   </div>
                 </div>
+                <!-- Success/Error Messages for Password Change -->
+                <div v-if="successMessage && !errorMessage" class="mb-4 bg-green-50 border border-green-200 rounded-md p-4">
+                  <div class="flex justify-between items-start">
+                    <p class="text-sm text-green-800">{{ successMessage }}</p>
+                    <button
+                      @click="successMessage = ''"
+                      class="ml-3 text-green-600 hover:text-green-800 transition-colors"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div v-if="errorMessage" class="mb-4 bg-red-50 border border-red-200 rounded-md p-4">
+                  <div class="flex justify-between items-start">
+                    <p class="text-sm text-red-800">{{ errorMessage }}</p>
+                    <button
+                      @click="errorMessage = ''"
+                      class="ml-3 text-red-600 hover:text-red-800 transition-colors"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
                 <div class="flex justify-end">
                   <button
                     type="submit"
@@ -1398,7 +1535,7 @@ const validationRules: Record<string, ValidationRule> = {
   },
   phone: {
     required: true,
-    pattern: /^\(\d{3}\) \d{3}-\d{4}$/,
+    pattern: /^\+1\d{10}$/,
   },
   job_title: {
     required: true,
@@ -1450,12 +1587,12 @@ const validationRules: Record<string, ValidationRule> = {
   },
   // Emergency contact phone validation
   primary_contact_phone: {
-    pattern: /^\(\d{3}\) \d{3}-\d{4}$/,
-    message: 'Phone must be in format (xxx) xxx-xxxx'
+    pattern: /^\+1\d{10}$/,
+    message: 'Phone must be in format +1xxxxxxxxxx'
   },
   secondary_contact_phone: {
-    pattern: /^\(\d{3}\) \d{3}-\d{4}$/,
-    message: 'Phone must be in format (xxx) xxx-xxxx'
+    pattern: /^\+1\d{10}$/,
+    message: 'Phone must be in format +1xxxxxxxxxx'
   }
 }
 
@@ -1558,7 +1695,7 @@ function validateField(fieldName: string, value: unknown): string {
 
   if (rule.pattern && typeof value === 'string' && value && !rule.pattern.test(value)) {
     if (fieldName === 'phone') {
-      return 'Phone number must be in format (xxx) xxx-xxxx'
+      return 'Phone number must be in format +1xxxxxxxxxx'
     }
     return `${fieldName.replace('_', ' ')} format is invalid`
   }
@@ -1632,14 +1769,43 @@ async function updateProfile() {
 
     if (result.success) {
       console.log('✅ Profile updated successfully')
-      successMessage.value = 'Profile updated successfully!'
+      console.log('🔍 Setting success message:', '✅ Profile updated successfully!')
+      successMessage.value = '✅ Profile updated successfully!'
+      errorMessage.value = ''
+      console.log('🔍 Success message set:', successMessage.value)
+
+      // Scroll to message
+      setTimeout(() => {
+        const messageElement = document.querySelector('.bg-green-50')
+        if (messageElement) {
+          messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
+
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        console.log('🔍 Auto-hiding success message')
+        successMessage.value = ''
+      }, 5000)
     } else {
       console.log('❌ Profile update failed:', result.error)
-      errorMessage.value = result.error || 'Failed to update profile'
+      console.log('🔍 Setting error message:', result.error || '❌ Failed to update profile. Please try again.')
+      errorMessage.value = result.error || '❌ Failed to update profile. Please try again.'
+      successMessage.value = ''
+      console.log('🔍 Error message set:', errorMessage.value)
+
+      // Scroll to error message
+      setTimeout(() => {
+        const messageElement = document.querySelector('.bg-red-50')
+        if (messageElement) {
+          messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
     }
   } catch (error) {
     console.log('❌ Profile update error:', error)
-    errorMessage.value = 'Failed to update profile'
+    errorMessage.value = '❌ Network error. Please check your connection and try again.'
+    successMessage.value = ''
   } finally {
     isUpdating.value = false
   }
@@ -1695,13 +1861,44 @@ async function updateEmergencyData() {
     console.log('📥 Emergency data update result:', result)
 
     if (result.success) {
-      successMessage.value = 'Emergency data updated successfully'
+      console.log('✅ Emergency data updated successfully')
+      console.log('🔍 Setting success message for emergency data')
+      successMessage.value = '✅ Emergency data updated successfully!'
+      errorMessage.value = ''
+      console.log('🔍 Emergency success message set:', successMessage.value)
+
+      // Scroll to message
+      setTimeout(() => {
+        const messageElement = document.querySelector('.bg-green-50')
+        if (messageElement) {
+          messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
+
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        console.log('🔍 Auto-hiding emergency success message')
+        successMessage.value = ''
+      }, 5000)
     } else {
-      errorMessage.value = result.error || 'Failed to update emergency data'
+      console.log('❌ Emergency data update failed:', result.error)
+      console.log('🔍 Setting error message for emergency data')
+      errorMessage.value = result.error || '❌ Failed to update emergency data. Please try again.'
+      successMessage.value = ''
+      console.log('🔍 Emergency error message set:', errorMessage.value)
+
+      // Scroll to error message
+      setTimeout(() => {
+        const messageElement = document.querySelector('.bg-red-50')
+        if (messageElement) {
+          messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
     }
   } catch (error) {
     console.log('❌ Emergency data update error:', error)
-    errorMessage.value = 'Failed to update emergency data'
+    errorMessage.value = '❌ Network error. Please check your connection and try again.'
+    successMessage.value = ''
   } finally {
     isUpdating.value = false
   }
@@ -1843,9 +2040,39 @@ async function updateProfessionalData() {
     console.log('📥 Professional data update result:', result)
 
     if (result.success) {
-      successMessage.value = 'Professional data updated successfully'
+      console.log('✅ Professional data updated successfully')
+      console.log('🔍 Setting success message for professional data')
+      successMessage.value = '✅ Professional data updated successfully!'
+      errorMessage.value = ''
+      console.log('🔍 Professional success message set:', successMessage.value)
+
+      // Scroll to message
+      setTimeout(() => {
+        const messageElement = document.querySelector('.bg-green-50')
+        if (messageElement) {
+          messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
+
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        console.log('🔍 Auto-hiding professional success message')
+        successMessage.value = ''
+      }, 5000)
     } else {
-      errorMessage.value = result.error || 'Failed to update professional data'
+      console.log('❌ Professional data update failed:', result.error)
+      console.log('🔍 Setting error message for professional data')
+      errorMessage.value = result.error || '❌ Failed to update professional data. Please try again.'
+      successMessage.value = ''
+      console.log('🔍 Professional error message set:', errorMessage.value)
+
+      // Scroll to error message
+      setTimeout(() => {
+        const messageElement = document.querySelector('.bg-red-50')
+        if (messageElement) {
+          messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
     }
   } catch (error) {
     console.log('❌ Professional data update error:', error)
@@ -1989,12 +2216,22 @@ function formatPhone(event: Event, fieldName?: string) {
   const target = event.target as HTMLInputElement
   let value = target.value.replace(/\D/g, '') // Remove all non-digits
 
-  if (value.length >= 6) {
-    value = `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`
-  } else if (value.length >= 3) {
-    value = `(${value.slice(0, 3)}) ${value.slice(3)}`
-  } else if (value.length > 0) {
-    value = `(${value}`
+  // Format as +1xxxxxxxxxx
+  if (value.length > 0) {
+    // If user starts typing without +1, add it
+    if (!value.startsWith('1') && value.length <= 10) {
+      value = '1' + value
+    }
+
+    // Limit to 11 digits (1 + 10 digits)
+    if (value.length > 11) {
+      value = value.slice(0, 11)
+    }
+
+    // Format as +1xxxxxxxxxx
+    if (value.length > 1) {
+      value = '+' + value
+    }
   }
 
   if (fieldName === 'primary_contact_phone') {
@@ -2188,25 +2425,44 @@ async function changePassword() {
     }
 
     if (result.success) {
-      successMessage.value = 'Password changed successfully'
+      console.log('✅ Password changed successfully')
+      console.log('🔍 Setting success message for password change')
+      successMessage.value = '✅ Password changed successfully!'
+      errorMessage.value = ''
+      console.log('🔍 Password success message set:', successMessage.value)
+
+      // Scroll to message
+      setTimeout(() => {
+        const messageElement = document.querySelector('.bg-green-50')
+        if (messageElement) {
+          messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
+
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        console.log('🔍 Auto-hiding password success message')
+        successMessage.value = ''
+      }, 5000)
+
       // Clear form
       passwordForm.currentPassword = ''
       passwordForm.newPassword = ''
       passwordForm.confirmPassword = ''
-      console.log('✅ Password changed successfully')
-
-      // Auto-clear success message after 5 seconds
-      setTimeout(() => {
-        successMessage.value = ''
-      }, 5000)
     } else {
-      errorMessage.value = result.error || 'Failed to change password'
       console.log('❌ Password change failed:', result.error)
+      console.log('🔍 Setting error message for password change')
+      errorMessage.value = result.error || '❌ Failed to change password. Please try again.'
+      successMessage.value = ''
+      console.log('🔍 Password error message set:', errorMessage.value)
 
-      // Auto-clear error after 10 seconds
+      // Scroll to error message
       setTimeout(() => {
-        errorMessage.value = ''
-      }, 10000)
+        const messageElement = document.querySelector('.bg-red-50')
+        if (messageElement) {
+          messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
     }
   } catch (error) {
     console.error('❌ Error changing password:', error)
@@ -2277,12 +2533,43 @@ async function saveInactiveStatus() {
     })
 
     if (result.success) {
+      console.log('✅ Status updated to inactive successfully')
+      console.log('🔍 Setting success message for inactive status')
+      successMessage.value = '✅ Status updated to inactive successfully!'
+      errorMessage.value = ''
+      console.log('🔍 Inactive status success message set:', successMessage.value)
+
+      // Scroll to message
+      setTimeout(() => {
+        const messageElement = document.querySelector('.bg-green-50')
+        if (messageElement) {
+          messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
+
+      // Auto-hide success message after 5 seconds
+      setTimeout(() => {
+        console.log('🔍 Auto-hiding inactive status success message')
+        successMessage.value = ''
+      }, 5000)
+
       // Обновляем локальное состояние
       profileForm.status = false
       showInactiveReasonFields.value = false
-      successMessage.value = 'Status updated to inactive'
     } else {
-      errorMessage.value = result.error || 'Failed to update status'
+      console.log('❌ Inactive status update failed:', result.error)
+      console.log('🔍 Setting error message for inactive status')
+      errorMessage.value = result.error || '❌ Failed to update status. Please try again.'
+      successMessage.value = ''
+      console.log('🔍 Inactive status error message set:', errorMessage.value)
+
+      // Scroll to error message
+      setTimeout(() => {
+        const messageElement = document.querySelector('.bg-red-50')
+        if (messageElement) {
+          messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
     }
   } catch {
     errorMessage.value = 'Failed to update status'

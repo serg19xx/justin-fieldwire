@@ -133,7 +133,7 @@
     </div>
 
     <!-- Main content -->
-    <main class="pt-12" style="margin-top: 0; padding-top: 1.5rem;">
+    <main class="pt-12 min-h-screen">
       <slot />
     </main>
   </div>

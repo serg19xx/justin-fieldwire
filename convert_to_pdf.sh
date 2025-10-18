@@ -1,29 +1,31 @@
 #!/bin/bash
 
-# Скрипт для конвертации HTML в PDF
-# Использует встроенные возможности macOS
+# Convert Markdown to PDF using pandoc
+# Install pandoc first: brew install pandoc (on macOS) or apt-get install pandoc (on Ubuntu)
 
-echo "🔄 Конвертация HTML в PDF..."
+echo "Converting RESOURCE_MANAGEMENT_ANALYSIS.md to PDF..."
 
-# Проверяем наличие HTML файла
-if [ ! -f "TASK_DEPENDENCIES_CLIENT_GUIDE.html" ]; then
-    echo "❌ HTML файл не найден!"
-    exit 1
+pandoc RESOURCE_MANAGEMENT_ANALYSIS.md \
+  -o RESOURCE_MANAGEMENT_ANALYSIS.pdf \
+  --pdf-engine=xelatex \
+  --variable geometry:margin=1in \
+  --variable fontsize=11pt \
+  --variable documentclass=article \
+  --variable colorlinks=true \
+  --variable linkcolor=blue \
+  --variable urlcolor=blue \
+  --variable toccolor=black \
+  --toc \
+  --toc-depth=3 \
+  --highlight-style=tango \
+  --metadata title="Resource Management System Analysis" \
+  --metadata author="Fieldwire Development Team" \
+  --metadata date="$(date '+%B %Y')"
+
+if [ $? -eq 0 ]; then
+    echo "✅ PDF created successfully: RESOURCE_MANAGEMENT_ANALYSIS.pdf"
+    echo "📄 File size: $(du -h RESOURCE_MANAGEMENT_ANALYSIS.pdf | cut -f1)"
+else
+    echo "❌ Error creating PDF. Please check if pandoc is installed."
+    echo "Install pandoc: brew install pandoc (macOS) or apt-get install pandoc (Ubuntu)"
 fi
-
-# Открываем HTML файл в браузере для печати в PDF
-echo "📄 Открываем HTML файл в браузере..."
-echo "📋 Инструкции для создания PDF:"
-echo "1. В браузере нажмите Cmd+P (печать)"
-echo "2. Выберите 'Сохранить как PDF'"
-echo "3. Настройте параметры:"
-echo "   - Размер: A4"
-echo "   - Поля: Стандартные"
-echo "   - Масштаб: 100%"
-echo "4. Сохраните как 'TASK_DEPENDENCIES_CLIENT_GUIDE.pdf'"
-
-# Открываем файл в браузере по умолчанию
-open "TASK_DEPENDENCIES_CLIENT_GUIDE.html"
-
-echo "✅ HTML файл открыт в браузере"
-echo "📝 Следуйте инструкциям выше для создания PDF"

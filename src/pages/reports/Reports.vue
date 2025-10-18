@@ -1,5 +1,5 @@
 <template>
-  <div class="reports pt-4 md:pt-6">
+  <div class="reports">
       <div class="bg-purple-600 text-white p-6 rounded-lg mb-6">
         <h1 class="text-3xl font-bold">Reports</h1>
         <p class="text-purple-100">View and generate reports</p>

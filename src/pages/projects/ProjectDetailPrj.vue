@@ -2238,7 +2238,7 @@ watch(
           <!-- Plans Section -->
           <div v-if="activeSection === 'plans'" class="flex-1 flex flex-col">
             <!-- Folder Manager -->
-            <div class="bg-white rounded-lg shadow w-full mt-4" style="margin-bottom: 0; height: calc(100vh - 8rem);">
+            <div class="bg-white rounded-lg shadow w-full" style="margin-bottom: 0; height: calc(100vh - 8rem);">
               <div class="p-4" style="height: calc(100vh - 8rem);">
                 <FileManager
                   v-if="project?.id"

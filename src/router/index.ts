@@ -127,10 +127,48 @@ const router = createRouter({
   ],
 })
 
-// Navigation guard - TEMPORARILY DISABLED FOR TESTING
-// router.beforeEach((to, from, next) => {
-//   console.log('🛡️ Router guard DISABLED - allowing all access')
-//   next()
-// })
+// Navigation guard
+router.beforeEach(async (to, from, next) => {
+  console.log('🛡️ Router guard checking:', { to: to.path, from: from.path })
+
+  const authStore = useAuthStore()
+
+  // All routes require authentication by default
+
+  // Public routes that don't require authentication
+  const publicRoutes = ['/login', '/reset-password']
+
+  if (publicRoutes.includes(to.path)) {
+    console.log('🛡️ Public route - allowing access')
+    next()
+    return
+  }
+
+  // Check if user is authenticated
+  if (!authStore.isAuthenticated) {
+    console.log('🛡️ User not authenticated - redirecting to login')
+    next('/login')
+    return
+  }
+
+  // Check if user has valid session
+  try {
+    if (authStore.checkSession) {
+      const isValid = await authStore.checkSession()
+      if (!isValid) {
+        console.log('🛡️ Session invalid - redirecting to login')
+        next('/login')
+        return
+      }
+    }
+  } catch {
+    console.log('🛡️ Session check failed - redirecting to login')
+    next('/login')
+    return
+  }
+
+  console.log('🛡️ Access granted')
+  next()
+})
 
 export default router

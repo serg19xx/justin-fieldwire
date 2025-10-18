@@ -22,7 +22,11 @@ const searchQuery = ref('')
 const userTypeFilter = ref('')
 const statusFilter = ref('')
 const invitationStatusFilter = ref('')
-const isFiltersOpen = ref(false)
+
+// Pagination
+const currentPage = ref(1)
+const itemsPerPage = ref(10)
+const pageSizeOptions = [10, 25, 50, 100]
 
 // Computed filtered builders - фильтруем по viewMode и другим фильтрам
 const filteredBuilders = computed(() => {
@@ -76,12 +80,17 @@ const filteredBuilders = computed(() => {
   return filtered
 })
 
-// Computed для проверки активных фильтров
-const hasActiveFilters = computed(() => {
-  return (
-    userTypeFilter.value !== '' || statusFilter.value !== '' || invitationStatusFilter.value !== ''
-  )
+// Pagination computed properties
+const totalItems = computed(() => filteredBuilders.value.length)
+const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage.value))
+const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage.value)
+const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage.value, totalItems.value))
+
+const paginatedBuilders = computed(() => {
+  return filteredBuilders.value.slice(startIndex.value, endIndex.value)
 })
+
+// Computed для проверки активных фильтров
 
 
 // Функция загрузки данных с базы данных
@@ -192,20 +201,7 @@ onMounted(() => {
 })
 
 // User type options for filter
-const userTypeOptions = [
-  'architect',
-  'project_manager',
-  'general_contractor',
-  'contractor',
-  'client',
-]
 
-// Get role display name from API data
-function getRoleDisplayName(roleCode: string): string {
-  // Найдем роль в данных и вернем role_name
-  const builder = builders.value.find((b) => b.role_code === roleCode)
-  return builder?.role_name || roleCode
-}
 
 function getUserTypeColor(userType: UserType) {
   switch (userType) {
@@ -224,58 +220,12 @@ function getUserTypeColor(userType: UserType) {
   }
 }
 
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
-}
 
-// Check if job title is required for user type
-function isJobTitleRequired(userType: UserType): boolean {
-  return userType === 'contractor'
-}
-
-// Get job title display with validation
-function getJobTitleDisplay(builder: WorkerUser): string {
-  if (builder.job_title) {
-    return builder.job_title
-  }
-
-  if (isJobTitleRequired(builder.role_code as UserType)) {
-    return 'Required'
-  }
-
-  return '—'
-}
-
-// Get job title display class
-function getJobTitleClass(builder: WorkerUser): string {
-  if (builder.job_title) {
-    return 'text-sm text-gray-900'
-  }
-
-  if (isJobTitleRequired(builder.role_code as UserType)) {
-    return 'text-sm text-red-600 font-medium'
-  }
-
-  return 'text-sm text-gray-400'
-}
-
-function toggleFilters() {
-  isFiltersOpen.value = !isFiltersOpen.value
-}
-
-function clearFilters() {
-  searchQuery.value = ''
-  userTypeFilter.value = ''
-  statusFilter.value = ''
-  invitationStatusFilter.value = ''
-}
 
 // Dialog state
 const isInviteDialogOpen = ref(false)
+const isUserDetailsOpen = ref(false)
+const selectedUser = ref<WorkerUser | null>(null)
 
 // View mode state
 const viewMode = ref<'registered' | 'pending'>('registered')
@@ -286,29 +236,53 @@ const hrManagerMode = ref<'project' | 'task'>('project')
 
 // Computed properties
 
-function openInviteDialog() {
-  isInviteDialogOpen.value = true
-}
 
 function closeInviteDialog() {
   isInviteDialogOpen.value = false
 }
 
-function toggleViewMode() {
-  console.log('🔄 Toggle view mode clicked!')
-  console.log('📊 Current viewMode:', viewMode.value)
-
-  viewMode.value = viewMode.value === 'registered' ? 'pending' : 'registered'
-
-  console.log('📊 New viewMode:', viewMode.value)
-
-  // Сбрасываем фильтры при переключении режимов
-  userTypeFilter.value = ''
-  statusFilter.value = ''
-  invitationStatusFilter.value = ''
-
-  console.log('✅ View mode changed to:', viewMode.value, '- filtering will happen automatically via computed property')
+function openUserDetails(user: WorkerUser) {
+  selectedUser.value = user
+  isUserDetailsOpen.value = true
 }
+
+function closeUserDetails() {
+  isUserDetailsOpen.value = false
+  selectedUser.value = null
+}
+
+// Pagination functions
+function goToPage(page: number) {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
+  }
+}
+
+// Helper function to convert workforce group code to readable text
+function getWorkforceGroupDisplay(group: string | null): string {
+  if (!group) return '—'
+
+  const groupMap: Record<string, string> = {
+    'european_eastern': 'European Eastern',
+    'european_western': 'European Western',
+    'asian_eastern': 'Asian Eastern',
+    'asian_southern': 'Asian Southern',
+    'asian_southeastern': 'Asian Southeastern',
+    'african': 'African',
+    'latin_american': 'Latin American',
+    'north_american': 'North American',
+    'middle_eastern': 'Middle Eastern',
+    'other': 'Other'
+  }
+
+  return groupMap[group] || group
+}
+
+function changePageSize(newSize: number) {
+  itemsPerPage.value = newSize
+  currentPage.value = 1 // Reset to first page when changing page size
+}
+
 
 function handleWorkerUserSelected(worker: WorkerUser) {
   console.log('WorkerUser selected:', worker)
@@ -336,12 +310,24 @@ function handleInviteSent(data: {
     email: data.email,
     first_name: data.firstName,
     last_name: data.lastName,
-    phone: data.phone || '',
+    dob: null,
+    gender: null,
+    nationality: null,
+    country_of_origin: null,
+    workforce_group: null,
+    phone: data.phone || null,
     role_id: 0,
-    job_title: data.specialization || '',
+    job_title: data.specialization || null,
+    city: null,
     status: 0,
-    two_factor_enabled: false,
-    last_login: null,
+    emergency: null,
+    status_changed_at: new Date().toISOString(),
+    status_end_at: null,
+    status_reason: null,
+    status_details: null,
+    additional_info: null,
+    full_img_url: null,
+    avatar_url: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     invitation_status: 'invited',
@@ -352,214 +338,85 @@ function handleInviteSent(data: {
     invitation_attempts: 0,
     last_reminder_sent_at: null,
     archived_at: null,
-    role_code: 'contractor',
-    role_name: 'Contractor',
-    role_category: 'task',
-    role_description: null,
-    status_reason: null,
-    status_details: null,
-    additional_info: null,
-    avatar_url: null,
-    two_factor_secret: null,
+    code: 'contractor',
+    name: 'Contractor',
+    category: 'task',
+    description: null,
+    role: {
+      id: 0,
+      code: 'contractor',
+      name: 'Contractor',
+      category: 'task'
+    },
+    professional_data: [],
+    projects: [],
+    languages: []
   }
 
   builders.value.unshift(newBuilder)
 }
 
-// Функция для изменения статуса пользователя
-function toggleBuilderStatus(builderId: number, currentStatus: string) {
-  const newStatus = currentStatus === 'active' ? 'registered' : 'invited'
-
-  // Обновляем локальное состояние
-  const builder = builders.value.find((b) => b.id === builderId)
-  if (builder) {
-    builder.invitation_status = newStatus
-  }
-
-  console.log(`Status updated for builder ${builderId}: ${newStatus}`)
-}
 </script>
 
 <template>
-  <div class="space-y-4 p-4 pt-4 md:space-y-6 md:p-6 md:pt-6">
+  <div class="px-4 pt-4 md:px-6 md:pt-6" style="margin-top: 0; padding-top: 2rem; padding-bottom: 0;">
     <!-- Search and Actions Bar -->
-    <div class="bg-white shadow rounded-lg p-3 sm:p-4">
-      <div class="flex items-center justify-between space-x-2 sm:space-x-4">
-        <!-- Search and Filter -->
-        <div class="flex items-center space-x-2 sm:space-x-3">
-          <!-- Search Bar -->
-          <div class="w-48 sm:w-56 md:w-64 relative">
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Search builders..."
-              class="w-full pl-7 sm:pl-8 pr-2 sm:pr-3 py-1 sm:py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
-            />
-            <svg
-              class="absolute left-2 sm:left-2.5 top-1.5 sm:top-2 h-3 w-3 sm:h-3.5 sm:w-3.5 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              ></path>
-            </svg>
-          </div>
+    <div class="bg-white shadow rounded-lg p-2 sm:p-3" style="margin-bottom: 0.5rem;">
+      <div class="flex flex-col sm:flex-row gap-4">
+        <!-- Search -->
+        <div class="flex-1">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search builders..."
+            class="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+          />
+        </div>
 
-          <!-- Filter Button with Indicator -->
+        <!-- Filters -->
+        <div class="flex gap-2">
+          <!-- Status Filter -->
           <div class="relative">
-            <button
-              @click="toggleFilters"
-              class="p-1 sm:p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
-              :class="{ 'bg-blue-50 text-blue-600': isFiltersOpen }"
-            >
-              <svg
-                class="h-3.5 w-3.5 sm:h-4 sm:w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                ></path>
-              </svg>
-            </button>
-
-            <!-- Active Filters Indicator -->
-            <div
-              v-if="hasActiveFilters"
-              class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"
-            ></div>
-          </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="flex items-center space-x-2 sm:space-x-3">
-          <!-- Pending Toggle Button -->
-          <button
-            @click="toggleViewMode"
-            :class="[
-              'px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-md transition-colors text-xs sm:text-sm flex items-center space-x-1',
-              viewMode === 'pending'
-                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-            ]"
-          >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              ></path>
-            </svg>
-            <span>{{ viewMode === 'pending' ? 'Pending' : 'Registered' }}</span>
-          </button>
-
-          <!-- Add Builder Button -->
-          <button
-            @click="openInviteDialog"
-            class="bg-blue-600 text-white px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-md hover:bg-blue-700 transition-colors text-xs sm:text-sm"
-          >
-            + Add Builder
-          </button>
-        </div>
-      </div>
-
-      <!-- Filters Panel -->
-      <div v-if="isFiltersOpen" class="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-200">
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          <div>
-            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1">User Type</label>
             <select
               v-model="userTypeFilter"
-              class="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
+              class="px-2 py-1 pr-6 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-700 appearance-none cursor-pointer"
             >
-              <option value="">All Types</option>
-              <option v-for="type in userTypeOptions" :key="type" :value="type">
-                {{ getRoleDisplayName(type) }}
-              </option>
+              <option value="" class="text-gray-500">All Types</option>
+              <option value="architect" class="text-gray-700">Architect</option>
+              <option value="contractor" class="text-gray-700">Contractor</option>
+              <option value="project_manager" class="text-gray-700">Project Manager</option>
             </select>
+            <!-- Dropdown Arrow -->
+            <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </div>
           </div>
-          <div>
-            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
-              >User Status</label
-            >
+
+          <!-- View Mode Filter -->
+          <div class="relative">
             <select
-              v-model="statusFilter"
-              class="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
+              v-model="viewMode"
+              class="px-2 py-1 pr-6 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-700 appearance-none cursor-pointer"
             >
-              <option value="">All User Statuses</option>
-              <option value="1">Active</option>
-              <option value="0">Inactive</option>
+              <option value="registered" class="text-gray-700">Registered</option>
+              <option value="pending" class="text-gray-700">Pending</option>
             </select>
-          </div>
-          <div>
-            <label class="block text-xs sm:text-sm font-medium text-gray-700 mb-1"
-              >Invitation Status</label
-            >
-            <select
-              v-model="invitationStatusFilter"
-              class="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
-            >
-              <option value="">All Invitation Statuses</option>
-              <option value="registered">Registered</option>
-              <option value="invited">Invited</option>
-              <option value="expired">Expired</option>
-            </select>
-          </div>
-          <div class="flex items-end">
-            <button
-              @click="clearFilters"
-              class="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-xs sm:text-sm"
-            >
-              Clear Filters
-            </button>
+            <!-- Dropdown Arrow -->
+            <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </div>
           </div>
         </div>
       </div>
+
     </div>
 
     <!-- Builders Table/List -->
-    <div class="bg-white shadow rounded-lg overflow-hidden">
-      <div class="px-4 py-4 border-b border-gray-200 sm:px-6">
-        <div
-          class="flex flex-col space-y-2 sm:flex-row sm:justify-between sm:items-center sm:space-y-0"
-        >
-          <h3 class="text-lg font-medium text-gray-900">
-            Builders ({{ filteredBuilders.length }})
-          </h3>
-          <div v-if="loading" class="flex items-center text-sm text-gray-500">
-            <svg
-              class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"
-              ></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              ></path>
-            </svg>
-            Loading from database...
-          </div>
-        </div>
-      </div>
+    <div class="bg-white shadow rounded-lg overflow-hidden" style="margin-bottom: 0; margin-top: 0;">
 
       <!-- Error Message -->
       <div v-if="error" class="px-4 py-3 bg-red-50 border-b border-red-200">
@@ -575,6 +432,87 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
           </div>
           <div class="ml-3">
             <p class="text-sm text-red-800">{{ error }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagination Top -->
+      <div v-if="totalItems > 0" class="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-200 sm:px-6">
+        <div class="flex-1 flex justify-between sm:hidden">
+          <button
+            @click="goToPage(currentPage - 1)"
+            :disabled="currentPage <= 1"
+            class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <button
+            @click="goToPage(currentPage + 1)"
+            :disabled="currentPage >= totalPages"
+            class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div class="flex items-center space-x-4">
+            <p class="text-sm text-gray-700">
+              Showing
+              <span class="font-medium">{{ startIndex + 1 }}</span>
+              to
+              <span class="font-medium">{{ endIndex }}</span>
+              of
+              <span class="font-medium">{{ totalItems }}</span>
+              results
+            </p>
+            <div class="flex items-center space-x-2">
+              <label for="page-size-top" class="text-sm text-gray-700">Show:</label>
+              <select
+                id="page-size-top"
+                v-model="itemsPerPage"
+                @change="changePageSize(itemsPerPage)"
+                class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              <button
+                @click="goToPage(currentPage - 1)"
+                :disabled="currentPage <= 1"
+                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span class="sr-only">Previous</span>
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+              </button>
+              <button
+                v-for="page in totalPages"
+                :key="page"
+                @click="goToPage(page)"
+                :class="[
+                  'relative inline-flex items-center px-4 py-2 border text-sm font-medium',
+                  page === currentPage
+                    ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                    : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                ]"
+              >
+                {{ page }}
+              </button>
+              <button
+                @click="goToPage(currentPage + 1)"
+                :disabled="currentPage >= totalPages"
+                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span class="sr-only">Next</span>
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </nav>
           </div>
         </div>
       </div>
@@ -602,28 +540,42 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
               <th
                 class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32"
               >
-                User Status
-              </th>
-              <th
-                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32"
-              >
-                Invitation
+                Status
               </th>
               <th
                 class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40"
               >
-                {{ viewMode === 'pending' ? 'Invited' : 'Last Active' }}
+                Cultural Group
+              </th>
+              <th
+                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40"
+              >
+                Languages
+              </th>
+              <th
+                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32"
+              >
+                Details
               </th>
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="builder in filteredBuilders" :key="builder.id">
+            <tr v-for="builder in paginatedBuilders" :key="builder.id">
               <td class="px-4 py-4 whitespace-nowrap w-48">
                 <div class="flex items-center">
+                  <!-- Avatar -->
+                  <div v-if="builder.avatar_url" class="w-10 h-10 flex-shrink-0">
+                    <img
+                      :src="builder.avatar_url"
+                      :alt="builder.first_name + ' ' + builder.last_name"
+                      class="w-10 h-10 rounded-full object-cover"
+                    />
+                  </div>
                   <div
-                    class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0"
+                    v-else
+                    class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0"
                   >
-                    <span class="text-white text-xs font-medium">
+                    <span class="text-white text-sm font-medium">
                       {{
                         (builder.first_name + ' ' + builder.last_name)
                           .split(' ')
@@ -642,60 +594,56 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-64">
                 <div class="text-sm text-gray-900 truncate">{{ builder.email }}</div>
+                <div v-if="builder.phone" class="text-sm text-gray-500 truncate">{{ builder.phone }}</div>
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-48">
                 <span
-                  :class="getUserTypeColor(builder.role_code as UserType)"
+                  :class="getUserTypeColor(builder.role?.code as UserType)"
                   class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                 >
-                  {{ builder.role_name }}
+                  {{ builder.role?.name || builder.name }}
                 </span>
-                <div :class="getJobTitleClass(builder)" class="text-sm truncate mt-1">
-                  {{ getJobTitleDisplay(builder) }}
-                </div>
-              </td>
-              <td class="px-4 py-4 whitespace-nowrap w-32">
-                <span
-                  v-if="viewMode === 'pending'"
-                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"
-                >
-                  Pending
-                </span>
-                <div v-else class="flex flex-col">
-                  <span
-                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                    :class="{
-                      'bg-green-100 text-green-800': builder.status === 1,
-                      'bg-red-100 text-red-800': builder.status === 0,
-                    }"
-                  >
-                    {{ builder.status === 1 ? 'Active' : 'Inactive' }}
-                  </span>
+                <div v-if="builder.job_title" class="text-sm text-gray-600 truncate mt-1">
+                  {{ builder.job_title }}
                 </div>
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-32">
                 <span
                   class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                   :class="{
-                    'bg-green-100 text-green-800': builder.invitation_status === 'registered',
-                    'bg-yellow-100 text-yellow-800': builder.invitation_status === 'invited',
-                    'bg-red-100 text-red-800': builder.invitation_status === 'expired',
+                    'bg-green-100 text-green-800': builder.status === 1,
+                    'bg-red-100 text-red-800': builder.status === 0,
                   }"
                 >
-                  {{
-                    builder.invitation_status === 'registered'
-                      ? 'Registered'
-                      : builder.invitation_status === 'invited'
-                        ? 'Invited'
-                        : 'Expired'
-                  }}
+                  {{ builder.status === 1 ? 'Active' : 'Inactive' }}
                 </span>
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-40">
-                <span v-if="viewMode === 'pending'" class="text-sm text-gray-500 truncate">
-                  {{ formatDate(builder.created_at) }}
+                <span class="text-sm text-gray-900">
+                  {{ getWorkforceGroupDisplay(builder.workforce_group) }}
                 </span>
-                <span class="text-sm text-gray-400">N/A</span>
+              </td>
+              <td class="px-4 py-4 whitespace-nowrap w-40">
+                <div v-if="builder.languages && builder.languages.length > 0" class="text-sm">
+                  <div v-for="(lang, index) in builder.languages.slice(0, 2)" :key="index" class="text-gray-900">
+                    {{ lang.name }} ({{ lang.prof_level }})
+                  </div>
+                  <div v-if="builder.languages.length > 2" class="text-gray-500 text-xs">
+                    +{{ builder.languages.length - 2 }} more
+                  </div>
+                </div>
+                <span v-else class="text-sm text-gray-400">—</span>
+              </td>
+              <td class="px-4 py-4 whitespace-nowrap w-32">
+                <button
+                  @click="openUserDetails(builder)"
+                  class="inline-flex items-center px-2 py-1 rounded-md text-sm font-medium text-blue-600 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                >
+                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  Details
+                </button>
               </td>
             </tr>
           </tbody>
@@ -705,10 +653,18 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
       <!-- Mobile/Tablet Cards -->
       <div class="lg:hidden">
         <div class="divide-y divide-gray-200">
-          <div v-for="builder in filteredBuilders" :key="builder.id" class="p-4 hover:bg-gray-50">
+          <div v-for="builder in paginatedBuilders" :key="builder.id" class="p-4 hover:bg-gray-50">
             <div class="flex items-start space-x-3">
               <!-- Avatar -->
+              <div v-if="builder.avatar_url" class="w-12 h-12 flex-shrink-0">
+                <img
+                  :src="builder.avatar_url"
+                  :alt="builder.first_name + ' ' + builder.last_name"
+                  class="w-12 h-12 rounded-full object-cover"
+                />
+              </div>
               <div
+                v-else
                 class="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0"
               >
                 <span class="text-white text-sm font-medium">
@@ -730,38 +686,59 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
                     </h4>
                     <p class="text-sm text-gray-500">ID: {{ builder.id }}</p>
                   </div>
-                  <!-- Кликабельный статус -->
-                  <button
-                    @click="
-                      toggleBuilderStatus(builder.id, builder.status === 1 ? 'active' : 'inactive')
-                    "
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors"
+                  <span
+                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                     :class="{
-                      'bg-green-100 text-green-800 hover:bg-green-200': builder.status === 1,
-                      'bg-red-100 text-red-800 hover:bg-red-200': builder.status === 0,
+                      'bg-green-100 text-green-800': builder.status === 1,
+                      'bg-red-100 text-red-800': builder.status === 0,
                     }"
                   >
                     {{ builder.status === 1 ? 'Active' : 'Inactive' }}
-                  </button>
+                  </span>
                 </div>
 
                 <!-- Contact Info -->
                 <div class="mb-2">
                   <p class="text-sm text-gray-900">{{ builder.email }}</p>
+                  <p v-if="builder.phone" class="text-sm text-gray-500">{{ builder.phone }}</p>
                 </div>
 
-                <!-- Type and Job Title -->
+                <!-- Role and Job Title -->
                 <div class="flex flex-wrap items-center gap-2 mb-2">
                   <span
-                    :class="getUserTypeColor(builder.role_code as UserType)"
+                    :class="getUserTypeColor(builder.role?.code as UserType)"
                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                   >
-                    {{ builder.role_name }}
+                    {{ builder.role?.name || builder.name }}
                   </span>
-                  <div :class="getJobTitleClass(builder)" class="text-xs">
-                    {{ getJobTitleDisplay(builder) }}
+                  <span v-if="builder.job_title" class="text-xs text-gray-600">
+                    {{ builder.job_title }}
+                  </span>
+                </div>
+
+                <!-- Cultural Group and Languages -->
+                <div class="flex flex-wrap items-center gap-2 mb-3">
+                  <span v-if="builder.workforce_group" class="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                    {{ getWorkforceGroupDisplay(builder.workforce_group) }}
+                  </span>
+                  <div v-if="builder.languages && builder.languages.length > 0" class="text-xs text-gray-600">
+                    {{ builder.languages.slice(0, 2).map((l: any) => l.name).join(', ') }}
+                    <span v-if="builder.languages.length > 2" class="text-gray-400">
+                      +{{ builder.languages.length - 2 }} more
+                    </span>
                   </div>
                 </div>
+
+                <!-- Details Button -->
+                <button
+                  @click="openUserDetails(builder)"
+                  class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-blue-600 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                >
+                  <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  Details
+                </button>
               </div>
             </div>
           </div>
@@ -769,8 +746,89 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
       </div>
 
       <!-- Empty state -->
-      <div v-if="filteredBuilders.length === 0" class="p-6 text-center text-gray-500">
+      <div v-if="paginatedBuilders.length === 0" class="p-6 text-center text-gray-500">
         <p>No builders found matching your criteria.</p>
+      </div>
+
+      <!-- Pagination -->
+      <div v-if="totalItems > 0" class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+        <div class="flex-1 flex justify-between sm:hidden">
+          <button
+            @click="goToPage(currentPage - 1)"
+            :disabled="currentPage <= 1"
+            class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Previous
+          </button>
+          <button
+            @click="goToPage(currentPage + 1)"
+            :disabled="currentPage >= totalPages"
+            class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+          <div class="flex items-center space-x-4">
+            <p class="text-sm text-gray-700">
+              Showing
+              <span class="font-medium">{{ startIndex + 1 }}</span>
+              to
+              <span class="font-medium">{{ endIndex }}</span>
+              of
+              <span class="font-medium">{{ totalItems }}</span>
+              results
+            </p>
+            <div class="flex items-center space-x-2">
+              <label for="page-size" class="text-sm text-gray-700">Show:</label>
+              <select
+                id="page-size"
+                v-model="itemsPerPage"
+                @change="changePageSize(itemsPerPage)"
+                class="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option v-for="size in pageSizeOptions" :key="size" :value="size">{{ size }}</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+              <button
+                @click="goToPage(currentPage - 1)"
+                :disabled="currentPage <= 1"
+                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span class="sr-only">Previous</span>
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+              </button>
+              <button
+                v-for="page in totalPages"
+                :key="page"
+                @click="goToPage(page)"
+                :class="[
+                  'relative inline-flex items-center px-4 py-2 border text-sm font-medium',
+                  page === currentPage
+                    ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                    : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                ]"
+              >
+                {{ page }}
+              </button>
+              <button
+                @click="goToPage(currentPage + 1)"
+                :disabled="currentPage >= totalPages"
+                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span class="sr-only">Next</span>
+                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </nav>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -791,5 +849,359 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
       @close="closeInviteDialog"
       @invite-sent="handleInviteSent"
     />
-  </div>
+
+    <!-- User Details Modal -->
+    <div v-if="isUserDetailsOpen" class="fixed inset-0 z-50 overflow-y-auto">
+      <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:p-0">
+        <!-- Background overlay -->
+        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeUserDetails"></div>
+
+        <!-- Modal panel -->
+        <div class="bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:max-w-6xl sm:w-full max-h-[90vh] flex flex-col">
+          <!-- Header - Fixed -->
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4 flex-shrink-0">
+            <div class="sm:flex sm:items-start">
+              <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
+                <!-- Header -->
+                <div class="flex items-center justify-between mb-6">
+                  <div class="flex items-center">
+                    <div v-if="selectedUser?.avatar_url" class="w-16 h-16 flex-shrink-0">
+                      <img
+                        :src="selectedUser.avatar_url"
+                        :alt="selectedUser.first_name + ' ' + selectedUser.last_name"
+                        class="w-16 h-16 rounded-full object-cover"
+                      />
+                    </div>
+                    <div
+                      v-else
+                      class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0"
+                    >
+                      <span class="text-white text-xl font-medium">
+                        {{
+                          (selectedUser?.first_name + ' ' + selectedUser?.last_name)
+                            .split(' ')
+                            .map((n) => n.charAt(0))
+                            .join('')
+                        }}
+                      </span>
+                    </div>
+                    <div class="ml-4">
+                      <h3 class="text-lg font-medium text-gray-900">
+                        {{ selectedUser?.first_name }} {{ selectedUser?.last_name }}
+                      </h3>
+                      <p class="text-sm text-gray-500">ID: {{ selectedUser?.id }}</p>
+                    </div>
+                  </div>
+                  <button
+                    @click="closeUserDetails"
+                    class="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Scrollable Content -->
+          <div class="flex-1 overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6">
+            <div v-if="selectedUser" class="space-y-6">
+                  <!-- Personal Information -->
+                  <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">Personal Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label class="text-sm font-medium text-gray-500">Email</label>
+                        <p class="text-sm text-gray-900">{{ selectedUser.email }}</p>
+                      </div>
+                      <div v-if="selectedUser.phone">
+                        <label class="text-sm font-medium text-gray-500">Phone</label>
+                        <p class="text-sm text-gray-900">{{ selectedUser.phone }}</p>
+                      </div>
+                      <div v-if="selectedUser.dob">
+                        <label class="text-sm font-medium text-gray-500">Date of Birth</label>
+                        <p class="text-sm text-gray-900">{{ selectedUser.dob }}</p>
+                      </div>
+                      <div v-if="selectedUser.gender">
+                        <label class="text-sm font-medium text-gray-500">Gender</label>
+                        <p class="text-sm text-gray-900">{{ selectedUser.gender }}</p>
+                      </div>
+                      <div v-if="selectedUser.nationality">
+                        <label class="text-sm font-medium text-gray-500">Nationality</label>
+                        <p class="text-sm text-gray-900">{{ selectedUser.nationality }}</p>
+                      </div>
+                      <div v-if="selectedUser.country_of_origin">
+                        <label class="text-sm font-medium text-gray-500">Country of Origin</label>
+                        <p class="text-sm text-gray-900">{{ selectedUser.country_of_origin }}</p>
+                      </div>
+                      <div v-if="selectedUser.workforce_group">
+                        <label class="text-sm font-medium text-gray-500">Cultural Group</label>
+                        <p class="text-sm text-gray-900">{{ getWorkforceGroupDisplay(selectedUser.workforce_group) }}</p>
+                      </div>
+                      <div v-if="selectedUser.city">
+                        <label class="text-sm font-medium text-gray-500">City</label>
+                        <p class="text-sm text-gray-900">{{ selectedUser.city }}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Professional Information -->
+                  <div class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">Professional Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label class="text-sm font-medium text-gray-500">Role</label>
+                        <p class="text-sm text-gray-900">{{ selectedUser.role?.name || selectedUser.name }}</p>
+                      </div>
+                      <div v-if="selectedUser.job_title">
+                        <label class="text-sm font-medium text-gray-500">Job Title</label>
+                        <p class="text-sm text-gray-900">{{ selectedUser.job_title }}</p>
+                      </div>
+                      <div>
+                        <label class="text-sm font-medium text-gray-500">Status</label>
+                        <span
+                          class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                          :class="{
+                            'bg-green-100 text-green-800': selectedUser.status === 1,
+                            'bg-red-100 text-red-800': selectedUser.status === 0,
+                          }"
+                        >
+                          {{ selectedUser.status === 1 ? 'Active' : 'Inactive' }}
+                        </span>
+                      </div>
+                      <div v-if="selectedUser.role?.category">
+                        <label class="text-sm font-medium text-gray-500">Category</label>
+                        <p class="text-sm text-gray-900">{{ selectedUser.role.category }}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Professional Data -->
+                  <div v-if="selectedUser.professional_data && selectedUser.professional_data.length > 0" class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">Professional Details</h4>
+                    <div v-for="(prof, index) in selectedUser.professional_data" :key="index" class="mb-6 p-4 bg-white rounded-lg border">
+                      <h5 class="text-md font-medium text-gray-900 mb-4">Professional Record #{{ index + 1 }}</h5>
+
+                      <!-- Education Section -->
+                      <div v-if="prof.education_level || prof.field_of_study || prof.institution_name || prof.graduation_year" class="mb-6">
+                        <h6 class="text-sm font-semibold text-gray-700 mb-3 border-b border-gray-200 pb-1">Education</h6>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div v-if="prof.education_level">
+                            <label class="font-medium text-gray-500">Education Level</label>
+                            <p class="text-gray-900">{{ prof.education_level }}</p>
+                          </div>
+                          <div v-if="prof.field_of_study">
+                            <label class="font-medium text-gray-500">Field of Study</label>
+                            <p class="text-gray-900">{{ prof.field_of_study }}</p>
+                          </div>
+                          <div v-if="prof.institution_name">
+                            <label class="font-medium text-gray-500">Institution</label>
+                            <p class="text-gray-900">{{ prof.institution_name }}</p>
+                          </div>
+                          <div v-if="prof.graduation_year">
+                            <label class="font-medium text-gray-500">Graduation Year</label>
+                            <p class="text-gray-900">{{ prof.graduation_year }}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Experience Section -->
+                      <div v-if="prof.total_experience || prof.specialized_experience || prof.key_projects || prof.previous_employers || prof.references" class="mb-6">
+                        <h6 class="text-sm font-semibold text-gray-700 mb-3 border-b border-gray-200 pb-1">Experience & Employment</h6>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div v-if="prof.total_experience">
+                            <label class="font-medium text-gray-500">Total Experience</label>
+                            <p class="text-gray-900">{{ prof.total_experience }} years</p>
+                          </div>
+                          <div v-if="prof.specialized_experience">
+                            <label class="font-medium text-gray-500">Specialized Experience</label>
+                            <p class="text-gray-900">{{ prof.specialized_experience }}</p>
+                          </div>
+                          <div v-if="prof.key_projects" class="md:col-span-2">
+                            <label class="font-medium text-gray-500">Key Projects</label>
+                            <p class="text-gray-900">{{ prof.key_projects }}</p>
+                          </div>
+                          <div v-if="prof.previous_employers" class="md:col-span-2">
+                            <label class="font-medium text-gray-500">Previous Employers</label>
+                            <p class="text-gray-900">{{ prof.previous_employers }}</p>
+                          </div>
+                          <div v-if="prof.references" class="md:col-span-2">
+                            <label class="font-medium text-gray-500">References</label>
+                            <p class="text-gray-900">{{ prof.references }}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Skills & Summary Section -->
+                      <div v-if="prof.specialized_skills || prof.professional_summary" class="mb-6">
+                        <h6 class="text-sm font-semibold text-gray-700 mb-3 border-b border-gray-200 pb-1">Skills & Summary</h6>
+                        <div class="grid grid-cols-1 gap-4 text-sm">
+                          <div v-if="prof.specialized_skills">
+                            <label class="font-medium text-gray-500">Specialized Skills</label>
+                            <p class="text-gray-900">{{ prof.specialized_skills }}</p>
+                          </div>
+                          <div v-if="prof.professional_summary">
+                            <label class="font-medium text-gray-500">Professional Summary</label>
+                            <p class="text-gray-900">{{ prof.professional_summary }}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Availability & Travel Section -->
+                      <div v-if="prof.availability || prof.travel_willingness" class="mb-6">
+                        <h6 class="text-sm font-semibold text-gray-700 mb-3 border-b border-gray-200 pb-1">Availability & Travel</h6>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div v-if="prof.availability">
+                            <label class="font-medium text-gray-500">Availability</label>
+                            <p class="text-gray-900">{{ prof.availability }}</p>
+                          </div>
+                          <div v-if="prof.travel_willingness">
+                            <label class="font-medium text-gray-500">Travel Willingness</label>
+                            <p class="text-gray-900">{{ prof.travel_willingness }}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Certifications & Licenses Section -->
+                      <div v-if="prof.drivers_license || prof.red_seal || prof.provincial_certificate || prof.union_membership" class="mb-6">
+                        <h6 class="text-sm font-semibold text-gray-700 mb-3 border-b border-gray-200 pb-1">Certifications & Licenses</h6>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div v-if="prof.drivers_license">
+                            <label class="font-medium text-gray-500">Driver's License</label>
+                            <p class="text-gray-900">{{ prof.drivers_license }}</p>
+                          </div>
+                          <div v-if="prof.red_seal">
+                            <label class="font-medium text-gray-500">Red Seal</label>
+                            <p class="text-gray-900">{{ prof.red_seal }}</p>
+                          </div>
+                          <div v-if="prof.provincial_certificate">
+                            <label class="font-medium text-gray-500">Provincial Certificate</label>
+                            <p class="text-gray-900">{{ prof.provincial_certificate }}</p>
+                          </div>
+                          <div v-if="prof.union_membership">
+                            <label class="font-medium text-gray-500">Union Membership</label>
+                            <p class="text-gray-900">{{ prof.union_membership }}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Equipment & Tools Section -->
+                      <div v-if="prof.equipment_tools" class="mb-6">
+                        <h6 class="text-sm font-semibold text-gray-700 mb-3 border-b border-gray-200 pb-1">Equipment & Tools</h6>
+                        <div class="text-sm">
+                          <label class="font-medium text-gray-500">Equipment & Tools</label>
+                          <p class="text-gray-900">{{ prof.equipment_tools }}</p>
+                        </div>
+                      </div>
+
+                      <!-- Safety Certifications Section -->
+                      <div v-if="prof.whmis || prof.first_aid || prof.fall_protection || prof.confined_space || prof.lockout_tagout || prof.other_safety" class="mb-6">
+                        <h6 class="text-sm font-semibold text-gray-700 mb-3 border-b border-gray-200 pb-1">Safety Certifications</h6>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                          <div v-if="prof.whmis">
+                            <label class="font-medium text-gray-500">WHMIS</label>
+                            <p class="text-gray-900">{{ prof.whmis }}</p>
+                          </div>
+                          <div v-if="prof.first_aid">
+                            <label class="font-medium text-gray-500">First Aid</label>
+                            <p class="text-gray-900">{{ prof.first_aid }}</p>
+                          </div>
+                          <div v-if="prof.fall_protection">
+                            <label class="font-medium text-gray-500">Fall Protection</label>
+                            <p class="text-gray-900">{{ prof.fall_protection }}</p>
+                          </div>
+                          <div v-if="prof.confined_space">
+                            <label class="font-medium text-gray-500">Confined Space</label>
+                            <p class="text-gray-900">{{ prof.confined_space }}</p>
+                          </div>
+                          <div v-if="prof.lockout_tagout">
+                            <label class="font-medium text-gray-500">Lockout/Tagout</label>
+                            <p class="text-gray-900">{{ prof.lockout_tagout }}</p>
+                          </div>
+                          <div v-if="prof.other_safety">
+                            <label class="font-medium text-gray-500">Other Safety Certifications</label>
+                            <p class="text-gray-900">{{ prof.other_safety }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Languages -->
+                  <div v-if="selectedUser.languages && selectedUser.languages.length > 0" class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">Languages</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div v-for="lang in selectedUser.languages" :key="lang.id" class="flex justify-between items-center p-3 bg-white rounded border">
+                        <span class="text-sm font-medium text-gray-900">{{ lang.name }}</span>
+                        <span class="text-sm text-gray-600 bg-blue-100 px-2 py-1 rounded">{{ lang.prof_level }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Projects -->
+                  <div v-if="selectedUser.projects && selectedUser.projects.length > 0" class="bg-gray-50 p-4 rounded-lg">
+                    <h4 class="text-lg font-medium text-gray-900 mb-4">Current Projects</h4>
+                    <div class="space-y-3">
+                      <div v-for="project in selectedUser.projects" :key="project.id" class="p-3 bg-white rounded border">
+                        <div class="flex justify-between items-start">
+                          <div>
+                            <div class="text-sm font-medium text-gray-900">{{ project.name }}</div>
+                            <div class="text-sm text-gray-600">{{ project.address }}</div>
+                            <div class="text-sm text-gray-500">Manager: {{ project.manager.first_name }} {{ project.manager.last_name }}</div>
+                          </div>
+                          <div class="text-right">
+                            <div class="text-sm text-gray-500">Role: {{ project.role_in_project }}</div>
+                            <div class="text-sm text-gray-500">{{ project.date_start }} - {{ project.date_end }}</div>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                                  :class="{
+                                    'bg-green-100 text-green-800': project.status === 'active',
+                                    'bg-yellow-100 text-yellow-800': project.status === 'draft',
+                                    'bg-red-100 text-red-800': project.status === 'completed'
+                                  }">
+                              {{ project.status }}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Emergency Information -->
+                  <div v-if="selectedUser.emergency" class="bg-red-50 p-4 rounded-lg border border-red-200">
+                    <h4 class="text-lg font-medium text-red-900 mb-4">Emergency Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div v-if="selectedUser.emergency.primary_contact_name">
+                        <label class="font-medium text-red-700">Primary Contact</label>
+                        <p class="text-red-900">{{ selectedUser.emergency.primary_contact_name }}</p>
+                      </div>
+                      <div v-if="selectedUser.emergency.primary_contact_phone">
+                        <label class="font-medium text-red-700">Primary Phone</label>
+                        <p class="text-red-900">{{ selectedUser.emergency.primary_contact_phone }}</p>
+                      </div>
+                      <div v-if="selectedUser.emergency.blood_type">
+                        <label class="font-medium text-red-700">Blood Type</label>
+                        <p class="text-red-900">{{ selectedUser.emergency.blood_type }}</p>
+                      </div>
+                      <div v-if="selectedUser.emergency.allergies">
+                        <label class="font-medium text-red-700">Allergies</label>
+                        <p class="text-red-900">{{ selectedUser.emergency.allergies }}</p>
+                      </div>
+                      <div v-if="selectedUser.emergency.medical_conditions">
+                        <label class="font-medium text-red-700">Medical Conditions</label>
+                        <p class="text-red-900">{{ selectedUser.emergency.medical_conditions }}</p>
+                      </div>
+                      <div v-if="selectedUser.emergency.medications">
+                        <label class="font-medium text-red-700">Medications</label>
+                        <p class="text-red-900">{{ selectedUser.emergency.medications }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 </template>

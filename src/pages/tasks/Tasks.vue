@@ -1,5 +1,5 @@
 <template>
-  <div class="tasks pt-4 md:pt-6">
+  <div class="tasks">
       <div class="bg-orange-600 text-white p-6 rounded-lg mb-6">
         <h1 class="text-3xl font-bold">My Tasks</h1>
         <p class="text-orange-100">Manage your assigned tasks</p>

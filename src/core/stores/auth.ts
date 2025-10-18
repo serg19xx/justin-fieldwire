@@ -1144,4 +1144,35 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // Check if user session is valid
+  async function checkSession(): Promise<boolean> {
+    try {
+      console.log('🔍 Checking session validity...')
+
+      // Check if user is authenticated
+      if (!isAuthenticated.value || !currentUser.value) {
+        console.log('❌ User not authenticated')
+        return false
+      }
+
+      // Check if token exists
+      const token = localStorage.getItem('authToken')
+      if (!token) {
+        console.log('❌ No token found')
+        return false
+      }
+
+      // Check if token is expired
+      if (isTokenExpired(token)) {
+        console.log('❌ Token is expired')
+        return false
+      }
+
+      console.log('✅ Session is valid')
+      return true
+    } catch (error) {
+      console.error('❌ Session check error:', error)
+      return false
+    }
+  }
 })
