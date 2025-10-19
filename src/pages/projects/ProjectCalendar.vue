@@ -57,8 +57,8 @@ const canSeeDependencyIndicators = computed(() => {
   const showForRoles = ['admin', 'project_manager', 'supervisor']
 
   // Also check if user has project management permissions
-  const hasProjectManagementPermissions = authStore.checkPermission('manage_projects') ||
-                                        authStore.checkPermission('manage_tasks')
+  const hasProjectManagementPermissions =
+    authStore.checkPermission('manage_projects') || authStore.checkPermission('manage_tasks')
 
   return showForRoles.includes(userRole || '') || hasProjectManagementPermissions
 })
@@ -85,7 +85,6 @@ const searchResults = ref<Task[]>([])
 const currentSearchIndex = ref(0)
 const isSearchActive = ref(false)
 
-
 function searchTasks(query: string) {
   console.log('🔍 Search function called with query:', query)
   console.log('📋 Available tasks:', tasks.value.length)
@@ -100,7 +99,7 @@ function searchTasks(query: string) {
   console.log('🔍 Searching for:', searchTerm)
 
   // Find tasks that match the search query
-  const matchingTasks = tasks.value.filter(task => {
+  const matchingTasks = tasks.value.filter((task) => {
     const nameMatch = task.name.toLowerCase().includes(searchTerm)
     const notesMatch = task.notes?.toLowerCase().includes(searchTerm) || false
     const wbsMatch = task.wbs_path?.toLowerCase().includes(searchTerm) || false
@@ -134,7 +133,10 @@ function navigateToSearchResult(index: number) {
   const task = searchResults.value[index]
   currentSearchIndex.value = index
 
-  console.log(`🎯 Navigating to search result ${index + 1}/${searchResults.value.length}:`, task.name)
+  console.log(
+    `🎯 Navigating to search result ${index + 1}/${searchResults.value.length}:`,
+    task.name,
+  )
 
   // Select the task
   selectedTask.value = task
@@ -170,9 +172,8 @@ function nextSearchResult() {
 function previousSearchResult() {
   if (searchResults.value.length === 0) return
 
-  const prevIndex = currentSearchIndex.value === 0
-    ? searchResults.value.length - 1
-    : currentSearchIndex.value - 1
+  const prevIndex =
+    currentSearchIndex.value === 0 ? searchResults.value.length - 1 : currentSearchIndex.value - 1
   navigateToSearchResult(prevIndex)
 }
 
@@ -187,7 +188,7 @@ const simpleBoundsDialog = ref({
   adjustedEnd: '',
   reason: '',
   onCancel: null as (() => void) | null,
-  onAdjust: null as (() => Promise<void>) | null
+  onAdjust: null as (() => Promise<void>) | null,
 })
 
 // Dependency validation dialog state
@@ -195,14 +196,21 @@ const dependencyDialog = ref({
   isOpen: false,
   taskStart: '',
   taskEnd: '',
-  violatedConstraints: [] as Array<{taskId: string; predecessorId: string; type: 'FS' | 'SS' | 'FF' | 'SF'; lagDays: number; predecessorName: string; predecessorEndDate?: string; predecessorStartDate?: string}>,
+  violatedConstraints: [] as Array<{
+    taskId: string
+    predecessorId: string
+    type: 'FS' | 'SS' | 'FF' | 'SF'
+    lagDays: number
+    predecessorName: string
+    predecessorEndDate?: string
+    predecessorStartDate?: string
+  }>,
   suggestedStart: '',
   suggestedEnd: '',
   reason: '',
   onCancel: null as (() => void) | null,
-  onAdjust: null as (() => Promise<void>) | null
+  onAdjust: null as (() => Promise<void>) | null,
 })
-
 
 // Double-click detection for dates and events
 const lastDateClick = ref<{ date: string; time: number } | null>(null)
@@ -240,7 +248,7 @@ const milestoneDialog = ref({
 // Available tasks for dependencies (exclude current task)
 const availableTasksForDependencies = computed(() => {
   if (taskDialog.value.task) {
-    return tasks.value.filter(t => String(t.id) !== String(taskDialog.value.task?.id))
+    return tasks.value.filter((t) => String(t.id) !== String(taskDialog.value.task?.id))
   }
   return tasks.value
 })
@@ -252,7 +260,6 @@ const currentYear = today.getFullYear()
 
 // Calendar events - static for now with current month dates
 const calendarEvents = ref<unknown[]>([])
-
 
 // Initialize with empty events
 // initializeEvents() - will be populated by API or mock data
@@ -268,7 +275,7 @@ function applyProjectBoundsStyling() {
     projectStart: projectInfo.value.date_start,
     projectEnd: projectInfo.value.date_end,
     projectStartObj: projectStart,
-    projectEndObj: projectEnd
+    projectEndObj: projectEnd,
   })
 
   // Get all day elements
@@ -297,7 +304,7 @@ function applyProjectBoundsStyling() {
       currentDate: currentDate.toISOString().split('T')[0],
       projectStart: projectStart.toISOString().split('T')[0],
       projectEnd: projectEnd.toISOString().split('T')[0],
-      isOutside
+      isOutside,
     })
 
     // Check if date is outside project bounds
@@ -313,7 +320,7 @@ function applyProjectBoundsStyling() {
     totalDays: dayElements.length,
     outsideBoundsCount,
     projectStart: projectInfo.value.date_start,
-    projectEnd: projectInfo.value.date_end
+    projectEnd: projectInfo.value.date_end,
   })
 }
 
@@ -345,7 +352,8 @@ const calendarOptions = ref({
       console.log('🔍 Task has dependencies:', dependencies)
     }
   },
-  events: (_info: unknown, successCallback: (events: any[]) => void) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  events: (_info: unknown, successCallback: (events: any[]) => void) => {
+    // eslint-disable-line @typescript-eslint/no-explicit-any
     console.log('📅 FullCalendar requesting events, returning:', calendarEvents.value.length)
     console.log('📅 Events data:', calendarEvents.value)
     successCallback(JSON.parse(JSON.stringify(calendarEvents.value)))
@@ -384,14 +392,16 @@ const calendarOptions = ref({
       const eventId = eventInfo.event.id
 
       // Check if this is a double-click (within 500ms of last click on same event)
-      if (lastEventClick.value &&
-          lastEventClick.value.eventId === eventId &&
-          now - lastEventClick.value.time < 500) {
+      if (
+        lastEventClick.value &&
+        lastEventClick.value.eventId === eventId &&
+        now - lastEventClick.value.time < 500
+      ) {
         console.log('📅 Event double-clicked detected:', eventInfo.event.title)
         console.log('🔧 Time between clicks:', now - lastEventClick.value.time, 'ms')
         console.log('🔧 Event ID:', eventId, 'Type:', typeof eventId)
         // Check if it's a milestone or regular task
-        const task = tasks.value.find(t => String(t.id) === String(eventId))
+        const task = tasks.value.find((t) => String(t.id) === String(eventId))
         if (task && task.milestone) {
           // Open milestone dialog for milestones
           const mode = props.canEdit ? 'edit' : 'view'
@@ -408,7 +418,7 @@ const calendarOptions = ref({
 
         // Select the task for the Delete button
         console.log('🔍 Looking for task with ID:', eventId, 'in tasks:', tasks.value.length)
-        const task = tasks.value.find(t => String(t.id) === String(eventId))
+        const task = tasks.value.find((t) => String(t.id) === String(eventId))
         console.log('🔍 Found task:', task)
 
         if (task) {
@@ -430,7 +440,7 @@ const calendarOptions = ref({
 
             // Also remove selection class from all DOM elements
             const selectedElements = document.querySelectorAll('.fc-event-selected')
-            selectedElements.forEach(element => {
+            selectedElements.forEach((element) => {
               element.classList.remove('fc-event-selected')
             })
 
@@ -457,7 +467,7 @@ const calendarOptions = ref({
                   `.fc-event[data-id="${eventId}"]`,
                   `[data-id="${eventId}"]`,
                   `.fc-event:has([data-event-id="${eventId}"])`,
-                  `.fc-event:has([data-id="${eventId}"])`
+                  `.fc-event:has([data-id="${eventId}"])`,
                 ]
 
                 for (const selector of selectors) {
@@ -465,7 +475,11 @@ const calendarOptions = ref({
                   if (eventElement) {
                     eventElement.classList.add('fc-event-selected')
                     selectionAdded = true
-                    console.log('✅ Added selection class via DOM manipulation with selector:', selector, eventId)
+                    console.log(
+                      '✅ Added selection class via DOM manipulation with selector:',
+                      selector,
+                      eventId,
+                    )
                     break
                   }
                 }
@@ -491,7 +505,7 @@ const calendarOptions = ref({
                   id: eventId,
                   title: calendarEvent.title,
                   start: calendarEvent.start,
-                  end: calendarEvent.end
+                  end: calendarEvent.end,
                 })
               }
             } else {
@@ -518,7 +532,7 @@ const calendarOptions = ref({
       isDragging: isDragging.value,
       isResizing: isResizing.value,
       canEdit: props.canEdit,
-      projectInfo: projectInfo.value
+      projectInfo: projectInfo.value,
     })
 
     // Only handle clicks when not dragging or resizing
@@ -544,21 +558,24 @@ const calendarOptions = ref({
           projectStartObj: projectStart,
           projectEndObj: projectEnd,
           isBeforeStart: clickedDate < projectStart,
-          isAfterEnd: clickedDate > projectEnd
+          isAfterEnd: clickedDate > projectEnd,
         })
-
 
         if (clickedDate < projectStart || clickedDate > projectEnd) {
           console.log('⚠️ Cannot create task outside project bounds:', dateStr)
-          alert(`Cannot create task on ${dateStr}. This date is outside the project bounds (${projectInfo.value.date_start} - ${projectInfo.value.date_end}).`)
+          alert(
+            `Cannot create task on ${dateStr}. This date is outside the project bounds (${projectInfo.value.date_start} - ${projectInfo.value.date_end}).`,
+          )
           return
         }
       }
 
       // Check if this is a double-click (within 300ms of last click on same date)
-      if (lastDateClick.value &&
-          lastDateClick.value.date === dateStr &&
-          now - lastDateClick.value.time < 300) {
+      if (
+        lastDateClick.value &&
+        lastDateClick.value.date === dateStr &&
+        now - lastDateClick.value.time < 300
+      ) {
         console.log('📅 Date double-clicked:', dateStr)
         console.log('🔧 Opening dialog with initialDate:', dateStr)
         openTaskDialog('create', null, dateStr) // Pass clicked date as initial date
@@ -580,7 +597,7 @@ const calendarOptions = ref({
 
           // Also remove selection class from all DOM elements
           const selectedElements = document.querySelectorAll('.fc-event-selected')
-          selectedElements.forEach(element => {
+          selectedElements.forEach((element) => {
             element.classList.remove('fc-event-selected')
           })
         }
@@ -595,7 +612,6 @@ const calendarOptions = ref({
 
 // Calendar ref
 const calendarRef = ref()
-
 
 // Function to update calendar events
 function updateCalendarEvents(events: unknown[]) {
@@ -621,7 +637,7 @@ function restoreTaskSelection(taskId: string | number) {
 
   // Clear any existing selection first
   const selectedElements = document.querySelectorAll('.fc-event-selected')
-  selectedElements.forEach(element => {
+  selectedElements.forEach((element) => {
     element.classList.remove('fc-event-selected')
   })
 
@@ -630,7 +646,7 @@ function restoreTaskSelection(taskId: string | number) {
     `[data-event-id="${taskId}"]`,
     `.fc-event[data-event-id="${taskId}"]`,
     `.fc-event[data-id="${taskId}"]`,
-    `[data-id="${taskId}"]`
+    `[data-id="${taskId}"]`,
   ]
 
   let selectionRestored = false
@@ -686,7 +702,9 @@ async function loadTasks() {
     console.log('📋 Tasks array updated:', tasks.value.length, 'tasks')
 
     // Convert tasks to calendar events
-    const events = tasks.value.map(task => taskToCalendarTask(task, shouldShowDependencyIndicators.value))
+    const events = tasks.value.map((task) =>
+      taskToCalendarTask(task, shouldShowDependencyIndicators.value),
+    )
     console.log('📅 Converted to calendar events:', events.length, 'events')
 
     // Update calendar events
@@ -707,18 +725,21 @@ async function loadTasks() {
               console.log('📋 Task selection restored after reload:', selectedTask.value.name)
             } else {
               // Alternative approach: manipulate the DOM element directly
-              const eventElement = document.querySelector(`[data-event-id="${selectedTask.value.id}"]`) ||
-                                 document.querySelector(`.fc-event[data-event-id="${selectedTask.value.id}"]`)
+              const eventElement =
+                document.querySelector(`[data-event-id="${selectedTask.value.id}"]`) ||
+                document.querySelector(`.fc-event[data-event-id="${selectedTask.value.id}"]`)
               if (eventElement) {
                 eventElement.classList.add('fc-event-selected')
-                console.log('📋 Task selection restored via DOM manipulation:', selectedTask.value.name)
+                console.log(
+                  '📋 Task selection restored via DOM manipulation:',
+                  selectedTask.value.name,
+                )
               }
             }
           }
         }
       }
     }, 100)
-
   } catch (err) {
     console.error('❌ Error loading tasks:', err)
     error.value = 'Failed to load tasks'
@@ -727,7 +748,6 @@ async function loadTasks() {
     loading.value = false
   }
 }
-
 
 // Load project information
 async function loadProjectInfo() {
@@ -747,7 +767,7 @@ async function loadProjectInfo() {
       dateStart: projectInfo.value?.date_start,
       dateEnd: projectInfo.value?.date_end,
       hasDateStart: 'date_start' in (projectInfo.value || {}),
-      hasDateEnd: 'date_end' in (projectInfo.value || {})
+      hasDateEnd: 'date_end' in (projectInfo.value || {}),
     })
 
     // Apply styling after project info is loaded
@@ -759,9 +779,6 @@ async function loadProjectInfo() {
     console.log('⚠️ Project info not available, calendar bounds validation disabled')
   }
 }
-
-
-
 
 // ===== ФУНКЦИИ ПРОВЕРКИ ГРАНИЦ ПРОЕКТА =====
 
@@ -778,7 +795,7 @@ function checkStartBounds(startDate: string): boolean {
   console.log('🔍 Start bounds check:', {
     startDate,
     projectStart,
-    isWithinBounds
+    isWithinBounds,
   })
 
   return isWithinBounds
@@ -797,7 +814,7 @@ function checkEndBounds(endDate: string): boolean {
   console.log('🔍 End bounds check:', {
     endDate,
     projectEnd,
-    isWithinBounds
+    isWithinBounds,
   })
 
   return isWithinBounds
@@ -806,7 +823,11 @@ function checkEndBounds(endDate: string): boolean {
 // ===== ОТДЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ОБРАБОТКИ DROP =====
 
 // Функция 1: Обработка начала задачи
-function handleStartDrop(position: 'inside' | 'boundary' | 'outside', newDate: string, taskId: string) {
+function handleStartDrop(
+  position: 'inside' | 'boundary' | 'outside',
+  newDate: string,
+  taskId: string,
+) {
   console.log('🎯 handleStartDrop:', { position, newDate, taskId })
 
   // Проверяем границы начала задачи
@@ -814,7 +835,7 @@ function handleStartDrop(position: 'inside' | 'boundary' | 'outside', newDate: s
 
   if (isStartWithinBounds) {
     // Внутри границ - обновляем начало и сохраняем длительность
-    const existingTask = tasks.value.find(task => task.id.toString() === taskId)
+    const existingTask = tasks.value.find((task) => task.id.toString() === taskId)
     if (existingTask) {
       const originalStart = new Date(existingTask.start_planned + 'T00:00:00')
       const originalEnd = new Date(existingTask.end_planned + 'T00:00:00')
@@ -834,7 +855,11 @@ function handleStartDrop(position: 'inside' | 'boundary' | 'outside', newDate: s
 }
 
 // Функция 2: Обработка конца задачи (с исключительной обработкой)
-function handleEndDrop(position: 'inside' | 'boundary' | 'outside', newDate: string, taskId: string) {
+function handleEndDrop(
+  position: 'inside' | 'boundary' | 'outside',
+  newDate: string,
+  taskId: string,
+) {
   console.log('🎯 handleEndDrop:', { position, newDate, taskId })
 
   // Используем дату как есть (без корректировки)
@@ -853,7 +878,12 @@ function handleEndDrop(position: 'inside' | 'boundary' | 'outside', newDate: str
 }
 
 // Функция 3: Обработка всей задачи
-function handleFullTaskDrop(position: 'inside' | 'boundary' | 'outside', newStart: string, newEnd: string, taskId: string) {
+function handleFullTaskDrop(
+  position: 'inside' | 'boundary' | 'outside',
+  newStart: string,
+  newEnd: string,
+  taskId: string,
+) {
   console.log('🎯 handleFullTaskDrop:', { position, newStart, newEnd, taskId })
 
   // Проверяем границы начала и конца задачи
@@ -881,7 +911,7 @@ async function handleEventDrop(info: unknown) {
 
   try {
     // Find the existing task first
-    const existingTask = tasks.value.find(task => task.id.toString() === taskId)
+    const existingTask = tasks.value.find((task) => task.id.toString() === taskId)
     if (!existingTask) {
       console.error('❌ Task not found for drag:', taskId)
       return
@@ -892,12 +922,16 @@ async function handleEventDrop(info: unknown) {
 
     // Определяем тип drop и позицию
     const newStartDate = eventInfo.event.start.toLocaleDateString('en-CA')
-    const newEndDate = existingTask.milestone ? newStartDate : (eventInfo.event.end ? (() => {
-      // Убираем день, который FullCalendar добавил для отображения
-      const endDateObj = new Date(eventInfo.event.end)
-      endDateObj.setDate(endDateObj.getDate() - 1)
-      return endDateObj.toLocaleDateString('en-CA')
-    })() : newStartDate)
+    const newEndDate = existingTask.milestone
+      ? newStartDate
+      : eventInfo.event.end
+        ? (() => {
+            // Убираем день, который FullCalendar добавил для отображения
+            const endDateObj = new Date(eventInfo.event.end)
+            endDateObj.setDate(endDateObj.getDate() - 1)
+            return endDateObj.toLocaleDateString('en-CA')
+          })()
+        : newStartDate
 
     // Определяем позицию относительно границ проекта
     const projectStart = projectInfo.value?.date_start || ''
@@ -915,7 +949,7 @@ async function handleEventDrop(info: unknown) {
       newEndDate,
       projectStart,
       projectEnd,
-      position
+      position,
     })
 
     // Определяем тип drop
@@ -934,7 +968,7 @@ async function handleEventDrop(info: unknown) {
       newStartDate,
       newEndDate,
       startChanged,
-      endChanged
+      endChanged,
     })
 
     // Если изменилось только начало - это перетаскивание начала
@@ -960,7 +994,7 @@ async function handleEventDrop(info: unknown) {
       newStartDate,
       newEndDate,
       startChanged,
-      endChanged
+      endChanged,
     })
 
     let result
@@ -981,7 +1015,7 @@ async function handleEventDrop(info: unknown) {
         ...existingTask,
         startPlanned: newStartDate,
         endPlanned: existingTask.milestone ? newStartDate : newEndDate, // For milestones, end = start
-        project_id: props.projectId
+        project_id: props.projectId,
       }
 
       // First check project bounds
@@ -1002,7 +1036,7 @@ async function handleEventDrop(info: unknown) {
             console.log('🔍 Reverting milestone to original position:', {
               originalStart: existingTask.start_planned,
               originalEnd: existingTask.end_planned,
-              isMilestone: existingTask.milestone
+              isMilestone: existingTask.milestone,
             })
             try {
               // Try using FullCalendar's built-in revert function first
@@ -1015,7 +1049,9 @@ async function handleEventDrop(info: unknown) {
               }
 
               // Fallback to manual revert
-              const manualEventInfo = info as { event: { setStart: (date: Date) => void; setEnd: (date: Date) => void } }
+              const manualEventInfo = info as {
+                event: { setStart: (date: Date) => void; setEnd: (date: Date) => void }
+              }
               const originalStartDate = new Date(existingTask.start_planned + 'T00:00:00')
               console.log('🔍 Setting start to:', originalStartDate)
               manualEventInfo.event.setStart(originalStartDate)
@@ -1049,11 +1085,14 @@ async function handleEventDrop(info: unknown) {
             console.log('🔍 Original taskData:', taskData)
             console.log('🔍 Bounds check result:', boundsCheck)
             console.log('🔍 Task ID:', taskId)
-            console.log('🔍 Is milestone:', (taskData as TaskCreateUpdate & { milestone?: boolean }).milestone)
+            console.log(
+              '🔍 Is milestone:',
+              (taskData as TaskCreateUpdate & { milestone?: boolean }).milestone,
+            )
             const adjustedTaskData = {
               ...taskData,
               startPlanned: boundsCheck.clampedStart,
-              endPlanned: boundsCheck.clampedEnd
+              endPlanned: boundsCheck.clampedEnd,
             }
             console.log('🔍 Adjusted taskData:', adjustedTaskData)
 
@@ -1080,7 +1119,11 @@ async function handleEventDrop(info: unknown) {
                   const event = calendarApi.getEventById(taskId)
                   if (event) {
                     console.log('🔍 Updating event after refresh:', taskId)
-                    console.log('🔍 New position:', adjustedTaskData.startPlanned, adjustedTaskData.endPlanned)
+                    console.log(
+                      '🔍 New position:',
+                      adjustedTaskData.startPlanned,
+                      adjustedTaskData.endPlanned,
+                    )
 
                     // Set new start date
                     const newStartDate = new Date(adjustedTaskData.startPlanned + 'T00:00:00')
@@ -1099,23 +1142,27 @@ async function handleEventDrop(info: unknown) {
               }
 
               // Update local task data
-              const taskIndex = tasks.value.findIndex(t => t.id.toString() === taskId)
+              const taskIndex = tasks.value.findIndex((t) => t.id.toString() === taskId)
               if (taskIndex > -1) {
                 tasks.value[taskIndex] = {
                   ...tasks.value[taskIndex],
                   start_planned: adjustedTaskData.startPlanned,
-                  end_planned: adjustedTaskData.endPlanned
+                  end_planned: adjustedTaskData.endPlanned,
                 }
                 console.log('📝 Task updated locally:', tasks.value[taskIndex])
 
                 // Force calendar to update with new data
-                const events = tasks.value.map(task => taskToCalendarTask(task, shouldShowDependencyIndicators.value))
+                const events = tasks.value.map((task) =>
+                  taskToCalendarTask(task, shouldShowDependencyIndicators.value),
+                )
                 updateCalendarEvents(events)
                 console.log('🔄 Calendar events updated with new task data')
               }
 
               // Update calendar display
-              const eventInfo = info as { event: { setStart: (date: Date) => void; setEnd: (date: Date) => void } }
+              const eventInfo = info as {
+                event: { setStart: (date: Date) => void; setEnd: (date: Date) => void }
+              }
               eventInfo.event.setStart(new Date(adjustedTaskData.startPlanned + 'T00:00:00'))
               if (adjustedTaskData.endPlanned) {
                 const endDate = new Date(adjustedTaskData.endPlanned + 'T00:00:00')
@@ -1134,7 +1181,7 @@ async function handleEventDrop(info: unknown) {
             } catch (error) {
               console.error('❌ Error adjusting task:', error)
             }
-          }
+          },
         }
         return
       }
@@ -1154,7 +1201,9 @@ async function handleEventDrop(info: unknown) {
           onCancel: () => {
             console.log('❌ User chose to cancel - reverting event')
             try {
-              const eventInfo = info as { event: { setStart: (date: Date) => void; setEnd: (date: Date) => void } }
+              const eventInfo = info as {
+                event: { setStart: (date: Date) => void; setEnd: (date: Date) => void }
+              }
               eventInfo.event.setStart(new Date(existingTask.start_planned + 'T00:00:00'))
               // For milestones, end should equal start
               if (existingTask.milestone) {
@@ -1181,7 +1230,7 @@ async function handleEventDrop(info: unknown) {
             const adjustedTaskData = {
               ...taskData,
               startPlanned: dependencyCheck.suggestedStartDate,
-              endPlanned: dependencyCheck.suggestedEndDate
+              endPlanned: dependencyCheck.suggestedEndDate,
             }
 
             try {
@@ -1194,17 +1243,19 @@ async function handleEventDrop(info: unknown) {
               console.log('✅ Task adjusted to respect dependencies and saved')
 
               // Update local task data
-              const taskIndex = tasks.value.findIndex(t => t.id.toString() === taskId)
+              const taskIndex = tasks.value.findIndex((t) => t.id.toString() === taskId)
               if (taskIndex > -1) {
                 tasks.value[taskIndex] = {
                   ...tasks.value[taskIndex],
                   start_planned: adjustedTaskData.startPlanned,
-                  end_planned: adjustedTaskData.endPlanned
+                  end_planned: adjustedTaskData.endPlanned,
                 }
               }
 
               // Update calendar display
-              const eventInfo = info as { event: { setStart: (date: Date) => void; setEnd: (date: Date) => void } }
+              const eventInfo = info as {
+                event: { setStart: (date: Date) => void; setEnd: (date: Date) => void }
+              }
               eventInfo.event.setStart(new Date(adjustedTaskData.startPlanned + 'T00:00:00'))
               if (adjustedTaskData.endPlanned) {
                 const endDate = new Date(adjustedTaskData.endPlanned + 'T00:00:00')
@@ -1223,7 +1274,7 @@ async function handleEventDrop(info: unknown) {
             } catch (error) {
               console.error('❌ Error adjusting task:', error)
             }
-          }
+          },
         }
         return
       }
@@ -1233,7 +1284,7 @@ async function handleEventDrop(info: unknown) {
 
       // Create task data with updated dates but keeping all other fields
       const finalStartDate = result.startDate || newStartDate
-      const finalEndDate = existingTask.milestone ? finalStartDate : (result.endDate || newEndDate)
+      const finalEndDate = existingTask.milestone ? finalStartDate : result.endDate || newEndDate
 
       const taskData = {
         ...existingTask,
@@ -1241,7 +1292,7 @@ async function handleEventDrop(info: unknown) {
         endPlanned: finalEndDate,
         start_planned: finalStartDate,
         end_planned: finalEndDate,
-        project_id: props.projectId
+        project_id: props.projectId,
       }
 
       // Update task via API
@@ -1257,13 +1308,15 @@ async function handleEventDrop(info: unknown) {
         console.log('✅ Task dates updated via API after drag:', updatedTask)
 
         // Update local task data without reloading from API
-        const taskIndex = tasks.value.findIndex(t => t.id.toString() === taskId)
+        const taskIndex = tasks.value.findIndex((t) => t.id.toString() === taskId)
         if (taskIndex !== -1) {
           tasks.value[taskIndex] = { ...tasks.value[taskIndex], ...taskData }
         }
 
         // Update calendar events
-        const events = tasks.value.map(task => taskToCalendarTask(task, shouldShowDependencyIndicators.value))
+        const events = tasks.value.map((task) =>
+          taskToCalendarTask(task, shouldShowDependencyIndicators.value),
+        )
         updateCalendarEvents(events)
 
         // Reapply project bounds styling after task drag
@@ -1279,16 +1332,24 @@ async function handleEventDrop(info: unknown) {
         console.error('❌ API update failed for drag, keeping local changes:', apiError)
       }
 
-      emit('taskUpdate', { id: taskId, start_planned: taskData.startPlanned, end_planned: taskData.endPlanned } as Task)
+      emit('taskUpdate', {
+        id: taskId,
+        start_planned: taskData.startPlanned,
+        end_planned: taskData.endPlanned,
+      } as Task)
       console.log('✅ Task moved successfully')
       return
     }
-
   } catch (error: unknown) {
     console.error('❌ Error updating task:', error)
     // Revert the change
-    if (info && typeof info === 'object' && 'revert' in info && typeof (info as Record<string, unknown>).revert === 'function') {
-      ((info as Record<string, unknown>).revert as () => void)()
+    if (
+      info &&
+      typeof info === 'object' &&
+      'revert' in info &&
+      typeof (info as Record<string, unknown>).revert === 'function'
+    ) {
+      ;((info as Record<string, unknown>).revert as () => void)()
     }
   } finally {
     // Reset dragging flag
@@ -1311,12 +1372,12 @@ async function handleEventResize(info: unknown) {
     'event.start.toISOString()': eventInfo.event.start?.toISOString(),
     'event.end.toISOString()': eventInfo.event.end?.toISOString(),
     'event.start date string': eventInfo.event.start?.toLocaleDateString('en-CA'),
-    'event.end date string': eventInfo.event.end?.toLocaleDateString('en-CA')
+    'event.end date string': eventInfo.event.end?.toLocaleDateString('en-CA'),
   })
 
   try {
     // Find the existing task first
-    const existingTask = tasks.value.find(task => task.id.toString() === taskId)
+    const existingTask = tasks.value.find((task) => task.id.toString() === taskId)
     if (!existingTask) {
       console.error('❌ Task not found for resize:', taskId)
       return
@@ -1330,13 +1391,17 @@ async function handleEventResize(info: unknown) {
 
     // Определяем тип resize
     const newStartDate = eventInfo.event.start.toLocaleDateString('en-CA')
-    const rawEndDate = eventInfo.event.end ? eventInfo.event.end.toLocaleDateString('en-CA') : newStartDate
+    const rawEndDate = eventInfo.event.end
+      ? eventInfo.event.end.toLocaleDateString('en-CA')
+      : newStartDate
     // FullCalendar uses exclusive end dates, so we need to subtract 1 day
-    const newEndDate = eventInfo.event.end ? (() => {
-      const endDate = new Date(eventInfo.event.end)
-      endDate.setDate(endDate.getDate() - 1)
-      return endDate.toLocaleDateString('en-CA')
-    })() : newStartDate
+    const newEndDate = eventInfo.event.end
+      ? (() => {
+          const endDate = new Date(eventInfo.event.end)
+          endDate.setDate(endDate.getDate() - 1)
+          return endDate.toLocaleDateString('en-CA')
+        })()
+      : newStartDate
 
     const originalStart = existingTask.start_planned
     const originalEnd = existingTask.end_planned
@@ -1351,7 +1416,7 @@ async function handleEventResize(info: unknown) {
       newStartDate,
       newEndDate,
       startChanged,
-      endChanged
+      endChanged,
     })
 
     // Определяем тип resize по тому, какая граница была перетащена
@@ -1366,13 +1431,19 @@ async function handleEventResize(info: unknown) {
     } else if (startChanged && endChanged) {
       // Если изменились оба, определяем по тому, какая граница была перетащена
       // Для этого нужно проверить, какая граница изменилась больше
-      const startDiff = Math.abs(new Date(newStartDate + 'T00:00:00').getTime() - new Date(originalStart + 'T00:00:00').getTime())
-      const endDiff = Math.abs(new Date(newEndDate + 'T00:00:00').getTime() - new Date(originalEnd + 'T00:00:00').getTime())
+      const startDiff = Math.abs(
+        new Date(newStartDate + 'T00:00:00').getTime() -
+          new Date(originalStart + 'T00:00:00').getTime(),
+      )
+      const endDiff = Math.abs(
+        new Date(newEndDate + 'T00:00:00').getTime() -
+          new Date(originalEnd + 'T00:00:00').getTime(),
+      )
 
       console.log('🔍 Resize direction detection:', {
         startDiff,
         endDiff,
-        startChangedMore: startDiff > endDiff
+        startChangedMore: startDiff > endDiff,
       })
 
       // Если начало изменилось больше - это resize начала
@@ -1397,7 +1468,7 @@ async function handleEventResize(info: unknown) {
       console.log('🔧 Start resize - keeping original end:', {
         newStart: newStartDate,
         originalEnd: originalEnd,
-        finalEnd: finalEndDate
+        finalEnd: finalEndDate,
       })
     } else if (resizeType === 'end') {
       // Изменение конца - используем дату как есть (без исключительной обработки)
@@ -1407,7 +1478,7 @@ async function handleEventResize(info: unknown) {
         originalEnd: originalEnd,
         newEnd: newEndDate,
         finalEnd: finalEndDate,
-        rawEndDate: rawEndDate
+        rawEndDate: rawEndDate,
       })
     }
 
@@ -1422,14 +1493,14 @@ async function handleEventResize(info: unknown) {
       finalEndDate,
       rawEndDate,
       resizeType,
-      projectEnd: projectInfo.value?.date_end
+      projectEnd: projectInfo.value?.date_end,
     })
     // Для 'both' используем даты как есть
 
     console.log('📅 Final resize dates:', {
       finalStartDate,
       finalEndDate,
-      resizeType
+      resizeType,
     })
 
     // Create task data with updated dates but keeping all other fields
@@ -1437,12 +1508,11 @@ async function handleEventResize(info: unknown) {
       ...existingTask,
       startPlanned: finalStartDate,
       endPlanned: finalEndDate,
-      project_id: props.projectId
+      project_id: props.projectId,
     }
 
     // Check task dates against project bounds
     if (projectInfo.value) {
-
       // First check project bounds
       const boundsCheck = checkProjectBounds(taskData as TaskCreateUpdate, projectInfo.value)
 
@@ -1462,7 +1532,9 @@ async function handleEventResize(info: unknown) {
           onCancel: () => {
             console.log('❌ User chose to cancel - reverting event')
             try {
-              const eventInfo = info as { event: { setStart: (date: Date) => void; setEnd: (date: Date) => void } }
+              const eventInfo = info as {
+                event: { setStart: (date: Date) => void; setEnd: (date: Date) => void }
+              }
               eventInfo.event.setStart(new Date(existingTask.start_planned + 'T00:00:00'))
               // For milestones, end should equal start
               if (existingTask.milestone) {
@@ -1483,7 +1555,12 @@ async function handleEventResize(info: unknown) {
             console.log('✅ User chose to adjust dates to project bounds (RESIZE)')
             console.log('📅 Original taskData:', taskData)
             console.log('📅 Clamped dates:', boundsCheck.clampedStart, boundsCheck.clampedEnd)
-            console.log('📅 Project bounds:', projectInfo.value?.date_start, 'to', projectInfo.value?.date_end)
+            console.log(
+              '📅 Project bounds:',
+              projectInfo.value?.date_start,
+              'to',
+              projectInfo.value?.date_end,
+            )
             console.log('🎯 Resize type for adjust:', resizeType)
 
             let adjustedStart = boundsCheck.clampedStart
@@ -1497,7 +1574,7 @@ async function handleEventResize(info: unknown) {
               console.log('🔧 Start resize adjust - keeping original end:', {
                 adjustedStart,
                 originalEnd: existingTask.end_planned,
-                adjustedEnd
+                adjustedEnd,
               })
             } else if (resizeType === 'end') {
               // Для resize конца - фиксируем начало, корректируем только конец
@@ -1512,13 +1589,13 @@ async function handleEventResize(info: unknown) {
                 adjustedStart,
                 adjustedEnd,
                 boundsCheckClampedEnd: boundsCheck.clampedEnd,
-                projectEnd: projectInfo.value?.date_end
+                projectEnd: projectInfo.value?.date_end,
               })
             } else {
               // Для 'both' - используем clamped даты как есть
               console.log('🔧 Both resize adjust - using clamped dates:', {
                 adjustedStart,
-                adjustedEnd
+                adjustedEnd,
               })
             }
 
@@ -1526,7 +1603,7 @@ async function handleEventResize(info: unknown) {
               startPlanned: taskData.startPlanned,
               endPlanned: taskData.endPlanned,
               start_planned: taskData.start_planned,
-              end_planned: taskData.end_planned
+              end_planned: taskData.end_planned,
             })
 
             taskData.startPlanned = adjustedStart
@@ -1539,21 +1616,33 @@ async function handleEventResize(info: unknown) {
               startPlanned: taskData.startPlanned,
               endPlanned: taskData.endPlanned,
               start_planned: taskData.start_planned,
-              end_planned: taskData.end_planned
+              end_planned: taskData.end_planned,
             })
             console.log('📅 Updated taskData:', taskData)
 
             // Force update the event in FullCalendar
             try {
-              const eventInfo = info as { event: { setStart: (date: Date) => void; setEnd: (date: Date) => void; setProp: (prop: string, value: string) => void; title: string } }
+              const eventInfo = info as {
+                event: {
+                  setStart: (date: Date) => void
+                  setEnd: (date: Date) => void
+                  setProp: (prop: string, value: string) => void
+                  title: string
+                }
+              }
               eventInfo.event.setStart(new Date(adjustedStart + 'T00:00:00'))
 
               // Используем универсальную функцию для обработки даты окончания
-              const fullCalendarEndDate = new Date(processEndDateForDisplay(adjustedEnd) + 'T00:00:00')
+              const fullCalendarEndDate = new Date(
+                processEndDateForDisplay(adjustedEnd) + 'T00:00:00',
+              )
 
               eventInfo.event.setEnd(fullCalendarEndDate)
               console.log('📅 Event dates updated in FullCalendar:', adjustedStart, adjustedEnd)
-              console.log('📅 FullCalendar end date set to:', fullCalendarEndDate.toLocaleDateString('en-CA'))
+              console.log(
+                '📅 FullCalendar end date set to:',
+                fullCalendarEndDate.toLocaleDateString('en-CA'),
+              )
 
               // Force calendar to refresh the event display
               eventInfo.event.setProp('title', eventInfo.event.title)
@@ -1581,7 +1670,7 @@ async function handleEventResize(info: unknown) {
             }
 
             // Continue with the update
-          }
+          },
         }
         isDragging.value = false
         return // Stop here - dialog will handle the update
@@ -1602,7 +1691,9 @@ async function handleEventResize(info: unknown) {
           onCancel: () => {
             console.log('❌ User chose to cancel - reverting event')
             try {
-              const eventInfo = info as { event: { setStart: (date: Date) => void; setEnd: (date: Date) => void } }
+              const eventInfo = info as {
+                event: { setStart: (date: Date) => void; setEnd: (date: Date) => void }
+              }
               eventInfo.event.setStart(new Date(existingTask.start_planned + 'T00:00:00'))
               // For milestones, end should equal start
               if (existingTask.milestone) {
@@ -1629,7 +1720,7 @@ async function handleEventResize(info: unknown) {
             const adjustedTaskData = {
               ...taskData,
               startPlanned: dependencyCheck.suggestedStartDate,
-              endPlanned: dependencyCheck.suggestedEndDate
+              endPlanned: dependencyCheck.suggestedEndDate,
             }
 
             try {
@@ -1642,17 +1733,19 @@ async function handleEventResize(info: unknown) {
               console.log('✅ Task adjusted to respect dependencies and saved')
 
               // Update local task data
-              const taskIndex = tasks.value.findIndex(t => t.id.toString() === taskId)
+              const taskIndex = tasks.value.findIndex((t) => t.id.toString() === taskId)
               if (taskIndex > -1) {
                 tasks.value[taskIndex] = {
                   ...tasks.value[taskIndex],
                   start_planned: adjustedTaskData.startPlanned,
-                  end_planned: adjustedTaskData.endPlanned
+                  end_planned: adjustedTaskData.endPlanned,
                 }
               }
 
               // Update calendar display
-              const eventInfo = info as { event: { setStart: (date: Date) => void; setEnd: (date: Date) => void } }
+              const eventInfo = info as {
+                event: { setStart: (date: Date) => void; setEnd: (date: Date) => void }
+              }
               eventInfo.event.setStart(new Date(adjustedTaskData.startPlanned + 'T00:00:00'))
               if (adjustedTaskData.endPlanned) {
                 const endDate = new Date(adjustedTaskData.endPlanned + 'T00:00:00')
@@ -1671,7 +1764,7 @@ async function handleEventResize(info: unknown) {
             } catch (error) {
               console.error('❌ Error adjusting task:', error)
             }
-          }
+          },
         }
         isDragging.value = false
         return // Stop here - dialog will handle the update
@@ -1682,7 +1775,7 @@ async function handleEventResize(info: unknown) {
       startPlanned: taskData.startPlanned,
       endPlanned: taskData.endPlanned,
       start_planned: taskData.start_planned,
-      end_planned: taskData.end_planned
+      end_planned: taskData.end_planned,
     })
 
     const updatePayload: Record<string, unknown> = {
@@ -1696,7 +1789,7 @@ async function handleEventResize(info: unknown) {
       startPlanned: taskData.startPlanned,
       endPlanned: taskData.endPlanned,
       start_planned: taskData.start_planned,
-      end_planned: taskData.end_planned
+      end_planned: taskData.end_planned,
     })
 
     try {
@@ -1725,8 +1818,13 @@ async function handleEventResize(info: unknown) {
   } catch (error) {
     console.error('❌ Error updating task:', error)
     // Revert the change
-    if (info && typeof info === 'object' && 'revert' in info && typeof (info as Record<string, unknown>).revert === 'function') {
-      ((info as Record<string, unknown>).revert as () => void)()
+    if (
+      info &&
+      typeof info === 'object' &&
+      'revert' in info &&
+      typeof (info as Record<string, unknown>).revert === 'function'
+    ) {
+      ;((info as Record<string, unknown>).revert as () => void)()
     }
   } finally {
     // Reset resizing flag
@@ -1775,8 +1873,6 @@ function handleDependencyAdjust() {
   dependencyDialog.value.isOpen = false
 }
 
-
-
 // Watch for projectId changes
 watch(
   () => props.projectId,
@@ -1804,10 +1900,11 @@ watch(
 watch(shouldShowDependencyIndicators, () => {
   console.log('🔄 Dependency indicators toggle changed, updating calendar events')
   // Update calendar events with new indicator settings
-  const events = tasks.value.map(task => taskToCalendarTask(task, shouldShowDependencyIndicators.value))
+  const events = tasks.value.map((task) =>
+    taskToCalendarTask(task, shouldShowDependencyIndicators.value),
+  )
   updateCalendarEvents(events)
 })
-
 
 // Task list functions
 function formatDate(dateStr: string): string {
@@ -1815,29 +1912,41 @@ function formatDate(dateStr: string): string {
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
-    day: 'numeric'
+    day: 'numeric',
   })
 }
 
 function getStatusLabel(status: TaskStatus): string {
   switch (status) {
-    case 'planned': return 'Planned'
-    case 'in_progress': return 'In Progress'
-    case 'done': return 'Done'
-    case 'blocked': return 'Blocked'
-    case 'delayed': return 'Delayed'
-    default: return 'Unknown'
+    case 'planned':
+      return 'Planned'
+    case 'in_progress':
+      return 'In Progress'
+    case 'done':
+      return 'Done'
+    case 'blocked':
+      return 'Blocked'
+    case 'delayed':
+      return 'Delayed'
+    default:
+      return 'Unknown'
   }
 }
 
 function getStatusClass(status: TaskStatus): string {
   switch (status) {
-    case 'planned': return 'text-blue-600'
-    case 'in_progress': return 'text-green-600'
-    case 'done': return 'text-gray-600'
-    case 'blocked': return 'text-red-600'
-    case 'delayed': return 'text-yellow-600'
-    default: return 'text-gray-600'
+    case 'planned':
+      return 'text-blue-600'
+    case 'in_progress':
+      return 'text-green-600'
+    case 'done':
+      return 'text-gray-600'
+    case 'blocked':
+      return 'text-red-600'
+    case 'delayed':
+      return 'text-yellow-600'
+    default:
+      return 'text-gray-600'
   }
 }
 
@@ -1868,9 +1977,12 @@ async function duplicateTask(task: Task) {
       end_planned: task.end_planned,
       status: 'planned' as const,
       milestone: task.milestone,
-      dependencies: Array.isArray(task.dependencies) && task.dependencies.length > 0 && typeof task.dependencies[0] === 'object'
-        ? task.dependencies as { predecessor_id: number; type: string; lag_days: number; }[]
-        : undefined
+      dependencies:
+        Array.isArray(task.dependencies) &&
+        task.dependencies.length > 0 &&
+        typeof task.dependencies[0] === 'object'
+          ? (task.dependencies as { predecessor_id: number; type: string; lag_days: number }[])
+          : undefined,
     }
 
     console.log('📋 Creating duplicated task:', duplicatedTask)
@@ -1885,7 +1997,6 @@ async function duplicateTask(task: Task) {
     // Select the new duplicated task
     selectedTask.value = newTask
     console.log('📋 Selected duplicated task:', newTask.name)
-
   } catch (error) {
     console.error('❌ Error duplicating task:', error)
     alert('Failed to duplicate task. Please try again.')
@@ -1920,7 +2031,7 @@ async function deleteTask(task: Task) {
 
         // Also remove selection class from all DOM elements
         const selectedElements = document.querySelectorAll('.fc-event-selected')
-        selectedElements.forEach(element => {
+        selectedElements.forEach((element) => {
           element.classList.remove('fc-event-selected')
         })
       }
@@ -1929,7 +2040,6 @@ async function deleteTask(task: Task) {
       document.documentElement.style.removeProperty('--selected-task-id')
       console.log('📋 Task selection cleared after deletion')
     }
-
   } catch (error) {
     console.error('❌ Error deleting task:', error)
     alert('Failed to delete task. Please try again.')
@@ -1942,6 +2052,14 @@ function selectTaskForDetails(task: Task) {
   console.log('📋 Selected task for details:', task.name)
 }
 
+// Update selected task after edit
+function updateSelectedTask(updatedTask: unknown) {
+  if (selectedTask.value && (updatedTask as Task).id === selectedTask.value.id) {
+    selectedTask.value = updatedTask as Task
+    console.log('📝 Updated selected task details:', (updatedTask as Task).name)
+  }
+}
+
 function getTaskDuration(task: Task): number {
   if (task.start_planned && task.end_planned) {
     const startDate = new Date(task.start_planned)
@@ -1952,40 +2070,51 @@ function getTaskDuration(task: Task): number {
   return 1
 }
 
-function getTaskDependencies(task: Task): Array<{id: string, name: string, type: string, lag_days: number}> {
+function getTaskDependencies(
+  task: Task,
+): Array<{ id: string; name: string; type: string; lag_days: number }> {
   if (!task.dependencies || task.dependencies.length === 0) return []
 
   return task.dependencies
-    .map(dep => {
+    .map((dep) => {
       if (typeof dep === 'number') {
         // Legacy format
-        const depTask = tasks.value.find(t => String(t.id) === String(dep))
-        return depTask ? {
-          id: String(dep),
-          name: depTask.name,
-          type: 'FS',
-          lag_days: 0
-        } : null
+        const depTask = tasks.value.find((t) => String(t.id) === String(dep))
+        return depTask
+          ? {
+              id: String(dep),
+              name: depTask.name,
+              type: 'FS',
+              lag_days: 0,
+            }
+          : null
       } else {
         // New format
-        const depTask = tasks.value.find(t => String(t.id) === String(dep.predecessor_id))
-        return depTask ? {
-          id: String(dep.predecessor_id),
-          name: depTask.name,
-          type: dep.type,
-          lag_days: dep.lag_days
-        } : null
+        const depTask = tasks.value.find((t) => String(t.id) === String(dep.predecessor_id))
+        return depTask
+          ? {
+              id: String(dep.predecessor_id),
+              name: depTask.name,
+              type: dep.type,
+              lag_days: dep.lag_days,
+            }
+          : null
       }
     })
-    .filter(dep => dep !== null) as Array<{id: string, name: string, type: string, lag_days: number}>
+    .filter((dep) => dep !== null) as Array<{
+    id: string
+    name: string
+    type: string
+    lag_days: number
+  }>
 }
 
-function getTaskTeamInfo(task: Task): Array<{id: number, name: string, role: string}> {
-  const team: Array<{id: number, name: string, role: string}> = []
+function getTaskTeamInfo(task: Task): Array<{ id: number; name: string; role: string }> {
+  const team: Array<{ id: number; name: string; role: string }> = []
 
   // Add task lead
   if (task.task_lead_id) {
-    const leadPerson = availablePeople.find(p => p.id === task.task_lead_id)
+    const leadPerson = availablePeople.find((p) => p.id === task.task_lead_id)
     if (leadPerson) {
       team.push({ ...leadPerson, role: `${leadPerson.role} (Lead)` })
     }
@@ -1993,8 +2122,8 @@ function getTaskTeamInfo(task: Task): Array<{id: number, name: string, role: str
 
   // Add team members
   if (task.team_members) {
-    task.team_members.forEach(memberId => {
-      const member = availablePeople.find(p => p.id === memberId)
+    task.team_members.forEach((memberId) => {
+      const member = availablePeople.find((p) => p.id === memberId)
       if (member) {
         team.push(member)
       }
@@ -2014,14 +2143,23 @@ const availablePeople = [
 ]
 
 // Task dialog functions
-function openTaskDialog(mode: 'create' | 'edit' | 'view', taskId?: string | null, initialDate?: string) {
+function openTaskDialog(
+  mode: 'create' | 'edit' | 'view',
+  taskId?: string | null,
+  initialDate?: string,
+) {
   console.log('🔧 Opening task dialog:', mode, taskId, 'initialDate:', initialDate)
 
   if (taskId) {
     console.log('🔍 Looking for task with ID:', taskId, 'type:', typeof taskId)
-    console.log('🔍 Available task IDs:', tasks.value.map(t => ({ id: t.id, type: typeof t.id })))
+    console.log(
+      '🔍 Available task IDs:',
+      tasks.value.map((t) => ({ id: t.id, type: typeof t.id })),
+    )
     // Try both strict and loose comparison
-    const task = tasks.value.find(t => t.id === taskId || t.id == taskId || String(t.id) === String(taskId))
+    const task = tasks.value.find(
+      (t) => t.id === taskId || t.id == taskId || String(t.id) === String(taskId),
+    )
     if (task) {
       console.log('🔧 Found task for edit/view:', task.name)
       taskDialog.value = {
@@ -2050,14 +2188,23 @@ function openTaskDialog(mode: 'create' | 'edit' | 'view', taskId?: string | null
 }
 
 // Milestone dialog functions
-function openMilestoneDialog(mode: 'create' | 'edit' | 'view', taskId?: string | null, initialDate?: string) {
+function openMilestoneDialog(
+  mode: 'create' | 'edit' | 'view',
+  taskId?: string | null,
+  initialDate?: string,
+) {
   console.log('🔧 Opening milestone dialog:', mode, taskId, 'initialDate:', initialDate)
 
   if (taskId) {
     console.log('🔍 Looking for milestone with ID:', taskId, 'type:', typeof taskId)
-    console.log('🔍 Available task IDs:', tasks.value.map(t => ({ id: t.id, type: typeof t.id })))
+    console.log(
+      '🔍 Available task IDs:',
+      tasks.value.map((t) => ({ id: t.id, type: typeof t.id })),
+    )
     // Try both strict and loose comparison
-    const task = tasks.value.find(t => t.id === taskId || t.id == taskId || String(t.id) === String(taskId))
+    const task = tasks.value.find(
+      (t) => t.id === taskId || t.id == taskId || String(t.id) === String(taskId),
+    )
     if (task) {
       console.log('🔧 Found milestone for edit/view:', task.name)
       milestoneDialog.value = {
@@ -2094,7 +2241,7 @@ function closeTaskDialog() {
 // TaskViewDialog functions
 function openTaskViewDialog(taskId: string) {
   console.log('🔧 Opening task view dialog for task:', taskId)
-  const task = tasks.value.find(t => String(t.id) === String(taskId))
+  const task = tasks.value.find((t) => String(t.id) === String(taskId))
   if (task) {
     console.log('🔧 Found task for view:', task.name)
     taskViewDialog.value = {
@@ -2234,7 +2381,10 @@ async function handleTaskSave(taskData: Partial<Task>) {
       console.log('📤 Payload JSON:', JSON.stringify(createPayload, null, 2))
 
       try {
-        const newTask = await tasksApi.create(props.projectId, createPayload as unknown as TaskCreateUpdate)
+        const newTask = await tasksApi.create(
+          props.projectId,
+          createPayload as unknown as TaskCreateUpdate,
+        )
         console.log('✅ Task created via API:', newTask)
 
         // Reload tasks from API to get fresh data
@@ -2263,7 +2413,9 @@ async function handleTaskSave(taskData: Partial<Task>) {
         console.log('✅ Task created locally as fallback')
 
         // Update calendar
-        const events = tasks.value.map(task => taskToCalendarTask(task, shouldShowDependencyIndicators.value))
+        const events = tasks.value.map((task) =>
+          taskToCalendarTask(task, shouldShowDependencyIndicators.value),
+        )
         updateCalendarEvents(events)
       }
     } else {
@@ -2289,7 +2441,11 @@ async function handleTaskSave(taskData: Partial<Task>) {
       console.log('📤 Sending update payload:', updatePayload)
 
       try {
-        const updatedTask = await tasksApi.update(props.projectId, taskData.id!, updatePayload as unknown as Partial<TaskCreateUpdate>)
+        const updatedTask = await tasksApi.update(
+          props.projectId,
+          taskData.id!,
+          updatePayload as unknown as Partial<TaskCreateUpdate>,
+        )
         console.log('✅ Task updated via API:', updatedTask)
 
         // Reload tasks from API to get fresh data
@@ -2303,13 +2459,15 @@ async function handleTaskSave(taskData: Partial<Task>) {
         console.error('❌ API update failed, updating locally:', apiError)
 
         // Fallback: update local array if API fails
-        const taskIndex = tasks.value.findIndex(t => t.id === taskData.id)
+        const taskIndex = tasks.value.findIndex((t) => t.id === taskData.id)
         if (taskIndex !== -1) {
           tasks.value[taskIndex] = { ...tasks.value[taskIndex], ...taskData }
           console.log('✅ Task updated locally as fallback')
 
           // Update calendar
-          const events = tasks.value.map(task => taskToCalendarTask(task, shouldShowDependencyIndicators.value))
+          const events = tasks.value.map((task) =>
+            taskToCalendarTask(task, shouldShowDependencyIndicators.value),
+          )
           updateCalendarEvents(events)
         }
       }
@@ -2360,9 +2518,12 @@ async function handleTaskDuplicate(task: Task) {
       notes: task.notes,
       wbs_path: task.wbs_path,
       task_lead_id: task.task_lead_id, // Добавляем обязательное поле
-      dependencies: Array.isArray(task.dependencies) && task.dependencies.length > 0 && typeof task.dependencies[0] === 'object'
-        ? task.dependencies as { predecessor_id: number; type: string; lag_days: number; }[]
-        : undefined
+      dependencies:
+        Array.isArray(task.dependencies) &&
+        task.dependencies.length > 0 &&
+        typeof task.dependencies[0] === 'object'
+          ? (task.dependencies as { predecessor_id: number; type: string; lag_days: number }[])
+          : undefined,
     }
 
     await tasksApi.create(props.projectId, duplicateData)
@@ -2378,7 +2539,6 @@ async function handleTaskDuplicate(task: Task) {
     alert('Failed to duplicate task. Please try again.')
   }
 }
-
 
 // Calendar mounted handler
 function onCalendarMounted() {
@@ -2421,7 +2581,6 @@ onMounted(() => {
   loadTasks()
 })
 
-
 // Clear search function
 function clearSearch() {
   console.log('🧹 Clearing search results')
@@ -2463,566 +2622,616 @@ defineExpose({
   handleTaskEditPanelDelete,
   handleTaskEditPanelDuplicate,
   duplicateTask,
+  updateSelectedTask,
 })
 </script>
 
 <template>
   <div class="relative flex-1 flex flex-col h-full">
     <!-- Legend Section -->
-    <div class="px-4 py-1 bg-transparent text-xs text-gray-600">
-    <div class="flex items-center justify-center space-x-6">
-      <!-- Status Legend -->
-      <div class="flex items-center space-x-2 text-xs border border-gray-300 rounded-md px-3 py-1 bg-gray-50">
-        <span class="text-xs font-medium text-gray-700">Tasks:</span>
-        <div class="flex items-center space-x-1">
-          <div class="w-3 h-3 rounded-full" style="background-color: #3B82F6"></div>
-          <span class="text-gray-600">Planned</span>
-        </div>
-        <div class="flex items-center space-x-1">
-          <div class="w-3 h-3 rounded-full" style="background-color: #10B981"></div>
-          <span class="text-gray-600">In Progress</span>
-        </div>
-        <div class="flex items-center space-x-1">
-          <div class="w-3 h-3 rounded-full" style="background-color: #6B7280"></div>
-          <span class="text-gray-600">Done</span>
-        </div>
-        <div class="flex items-center space-x-1">
-          <div class="w-3 h-3 rounded-full" style="background-color: #EF4444"></div>
-          <span class="text-gray-600">Blocked</span>
-        </div>
-        <div class="flex items-center space-x-1">
-          <div class="w-3 h-3 rounded-full" style="background-color: #F59E0B"></div>
-          <span class="text-gray-600">Delayed</span>
-        </div>
-      </div>
-
-      <div class="flex items-center space-x-6">
-        <!-- Dependencies Group -->
-        <div v-if="shouldShowDependencyIndicators" class="flex items-center space-x-2 bg-blue-50 px-3 py-1 rounded-md border border-blue-200">
-          <span class="text-xs font-medium text-blue-700">Dependencies:</span>
-          <div class="flex items-center gap-2 text-xs">
-            <div class="flex items-center space-x-1">
-              <span class="text-xs">🔗</span>
-              <span class="text-gray-600">FS</span>
-            </div>
-            <div class="flex items-center space-x-1">
-              <span class="text-xs">⚡</span>
-              <span class="text-gray-600">SS</span>
-            </div>
-            <div class="flex items-center space-x-1">
-              <span class="text-xs">🎯</span>
-              <span class="text-gray-600">FF</span>
-            </div>
-            <div class="flex items-center space-x-1">
-              <span class="text-xs">🔄</span>
-              <span class="text-gray-600">SF</span>
-            </div>
-            <div class="flex items-center space-x-1">
-              <span class="text-xs">⏱️</span>
-              <span class="text-gray-600">Lag</span>
-            </div>
-            <div class="flex items-center space-x-1">
-              <span class="text-xs">📋</span>
-              <span class="text-gray-600">Deps</span>
-            </div>
+    <div class="px-4 py-1 bg-transparent text-xs text-gray-600 mb-2">
+      <div class="flex items-center justify-center space-x-6">
+        <!-- Status Legend -->
+        <div
+          class="flex items-center space-x-2 text-xs border border-gray-300 rounded-md px-3 py-1 bg-gray-50"
+        >
+          <span class="text-xs font-medium text-gray-700">Tasks:</span>
+          <div class="flex items-center space-x-1">
+            <div class="w-3 h-3 rounded-full" style="background-color: #3b82f6"></div>
+            <span class="text-gray-600">Planned</span>
+          </div>
+          <div class="flex items-center space-x-1">
+            <div class="w-3 h-3 rounded-full" style="background-color: #10b981"></div>
+            <span class="text-gray-600">In Progress</span>
+          </div>
+          <div class="flex items-center space-x-1">
+            <div class="w-3 h-3 rounded-full" style="background-color: #6b7280"></div>
+            <span class="text-gray-600">Done</span>
+          </div>
+          <div class="flex items-center space-x-1">
+            <div class="w-3 h-3 rounded-full" style="background-color: #ef4444"></div>
+            <span class="text-gray-600">Blocked</span>
+          </div>
+          <div class="flex items-center space-x-1">
+            <div class="w-3 h-3 rounded-full" style="background-color: #f59e0b"></div>
+            <span class="text-gray-600">Delayed</span>
           </div>
         </div>
 
-        <!-- Milestones Group -->
-        <div v-if="shouldShowDependencyIndicators" class="flex items-center space-x-2 bg-purple-50 px-3 py-1 rounded-md border border-purple-200">
-          <span class="text-xs font-medium text-purple-700">Milestones:</span>
-          <div class="flex items-center gap-2 text-xs">
-            <div class="flex items-center space-x-1">
-              <span class="text-xs">🔍</span>
-              <span class="text-gray-600">Inspection</span>
+        <div class="flex items-center space-x-6">
+          <!-- Dependencies Group -->
+          <div
+            v-if="shouldShowDependencyIndicators"
+            class="flex items-center space-x-2 bg-blue-50 px-3 py-1 rounded-md border border-blue-200"
+          >
+            <span class="text-xs font-medium text-blue-700">Dependencies:</span>
+            <div class="flex items-center gap-2 text-xs">
+              <div class="flex items-center space-x-1">
+                <span class="text-xs">🔗</span>
+                <span class="text-gray-600">FS</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <span class="text-xs">⚡</span>
+                <span class="text-gray-600">SS</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <span class="text-xs">🎯</span>
+                <span class="text-gray-600">FF</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <span class="text-xs">🔄</span>
+                <span class="text-gray-600">SF</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <span class="text-xs">⏱️</span>
+                <span class="text-gray-600">Lag</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <span class="text-xs">📋</span>
+                <span class="text-gray-600">Deps</span>
+              </div>
             </div>
-            <div class="flex items-center space-x-1">
-              <span class="text-xs">🏗️</span>
-              <span class="text-gray-600">Visit</span>
-            </div>
-            <div class="flex items-center space-x-1">
-              <span class="text-xs">👥</span>
-              <span class="text-gray-600">Meeting</span>
-            </div>
-            <div class="flex items-center space-x-1">
-              <span class="text-xs">📋</span>
-              <span class="text-gray-600">Review</span>
-            </div>
-            <div class="flex items-center space-x-1">
-              <span class="text-xs">📦</span>
-              <span class="text-gray-600">Delivery</span>
-            </div>
-            <div class="flex items-center space-x-1">
-              <span class="text-xs">✅</span>
-              <span class="text-gray-600">Approval</span>
+          </div>
+
+          <!-- Milestones Group -->
+          <div
+            v-if="shouldShowDependencyIndicators"
+            class="flex items-center space-x-2 bg-purple-50 px-3 py-1 rounded-md border border-purple-200"
+          >
+            <span class="text-xs font-medium text-purple-700">Milestones:</span>
+            <div class="flex items-center gap-2 text-xs">
+              <div class="flex items-center space-x-1">
+                <span class="text-xs">🔍</span>
+                <span class="text-gray-600">Inspection</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <span class="text-xs">🏗️</span>
+                <span class="text-gray-600">Visit</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <span class="text-xs">👥</span>
+                <span class="text-gray-600">Meeting</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <span class="text-xs">📋</span>
+                <span class="text-gray-600">Review</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <span class="text-xs">📦</span>
+                <span class="text-gray-600">Delivery</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <span class="text-xs">✅</span>
+                <span class="text-gray-600">Approval</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <div class="bg-white rounded-lg">
-    <!-- Tasks Info -->
-    <div v-if="error" class="bg-red-50 border-b border-red-200 px-4 py-2">
-      <div class="flex items-center">
-        <svg class="h-4 w-4 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-        </svg>
-        <span class="text-sm text-red-700">{{ error }}</span>
+    <div class="bg-white rounded-lg">
+      <!-- Tasks Info -->
+      <div v-if="error" class="bg-red-50 border-b border-red-200 px-4 py-2">
+        <div class="flex items-center">
+          <svg
+            class="h-4 w-4 text-red-400 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
+          </svg>
+          <span class="text-sm text-red-700">{{ error }}</span>
+        </div>
       </div>
-    </div>
-    <div v-else-if="tasks.length === 0" class="bg-gray-50 border-b border-gray-200 px-4 py-2">
-      <div class="flex items-center">
-        <svg class="h-4 w-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012-2"></path>
-        </svg>
-        <span class="text-sm text-gray-700">No tasks found for this project.</span>
+      <div v-else-if="tasks.length === 0" class="bg-gray-50 border-b border-gray-200 px-4 py-2">
+        <div class="flex items-center">
+          <svg
+            class="h-4 w-4 text-gray-400 mr-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012-2"
+            ></path>
+          </svg>
+          <span class="text-sm text-gray-700">No tasks found for this project.</span>
+        </div>
       </div>
-    </div>
 
-    <!-- Task Count -->
-    <div class="p-4 border-b border-gray-200">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-4">
-          <!-- Add Task/Milestone Buttons -->
-          <div v-if="canEdit" class="flex items-center space-x-2">
-            <button
-              @click="openTaskDialog('create', undefined, undefined)"
-              class="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
-              title="Add new task"
-            >
-              ➕ Add Task
-            </button>
-            <button
-              @click="openMilestoneDialog('create', undefined, undefined)"
-              class="px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded-md hover:bg-purple-700 transition-colors"
-              title="Add new milestone"
-            >
-              🎯 Add Milestone
-            </button>
-            <button
-              v-if="selectedTask"
-              @click="editTask(selectedTask)"
-              class="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
-              title="Edit selected task"
-            >
-              ✏️ Edit
-            </button>
-            <button
-              v-if="selectedTask"
-              @click="deleteTask(selectedTask)"
-              class="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-md hover:bg-red-700 transition-colors"
-              title="Delete selected task"
-            >
-              🗑️ Delete
-            </button>
-            <button
-              v-if="selectedTask"
-              @click="duplicateTask(selectedTask)"
-              class="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors"
-              title="Duplicate selected task"
-            >
-              📋 Duplicate
-            </button>
-
-            <!-- Search Navigation -->
-            <div v-if="isSearchActive && searchResults.length > 1" class="flex items-center space-x-1 ml-2">
+      <!-- Task Count -->
+      <div class="p-4 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-4">
+            <!-- Add Task/Milestone Buttons -->
+            <div v-if="canEdit" class="flex items-center space-x-2">
               <button
-                @click="previousSearchResult"
-                class="px-2 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
-                title="Previous search result"
+                @click="openTaskDialog('create', undefined, undefined)"
+                class="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
+                title="Add new task"
               >
-                ⬅️
+                ➕ Add Task
               </button>
-              <span class="px-2 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md">
-                {{ currentSearchIndex + 1 }}/{{ searchResults.length }}
-              </span>
               <button
-                @click="nextSearchResult"
-                class="px-2 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
-                title="Next search result"
+                @click="openMilestoneDialog('create', undefined, undefined)"
+                class="px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded-md hover:bg-purple-700 transition-colors"
+                title="Add new milestone"
               >
-                ➡️
+                🎯 Add Milestone
               </button>
-            </div>
-          </div>
+              <button
+                v-if="selectedTask"
+                @click="editTask(selectedTask)"
+                class="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
+                title="Edit selected task"
+              >
+                ✏️ Edit
+              </button>
+              <button
+                v-if="selectedTask"
+                @click="deleteTask(selectedTask)"
+                class="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-md hover:bg-red-700 transition-colors"
+                title="Delete selected task"
+              >
+                🗑️ Delete
+              </button>
+              <button
+                v-if="selectedTask"
+                @click="duplicateTask(selectedTask)"
+                class="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors"
+                title="Duplicate selected task"
+              >
+                📋 Duplicate
+              </button>
 
-          <span v-if="loading" class="text-sm text-gray-500">Loading tasks...</span>
-          <span v-else-if="error" class="text-sm text-red-500">{{ error }}</span>
-          <span v-else class="text-sm text-gray-500">
-            {{ tasks.length }} tasks
-            <span v-if="selectedTask" class="ml-2 text-blue-600">
-              | Selected: {{ selectedTask.name }}
-              <span v-if="isSearchActive && searchResults.length > 1" class="ml-2 text-green-600">
-                ({{ currentSearchIndex + 1 }}/{{ searchResults.length }})
+              <!-- Search Navigation -->
+              <div
+                v-if="isSearchActive && searchResults.length > 1"
+                class="flex items-center space-x-1 ml-2"
+              >
+                <button
+                  @click="previousSearchResult"
+                  class="px-2 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
+                  title="Previous search result"
+                >
+                  ⬅️
+                </button>
+                <span class="px-2 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-md">
+                  {{ currentSearchIndex + 1 }}/{{ searchResults.length }}
+                </span>
+                <button
+                  @click="nextSearchResult"
+                  class="px-2 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
+                  title="Next search result"
+                >
+                  ➡️
+                </button>
+              </div>
+            </div>
+
+            <span v-if="loading" class="text-sm text-gray-500">Loading tasks...</span>
+            <span v-else-if="error" class="text-sm text-red-500">{{ error }}</span>
+            <span v-else class="text-sm text-gray-500">
+              {{ tasks.length }} tasks
+              <span v-if="selectedTask" class="ml-2 text-blue-600">
+                | Selected: {{ selectedTask.name }}
+                <span v-if="isSearchActive && searchResults.length > 1" class="ml-2 text-green-600">
+                  ({{ currentSearchIndex + 1 }}/{{ searchResults.length }})
+                </span>
               </span>
             </span>
-          </span>
-        </div>
+          </div>
 
-        <div class="flex items-center space-x-4">
-          <!-- View Mode Toggle -->
-          <div class="flex bg-gray-100 rounded-lg p-1">
-            <button
-              @click="viewMode = 'ical'"
-              :class="[
-                'px-3 py-1.5 text-xs font-medium rounded transition-colors',
-                viewMode === 'ical'
-                  ? 'bg-white text-blue-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800',
-              ]"
-              title="Calendar view (iCal format)"
-            >
-              📅 Calendar
-            </button>
-            <button
-              @click="viewMode = 'list'"
-              :class="[
-                'px-3 py-1.5 text-xs font-medium rounded transition-colors',
-                viewMode === 'list'
-                  ? 'bg-white text-purple-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800',
-              ]"
-              title="Task list view"
-            >
-              📋 List
-            </button>
-            <button
-              @click="viewMode = 'gantt'"
-              :class="[
-                'px-3 py-1.5 text-xs font-medium rounded transition-colors',
-                viewMode === 'gantt'
-                  ? 'bg-white text-green-700 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-800',
-              ]"
-              title="Gantt chart view"
-            >
-              📊 Gantt
-            </button>
+          <div class="flex items-center space-x-4">
+            <!-- View Mode Toggle -->
+            <div class="flex bg-gray-100 rounded-lg p-1">
+              <button
+                @click="viewMode = 'ical'"
+                :class="[
+                  'px-3 py-1.5 text-xs font-medium rounded transition-colors',
+                  viewMode === 'ical'
+                    ? 'bg-white text-blue-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800',
+                ]"
+                title="Calendar view (iCal format)"
+              >
+                📅 Calendar
+              </button>
+              <button
+                @click="viewMode = 'list'"
+                :class="[
+                  'px-3 py-1.5 text-xs font-medium rounded transition-colors',
+                  viewMode === 'list'
+                    ? 'bg-white text-purple-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800',
+                ]"
+                title="Task list view"
+              >
+                📋 List
+              </button>
+              <button
+                @click="viewMode = 'gantt'"
+                :class="[
+                  'px-3 py-1.5 text-xs font-medium rounded transition-colors',
+                  viewMode === 'gantt'
+                    ? 'bg-white text-green-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800',
+                ]"
+                title="Gantt chart view"
+              >
+                📊 Gantt
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Calendar View -->
-    <div v-if="viewMode === 'ical'" class="p-4 bg-white">
-      <FullCalendar
-        ref="calendarRef"
-        :options="calendarOptions"
-        class="min-h-[600px]"
-        @mounted="onCalendarMounted"
-      />
-    </div>
-
-    <!-- Task List View -->
-    <div v-else-if="viewMode === 'list'" class="p-4">
-      <div v-if="tasks.length === 0" class="text-center text-gray-500 py-8">
-        <div class="text-4xl mb-4">📋</div>
-        <h3 class="text-lg font-medium mb-2">No Tasks</h3>
-        <p class="text-sm">No tasks found for this project</p>
+      <!-- Calendar View -->
+      <div v-if="viewMode === 'ical'" class="p-4 bg-white">
+        <FullCalendar
+          ref="calendarRef"
+          :options="calendarOptions"
+          class="min-h-[600px]"
+          @mounted="onCalendarMounted"
+        />
       </div>
-      <div v-else class="flex gap-6">
-        <!-- Left: Task List (50%) -->
-        <div class="w-1/2 space-y-3">
-          <h3 class="text-lg font-medium text-gray-900 mb-3">Tasks</h3>
-          <div
-            v-for="task in tasks"
-            :key="task.id"
-            @click="selectTaskForDetails(task)"
-            :class="[
-              'bg-white border border-gray-200 rounded-lg p-3 cursor-pointer transition-all relative',
-              selectedTask?.id === task.id
-                ? 'border-blue-500 bg-blue-50 shadow-md'
-                : 'hover:shadow-md hover:border-gray-300'
-            ]"
-          >
-            <!-- Actions (Top Right) -->
-            <div class="absolute top-2 right-2 flex items-center space-x-1">
-              <button
-                v-if="props.canEdit"
-                @click.stop="editTask(task)"
-                class="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                title="Edit task"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                </svg>
-              </button>
-              <button
-                v-if="props.canEdit"
-                @click.stop="deleteTask(task)"
-                class="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                title="Delete task"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                </svg>
-              </button>
-            </div>
 
-            <!-- Task Header -->
-            <div class="flex items-center space-x-3 mb-3 pr-16">
-              <div
-                class="w-3 h-3 rounded-full"
-                :style="{ backgroundColor: getTaskColor(task.status) }"
-              ></div>
-              <!-- Task/Milestone Icon -->
-              <span v-if="task.milestone" class="text-lg">🎯</span>
-              <span v-else class="text-lg">📋</span>
-              <h4 class="font-medium text-gray-900 flex-1">{{ task.name }}</h4>
-            </div>
-
-            <!-- Essential Info Only -->
-            <div class="space-y-2 text-sm text-gray-600">
-              <div class="flex items-center justify-between">
-                <span><span class="font-medium">WBS:</span> {{ task.wbs_path || 'N/A' }}</span>
-                <span :class="getStatusClass(task.status)">{{ getStatusLabel(task.status) }}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span><span class="font-medium">Start:</span> {{ formatDate(task.start_planned) }}</span>
-                <span v-if="task.end_planned"><span class="font-medium">End:</span> {{ formatDate(task.end_planned) }}</span>
-              </div>
-            </div>
-          </div>
+      <!-- Task List View -->
+      <div v-else-if="viewMode === 'list'" class="p-4">
+        <div v-if="tasks.length === 0" class="text-center text-gray-500 py-8">
+          <div class="text-4xl mb-4">📋</div>
+          <h3 class="text-lg font-medium mb-2">No Tasks</h3>
+          <p class="text-sm">No tasks found for this project</p>
         </div>
+        <div v-else class="flex gap-6">
+          <!-- Left: Task List (50%) -->
+          <div class="w-1/2 space-y-3">
+            <h3 class="text-lg font-medium text-gray-900 mb-3">Tasks</h3>
+            <div
+              v-for="task in tasks"
+              :key="task.id"
+              @click="selectTaskForDetails(task)"
+              :class="[
+                'bg-white border border-gray-200 rounded-lg p-3 cursor-pointer transition-all relative',
+                selectedTask?.id === task.id
+                  ? 'border-l-4 border-l-blue-500 bg-blue-50 shadow-md'
+                  : 'hover:shadow-md hover:border-gray-300',
+              ]"
+            >
+              <!-- Actions (Top Right) -->
+              <div class="absolute top-2 right-2 flex items-center space-x-1">
+                <button
+                  v-if="props.canEdit"
+                  @click.stop="editTask(task)"
+                  class="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                  title="Edit task"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    ></path>
+                  </svg>
+                </button>
+                <button
+                  v-if="props.canEdit"
+                  @click.stop="deleteTask(task)"
+                  class="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                  title="Delete task"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    ></path>
+                  </svg>
+                </button>
+              </div>
 
-        <!-- Right: Task Details (50%) -->
-        <div class="w-1/2">
-          <div v-if="!selectedTask" class="text-center text-gray-500 py-8">
-            <div class="text-4xl mb-4">👈</div>
-            <h3 class="text-lg font-medium mb-2">Select a Task</h3>
-            <p class="text-sm">Click on a task from the left to view details</p>
-          </div>
-          <div v-else class="bg-white border border-gray-200 rounded-lg p-6">
-            <!-- Task Header -->
-            <div class="flex items-center justify-between mb-4">
-              <div class="flex items-center space-x-3">
+              <!-- Task Header -->
+              <div class="flex items-center space-x-3 mb-3 pr-16">
                 <div
-                  class="w-4 h-4 rounded-full"
-                  :style="{ backgroundColor: getTaskColor(selectedTask.status) }"
+                  class="w-3 h-3 rounded-full"
+                  :style="{ backgroundColor: getTaskColor(task.status) }"
                 ></div>
                 <!-- Task/Milestone Icon -->
-                <span v-if="selectedTask.milestone" class="text-xl">🎯</span>
-                <span v-else class="text-xl">📋</span>
-                <h3 class="text-xl font-semibold text-gray-900">{{ selectedTask.name }}</h3>
+                <span v-if="task.milestone" class="text-lg">🎯</span>
+                <span v-else class="text-lg">📋</span>
+                <h4 class="font-medium text-gray-900 flex-1">{{ task.name }}</h4>
               </div>
-              <div class="flex items-center space-x-2">
-                <button
-                  v-if="props.canEdit"
-                  @click="editTask(selectedTask)"
-                  class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                >
-                  Edit
-                </button>
-                <button
-                  v-if="props.canEdit"
-                  @click="deleteTask(selectedTask)"
-                  class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
 
-            <!-- Task Basic Details -->
-            <div class="grid grid-cols-2 gap-4 mb-6 text-sm">
-              <div>
-                <span class="font-medium text-gray-700">WBS Path:</span>
-                <div class="text-gray-600">{{ selectedTask.wbs_path || 'N/A' }}</div>
-              </div>
-              <div>
-                <span class="font-medium text-gray-700">Status:</span>
-                <div :class="getStatusClass(selectedTask.status)">{{ getStatusLabel(selectedTask.status) }}</div>
-              </div>
-              <div>
-                <span class="font-medium text-gray-700">Start Date:</span>
-                <div class="text-gray-600">{{ formatDate(selectedTask.start_planned) }}</div>
-              </div>
-              <div v-if="selectedTask.end_planned">
-                <span class="font-medium text-gray-700">End Date:</span>
-                <div class="text-gray-600">{{ formatDate(selectedTask.end_planned) }}</div>
-              </div>
-              <div>
-                <span class="font-medium text-gray-700">Duration:</span>
-                <div class="text-gray-600">{{ getTaskDuration(selectedTask) }} days</div>
-              </div>
-              <div>
-                <span class="font-medium text-gray-700">Progress:</span>
-                <div class="text-gray-600">{{ selectedTask.progress_pct }}%</div>
-              </div>
-            </div>
-
-            <!-- Progress Bar -->
-            <div class="mb-6">
-              <div class="flex items-center justify-between text-sm text-gray-700 mb-2">
-                <span class="font-medium">Progress</span>
-                <span>{{ selectedTask.progress_pct }}%</span>
-              </div>
-              <div class="w-full bg-gray-200 rounded-full h-3">
-                <div
-                  class="h-3 rounded-full transition-all"
-                  :style="{
-                    width: `${selectedTask.progress_pct}%`,
-                    backgroundColor: getTaskColor(selectedTask.status)
-                  }"
-                ></div>
-              </div>
-            </div>
-
-            <!-- Dependencies Section -->
-            <div v-if="getTaskDependencies(selectedTask).length > 0" class="mb-6">
-              <h4 class="text-sm font-medium text-gray-700 mb-2">🔗 Dependencies</h4>
-              <div class="space-y-2">
-                <div
-                  v-for="dep in getTaskDependencies(selectedTask)"
-                  :key="dep.id"
-                  class="flex items-center justify-between p-2 bg-gray-50 rounded text-sm"
-                >
-                  <span class="text-gray-900">{{ dep.name }}</span>
-                  <span class="text-gray-500">{{ dep.type }} {{ dep.lag_days > 0 ? `+${dep.lag_days}d` : '' }}</span>
+              <!-- Essential Info Only -->
+              <div class="space-y-2 text-sm text-gray-600">
+                <div class="flex items-center justify-between">
+                  <span><span class="font-medium">WBS:</span> {{ task.wbs_path || 'N/A' }}</span>
+                  <span :class="getStatusClass(task.status)">{{
+                    getStatusLabel(task.status)
+                  }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span
+                    ><span class="font-medium">Start:</span>
+                    {{ formatDate(task.start_planned) }}</span
+                  >
+                  <span v-if="task.end_planned"
+                    ><span class="font-medium">End:</span> {{ formatDate(task.end_planned) }}</span
+                  >
                 </div>
               </div>
             </div>
+          </div>
 
-            <!-- Resources Section -->
-            <div v-if="selectedTask.resources && selectedTask.resources.length > 0" class="mb-6">
-              <h4 class="text-sm font-medium text-gray-700 mb-2">🚛 Resources</h4>
-              <div class="flex flex-wrap gap-2">
-                <span
-                  v-for="resource in selectedTask.resources"
-                  :key="resource"
-                  class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"
-                >
-                  {{ resource }}
-                </span>
-              </div>
+          <!-- Right: Task Details (50%) -->
+          <div class="w-1/2">
+            <div v-if="!selectedTask" class="text-center text-gray-500 py-8">
+              <div class="text-4xl mb-4">👈</div>
+              <h3 class="text-lg font-medium mb-2">Select a Task</h3>
+              <p class="text-sm">Click on a task from the left to view details</p>
             </div>
-
-            <!-- Team Members Section -->
-            <div v-if="getTaskTeamInfo(selectedTask).length > 0" class="mb-6">
-              <h4 class="text-sm font-medium text-gray-700 mb-2">👥 Team</h4>
-              <div class="space-y-2">
-                <div
-                  v-for="member in getTaskTeamInfo(selectedTask)"
-                  :key="member.id"
-                  class="flex items-center justify-between p-2 bg-gray-50 rounded text-sm"
-                >
-                  <span class="text-gray-900">{{ member.name }}</span>
-                  <span class="text-gray-500">{{ member.role }}</span>
+            <div v-else class="bg-white border border-gray-200 rounded-lg p-6">
+              <!-- Task Header -->
+              <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-3">
+                  <div
+                    class="w-4 h-4 rounded-full"
+                    :style="{ backgroundColor: getTaskColor(selectedTask.status) }"
+                  ></div>
+                  <!-- Task/Milestone Icon -->
+                  <span v-if="selectedTask.milestone" class="text-xl">🎯</span>
+                  <span v-else class="text-xl">📋</span>
+                  <h3 class="text-xl font-semibold text-gray-900">{{ selectedTask.name }}</h3>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <button
+                    v-if="props.canEdit"
+                    @click="editTask(selectedTask)"
+                    class="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    v-if="props.canEdit"
+                    @click="deleteTask(selectedTask)"
+                    class="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
-            </div>
 
-            <!-- Notes Section -->
-            <div v-if="selectedTask.notes" class="mb-4">
-              <h4 class="text-sm font-medium text-gray-700 mb-2">📝 Notes</h4>
-              <div class="text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                {{ selectedTask.notes }}
+              <!-- Task Basic Details -->
+              <div class="grid grid-cols-2 gap-4 mb-6 text-sm">
+                <div>
+                  <span class="font-medium text-gray-700">WBS Path:</span>
+                  <div class="text-gray-600">{{ selectedTask.wbs_path || 'N/A' }}</div>
+                </div>
+                <div>
+                  <span class="font-medium text-gray-700">Status:</span>
+                  <div :class="getStatusClass(selectedTask.status)">
+                    {{ getStatusLabel(selectedTask.status) }}
+                  </div>
+                </div>
+                <div>
+                  <span class="font-medium text-gray-700">Start Date:</span>
+                  <div class="text-gray-600">{{ formatDate(selectedTask.start_planned) }}</div>
+                </div>
+                <div v-if="selectedTask.end_planned">
+                  <span class="font-medium text-gray-700">End Date:</span>
+                  <div class="text-gray-600">{{ formatDate(selectedTask.end_planned) }}</div>
+                </div>
+                <div>
+                  <span class="font-medium text-gray-700">Duration:</span>
+                  <div class="text-gray-600">{{ getTaskDuration(selectedTask) }} days</div>
+                </div>
+                <div>
+                  <span class="font-medium text-gray-700">Progress:</span>
+                  <div class="text-gray-600">{{ selectedTask.progress_pct }}%</div>
+                </div>
+              </div>
+
+              <!-- Progress Bar -->
+              <div class="mb-6">
+                <div class="flex items-center justify-between text-sm text-gray-700 mb-2">
+                  <span class="font-medium">Progress</span>
+                  <span>{{ selectedTask.progress_pct }}%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-3">
+                  <div
+                    class="h-3 rounded-full transition-all"
+                    :style="{
+                      width: `${selectedTask.progress_pct}%`,
+                      backgroundColor: getTaskColor(selectedTask.status),
+                    }"
+                  ></div>
+                </div>
+              </div>
+
+              <!-- Dependencies Section -->
+              <div v-if="getTaskDependencies(selectedTask).length > 0" class="mb-6">
+                <h4 class="text-sm font-medium text-gray-700 mb-2">🔗 Dependencies</h4>
+                <div class="space-y-2">
+                  <div
+                    v-for="dep in getTaskDependencies(selectedTask)"
+                    :key="dep.id"
+                    class="flex items-center justify-between p-2 bg-gray-50 rounded text-sm"
+                  >
+                    <span class="text-gray-900">{{ dep.name }}</span>
+                    <span class="text-gray-500"
+                      >{{ dep.type }} {{ dep.lag_days > 0 ? `+${dep.lag_days}d` : '' }}</span
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <!-- Resources Section -->
+              <div v-if="selectedTask.resources && selectedTask.resources.length > 0" class="mb-6">
+                <h4 class="text-sm font-medium text-gray-700 mb-2">🚛 Resources</h4>
+                <div class="flex flex-wrap gap-2">
+                  <span
+                    v-for="resource in selectedTask.resources"
+                    :key="resource"
+                    class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full"
+                  >
+                    {{ resource }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Team Members Section -->
+              <div v-if="getTaskTeamInfo(selectedTask).length > 0" class="mb-6">
+                <h4 class="text-sm font-medium text-gray-700 mb-2">👥 Team</h4>
+                <div class="space-y-2">
+                  <div
+                    v-for="member in getTaskTeamInfo(selectedTask)"
+                    :key="member.id"
+                    class="flex items-center justify-between p-2 bg-gray-50 rounded text-sm"
+                  >
+                    <span class="text-gray-900">{{ member.name }}</span>
+                    <span class="text-gray-500">{{ member.role }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Notes Section -->
+              <div v-if="selectedTask.notes" class="mb-4">
+                <h4 class="text-sm font-medium text-gray-700 mb-2">📝 Notes</h4>
+                <div class="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                  {{ selectedTask.notes }}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Gantt Chart View -->
-    <div v-else-if="viewMode === 'gantt'" class="p-6">
-      <div class="text-center text-gray-500">
-        <div class="text-4xl mb-4">📊</div>
-        <h3 class="text-lg font-medium mb-2">Gantt Chart View</h3>
-        <p class="text-sm">Gantt chart visualization will be implemented here</p>
-        <div class="mt-4 text-xs text-gray-400">
-          Tasks: {{ tasks.length }} tasks available
+      <!-- Gantt Chart View -->
+      <div v-else-if="viewMode === 'gantt'" class="p-6">
+        <div class="text-center text-gray-500">
+          <div class="text-4xl mb-4">📊</div>
+          <h3 class="text-lg font-medium mb-2">Gantt Chart View</h3>
+          <p class="text-sm">Gantt chart visualization will be implemented here</p>
+          <div class="mt-4 text-xs text-gray-400">Tasks: {{ tasks.length }} tasks available</div>
         </div>
       </div>
+
+      <!-- Task Dialog -->
+      <TaskDialog
+        :is-open="taskDialog.isOpen"
+        :mode="taskDialog.mode"
+        :task="taskDialog.task"
+        :project-id="projectId"
+        :available-tasks="availableTasksForDependencies"
+        :initial-date="taskDialog.initialDate"
+        :project-info="projectInfo"
+        @close="closeTaskDialog"
+        @save="handleTaskSave"
+        @delete="handleTaskDelete"
+        @duplicate="handleTaskDuplicate"
+        @project-updated="handleProjectUpdated"
+        @open-project-settings="handleOpenProjectSettings"
+      />
+
+      <!-- Task View Dialog (Read-Only) -->
+      <TaskViewDialog
+        :is-open="taskViewDialog.isOpen"
+        :task="taskViewDialog.task"
+        :available-tasks="tasks"
+        :can-edit="canEdit"
+        @close="closeTaskViewDialog"
+      />
+
+      <!-- Task Edit Panel (Full-Screen) -->
+      <TaskEditPanel
+        :is-open="taskEditPanel.isOpen"
+        :mode="taskEditPanel.mode"
+        :task="taskEditPanel.task"
+        :project-id="projectId"
+        :available-tasks="tasks"
+        :can-manage-project="canEdit"
+        @close="closeTaskEditPanel"
+        @save="handleTaskEditPanelSave"
+        @delete="handleTaskEditPanelDelete"
+        @duplicate="handleTaskEditPanelDuplicate"
+      />
+
+      <!-- Milestone Dialog -->
+      <MilestoneDialog
+        :is-open="milestoneDialog.isOpen"
+        :mode="milestoneDialog.mode"
+        :task="milestoneDialog.task"
+        :project-id="projectId"
+        :initial-date="milestoneDialog.initialDate"
+        :project-info="projectInfo"
+        @close="closeMilestoneDialog"
+        @save="handleTaskSave"
+        @delete="handleTaskDelete"
+        @project-updated="handleProjectUpdated"
+        @open-project-settings="handleOpenProjectSettings"
+      />
+
+      <!-- Simple Bounds Dialog -->
+      <SimpleBoundsDialog
+        v-if="simpleBoundsDialog.isOpen"
+        :is-open="simpleBoundsDialog.isOpen"
+        :task-start="simpleBoundsDialog.taskStart"
+        :task-end="simpleBoundsDialog.taskEnd"
+        :project-start="simpleBoundsDialog.projectStart"
+        :project-end="simpleBoundsDialog.projectEnd"
+        :adjusted-start="simpleBoundsDialog.adjustedStart"
+        :adjusted-end="simpleBoundsDialog.adjustedEnd"
+        :reason="simpleBoundsDialog.reason"
+        @cancel="handleSimpleBoundsCancel"
+        @adjust="handleSimpleBoundsAdjust"
+      />
+
+      <!-- Dependency Validation Dialog -->
+      <DependencyValidationDialog
+        v-if="dependencyDialog.isOpen"
+        :is-open="dependencyDialog.isOpen"
+        :task-start="dependencyDialog.taskStart"
+        :task-end="dependencyDialog.taskEnd"
+        :violated-constraints="dependencyDialog.violatedConstraints"
+        :suggested-start="dependencyDialog.suggestedStart"
+        :suggested-end="dependencyDialog.suggestedEnd"
+        :reason="dependencyDialog.reason"
+        @cancel="handleDependencyCancel"
+        @adjust="handleDependencyAdjust"
+      />
     </div>
-
-    <!-- Task Dialog -->
-    <TaskDialog
-      :is-open="taskDialog.isOpen"
-      :mode="taskDialog.mode"
-      :task="taskDialog.task"
-      :project-id="projectId"
-      :available-tasks="availableTasksForDependencies"
-      :initial-date="taskDialog.initialDate"
-      :project-info="projectInfo"
-      @close="closeTaskDialog"
-      @save="handleTaskSave"
-      @delete="handleTaskDelete"
-      @duplicate="handleTaskDuplicate"
-      @project-updated="handleProjectUpdated"
-      @open-project-settings="handleOpenProjectSettings"
-    />
-
-    <!-- Task View Dialog (Read-Only) -->
-    <TaskViewDialog
-      :is-open="taskViewDialog.isOpen"
-      :task="taskViewDialog.task"
-      :available-tasks="tasks"
-      :can-edit="canEdit"
-      @close="closeTaskViewDialog"
-    />
-
-    <!-- Task Edit Panel (Full-Screen) -->
-    <TaskEditPanel
-      :is-open="taskEditPanel.isOpen"
-      :mode="taskEditPanel.mode"
-      :task="taskEditPanel.task"
-      :project-id="projectId"
-      :available-tasks="tasks"
-      :can-manage-project="canEdit"
-      @close="closeTaskEditPanel"
-      @save="handleTaskEditPanelSave"
-      @delete="handleTaskEditPanelDelete"
-      @duplicate="handleTaskEditPanelDuplicate"
-    />
-
-    <!-- Milestone Dialog -->
-    <MilestoneDialog
-      :is-open="milestoneDialog.isOpen"
-      :mode="milestoneDialog.mode"
-      :task="milestoneDialog.task"
-      :project-id="projectId"
-      :initial-date="milestoneDialog.initialDate"
-      :project-info="projectInfo"
-      @close="closeMilestoneDialog"
-      @save="handleTaskSave"
-      @delete="handleTaskDelete"
-      @project-updated="handleProjectUpdated"
-      @open-project-settings="handleOpenProjectSettings"
-    />
-
-    <!-- Simple Bounds Dialog -->
-    <SimpleBoundsDialog
-      v-if="simpleBoundsDialog.isOpen"
-      :is-open="simpleBoundsDialog.isOpen"
-      :task-start="simpleBoundsDialog.taskStart"
-      :task-end="simpleBoundsDialog.taskEnd"
-      :project-start="simpleBoundsDialog.projectStart"
-      :project-end="simpleBoundsDialog.projectEnd"
-      :adjusted-start="simpleBoundsDialog.adjustedStart"
-      :adjusted-end="simpleBoundsDialog.adjustedEnd"
-      :reason="simpleBoundsDialog.reason"
-      @cancel="handleSimpleBoundsCancel"
-      @adjust="handleSimpleBoundsAdjust"
-    />
-
-    <!-- Dependency Validation Dialog -->
-    <DependencyValidationDialog
-      v-if="dependencyDialog.isOpen"
-      :is-open="dependencyDialog.isOpen"
-      :task-start="dependencyDialog.taskStart"
-      :task-end="dependencyDialog.taskEnd"
-      :violated-constraints="dependencyDialog.violatedConstraints"
-      :suggested-start="dependencyDialog.suggestedStart"
-      :suggested-end="dependencyDialog.suggestedEnd"
-      :reason="dependencyDialog.reason"
-      @cancel="handleDependencyCancel"
-      @adjust="handleDependencyAdjust"
-    />
-
-  </div>
   </div>
 </template>
 
@@ -3166,9 +3375,11 @@ defineExpose({
 
 /* Selected task highlighting */
 :deep(.fc-event.fc-event-selected) {
-  border: 3px solid #dc2626 !important;
-  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.3) !important;
-  transform: scale(1.02) !important;
+  border: 3px solid #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
+  transform: scale(1.05) !important;
+  background-color: #dbeafe !important;
+  z-index: 10 !important;
   z-index: 1000 !important;
 }
 

@@ -8,7 +8,7 @@ interface ApiConfig {
 
 const environments = {
   development: {
-    baseURL: import.meta.env.VITE_API_URL || 'https://fwapi.medicalcontractor.ca',
+    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
     timeout: 10000,
     headers: {
       'Content-Type': 'application/json',

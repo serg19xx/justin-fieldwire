@@ -2147,6 +2147,7 @@ defineExpose({
   renameFileInTree,
   renameFolderInTree,
   getAllFoldersFlat,
+  getCurrentFolderId,
   folders,
   files,
   currentPath,

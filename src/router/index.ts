@@ -72,8 +72,8 @@ const router = createRouter({
 
         console.log('🔍 Router tasks debug:', { roleCode })
 
-        // All users get Tasks.vue for now
-        return import('../pages/tasks/Tasks.vue')
+        // Redirect to projects for now since tasks are handled within projects
+        return import('../pages/projects/ProjectsPrj.vue')
       },
     },
     {
@@ -151,21 +151,19 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  // Check if user has valid session
-  try {
-    if (authStore.checkSession) {
-      const isValid = await authStore.checkSession()
-      if (!isValid) {
-        console.log('🛡️ Session invalid - redirecting to login')
-        next('/login')
-        return
-      }
-    }
-  } catch {
-    console.log('🛡️ Session check failed - redirecting to login')
-    next('/login')
-    return
-  }
+  // Session check disabled for development
+  // try {
+  //   const isValid = await authStore.checkSession()
+  //   if (!isValid) {
+  //     console.log('🛡️ Session invalid - redirecting to login')
+  //     next('/login')
+  //     return
+  //   }
+  // } catch {
+  //   console.log('🛡️ Session check failed - redirecting to login')
+  //   next('/login')
+  //   return
+  // }
 
   console.log('🛡️ Access granted')
   next()

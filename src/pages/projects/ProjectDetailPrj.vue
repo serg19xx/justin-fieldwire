@@ -7,12 +7,38 @@ import {
   type Project as ApiProject,
   type ProjectTeamMember,
 } from '@/core/utils/project-api'
+
+// API response interfaces
+interface ApiTeamMember {
+  team_member_id: number
+  project_id: number
+  id: number
+  project_role: string
+  added_at: string
+  invited_by: number
+  full_name: string
+  email: string
+  role_name: string
+  job_title: string
+  status: string
+  phone: string
+  first_name: string
+  last_name: string
+  role_code: string
+  role_category: string
+  avatar_url: string
+  full_img_url: string
+}
 import { tasksApi } from '@/core/utils/tasks-api'
 import type { Task } from '@/core/types/task'
-import ProjectCalendar from '@/components/ProjectCalendar.vue'
 import AddTeamMemberDialog from '@/components/AddTeamMemberDialog.vue'
 import FileUploadDialog from '@/components/FileUploadDialog.vue'
-import FileManager from '@/components/FileManager.vue'
+import PlansSection from './PlansSection.vue'
+import TasksSection from './TasksSection.vue'
+import TeamSection from './TeamSection.vue'
+import PhotosSection from './PhotosSection.vue'
+import SettingsSection from './SettingsSection.vue'
+import TeamMemberDetailsDialog from './TeamMemberDetailsDialog.vue'
 import {
   exportTasksToICal as exportTasksToICalUtil,
   downloadFile as downloadFileUtil,
@@ -53,6 +79,8 @@ const isSavingSettings = ref(false)
 const teamMembers = ref<ProjectTeamMember[]>([])
 const loadingTeam = ref(false)
 const showAddTeamMemberDialog = ref(false)
+const showMemberDetailsDialog = ref(false)
+const selectedMember = ref<ProjectTeamMember | null>(null)
 
 // Export state
 const isExporting = ref(false)
@@ -74,7 +102,6 @@ const selectedFile = ref<File | null>(null)
 const isUploading = ref(false)
 const uploadProgress = ref(0)
 const currentFolderPath = ref('/')
-const folderManagerRef = ref()
 
 // Folder Manager state
 const selectedItems = ref<Array<{ id: number; type: 'file' | 'folder' }>>([])
@@ -89,6 +116,12 @@ const moveDestinationFolderId = ref<number | null>(null)
 const folders = ref<Folder[]>([])
 const files = ref<FileUpload[]>([])
 const fileManagerKey = ref(0)
+
+// Refs for sections
+const plansSectionRef = ref()
+const tasksSectionRef = ref()
+const settingsSectionRef = ref()
+const folderManagerRef = computed(() => plansSectionRef.value?.folderManagerRef)
 
 // Sync with FileManager state
 watch(
@@ -318,35 +351,57 @@ function switchProject(projectId: number) {
 function loadSettingsForm() {
   if (project.value) {
     settingsForm.value = {
-      name: project.value.name,
-      address: project.value.address,
-      priority: project.value.priority,
-      status: project.value.status,
-      startDate: project.value.startDate,
-      endDate: project.value.endDate,
+      name: project.value.name || '',
+      address: project.value.address || '',
+      priority: project.value.priority || 'low',
+      status: project.value.status || 'draft',
+      startDate: project.value.startDate || '',
+      endDate: project.value.endDate || '',
     }
   }
 }
 
 async function saveSettings() {
+  console.log('🔧 ProjectDetailPrj saveSettings called')
   if (!project.value) return
 
   isSavingSettings.value = true
 
   try {
+    // Get form data from SettingsSection
+    const formData = settingsSectionRef.value?.settingsForm
+    console.log('🔧 Form data from SettingsSection:', formData)
+
     const updateData = {
-      prj_name: settingsForm.value.name.trim(),
-      address: settingsForm.value.address.trim(),
-      priority: settingsForm.value.priority,
-      status: settingsForm.value.status,
-      date_start: settingsForm.value.startDate,
-      date_end: settingsForm.value.endDate,
+      prj_name: formData?.name?.trim() || '',
+      address: formData?.address?.trim() || '',
+      priority: formData?.priority || 'low',
+      status: formData?.status || 'draft',
+      date_start: formData?.startDate || '',
+      date_end: formData?.endDate || '',
     }
+
+    console.log('🔧 Update data:', updateData)
 
     await projectApi.update(project.value.id, updateData)
 
-    // Reload project data
-    await loadProject()
+    // Update local project data without API call
+    if (project.value) {
+      project.value.name = updateData.prj_name
+      project.value.address = updateData.address
+      project.value.priority = updateData.priority
+      project.value.status = updateData.status
+      project.value.startDate = updateData.date_start
+      project.value.endDate = updateData.date_end
+    }
+
+    // Update project in dropdown list
+    const projectIndex = projects.value.findIndex(p => p.id === project.value?.id)
+    if (projectIndex !== -1) {
+      projects.value[projectIndex].name = updateData.prj_name
+      projects.value[projectIndex].address = updateData.address
+      console.log('🔄 Updated project in dropdown list:', projects.value[projectIndex])
+    }
 
     alert('Project settings saved successfully!')
   } catch (error: unknown) {
@@ -380,58 +435,35 @@ async function loadTeamMembers() {
   try {
     console.log('👥 Loading team members for project:', project.value.id)
 
-    // Try to load from API first
-    try {
-      const response = await projectApi.getTeamMembers(project.value.id)
-      teamMembers.value = response.team_members
-      console.log('✅ Team members loaded from API:', teamMembers.value.length)
-    } catch {
-      console.log('⚠️ API not available, using mock data')
+    // Load team members from API
+    const response = await projectApi.getTeamMembers(project.value.id)
+    console.log('🔍 Full API response:', response)
 
-      // Fallback to mock data
-      teamMembers.value = [
-        {
-          id: 1,
-          project_id: project.value.id,
-          user_id: 1,
-          role: 'lead',
-          added_at: '2025-01-15T10:00:00Z',
-          added_by: 1,
-          name: 'John Smith',
-          email: 'john.smith@example.com',
-          user_type: 'Project Manager',
-          job_title: 'Senior Project Manager',
-          status: 1,
-        },
-        {
-          id: 2,
-          project_id: project.value.id,
-          user_id: 2,
-          role: 'member',
-          added_at: '2025-01-20T10:00:00Z',
-          added_by: 1,
-          name: 'Sarah Johnson',
-          email: 'sarah.johnson@example.com',
-          user_type: 'Architect',
-          job_title: 'Lead Architect',
-          status: 1,
-        },
-        {
-          id: 3,
-          project_id: project.value.id,
-          user_id: 3,
-          role: 'member',
-          added_at: '2025-01-25T10:00:00Z',
-          added_by: 1,
-          name: 'Mike Davis',
-          email: 'mike.davis@example.com',
-          user_type: 'Engineer',
-          job_title: 'Senior Engineer',
-          status: 1,
-        },
-      ]
-      console.log('✅ Team members loaded from mock data:', teamMembers.value.length)
-    }
+    // Map the new API response structure to our expected format
+    const apiTeamMembers = response.data?.team_members || response.team_members || []
+    teamMembers.value = apiTeamMembers.map((member: ApiTeamMember) => ({
+      id: member.team_member_id,
+      project_id: member.project_id,
+      user_id: member.id,
+      role: member.project_role,
+      added_at: member.added_at,
+      added_by: member.invited_by,
+      name: member.full_name,
+      email: member.email,
+      user_type: member.role_name,
+      job_title: member.job_title,
+      status: member.status,
+      phone: member.phone,
+      first_name: member.first_name,
+      last_name: member.last_name,
+      role_code: member.role_code,
+      role_category: member.role_category,
+      avatar_url: member.avatar_url,
+      full_img_url: member.full_img_url
+    }))
+
+    console.log('✅ Team members loaded from API:', teamMembers.value.length)
+    console.log('👥 Team members data:', teamMembers.value)
   } catch (error) {
     console.error('❌ Error loading team members:', error)
     teamMembers.value = []
@@ -609,7 +641,7 @@ async function pasteToCurrentFolder() {
     return
   }
 
-  const currentFolderId = getCurrentFolderId()
+  const currentFolderId = await getCurrentFolderId()
   await executePasteToFolder(currentFolderId)
 }
 
@@ -882,12 +914,22 @@ async function createNewFolder() {
   }
 
   try {
-    const currentFolderId = getCurrentFolderId()
-    console.log('📁 Creating folder with parent_id:', currentFolderId)
+    console.log('📁 === STARTING FOLDER CREATION ===')
+    console.log('📁 plansSectionRef.value:', plansSectionRef.value)
+    console.log('📁 folderManagerRef.value:', folderManagerRef.value)
+
+    const currentFolderId = await getCurrentFolderId()
+    const projectId = project.value?.id || 0
+
+    console.log('📁 Creating folder with parameters:')
+    console.log('  - folderName:', folderName.trim())
+    console.log('  - projectId:', projectId)
+    console.log('  - parentId:', currentFolderId)
+    console.log('📁 === END FOLDER CREATION PARAMS ===')
 
     const newFolder = await filesApi.createFolder(
       folderName.trim(),
-      project.value?.id || 0,
+      projectId,
       currentFolderId,
     )
 
@@ -929,33 +971,52 @@ async function createNewFolder() {
   }
 }
 
-// Helper function to get current folder ID
-function getCurrentFolderId(): number {
-  // Try to get current path from FileManager component
-  const fileManagerPath = folderManagerRef.value?.currentPath || currentFolderPath.value
-  console.log('📁 Current path from FileManager:', fileManagerPath)
+// Helper function to get current folder ID from FileManager
+async function getCurrentFolderId(): Promise<number> {
+  try {
+    console.log('📁 Getting current folder ID...')
+    console.log('📁 plansSectionRef.value:', plansSectionRef.value)
+    console.log('📁 folderManagerRef.value:', folderManagerRef.value)
 
-  // For root level, return 1 (Home folder)
-  if (fileManagerPath === '/') {
-    console.log('📁 Using root folder (ID: 1)')
-    return 1
-  }
+    // Try direct access to FileManager through plansSectionRef
+    if (plansSectionRef.value?.folderManagerRef?.getCurrentFolderId) {
+      const currentFolderId = plansSectionRef.value.folderManagerRef.getCurrentFolderId()
+      console.log('📁 Current folder ID from FileManager (direct):', currentFolderId)
+      console.log('📁 FileManager currentPath:', plansSectionRef.value.folderManagerRef.currentPath)
+      return currentFolderId
+    }
 
-  // Extract folder ID from path like "/folder/123"
-  const pathSegments = fileManagerPath.split('/').filter(Boolean)
-  for (let i = 0; i < pathSegments.length; i++) {
-    if (pathSegments[i] === 'folder' && i + 1 < pathSegments.length) {
-      const folderId = parseInt(pathSegments[i + 1])
-      if (!isNaN(folderId)) {
-        console.log('📁 Using folder ID:', folderId)
-        return folderId
+    // Try computed folderManagerRef
+    if (folderManagerRef.value?.getCurrentFolderId) {
+      const currentFolderId = folderManagerRef.value.getCurrentFolderId()
+      console.log('📁 Current folder ID from FileManager (computed):', currentFolderId)
+      console.log('📁 FileManager currentPath:', folderManagerRef.value.currentPath)
+      return currentFolderId
+    }
+
+    // Try to access FileManager methods directly
+    console.log('📁 Trying direct FileManager access...')
+    console.log('📁 plansSectionRef.value.folderManagerRef:', plansSectionRef.value?.folderManagerRef)
+
+    if (plansSectionRef.value?.folderManagerRef) {
+      const fm = plansSectionRef.value.folderManagerRef
+      console.log('📁 FileManager methods available:', Object.getOwnPropertyNames(fm))
+
+      if (typeof fm.getCurrentFolderId === 'function') {
+        const currentFolderId = fm.getCurrentFolderId()
+        console.log('📁 Current folder ID from FileManager (method call):', currentFolderId)
+        return currentFolderId
       }
     }
-  }
 
+    // Fallback to Home folder if FileManager not available
+    console.log('📁 FileManager not available, using Home folder (ID: 75)')
+    return 75
+  } catch (error) {
+    console.error('📁 Error getting folder ID:', error)
   // Fallback to Home folder
-  console.log('📁 Fallback to root folder (ID: 1)')
-  return 1
+    return 75
+  }
 }
 
 // Execute paste to specific folder
@@ -970,7 +1031,7 @@ async function executePasteToFolder(destinationFolderId: number) {
       console.log('Processing item:', item)
 
       // Check for conflicts
-      if (checkItemExists(item, currentFolderPath.value)) {
+      if (await checkItemExists(item, currentFolderPath.value)) {
         const conflictResolution = await handleNameConflict(item)
 
         if (conflictResolution === 'cancel') {
@@ -992,9 +1053,10 @@ async function executePasteToFolder(destinationFolderId: number) {
               console.log('🗑️ Replaced existing file:', existingFile.file_name)
             }
           } else {
+            const currentFolderId = await getCurrentFolderId()
             const existingFolder = folders.value.find(
               (f) =>
-                f.parent_id === getCurrentFolderId() &&
+                f.parent_id === currentFolderId &&
                 f.name === folders.value.find((f) => f.id === item.id)?.name,
             )
             if (existingFolder) {
@@ -1010,7 +1072,7 @@ async function executePasteToFolder(destinationFolderId: number) {
               ? files.value.find((f) => f.id === item.id)?.file_name || 'Unknown'
               : folders.value.find((f) => f.id === item.id)?.name || 'Unknown'
 
-          const uniqueName = generateUniqueName(originalName, currentFolderPath.value, item.type)
+          const uniqueName = await generateUniqueName(originalName, currentFolderPath.value, item.type)
           console.log(`📝 Renaming to: ${uniqueName}`)
 
           // Store the new name for later use in paste operation
@@ -1133,10 +1195,10 @@ async function executePasteToFolder(destinationFolderId: number) {
 }
 
 // Helper functions for paste operations
-function checkItemExists(
+async function checkItemExists(
   item: { id: number; type: 'file' | 'folder' },
   currentPath: string,
-): boolean {
+): Promise<boolean> {
   if (item.type === 'file') {
     const file = files.value.find((f: FileUpload) => f.id === item.id)
     if (file) {
@@ -1147,8 +1209,9 @@ function checkItemExists(
   } else {
     const folder = folders.value.find((f: Folder) => f.id === item.id)
     if (folder) {
+      const currentFolderId = await getCurrentFolderId()
       return folders.value.some(
-        (f: Folder) => f.parent_id === getCurrentFolderId() && f.name === folder.name,
+        (f: Folder) => f.parent_id === currentFolderId && f.name === folder.name,
       )
     }
   }
@@ -1176,11 +1239,11 @@ async function handleNameConflict(item: {
   }
 }
 
-function generateUniqueName(
+async function generateUniqueName(
   originalName: string,
   currentPath: string,
   type: 'file' | 'folder',
-): string {
+): Promise<string> {
   const nameWithoutExt =
     originalName.lastIndexOf('.') > 0
       ? originalName.substring(0, originalName.lastIndexOf('.'))
@@ -1191,7 +1254,7 @@ function generateUniqueName(
   let counter = 1
   let newName = `${nameWithoutExt} (${counter})${extension}`
 
-  while (checkItemExists({ id: -1, type }, currentPath)) {
+  while (await checkItemExists({ id: -1, type }, currentPath)) {
     counter++
     newName = `${nameWithoutExt} (${counter})${extension}`
   }
@@ -1253,7 +1316,7 @@ async function handleFilesSelected(selectedFiles: File[]) {
         }
 
         // Get current folder ID
-        const currentFolderId = getCurrentFolderId()
+        const currentFolderId = await getCurrentFolderId()
 
         // Upload file via API
         const uploadedFile = await filesApi.uploadFile(file, currentFolderId, {
@@ -1292,7 +1355,7 @@ async function handleFileUpload(data: {
     isUploading.value = true
     uploadProgress.value = 0
 
-    const uploadedFile = await filesApi.uploadFile(data.file, getCurrentFolderId(), {
+    const uploadedFile = await filesApi.uploadFile(data.file, await getCurrentFolderId(), {
       fileName: data.formData.fileName,
       description: data.formData.description,
       category: data.formData.category,
@@ -1469,47 +1532,29 @@ const roleOptions = [
   { value: 'coordinator', label: 'Coordinator' },
 ]
 
-// Function to get default role based on user type
-function getDefaultRoleForUserType(userType: string): string {
-  switch (userType) {
-    case 'Plumber':
-    case 'Electrician':
-    case 'Carpenter':
-    case 'Mason':
-    case 'Painter':
-      return 'member'
-    case 'Architect':
-    case 'Engineer':
-    case 'Project Manager':
-      return 'lead'
-    case 'Foreman':
-    case 'Safety Inspector':
-    case 'Quality Control':
-      return 'supervisor'
-    default:
-      return 'member'
-  }
+
+
+// Open member details dialog
+function openMemberDetails(member: ProjectTeamMember) {
+  console.log('👤 Opening member details for:', member.name)
+  selectedMember.value = member
+  showMemberDetailsDialog.value = true
 }
 
-// Function to get role status text for table display
-function getRoleStatusText(member: ProjectTeamMember): string {
-  const defaultRole = getDefaultRoleForUserType(member.user_type || '')
-
-  if (member.role === defaultRole) {
-    return 'Auto-assigned'
-  } else {
-    return 'Custom role'
-  }
+// Close member details dialog
+function closeMemberDetails() {
+  showMemberDetailsDialog.value = false
+  selectedMember.value = null
 }
 
-// Open edit role dialog
-function openEditRoleDialog(member: ProjectTeamMember) {
-  editRoleDialog.value = {
-    isOpen: true,
-    member,
-    newRole: member.role,
-  }
-}
+// Open edit role dialog (deprecated - using openMemberDetails instead)
+// function openEditRoleDialog(member: ProjectTeamMember) {
+//   editRoleDialog.value = {
+//     isOpen: true,
+//     member,
+//     newRole: member.role,
+//   }
+// }
 
 // Close edit role dialog
 function closeEditRoleDialog() {
@@ -1589,7 +1634,14 @@ async function removeTeamMember(member: ProjectTeamMember) {
 // Handle task updates from calendar
 function handleTaskUpdate(task: unknown) {
   console.log('📝 Task updated:', task)
-  // TODO: Show notification or update UI
+
+  // Update the selected task in the calendar if it's the same task
+  if (tasksSectionRef.value?.calendarRef?.value) {
+    const calendar = tasksSectionRef.value.calendarRef.value
+    if (calendar.updateSelectedTask) {
+      calendar.updateSelectedTask(task)
+    }
+  }
 }
 
 // Handle task duplication from calendar
@@ -1676,9 +1728,15 @@ function getStatusColor(status?: string) {
 // }
 
 // Load project on mount
-onMounted(() => {
-  loadProjects()
-  loadProject()
+onMounted(async () => {
+  await loadProjects()
+  await loadProject()
+
+  // Initialize folder structure for the project
+  if (project.value?.id) {
+    console.log('📁 Initializing folder structure for project:', project.value.id)
+    // The FileManager will handle the initialization
+  }
 })
 
 // Load tasks and files when project is loaded
@@ -1881,7 +1939,7 @@ watch(
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col ml-64" style="margin-top: 0; padding-top: 0;">
+    <div class="flex-1 flex flex-col ml-64 pt-4">
       <!-- Content Header -->
       <div class="bg-white shadow-sm border-b border-gray-200 px-6 py-2 fixed top-12 left-64 right-0 z-40" style="margin-top: 0; padding-top: 0.5rem; padding-bottom: 0.5rem;">
         <div class="flex items-center justify-between">
@@ -2091,36 +2149,7 @@ watch(
 
             <!-- Settings Section Buttons -->
             <template v-else-if="activeSection === 'settings'">
-              <button
-                v-if="canEditProject"
-                @click="saveSettings"
-                :disabled="isSavingSettings"
-                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-medium disabled:opacity-50"
-              >
-                <span v-if="isSavingSettings" class="flex items-center">
-                  <svg
-                    class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      class="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                    ></circle>
-                    <path
-                      class="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Saving...
-                </span>
-                <span v-else>Save Changes</span>
-              </button>
+              <!-- Settings form has its own save button -->
             </template>
           </div>
 
@@ -2236,37 +2265,24 @@ watch(
           class="flex-1 flex flex-col"
         >
           <!-- Plans Section -->
-          <div v-if="activeSection === 'plans'" class="flex-1 flex flex-col">
-            <!-- Folder Manager -->
-            <div class="bg-white rounded-lg shadow w-full" style="margin-bottom: 0; height: calc(100vh - 8rem);">
-              <div class="p-4" style="height: calc(100vh - 8rem);">
-                <FileManager
-                  v-if="project?.id"
-                  :key="fileManagerKey"
-                  ref="folderManagerRef"
-                  :project-id="project.id"
-                  :initial-path="currentFolderPath"
+          <PlansSection
+            v-if="activeSection === 'plans'"
+            ref="plansSectionRef"
+            :project="project"
+            :file-manager-key="String(fileManagerKey)"
+            :current-folder-path="currentFolderPath"
                   :view-mode="viewMode"
-                  style="height: calc(100vh - 12rem);"
-                  @file-selected="(file: File) => handleFilesSelected([file])"
-                  @folder-created="handleFolderCreated"
-                  @file-uploaded="handleFileUploaded"
-                  @file-double-click="handleFileDoubleClick"
-                />
-                <div v-else class="flex items-center justify-center h-full">
-                  <div class="text-gray-500">Loading project...</div>
-                </div>
-              </div>
-            </div>
-          </div>
+            @files-selected="(files: unknown[]) => handleFilesSelected(files as File[])"
+            @folder-created="(folder: unknown) => handleFolderCreated(folder as Folder)"
+            @file-uploaded="(file: unknown) => handleFileUploaded(file as FileUpload)"
+            @file-double-click="(file: unknown) => handleFileDoubleClick(file as FileUpload)"
+          />
 
           <!-- Tasks Section -->
-          <div v-else-if="activeSection === 'tasks'" class="flex-1 flex flex-col">
-            <!-- Calendar Component -->
-            <ProjectCalendar
-              v-if="project && project.id"
-              ref="calendarRef"
-              :project-id="project.id"
+          <TasksSection
+            v-else-if="activeSection === 'tasks'"
+            ref="tasksSectionRef"
+            :project="project"
               :can-edit="canEditProject"
               @event-click="handleEventClick"
               @date-click="handleDateClick"
@@ -2274,403 +2290,33 @@ watch(
               @event-resize="handleEventResize"
               @task-update="handleTaskUpdate"
               @task-duplicate="handleTaskDuplicate"
-              @editPanelOpen="handleEditPanelOpen"
-            />
-            <!-- Loading state for tasks -->
-            <div v-else class="flex items-center justify-center h-64">
-              <div class="text-center">
-                <svg
-                  class="animate-spin h-8 w-8 text-blue-600 mx-auto mb-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    class="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    stroke-width="4"
-                  ></circle>
-                  <path
-                    class="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  ></path>
-                </svg>
-                <p class="text-gray-600">Loading project tasks...</p>
-                <p class="text-xs text-gray-500 mt-2">
-                  Project state: {{ project ? 'Loaded' : 'Not loaded' }}
-                </p>
-              </div>
-            </div>
-          </div>
+            @edit-panel-open="(task: unknown) => handleEditPanelOpen(true, task as Task | null, 'edit')"
+          />
 
           <!-- Photos Section -->
-          <div v-else-if="activeSection === 'photos'" class="flex-1 flex flex-col">
-            <div class="bg-white rounded-lg shadow p-6">
-              <p class="text-gray-500">Photos content will be implemented here</p>
-            </div>
-          </div>
+          <PhotosSection v-else-if="activeSection === 'photos'" />
 
           <!-- Team Section -->
-          <div v-else-if="activeSection === 'team'" class="flex-1 flex flex-col">
-            <!-- Team Members List -->
-            <div class="bg-white rounded-lg shadow">
-              <!-- Loading State -->
-              <div v-if="loadingTeam" class="p-6">
-                <div class="flex items-center justify-center">
-                  <svg class="animate-spin h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24">
-                    <circle
-                      class="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      stroke-width="4"
-                    ></circle>
-                    <path
-                      class="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  <span class="ml-2 text-gray-600">Loading team members...</span>
-                </div>
-              </div>
-
-              <!-- Team Members Table -->
-              <div v-else-if="teamMembers.length > 0" class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                  <thead class="bg-gray-50">
-                    <tr>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Name
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        <div class="flex items-center">
-                          <span>Role</span>
-                          <div class="ml-1 group relative">
-                            <svg
-                              class="h-4 w-4 text-gray-400 cursor-help"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                              ></path>
-                            </svg>
-                            <div
-                              class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10"
-                            >
-                              Role in this project (not job title)
-                              <div
-                                class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"
-                              ></div>
-                            </div>
-                          </div>
-                        </div>
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Status
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Join Date
-                      </th>
-                      <th
-                        v-if="canEditProject"
-                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody class="bg-white divide-y divide-gray-200">
-                    <tr v-for="member in teamMembers" :key="member.id" class="hover:bg-gray-50">
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex items-center">
-                          <div class="flex-shrink-0 h-10 w-10">
-                            <div
-                              class="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center"
-                            >
-                              <span class="text-sm font-medium text-gray-700">
-                                {{
-                                  (member.name || 'Unknown')
-                                    .split(' ')
-                                    .map((n) => n[0])
-                                    .join('')
-                                }}
-                              </span>
-                            </div>
-                          </div>
-                          <div class="ml-4">
-                            <div class="text-sm font-medium text-gray-900">
-                              {{ member.name || 'Unknown User' }}
-                            </div>
-                            <div class="text-sm text-gray-500">
-                              {{ member.email || 'No email' }}
-                            </div>
-                            <div class="text-xs text-gray-400">
-                              {{ member.user_type || 'Unknown Type' }}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="flex flex-col">
-                          <span
-                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                            :class="{
-                              'bg-blue-100 text-blue-800': member.role === 'lead',
-                              'bg-green-100 text-green-800': member.role === 'member',
-                              'bg-yellow-100 text-yellow-800': member.role === 'supervisor',
-                              'bg-purple-100 text-purple-800': member.role === 'coordinator',
-                              'bg-gray-100 text-gray-800': ![
-                                'lead',
-                                'member',
-                                'supervisor',
-                                'coordinator',
-                              ].includes(member.role),
-                            }"
-                          >
-                            {{
-                              member.role === 'lead'
-                                ? 'Team Lead'
-                                : member.role === 'member'
-                                  ? 'Team Member'
-                                  : member.role === 'supervisor'
-                                    ? 'Supervisor'
-                                    : member.role === 'coordinator'
-                                      ? 'Coordinator'
-                                      : member.role
-                            }}
-                          </span>
-                          <span class="text-xs text-gray-400 mt-1">
-                            {{ getRoleStatusText(member) }}
-                          </span>
-                        </div>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap">
-                        <span
-                          :class="
-                            member.status === 1
-                              ? 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800'
-                              : 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800'
-                          "
-                        >
-                          {{ member.status === 1 ? 'Active' : 'Inactive' }}
-                        </span>
-                      </td>
-                      <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {{ new Date(member.added_at).toLocaleDateString() }}
-                      </td>
-                      <td
-                        v-if="canEditProject"
-                        class="px-6 py-4 whitespace-nowrap text-sm font-medium"
-                      >
-                        <button
-                          @click="openEditRoleDialog(member)"
-                          class="text-blue-600 hover:text-blue-900 mr-3"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          @click="removeTeamMember(member)"
-                          class="text-red-600 hover:text-red-900"
-                        >
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <!-- Empty State -->
-              <div v-else class="p-6 text-center">
-                <svg
-                  class="mx-auto h-12 w-12 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                  ></path>
-                </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No team members</h3>
-                <p class="mt-1 text-sm text-gray-500">
-                  Get started by adding team members to this project.
-                </p>
-                <div v-if="canEditProject" class="mt-6">
-                  <button
-                    @click="addTeamMember"
-                    class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                  >
-                    + Add Team Member
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <TeamSection
+            v-else-if="activeSection === 'team'"
+            :team-members="teamMembers"
+            :loading-team="loadingTeam"
+            :can-edit="canEditProject"
+            @member-details="(member: unknown) => openMemberDetails(member as ProjectTeamMember)"
+            @remove-team-member="(member: unknown) => removeTeamMember(member as ProjectTeamMember)"
+            @add-team-member="addTeamMember"
+          />
 
           <!-- Settings Section -->
-          <div
+          <SettingsSection
             v-else-if="activeSection === 'settings'"
-            class="flex-1 flex flex-col"
-          >
-            <div class="flex items-center justify-between">
-              <h2 class="text-xl font-semibold text-gray-900">Project Settings</h2>
-            </div>
-
-            <!-- Settings Form -->
-            <div class="bg-white rounded-lg shadow p-6">
-              <form @submit.prevent="saveSettings" class="space-y-6">
-                <!-- Project Name -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Project Name *
-                  </label>
-                  <input
-                    v-model="settingsForm.name"
-                    type="text"
-                    :disabled="!canEditProject"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-                    placeholder="Enter project name"
-                    required
+            ref="settingsSectionRef"
+            :can-edit="canEditProject"
+            :project="project"
+            @save-settings="saveSettings"
+            @reset-settings="resetSettings"
                   />
                 </div>
-
-                <!-- Project Address -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Project Address *
-                  </label>
-                  <textarea
-                    v-model="settingsForm.address"
-                    :disabled="!canEditProject"
-                    rows="3"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-                    placeholder="Enter project address"
-                    required
-                  ></textarea>
-                </div>
-
-                <!-- Priority and Status -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <!-- Priority -->
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2"> Priority </label>
-                    <select
-                      v-model="settingsForm.priority"
-                      :disabled="!canEditProject"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-                    >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                    </select>
-                  </div>
-
-                  <!-- Status -->
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2"> Status </label>
-                    <select
-                      v-model="settingsForm.status"
-                      :disabled="!canEditProject"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-                    >
-                      <option value="draft">Draft</option>
-                      <option value="active">Active</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </div>
-                </div>
-
-                <!-- Dates -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <!-- Start Date -->
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2"> Start Date </label>
-                    <input
-                      v-model="settingsForm.startDate"
-                      type="date"
-                      :disabled="!canEditProject"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-                    />
-                  </div>
-
-                  <!-- End Date -->
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2"> End Date </label>
-                    <input
-                      v-model="settingsForm.endDate"
-                      type="date"
-                      :disabled="!canEditProject"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-                    />
-                  </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div
-                  v-if="canEditProject"
-                  class="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200"
-                >
-                  <button
-                    type="button"
-                    @click="resetSettings"
-                    :disabled="isSavingSettings"
-                    class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                  >
-                    Reset
-                  </button>
-                </div>
-
-                <!-- Read-only notice for non-managers -->
-                <div v-else class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-                  <div class="flex">
-                    <svg
-                      class="h-5 w-5 text-yellow-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                      ></path>
-                    </svg>
-                    <div class="ml-3">
-                      <p class="text-sm text-yellow-800">
-                        You can only view project settings. Only Project Managers can edit project
-                        information.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -2770,6 +2416,13 @@ watch(
     :existing-team-members="teamMembers"
     @close="showAddTeamMemberDialog = false"
     @member-added="handleTeamMemberAdded"
+  />
+
+  <!-- Team Member Details Dialog -->
+  <TeamMemberDetailsDialog
+    :is-open="showMemberDetailsDialog"
+    :member="selectedMember"
+    @close="closeMemberDetails"
   />
 
   <!-- File Upload Dialog -->

@@ -5,7 +5,7 @@ import { type WorkerUser, hrResourcesApi } from '@/core/utils/hr-api'
 
 // Extended worker type with role for team management
 interface WorkerUserWithRole extends WorkerUser {
-  role?: string
+  teamRole?: string
 }
 
 // Props
@@ -97,17 +97,17 @@ async function loadAvailableWorkerUsers() {
     // Get all workers
     const response = await hrResourcesApi.getAllUsers(1, 100)
 
-    if (('workers' in response && Array.isArray(response.workers)) || ('users' in response && Array.isArray(response.users))) {
+    if ('users' in response && Array.isArray(response.users)) {
       // Filter out workers who are already in the team
       const existingUserIds = props.existingTeamMembers.map((member) => member.user_id)
-      const workers = response.workers || response.users
+      const workers = response.users as unknown as WorkerUser[]
       availableWorkerUsers.value = workers.filter(
         (worker) =>
           !existingUserIds.includes(worker.id) &&
           worker.invitation_status === 'registered' &&
           worker.status === 1 && // Only active workers
-          worker.user_type !== 'System Administrator' && // Exclude administrators
-          worker.user_type !== 'Project Manager' // Exclude project managers
+          worker.role_code!== 'admin' && // Exclude administrators
+          worker.role_code !== 'project_manager' // Exclude project managers
       )
 
       console.log('✅ Available workers loaded:', availableWorkerUsers.value.length)
@@ -133,12 +133,12 @@ async function addTeamMembers() {
   try {
     console.log('👥 Adding team members:', {
       projectId: props.projectId,
-      users: selectedUsers.value.map((u) => ({ id: u.id, name: getUserDisplayName(u), role: u.role })),
+      users: selectedUsers.value.map((u) => ({ id: u.id, name: getUserDisplayName(u), role: u.teamRole })),
     })
 
     // Add all selected users with their individual roles
     const promises = selectedUsers.value.map((user) =>
-      hrResourcesApi.addTeamMember(props.projectId, user.id, user.role || 'member'),
+      hrResourcesApi.addTeamMember(props.projectId, user.id, user.teamRole || 'member'),
     )
 
     const newMembers = await Promise.all(promises)
@@ -207,7 +207,7 @@ function toggleUserSelection(worker: WorkerUser) {
     const defaultRole = getDefaultRoleForUserType('worker')
     selectedUsers.value.push({
       ...worker,
-      role: defaultRole
+      teamRole: defaultRole
     } as WorkerUserWithRole)
   }
 }
@@ -221,7 +221,7 @@ function isUserSelected(worker: WorkerUser): boolean {
 function updateUserRole(user: WorkerUserWithRole, newRole: string) {
   const index = selectedUsers.value.findIndex((u) => u.id === user.id)
   if (index > -1) {
-    selectedUsers.value[index] = { ...selectedUsers.value[index], role: newRole }
+    selectedUsers.value[index] = { ...selectedUsers.value[index], teamRole: newRole }
   }
 }
 
@@ -231,7 +231,7 @@ function selectAllFiltered() {
     .filter((worker) => !selectedUsers.value.some((u) => u.id === worker.id))
     .map(worker => ({
       ...worker,
-      role: getDefaultRoleForUserType('worker')
+      teamRole: getDefaultRoleForUserType('worker')
     } as WorkerUserWithRole))
   selectedUsers.value.push(...newSelections)
 }

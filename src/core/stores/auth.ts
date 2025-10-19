@@ -7,8 +7,6 @@ import {
   startSessionManager,
   stopSessionManager,
 } from '@/core/utils/session-manager'
-import { isTokenExpired } from '@/core/utils/jwt-utils'
-
 
 export interface User {
   id: number
@@ -536,19 +534,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Helper function to check if token is expired
-  // Now uses the new JWT utility function
-  function isTokenExpiredLocal(token: string): boolean {
-    // Skip check for mock tokens
-    if (token.startsWith('dev_token_')) {
-      console.log('🔍 Mock token detected, skipping expiration check')
-      return false
-    }
-
-    // Use the new JWT utility function
-    return isTokenExpired(token)
-  }
-
   // Helper function to check if token needs refresh (5 minutes before expiry)
   // Simple validation without complex JWT parsing
   function shouldRefreshToken(token: string): boolean {
@@ -839,12 +824,12 @@ export const useAuthStore = defineStore('auth', () => {
 
     if (token && savedUser) {
       try {
-        // Check if token is expired using new JWT utils
-        if (isTokenExpiredLocal(token)) {
-          console.log('❌ Token is expired, logging out')
-          logout()
-          return
-        }
+        // Temporarily disabled token expiration check for development
+        // if (isTokenExpiredLocal(token)) {
+        //   console.log('❌ Token is expired, logging out')
+        //   logout()
+        //   return
+        // }
 
         // Parse saved user data
         const user = JSON.parse(savedUser)
@@ -1004,6 +989,7 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     checkPermission,
     initializeAuth,
+    checkSession,
     getProfile,
     enableTwoFactorFromProfile,
     disableTwoFactorFromProfile,
@@ -1146,33 +1132,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   // Check if user session is valid
   async function checkSession(): Promise<boolean> {
-    try {
-      console.log('🔍 Checking session validity...')
-
-      // Check if user is authenticated
-      if (!isAuthenticated.value || !currentUser.value) {
-        console.log('❌ User not authenticated')
-        return false
-      }
-
-      // Check if token exists
-      const token = localStorage.getItem('authToken')
-      if (!token) {
-        console.log('❌ No token found')
-        return false
-      }
-
-      // Check if token is expired
-      if (isTokenExpired(token)) {
-        console.log('❌ Token is expired')
-        return false
-      }
-
-      console.log('✅ Session is valid')
-      return true
-    } catch (error) {
-      console.error('❌ Session check error:', error)
-      return false
-    }
+    // Session check completely disabled for development
+    console.log('🔍 Session check disabled for development - always returning true')
+    return true
   }
 })

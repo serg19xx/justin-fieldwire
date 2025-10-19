@@ -118,7 +118,10 @@ onUnmounted(() => {
 
 <style scoped>
 .session-status {
-  /* @apply is a Tailwind CSS directive */
-  @apply p-2 bg-white rounded-lg shadow-sm border;
+  padding: 0.5rem;
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
 }
 </style>

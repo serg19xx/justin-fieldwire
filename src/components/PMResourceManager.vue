@@ -419,7 +419,7 @@ watch([searchQuery, skillFilter, statusFilter], () => {
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-48">
                 <span
-                  :class="getRoleColor(worker.role_code)"
+                  :class="getRoleColor(worker.role_code || '')"
                   class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                 >
                   {{ worker.role_name }}
@@ -493,7 +493,7 @@ watch([searchQuery, skillFilter, statusFilter], () => {
                 <!-- Role and Status -->
                 <div class="flex flex-wrap items-center gap-2 mb-2">
                   <span
-                    :class="getRoleColor(worker.role_code)"
+                    :class="getRoleColor(worker.role_code || '')"
                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                   >
                     {{ worker.role_name }}
