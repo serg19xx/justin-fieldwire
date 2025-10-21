@@ -12,12 +12,13 @@ import { tasksApi } from '@/core/utils/tasks-api'
 import { projectApi, type Project } from '@/core/utils/project-api'
 import { checkProjectBounds } from '@/core/utils/project-bounds-checker'
 import { checkDependencyConstraints } from '@/core/utils/dependency-validator'
-import TaskDialog from './TaskDialog.vue'
-import TaskViewDialog from './TaskViewDialog.vue'
-import TaskEditPanel from './TaskEditPanel.vue'
-import MilestoneDialog from './MilestoneDialog.vue'
-import SimpleBoundsDialog from './SimpleBoundsDialog.vue'
-import DependencyValidationDialog from './DependencyValidationDialog.vue'
+import TaskDialog from '@/pages/projects/TaskDialog.vue'
+import TaskViewDialog from '@/pages/projects/TaskViewDialog.vue'
+import ProjectGantt from '@/pages/projects/ProjectGantt.vue'
+import TaskEditPanel from '@/pages/projects/TaskEditPanel.vue'
+import MilestoneDialog from '@/pages/projects/MilestoneDialog.vue'
+import SimpleBoundsDialog from '@/pages/projects/SimpleBoundsDialog.vue'
+import DependencyValidationDialog from '@/pages/projects/DependencyValidationDialog.vue'
 
 // Props
 interface Props {
@@ -352,8 +353,7 @@ const calendarOptions = ref({
       console.log('🔍 Task has dependencies:', dependencies)
     }
   },
-  events: (_info: unknown, successCallback: (events: any[]) => void) => {
-    // eslint-disable-line @typescript-eslint/no-explicit-any
+  events: (_info: unknown, successCallback: (events: any[]) => void) => { // eslint-disable-line @typescript-eslint/no-explicit-any
     console.log('📅 FullCalendar requesting events, returning:', calendarEvents.value.length)
     console.log('📅 Events data:', calendarEvents.value)
     successCallback(JSON.parse(JSON.stringify(calendarEvents.value)))
@@ -2329,6 +2329,13 @@ function handleProjectUpdated(updatedProject: Project) {
   }, 100)
 }
 
+function handleTaskUpdate(updatedTask: Task) {
+  console.log('📅 Task updated from Gantt, emitting to parent:', updatedTask)
+
+  // Emit to parent component to update the original data
+  emit('taskUpdate', updatedTask)
+}
+
 function handleOpenProjectSettings() {
   console.log('⚙️ Opening project settings from task dialog')
   // Emit event to parent component to open project settings
@@ -3138,14 +3145,17 @@ defineExpose({
         </div>
       </div>
 
-      <!-- Gantt Chart View -->
-      <div v-else-if="viewMode === 'gantt'" class="p-6">
-        <div class="text-center text-gray-500">
-          <div class="text-4xl mb-4">📊</div>
-          <h3 class="text-lg font-medium mb-2">Gantt Chart View</h3>
-          <p class="text-sm">Gantt chart visualization will be implemented here</p>
-          <div class="mt-4 text-xs text-gray-400">Tasks: {{ tasks.length }} tasks available</div>
-        </div>
+      <!-- Gantt View -->
+      <div v-else-if="viewMode === 'gantt'" class="p-4">
+        <ProjectGantt
+          :project-id="projectId"
+          :can-edit="props.canEdit"
+          :tasks="tasks"
+          :project-start-date="projectInfo?.date_start || undefined"
+          :project-end-date="projectInfo?.date_end || undefined"
+          :dynamic-range="false"
+          @task-update="handleTaskUpdate"
+        />
       </div>
 
       <!-- Task Dialog -->

@@ -1,8 +1,10 @@
 <template>
   <div class="tasks-section flex-1 flex flex-col">
-    <!-- Calendar Component -->
+
+
+    <!-- Calendar View -->
     <ProjectCalendar
-      v-if="project && (project as any).id"
+      v-if="activeView === 'calendar' && project && (project as any).id"
       ref="calendarRef"
       :project-id="(project as any).id"
       :can-edit="canEdit"
@@ -14,7 +16,15 @@
       @task-duplicate="handleTaskDuplicate"
       @editPanelOpen="handleEditPanelOpen"
     />
-    <!-- Loading state for tasks -->
+
+    <!-- List View (placeholder) -->
+    <div v-else-if="activeView === 'list'" class="bg-white rounded-lg shadow p-4 text-sm text-gray-600">
+      Simple task list view will be implemented here.
+    </div>
+
+    <!-- Gantt View is handled inside ProjectCalendar component -->
+
+    <!-- Loading / Empty State -->
     <div v-else class="flex items-center justify-center h-64">
       <div class="text-center">
         <svg
@@ -40,6 +50,7 @@
       </div>
     </div>
   </div>
+
 </template>
 
 <script setup lang="ts">
@@ -56,10 +67,13 @@ interface Props {
   canEdit?: boolean
 }
 
-defineProps<Props>()
-
 // Refs
 const calendarRef = ref()
+
+defineProps<Props>()
+
+// View state
+const activeView = ref<'calendar' | 'list' | 'gantt'>('calendar')
 
 // Expose ref to parent
 defineExpose({ calendarRef })
