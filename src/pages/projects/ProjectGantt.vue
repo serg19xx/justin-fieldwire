@@ -3,9 +3,24 @@
     <!-- Header -->
     <div class="bg-white rounded-lg shadow p-3 mb-3 flex items-center justify-between">
       <div class="text-sm text-gray-700 font-medium">Gantt Chart</div>
-      <div class="flex items-center gap-2 text-xs text-gray-500">
-        <span>Range:</span>
-        <span class="font-medium">{{ headerRangeLabel }}</span>
+      <div class="flex items-center gap-4">
+        <!-- Sort Toggle -->
+        <button
+          @click="toggleSortByStartDate"
+          class="flex items-center gap-2 px-3 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+          :class="{ 'bg-blue-100 text-blue-700': sortByStartDate }"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+          </svg>
+          {{ sortByStartDate ? 'Sort by Start Date' : 'Manual Order' }}
+        </button>
+
+        <!-- Range Info -->
+        <div class="flex items-center gap-2 text-xs text-gray-500">
+          <span>Range:</span>
+          <span class="font-medium">{{ headerRangeLabel }}</span>
+        </div>
       </div>
     </div>
 
@@ -15,7 +30,14 @@
       <div class="gantt-left-panel" ref="leftPanelRef">
         <!-- Task List Header -->
         <div class="gantt-header-row">
-          <div class="gantt-task-header">Task</div>
+          <div class="gantt-task-header">
+            <div class="flex items-center gap-2">
+              <span>Task</span>
+              <span v-if="!sortByStartDate" class="text-xs text-gray-400">
+                (drag to reorder)
+              </span>
+            </div>
+          </div>
         </div>
 
         <!-- Task List -->
@@ -25,14 +47,37 @@
             :key="task.id"
             class="gantt-task-row"
             :class="{
-              'selected': selectedTask?.id === task.id
+              'selected': selectedTask?.id === task.id,
+              'dragging': draggedTask?.id === task.id,
+              'drag-over': dragOverTask?.id === task.id
             }"
+            :draggable="!sortByStartDate"
             @click="handleTaskListClick(task)"
+            @dragstart="handleTaskListDragStart(task, $event)"
+            @dragover="handleTaskListDragOver(task, $event)"
+            @dragleave="handleTaskListDragLeave"
+            @drop="handleTaskListDrop(task, $event)"
           >
             <div class="gantt-task-cell">
               <div class="flex items-center justify-between w-full">
-                <span class="truncate">{{ task.title }}</span>
-                <span class="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                <div class="flex items-center gap-2 flex-1 min-w-0">
+                  <!-- Drag Handle -->
+                  <div
+                    v-if="!sortByStartDate"
+                    class="drag-handle flex-shrink-0 cursor-move text-gray-600 hover:text-gray-800 transition-colors"
+                    title="Drag to reorder"
+                  >
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 6h2v2H8V6zm0 4h2v2H8v-2zm0 4h2v2H8v-2zm6-8h2v2h-2V6zm0 4h2v2h-2v-2zm0 4h2v2h-2v-2z"/>
+                    </svg>
+                  </div>
+
+                  <!-- Task Title -->
+                  <span class="truncate">{{ task.title }}</span>
+                </div>
+
+                <!-- Duration Badge -->
+                <span class="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded flex-shrink-0">
                   {{ task.duration }}d
                 </span>
               </div>
@@ -74,9 +119,6 @@
               v-for="(day, idx) in days"
               :key="idx"
               class="gantt-day-cell"
-              :class="[
-                isMonthBoundary(day) ? 'border-l-4 border-l-gray-400' : 'border-l',
-              ]"
             >
               <!-- Task Bar - only show on the first day of the task -->
               <div
@@ -136,6 +178,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import type { Task } from '@/core/types/task'
+import { tasksApi } from '@/core/utils/tasks-api'
 
 defineOptions({ name: 'ProjectGantt' })
 
@@ -307,6 +350,19 @@ const highlightedDays = ref<Set<string>>(new Set())
 // Selected task in the list
 const selectedTaskInList = ref<GanttTask | null>(null)
 
+// Sort toggle - default to task_order
+const sortByStartDate = ref(false)
+
+// Drag-drop reordering
+const isReordering = ref(false)
+const draggedTask = ref<GanttTask | null>(null)
+const dragOverTask = ref<GanttTask | null>(null)
+
+// Emit to parent component to reload tasks with sorting
+const emit = defineEmits<{
+  'sort-changed': [sortBy: 'start_date' | 'task_order']
+}>()
+
 const days = computed<Date[]>(() => {
   if (!projectRange.value) return []
 
@@ -408,12 +464,12 @@ function isTaskStartDay(day: Date, task: GanttTask): boolean {
 
 // Check if this day is the first day of a month
 function isMonthBoundary(day: Date): boolean {
-  return day.getDate() === 1
+  return day.getUTCDate() === 1
 }
 
 // Check if this day is a weekend (Saturday or Sunday)
 function isWeekend(day: Date): boolean {
-  const dayOfWeek = day.getDay()
+  const dayOfWeek = day.getUTCDay()
   return dayOfWeek === 0 || dayOfWeek === 6 // Sunday = 0, Saturday = 6
 }
 
@@ -720,6 +776,9 @@ function handleMouseUp() {
 
       // Update highlighted days
       updateHighlightedDays(newStart, newEnd)
+
+      // Save changes to API
+      saveTaskChanges(String(task.id), newStart.toISOString().split('T')[0], newEnd.toISOString().split('T')[0])
     }
   }
 
@@ -828,6 +887,9 @@ function handleResizeMove(event: MouseEvent) {
       // Update highlighted days for the resized task
       if (newStart && newEnd && !isNaN(newStart.getTime()) && !isNaN(newEnd.getTime())) {
         updateHighlightedDays(newStart, newEnd)
+
+        // Save changes to API
+        saveTaskChanges(String(resizeStartTask.value.id), newStart.toISOString().split('T')[0], newEnd.toISOString().split('T')[0])
       }
     }
   }
@@ -868,6 +930,148 @@ const handleRightPanelScroll = (event: Event) => {
   const target = event.target as HTMLElement
   if (leftPanelRef.value) {
     syncScroll(target, leftPanelRef.value)
+  }
+}
+
+// Toggle sort by start date
+const toggleSortByStartDate = () => {
+  sortByStartDate.value = !sortByStartDate.value
+  console.log('🔄 Sort by start date:', sortByStartDate.value ? 'enabled' : 'disabled')
+
+  // Emit to parent to reload tasks with new sorting
+  emit('sort-changed', sortByStartDate.value ? 'start_date' : 'task_order')
+}
+
+// Drag-drop reordering functions
+const handleTaskListDragStart = (task: GanttTask, event: DragEvent) => {
+  if (sortByStartDate.value) return // Don't allow reordering when sorted by date
+
+  // Only start drag if clicking on the handle or the row itself
+  const target = event.target as HTMLElement
+  if (target.closest('.drag-handle') || target.closest('.gantt-task-row')) {
+    isReordering.value = true
+    draggedTask.value = task
+    event.dataTransfer!.effectAllowed = 'move'
+    event.dataTransfer!.setData('text/plain', task.id.toString())
+
+    console.log('🔄 Started dragging task:', task.title)
+  }
+}
+
+const handleTaskListDragOver = (task: GanttTask, event: DragEvent) => {
+  if (!isReordering.value || !draggedTask.value) return
+
+  event.preventDefault()
+  event.dataTransfer!.dropEffect = 'move'
+  dragOverTask.value = task
+}
+
+const handleTaskListDragLeave = () => {
+  dragOverTask.value = null
+}
+
+const handleTaskListDrop = async (task: GanttTask, event: DragEvent) => {
+  if (!isReordering.value || !draggedTask.value || draggedTask.value.id === task.id) {
+    isReordering.value = false
+    draggedTask.value = null
+    dragOverTask.value = null
+    return
+  }
+
+  event.preventDefault()
+
+  console.log('🔄 Dropping task:', draggedTask.value.title, 'onto:', task.title)
+
+  // Calculate new order
+  const draggedIndex = mappedTasks.value.findIndex(t => t.id === draggedTask.value!.id)
+  const targetIndex = mappedTasks.value.findIndex(t => t.id === task.id)
+
+  if (draggedIndex === -1 || targetIndex === -1) return
+
+  // Update task_order for affected tasks
+  const tasksToUpdate = []
+  const startIndex = Math.min(draggedIndex, targetIndex)
+  const endIndex = Math.max(draggedIndex, targetIndex)
+
+  for (let i = startIndex; i <= endIndex; i++) {
+    const currentTask = mappedTasks.value[i]
+    const originalTask = localTasks.value.find(t => Number(t.id) === currentTask.id)
+    if (originalTask) {
+      let newOrder = originalTask.task_order || i + 1
+
+      if (draggedIndex < targetIndex) {
+        // Moving down
+        if (i === draggedIndex) {
+          newOrder = targetIndex + 1
+        } else if (i > draggedIndex && i <= targetIndex) {
+          newOrder = i
+        }
+      } else {
+        // Moving up
+        if (i === draggedIndex) {
+          newOrder = targetIndex + 1
+        } else if (i >= targetIndex && i < draggedIndex) {
+          newOrder = i + 2
+        }
+      }
+
+      tasksToUpdate.push({
+        taskId: String(currentTask.id),
+        task_order: newOrder
+      })
+    }
+  }
+
+  // Save all changes
+  for (const update of tasksToUpdate) {
+    try {
+      await tasksApi.update(props.projectId!, update.taskId, { task_order: update.task_order })
+      console.log('✅ Updated task order:', update.taskId, '->', update.task_order)
+    } catch (error) {
+      console.error('❌ Failed to update task order:', error)
+    }
+  }
+
+  // Reset state
+  isReordering.value = false
+  draggedTask.value = null
+  dragOverTask.value = null
+
+  // Reload tasks to get updated order
+  emit('sort-changed', 'task_order')
+}
+
+// Save task changes to API
+const saveTaskChanges = async (taskId: string, newStart: string, newEnd: string) => {
+  if (!props.projectId) {
+    console.warn('No project ID available for saving task changes')
+    return
+  }
+
+  try {
+    const updatePayload = {
+      start_planned: newStart,
+      end_planned: newEnd,
+    }
+
+    console.log('💾 Saving task changes:', { taskId, updatePayload })
+
+    const updatedTask = await tasksApi.update(props.projectId, taskId, updatePayload)
+    console.log('✅ Task saved successfully:', updatedTask)
+
+    // Update local tasks with the response from API
+    const taskIndex = localTasks.value.findIndex(t => t.id === taskId)
+    if (taskIndex !== -1) {
+      localTasks.value[taskIndex] = {
+        ...localTasks.value[taskIndex],
+        start_planned: newStart,
+        end_planned: newEnd,
+      }
+    }
+
+  } catch (error) {
+    console.error('❌ Failed to save task changes:', error)
+    // TODO: Show user-friendly error message
   }
 }
 
@@ -960,6 +1164,13 @@ onUnmounted(() => {
   font-size: 10px;
 }
 
+/* Month boundary styles */
+.gantt-day-header.border-l-4 {
+  border-left: 4px solid #6b7280 !important;
+  background-color: #f9fafb;
+  font-weight: 600;
+}
+
 /* Task List */
 .gantt-task-list {
   flex: 1;
@@ -975,6 +1186,56 @@ onUnmounted(() => {
   border-bottom: 1px solid #e5e7eb;
   cursor: pointer;
   transition: background-color 0.2s;
+}
+
+/* Drag-drop styles */
+.gantt-task-row.dragging {
+  opacity: 0.5;
+  background-color: #f3f4f6;
+}
+
+.gantt-task-row.drag-over {
+  background-color: #dbeafe;
+  border-top: 2px solid #3b82f6;
+}
+
+.gantt-task-row[draggable="true"] {
+  cursor: move;
+}
+
+.gantt-task-row[draggable="true"]:hover {
+  background-color: #f9fafb;
+}
+
+/* Drag Handle Styles */
+.drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  opacity: 0.8;
+  transition: opacity 0.2s, color 0.2s, transform 0.2s;
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.drag-handle:hover {
+  opacity: 1;
+  background-color: #f3f4f6;
+  transform: scale(1.1);
+}
+
+.gantt-task-row:hover .drag-handle {
+  opacity: 0.9;
+  background-color: #f9fafb;
+}
+
+.gantt-task-row.dragging .drag-handle {
+  opacity: 1;
+  color: #3b82f6;
+  background-color: #dbeafe;
+  transform: scale(1.1);
 }
 
 .gantt-task-row:hover {

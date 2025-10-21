@@ -48,6 +48,7 @@ export interface Task {
   updated_at: string
   // Extended properties (from database)
   resources: string[] // resource IDs
+  task_order?: number // Order for manual sorting in Gantt chart
   dependencies: Array<{ predecessor_id: number; type: string; lag_days: number }> | number[] // Full dependency objects or legacy IDs
   baseline_start?: string
   baseline_end?: string
@@ -98,6 +99,7 @@ export interface TaskCreateUpdate {
   assignees?: number[]
   resources?: string[]
   dependencies?: Array<{ predecessor_id: number; type: string; lag_days: number }>
+  task_order?: number // Order for manual sorting in Gantt chart
   // Legacy fields for backward compatibility
   wbsPath?: string[]
   startPlanned?: string
@@ -121,6 +123,9 @@ export interface TaskFilter {
   priority?: string[]
   search?: string
   project_id?: string
+  // Sorting options
+  sortBy?: 'start_date' | 'end_date' | 'name' | 'created_at' | 'task_order' | 'original'
+  sortOrder?: 'asc' | 'desc'
 }
 
 // Task statistics interface

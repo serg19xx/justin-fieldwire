@@ -52,6 +52,14 @@ export const tasksApi = {
         params.append('date_end', filters.dateRange.end)
       }
 
+      // Add sorting parameters
+      if (filters?.sortBy) {
+        params.append('sort_by', filters.sortBy)
+      }
+      if (filters?.sortOrder) {
+        params.append('sort_order', filters.sortOrder)
+      }
+
       const url = params.toString()
         ? `/api/v1/projects/${projectId}/tasks?${params.toString()}`
         : `/api/v1/projects/${projectId}/tasks`
@@ -273,6 +281,7 @@ export const tasksApi = {
       if (data.team_members !== undefined) apiData.team_members = data.team_members
       if (data.resources !== undefined) apiData.resources = data.resources
       if (data.dependencies !== undefined) apiData.dependencies = data.dependencies
+      if (data.task_order !== undefined) apiData.task_order = data.task_order
       // Note: baseline_start, baseline_end, actual_start, actual_end, slack_days are not part of TaskCreateUpdate
 
       console.log('📤 Updating task with data:', data)

@@ -5,7 +5,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import listPlugin from '@fullcalendar/list'
-import type { Task, TaskStatus, TaskCreateUpdate } from '@/core/types/task'
+import type { Task, TaskStatus, TaskCreateUpdate, TaskFilter } from '@/core/types/task'
 import { taskToCalendarTask, getTaskColor, processEndDateForDisplay } from '@/core/utils/task-utils'
 import { useAuthStore } from '@/core/stores/auth'
 import { tasksApi } from '@/core/utils/tasks-api'
@@ -2336,6 +2336,26 @@ function handleTaskUpdate(updatedTask: Task) {
   emit('taskUpdate', updatedTask)
 }
 
+// Handle sort change from Gantt chart
+async function handleSortChanged(sortBy: 'start_date' | 'task_order') {
+  console.log('🔄 Sort changed in Gantt:', sortBy)
+
+  try {
+    // Reload tasks with new sorting
+    const filters: TaskFilter = {
+      sortBy: sortBy,
+      sortOrder: 'asc'
+    }
+
+    const response = await tasksApi.getAll(props.projectId, undefined, undefined, filters)
+    tasks.value = response.tasks || []
+
+    console.log('✅ Tasks reloaded with new sorting:', tasks.value.length, 'tasks')
+  } catch (error) {
+    console.error('❌ Failed to reload tasks with new sorting:', error)
+  }
+}
+
 function handleOpenProjectSettings() {
   console.log('⚙️ Opening project settings from task dialog')
   // Emit event to parent component to open project settings
@@ -3155,6 +3175,7 @@ defineExpose({
           :project-end-date="projectInfo?.date_end || undefined"
           :dynamic-range="false"
           @task-update="handleTaskUpdate"
+          @sort-changed="handleSortChanged"
         />
       </div>
 
