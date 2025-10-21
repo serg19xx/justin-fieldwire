@@ -9,75 +9,72 @@
       </div>
     </div>
 
-    <!-- Gantt Chart -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-      <div class="overflow-x-auto">
-        <div
-          class="min-w-full"
-          :style="{ minWidth: `${240 + (days?.length || 0) * 33}px` }"
-          @click="handleGridClick"
-        >
-          <!-- Header Row -->
-          <div class="grid" :style="gridTemplateColumns">
-            <div
-              class="sticky left-0 bg-white z-10 border-b h-8 flex items-center px-3 text-xs font-medium text-gray-600"
-            >
-              Task
-            </div>
-            <div
-              v-for="(day, idx) in days"
-              :key="idx"
-              :class="[
-                'border-b h-8 flex items-center justify-center text-[10px] transition-colors duration-200',
-                isMonthBoundary(day) ? 'border-l-4 border-l-gray-400' : 'border-l',
-                highlightedDays.has(day.toISOString().split('T')[0])
-                  ? 'bg-blue-100 text-blue-700 border-blue-300'
-                  : isWeekend(day)
-                    ? 'bg-red-50 text-red-600 border-red-200'
-                    : 'text-gray-500',
-              ]"
-            >
-              {{ formatDay(day) }}
-            </div>
-          </div>
+    <!-- Gantt Chart Container -->
+    <div class="gantt-main-container">
+      <!-- Left Panel: Task List -->
+      <div class="gantt-left-panel" ref="leftPanelRef">
+        <!-- Task List Header -->
+        <div class="gantt-header-row">
+          <div class="gantt-task-header">Task</div>
+        </div>
 
-          <!-- Debug Info -->
-          <div v-if="mappedTasks.length === 0" class="p-4 text-center text-gray-500">
-            No tasks found
-          </div>
-
-          <!-- Task Rows -->
+        <!-- Task List -->
+        <div class="gantt-task-list">
           <div
             v-for="task in mappedTasks"
             :key="task.id"
-            class="grid items-stretch"
-            :style="gridTemplateColumns"
+            class="gantt-task-row"
+            :class="{
+              'selected': selectedTask?.id === task.id
+            }"
+            @click="handleTaskListClick(task)"
           >
-            <!-- Task Label -->
-            <div
-              :class="[
-                'sticky left-0 z-10 border-b h-8 flex items-center px-3 text-sm cursor-pointer transition-colors',
-                selectedTaskInList?.id === task.id
-                  ? 'bg-blue-100 text-blue-800 border-blue-300'
-                  : 'bg-white text-gray-800 hover:bg-gray-50',
-              ]"
-              @click="handleTaskListClick(task)"
-              :title="task.title"
-            >
-              <div class="truncate flex items-center justify-between w-full">
+            <div class="gantt-task-cell">
+              <div class="flex items-center justify-between w-full">
                 <span class="truncate">{{ task.title }}</span>
                 <span class="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                   {{ task.duration }}d
                 </span>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
 
-            <!-- Day Cells -->
+      <!-- Right Panel: Gantt Grid -->
+      <div class="gantt-right-panel" ref="rightPanelRef">
+        <!-- Grid Header -->
+        <div class="gantt-header-row gantt-grid-header">
+          <div
+            v-for="(day, idx) in days"
+            :key="idx"
+            class="gantt-day-header"
+            :class="[
+              isMonthBoundary(day) ? 'border-l-4 border-l-gray-400' : 'border-l',
+              highlightedDays.has(day.toISOString().split('T')[0])
+                ? 'bg-blue-100 text-blue-700 border-blue-300'
+                : isWeekend(day)
+                  ? 'bg-red-50 text-red-600 border-red-200'
+                  : 'text-gray-500',
+            ]"
+          >
+            {{ formatDay(day) }}
+          </div>
+        </div>
+
+        <!-- Grid Content -->
+        <div class="gantt-grid-content" @click="handleGridClick">
+          <div
+            v-for="task in mappedTasks"
+            :key="task.id"
+            class="gantt-grid-task-row"
+          >
+            <!-- Task Bar Row -->
             <div
               v-for="(day, idx) in days"
               :key="idx"
+              class="gantt-day-cell"
               :class="[
-                'border-b h-8 relative',
                 isMonthBoundary(day) ? 'border-l-4 border-l-gray-400' : 'border-l',
               ]"
             >
@@ -137,7 +134,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import type { Task } from '@/core/types/task'
 
 defineOptions({ name: 'ProjectGantt' })
@@ -400,19 +397,6 @@ const headerRangeLabel = computed(() => {
   }
 })
 
-const gridTemplateColumns = computed(() => {
-  if (!days.value || days.value.length === 0) {
-    return {
-      display: 'grid',
-      gridTemplateColumns: '240px',
-    }
-  }
-
-  return {
-    display: 'grid',
-    gridTemplateColumns: `240px repeat(${days.value.length}, 33px)`,
-  }
-})
 
 // Check if this day is the start day of the task
 function isTaskStartDay(day: Date, task: GanttTask): boolean {
@@ -864,11 +848,211 @@ function handleResizeEnd() {
   document.removeEventListener('mousemove', handleResizeMove)
   document.removeEventListener('mouseup', handleResizeEnd)
 }
+
+// Scroll synchronization between left and right panels
+const leftPanelRef = ref<HTMLElement>()
+const rightPanelRef = ref<HTMLElement>()
+
+const syncScroll = (source: HTMLElement, target: HTMLElement) => {
+  target.scrollTop = source.scrollTop
+}
+
+const handleLeftPanelScroll = (event: Event) => {
+  const target = event.target as HTMLElement
+  if (rightPanelRef.value) {
+    syncScroll(target, rightPanelRef.value)
+  }
+}
+
+const handleRightPanelScroll = (event: Event) => {
+  const target = event.target as HTMLElement
+  if (leftPanelRef.value) {
+    syncScroll(target, leftPanelRef.value)
+  }
+}
+
+// Add scroll event listeners when component mounts
+onMounted(() => {
+  if (leftPanelRef.value) {
+    leftPanelRef.value.addEventListener('scroll', handleLeftPanelScroll)
+  }
+  if (rightPanelRef.value) {
+    rightPanelRef.value.addEventListener('scroll', handleRightPanelScroll)
+  }
+})
+
+onUnmounted(() => {
+  if (leftPanelRef.value) {
+    leftPanelRef.value.removeEventListener('scroll', handleLeftPanelScroll)
+  }
+  if (rightPanelRef.value) {
+    rightPanelRef.value.removeEventListener('scroll', handleRightPanelScroll)
+  }
+})
 </script>
 
 <style scoped>
 .project-gantt {
   gap: 0.75rem;
+}
+
+/* Gantt Main Container */
+.gantt-main-container {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  width: 100%;
+  height: calc(100vh - 350px); /* Full height minus header, margins and bottom padding */
+  min-height: 400px; /* Minimum height */
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Left Panel: Task List */
+.gantt-left-panel {
+  background: white;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Right Panel: Gantt Grid */
+.gantt-right-panel {
+  display: flex;
+  flex-direction: column;
+  overflow-x: auto;
+  overflow-y: auto; /* Enable vertical scroll for both panels */
+  min-width: 0;
+}
+
+/* Header Row */
+.gantt-header-row {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-size: 10px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.gantt-task-header {
+  padding: 0 12px;
+  width: 100%;
+}
+
+.gantt-grid-header {
+  min-width: max-content;
+  flex-shrink: 0;
+}
+
+.gantt-day-header {
+  width: 33px;
+  min-width: 33px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 1px solid #e5e7eb;
+  font-size: 10px;
+}
+
+/* Task List */
+.gantt-task-list {
+  flex: 1;
+  overflow-y: hidden; /* Disable individual scroll */
+  overflow-x: hidden;
+}
+
+/* Task Rows */
+.gantt-task-row {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.gantt-task-row:hover {
+  background-color: #f9fafb;
+}
+
+.gantt-task-row.selected {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.gantt-task-cell {
+  padding: 0 12px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* Grid Content */
+.gantt-grid-content {
+  flex: 1;
+  overflow-y: hidden; /* Disable individual scroll */
+  overflow-x: hidden;
+  min-width: max-content;
+}
+
+.gantt-day-cell {
+  width: 33px;
+  min-width: 33px;
+  height: 32px;
+  border-left: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+  position: relative;
+}
+
+/* Grid Task Rows */
+.gantt-grid-task-row {
+  height: 32px;
+  display: flex;
+  border-bottom: 1px solid #e5e7eb;
+  min-width: max-content;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .gantt-main-container {
+    grid-template-columns: 200px 1fr;
+    height: calc(100vh - 300px); /* Adjusted for mobile with bottom padding */
+  }
+
+  .gantt-day-header {
+    width: 28px;
+    min-width: 28px;
+    font-size: 9px;
+  }
+
+  .gantt-day-cell {
+    width: 28px;
+    min-width: 28px;
+  }
+}
+
+@media (max-width: 480px) {
+  .gantt-main-container {
+    grid-template-columns: 180px 1fr;
+    height: calc(100vh - 250px); /* Adjusted for small mobile with bottom padding */
+  }
+
+  .gantt-day-header {
+    width: 25px;
+    min-width: 25px;
+    font-size: 8px;
+  }
+
+  .gantt-day-cell {
+    width: 25px;
+    min-width: 25px;
+  }
 }
 
 /* Interactive task bar styles - NO EFFECTS */

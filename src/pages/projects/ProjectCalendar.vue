@@ -3146,7 +3146,7 @@ defineExpose({
       </div>
 
       <!-- Gantt View -->
-      <div v-else-if="viewMode === 'gantt'" class="p-4">
+      <div v-else-if="viewMode === 'gantt'" class="p-4 overflow-hidden" style="max-width: 100%; width: 100%;">
         <ProjectGantt
           :project-id="projectId"
           :can-edit="props.canEdit"

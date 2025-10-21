@@ -2206,7 +2206,7 @@ watch(
       </div>
 
       <!-- Content Body -->
-      <div class="flex-1 overflow-y-auto px-6 pt-16" style="padding-bottom: 0;">
+      <div class="flex-1 overflow-y-auto overflow-x-hidden px-6 pt-16" style="padding-bottom: 0;">
         <!-- Loading State -->
         <div v-if="loading" class="flex items-center justify-center h-full">
           <div class="text-center">
@@ -2262,7 +2262,7 @@ watch(
         <!-- Content based on active section -->
         <div
           v-else-if="project"
-          class="flex-1 flex flex-col"
+          class="flex-1 flex flex-col min-w-0"
         >
           <!-- Plans Section -->
           <PlansSection
