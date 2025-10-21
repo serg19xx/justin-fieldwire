@@ -14,7 +14,7 @@
       <div class="overflow-x-auto">
         <div
           class="min-w-full"
-          :style="{ minWidth: `${240 + (days.value?.length || 0) * 33}px` }"
+          :style="{ minWidth: `${240 + (days?.length || 0) * 33}px` }"
           @click="handleGridClick"
         >
           <!-- Header Row -->
@@ -137,7 +137,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { Task } from '@/core/types/task'
 
 defineOptions({ name: 'ProjectGantt' })
@@ -160,7 +160,9 @@ const props = withDefaults(defineProps<Props>(), {
   dynamicRange: false,
 })
 
-// No emits needed - updating props directly
+// const emit = defineEmits<{
+//   'task-update': [taskId: number, updates: { start_planned: string; end_planned: string }]
+// }>()
 
 interface GanttTask {
   id: number
@@ -178,8 +180,8 @@ const projectRange = computed(() => {
   if (!props.tasks || props.tasks.length === 0) return null
 
   // Use project dates if available, otherwise fall back to task dates
-  let startDate: Date
-  let endDate: Date
+  let startDate: Date = new Date()
+  let endDate: Date = new Date()
 
   if (props.projectStartDate && props.projectEndDate && !props.dynamicRange) {
     // Use project boundaries (static)
@@ -188,44 +190,6 @@ const projectRange = computed(() => {
       startDate = new Date(props.projectStartDate + 'T00:00:00.000Z')
       endDate = new Date(props.projectEndDate + 'T00:00:00.000Z')
 
-      console.log('🔍 Date creation debug:', {
-        projectStartDate: props.projectStartDate,
-        projectEndDate: props.projectEndDate,
-        startDateCreated: startDate,
-        endDateCreated: endDate,
-        startDateISO: startDate.toISOString(),
-        endDateISO: endDate.toISOString(),
-        startDateUTC: startDate.getUTCDate(),
-        endDateUTC: endDate.getUTCDate(),
-        startDateLocal: startDate.getDate(),
-        endDateLocal: endDate.getDate(),
-        startDateString: startDate.toISOString().split('T')[0],
-        endDateString: endDate.toISOString().split('T')[0],
-      })
-
-      console.log('📅 Using project boundaries:', {
-        projectStartDate: props.projectStartDate,
-        projectEndDate: props.projectEndDate,
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0],
-        startDateFull: startDate.toISOString(),
-        endDateFull: endDate.toISOString(),
-        timeDiff: endDate.getTime() - startDate.getTime(),
-        daysDiff: (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
-        totalDays: Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1,
-        startDateUTC:
-          startDate.getUTCFullYear() +
-          '-' +
-          String(startDate.getUTCMonth() + 1).padStart(2, '0') +
-          '-' +
-          String(startDate.getUTCDate()).padStart(2, '0'),
-        endDateUTC:
-          endDate.getUTCFullYear() +
-          '-' +
-          String(endDate.getUTCMonth() + 1).padStart(2, '0') +
-          '-' +
-          String(endDate.getUTCDate()).padStart(2, '0'),
-      })
     } catch (error) {
       console.warn('Invalid project dates, falling back to task dates:', error)
       // Fall through to task boundaries
@@ -255,12 +219,6 @@ const projectRange = computed(() => {
   // Calculate total width in pixels (33px per day + 1px border)
   const totalWidth = totalDays * 33 + (totalDays - 1) * 1
 
-  console.log('📊 Project range calculated:', {
-    startDate: startDate.toISOString().split('T')[0],
-    endDate: endDate.toISOString().split('T')[0],
-    totalDays,
-    totalWidth,
-  })
 
   return {
     startDate,
@@ -272,60 +230,60 @@ const projectRange = computed(() => {
   }
 })
 
-// Map days to pixels
-const dayPixelMap = computed(() => {
-  if (!projectRange.value) return new Map()
+// Map days to pixels (currently unused but kept for future use)
+// const dayPixelMap = computed(() => {
+//   if (!projectRange.value) return new Map()
 
-  try {
-    const map = new Map()
-    const startDate = projectRange.value.startDate
-    const totalDays = projectRange.value.totalDays
+//   try {
+//     const map = new Map()
+//     const startDate = projectRange.value.startDate
+//     const totalDays = projectRange.value.totalDays
 
-    for (let i = 0; i < totalDays; i++) {
-      const day = new Date(startDate)
-      day.setDate(day.getDate() + i)
-      const dayStr = formatDate(day)
-      const pixelStart = i * 33 // 33px per day
-      const pixelEnd = pixelStart + 32 // 33px - 1px for border
+//     for (let i = 0; i < totalDays; i++) {
+//       const day = new Date(startDate)
+//       day.setDate(day.getDate() + i)
+//       const dayStr = formatDate(day)
+//       const pixelStart = i * 33 // 33px per day
+//       const pixelEnd = pixelStart + 32 // 33px - 1px for border
 
-      map.set(dayStr, {
-        day,
-        pixelStart,
-        pixelEnd,
-        isWeekend: isWeekend(day),
-        isMonthBoundary: isMonthBoundary(day),
-      })
-    }
+//       map.set(dayStr, {
+//         day,
+//         pixelStart,
+//         pixelEnd,
+//         isWeekend: isWeekend(day),
+//         isMonthBoundary: isMonthBoundary(day),
+//       })
+//     }
 
-    return map
-  } catch (error) {
-    console.warn('Error calculating day pixel map:', error)
-    return new Map()
-  }
-})
+//     return map
+//   } catch (error) {
+//     console.warn('Error calculating day pixel map:', error)
+//     return new Map()
+//   }
+// })
 
-// Convert pixel to day
-function pixelToDay(pixel: number): string | null {
-  if (!projectRange.value) return null
+// Convert pixel to day (currently unused but kept for future use)
+// function pixelToDay(pixel: number): string | null {
+//   if (!projectRange.value) return null
 
-  const dayIndex = Math.floor(pixel / 33) // 33px per day
-  const startDate = projectRange.value.startDate
-  const targetDay = new Date(startDate)
-  targetDay.setDate(targetDay.getDate() + dayIndex)
+//   const dayIndex = Math.floor(pixel / 33) // 33px per day
+//   const startDate = projectRange.value.startDate
+//   const targetDay = new Date(startDate)
+//   targetDay.setDate(targetDay.getDate() + dayIndex)
 
-  return formatDate(targetDay)
-}
+//   return formatDate(targetDay)
+// }
 
-// Convert day to pixel
-function dayToPixel(dayStr: string): number {
-  if (!projectRange.value) return 0
+// Convert day to pixel (currently unused but kept for future use)
+// function dayToPixel(dayStr: string): number {
+//   if (!projectRange.value) return 0
 
-  const day = toDateUTC(dayStr)
-  const startDate = projectRange.value.startDate
-  const dayDiff = Math.floor((day.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+//   const day = toDateUTC(dayStr)
+//   const startDate = projectRange.value.startDate
+//   const dayDiff = Math.floor((day.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
 
-  return dayDiff * 33 // 33px per day
-}
+//   return dayDiff * 33 // 33px per day
+// }
 
 // Interactive state
 const isDragging = ref(false)
@@ -343,6 +301,8 @@ const isResizing = ref(false)
 const resizeType = ref<'start' | 'end' | null>(null)
 const resizeStartX = ref(0)
 const resizeStartTask = ref<GanttTask | null>(null)
+const originalResizeStart = ref<string>('')
+const originalResizeEnd = ref<string>('')
 
 // Highlighted days for selected task
 const highlightedDays = ref<Set<string>>(new Set())
@@ -373,11 +333,22 @@ const days = computed<Date[]>(() => {
   }
 })
 
+// Local tasks state for drag operations
+const localTasks = ref<Task[]>([])
+
+// Initialize local tasks when props change
+watch(() => props.tasks, (newTasks) => {
+  if (newTasks) {
+    localTasks.value = [...newTasks]
+  }
+}, { immediate: true })
+
 // Map tasks to gantt format
 const mappedTasks = computed<GanttTask[]>(() => {
-  if (!props.tasks || props.tasks.length === 0) return []
+  const tasksToUse = localTasks.value.length > 0 ? localTasks.value : (props.tasks || [])
+  if (tasksToUse.length === 0) return []
 
-  const tasks = props.tasks
+  const tasks = tasksToUse
     .filter((t) => !!t.start_planned)
     .map((t) => {
       // Calculate duration from dates if duration_days is not available
@@ -400,15 +371,6 @@ const mappedTasks = computed<GanttTask[]>(() => {
         endDate = startDate.toISOString().split('T')[0]
       }
 
-      console.log('📊 Task duration:', {
-        title: t.name,
-        duration_days: t.duration_days,
-        start: t.start_planned,
-        end: t.end_planned,
-        calculated_duration: duration,
-        hasEndPlanned: !!t.end_planned,
-        endDateCalculated: endDate,
-      })
 
       return {
         id: Number(t.id),
@@ -431,7 +393,6 @@ const headerRangeLabel = computed(() => {
   try {
     const start = formatHeader(projectRange.value.startDate)
     const end = formatHeader(projectRange.value.endDate)
-    console.log('📅 Header range label:', { start, end, projectRange: projectRange.value })
     return `${start} – ${end}`
   } catch (error) {
     console.warn('Error calculating header range label:', error)
@@ -489,15 +450,6 @@ function getTaskBarStyle(task: GanttTask, day: Date): Record<string, string> {
   const width = daysDiff * 33 + (daysDiff - 1) * 1 - daysDiff - 2
   const minWidth = 29 // minimum width for very short tasks (milestones need more margin)
 
-  // Only log during initial render, not during dragging
-  if (!isDragging.value) {
-    console.log('📏 Bar width calculation:', {
-      task: task.title,
-      duration: daysDiff,
-      calculatedWidth: width,
-      finalWidth: Math.max(width, minWidth),
-    })
-  }
 
   const style = {
     width: `${Math.max(width, minWidth)}px`,
@@ -582,11 +534,8 @@ function addDays(date: Date, daysToAdd: number): Date {
 
 // Interactive handlers
 function handleTaskClick(task: GanttTask) {
-  console.log('🎯 Task clicked:', task.title)
-
   // Force cleanup any lingering drag state
   if (isDragging.value) {
-    console.log('🧹 Force cleaning up drag state on task click')
     isDragging.value = false
     dragOffset.value = 0
     document.removeEventListener('mousemove', handleMouseMove)
@@ -617,12 +566,6 @@ function updateHighlightedDays(startDate: Date, endDate: Date) {
 
   highlightedDays.value.clear()
 
-  console.log('📅 Highlighting dates:', {
-    start: startDate.toISOString().split('T')[0],
-    end: endDate.toISOString().split('T')[0],
-    startDateObj: startDate,
-    endDateObj: endDate,
-  })
 
   // Add all days from start to end (inclusive)
   const currentDate = new Date(startDate)
@@ -632,13 +575,11 @@ function updateHighlightedDays(startDate: Date, endDate: Date) {
     currentDate.setDate(currentDate.getDate() + 1)
   }
 
-  console.log('📅 Highlighted days:', Array.from(highlightedDays.value))
 }
 
 // Clear highlighted days
 function clearHighlightedDays() {
   highlightedDays.value.clear()
-  console.log('📅 Cleared highlighted days')
 }
 
 // Handle click on grid
@@ -649,13 +590,11 @@ function handleGridClick(event: MouseEvent) {
     selectedTask.value = null
     selectedTaskInList.value = null
     clearHighlightedDays()
-    console.log('📅 Cleared selection - clicked on grid')
   }
 }
 
 // Handle click on task in list
 function handleTaskListClick(task: GanttTask) {
-  console.log('📋 Task in list clicked:', task.title)
   selectedTask.value = task
   selectedTaskInList.value = task
 
@@ -696,16 +635,9 @@ function scrollToTask(task: GanttTask) {
     behavior: 'smooth',
   })
 
-  console.log('📜 Scrolling to task:', {
-    title: task.title,
-    taskCenterPosition,
-    viewportWidth,
-    scrollTo: centerPosition,
-  })
 }
 
 function handleTaskMouseDown(task: GanttTask, event: MouseEvent) {
-  console.log('🖱️ Task mouse down:', task.title)
 
   // Force cleanup any existing drag state
   document.removeEventListener('mousemove', handleMouseMove)
@@ -743,141 +675,75 @@ function handleMouseMove(event: MouseEvent) {
   const deltaX = event.clientX - dragStartX.value
   dragOffset.value = deltaX
 
-  console.log(
-    '🔄 Dragging task:',
-    dragStartTask.value.title,
-    'deltaX:',
-    deltaX,
-    'dragOffset:',
-    dragOffset.value,
-  )
 }
 
 function handleMouseUp() {
-  console.log(
-    '🖱️ Mouse up event triggered, isDragging:',
-    isDragging.value,
-    'dragStartTask:',
-    dragStartTask.value?.title,
-  )
 
-  // Only process if we were actually dragging
-  if (!dragStartTask.value) return
+  if (!isDragging.value || !dragStartTask.value) {
+    // Clean up if not dragging
+    cleanupDrag()
+    return
+  }
 
-  console.log('🖱️ Task drag ended:', dragStartTask.value.title)
-
-  // Calculate new position BEFORE resetting dragOffset
-  if (dragOffset.value !== 0 && projectRange.value) {
+  // Process drag if there was movement
+  if (Math.abs(dragOffset.value) > 5) { // Only process if moved more than 5px
     const task = dragStartTask.value
     const originalStart = new Date(originalTaskStart.value)
     const originalEnd = new Date(originalTaskEnd.value)
 
-    // Get the exact pixel position of the original task from dayPixelMap
-    const originalDayInfo = dayPixelMap.value.get(originalTaskStart.value)
-    if (!originalDayInfo) {
-      console.error('❌ Original task day not found in pixel map:', originalTaskStart.value)
-      return
+    // Calculate new position
+    const dayIndex = Math.floor(dragOffset.value / 33) // 33px per day
+    const newStart = new Date(originalStart)
+    newStart.setDate(newStart.getDate() + dayIndex)
+
+    const newEnd = new Date(originalEnd)
+    newEnd.setDate(newEnd.getDate() + dayIndex)
+
+    // Check project boundaries
+    if (projectRange.value) {
+      const projectStart = new Date(projectRange.value.startDate)
+      const projectEnd = new Date(projectRange.value.endDate)
+
+      // If task start is before project start, adjust to project start
+      if (newStart < projectStart) {
+        const daysDiff = Math.ceil((projectStart.getTime() - newStart.getTime()) / (1000 * 60 * 60 * 24))
+        newStart.setTime(projectStart.getTime())
+        newEnd.setDate(newEnd.getDate() + daysDiff)
+      }
+
+      // If task end is after project end, adjust to project end
+      if (newEnd > projectEnd) {
+        const daysDiff = Math.ceil((newEnd.getTime() - projectEnd.getTime()) / (1000 * 60 * 60 * 24))
+        newEnd.setTime(projectEnd.getTime())
+        newStart.setDate(newStart.getDate() - daysDiff)
+      }
+
+      // Final check: ensure task start is not before project start
+      if (newStart < projectStart) {
+        newStart.setTime(projectStart.getTime())
+      }
     }
 
-    const originalStartPixel = originalDayInfo.pixelStart
 
-    // Calculate the new pixel position after drag
-    const newStartPixel = originalStartPixel + dragOffset.value
-
-    console.log('📍 Original task position:', {
-      originalTaskStart: originalTaskStart.value,
-      originalStartPixel,
-      dragOffset: dragOffset.value,
-      newStartPixel,
-    })
-
-    // Calculate which day this pixel position corresponds to
-    const dayIndex = Math.floor(newStartPixel / 33)
-    const startDate = projectRange.value.startDate
-    const targetDay = new Date(startDate)
-    targetDay.setDate(targetDay.getDate() + dayIndex)
-    const newStartDateStr = formatDate(targetDay)
-
-    // Get the day info from the map
-    const dayPixelInfo = dayPixelMap.value.get(newStartDateStr)
-    if (!dayPixelInfo) {
-      console.error('❌ Target day not found in pixel map:', newStartDateStr)
-      return
-    }
-
-    const targetDayInfo = { dayStr: newStartDateStr, dayInfo: dayPixelInfo }
-
-    console.log('🔍 Pixel calculation debug:', {
-      originalTaskStart: originalTaskStart.value,
-      originalStartPixel,
-      dragOffset: dragOffset.value,
-      newStartPixel,
-      newStartDateStr,
-      dayIndex,
-      targetPixelStart: dayPixelInfo.pixelStart,
-    })
-
-    console.log('🎯 Target day pixel info:', {
-      day: newStartDateStr,
-      pixelStart: dayPixelInfo.pixelStart,
-      pixelEnd: dayPixelInfo.pixelEnd,
-    })
-
-    // Use the exact start date from the target day
-    const newStart = new Date(newStartDateStr)
-
-    // Calculate duration in days
-    const durationDays =
-      Math.ceil((originalEnd.getTime() - originalStart.getTime()) / (1000 * 60 * 60 * 24)) + 1
-
-    // Calculate new end date
-    const newEnd = new Date(newStart)
-    newEnd.setDate(newEnd.getDate() + durationDays - 1)
-
-    console.log('🔢 Precise drag calculation:', {
-      originalStart: originalTaskStart.value,
-      originalEnd: originalTaskEnd.value,
-      originalStartPixel,
-      dragOffset: dragOffset.value,
-      newStartPixel,
-      newStartDateStr,
-      durationDays,
-      newStart: newStart.toISOString().split('T')[0],
-      newEnd: newEnd.toISOString().split('T')[0],
-    })
-
-    console.log('📅 Updating task dates:', {
-      task: task.title,
-      originalStart: originalTaskStart.value,
-      originalEnd: originalTaskEnd.value,
-      newStart: newStart.toISOString().split('T')[0],
-      newEnd: newEnd.toISOString().split('T')[0],
-      dragOffset: dragOffset.value,
-    })
-
-    // Update the task in the tasks array
-    const taskIndex = props.tasks?.findIndex((t) => Number(t.id) === task.id)
-    if (taskIndex !== undefined && taskIndex >= 0 && props.tasks) {
-      props.tasks[taskIndex] = {
-        ...props.tasks[taskIndex],
+    // Update the task in local state
+    const taskIndex = localTasks.value.findIndex((t) => Number(t.id) === task.id)
+    if (taskIndex !== -1) {
+      localTasks.value[taskIndex] = {
+        ...localTasks.value[taskIndex],
         start_planned: newStart.toISOString().split('T')[0],
         end_planned: newEnd.toISOString().split('T')[0],
       }
-      console.log('✅ Task updated successfully')
 
-      // Update highlighted days for the moved task
-      if (newStart && newEnd && !isNaN(newStart.getTime()) && !isNaN(newEnd.getTime())) {
-        updateHighlightedDays(newStart, newEnd)
-      } else {
-        console.warn('Invalid dates for highlighting:', { newStart, newEnd })
-      }
-
-      // Reset drag offset immediately after updating data
-      dragOffset.value = 0
+      // Update highlighted days
+      updateHighlightedDays(newStart, newEnd)
     }
   }
 
-  // Force cleanup regardless of state
+  // Always cleanup after processing
+  cleanupDrag()
+}
+
+function cleanupDrag() {
   isDragging.value = false
   dragStartX.value = 0
   dragStartTask.value = null
@@ -885,65 +751,22 @@ function handleMouseUp() {
   originalTaskStart.value = ''
   originalTaskEnd.value = ''
 
-  // Remove global event listeners immediately
+  // Remove event listeners
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
-
-  // Additional aggressive cleanup
-  setTimeout(() => {
-    document.removeEventListener('mousemove', handleMouseMove)
-    document.removeEventListener('mouseup', handleMouseUp)
-    // Force reset all drag-related state
-    isDragging.value = false
-    dragOffset.value = 0
-  }, 50)
-
-  // Calculate final position using pixel mapping
-  const currentDragOffset = dragOffset.value
-  const originalPixel = dayToPixel(originalTaskStart.value)
-  const newPixel = originalPixel + currentDragOffset
-  const newDayStr = pixelToDay(newPixel)
-
-  if (dragStartTask.value && newDayStr && newDayStr !== originalTaskStart.value) {
-    const newStart = newDayStr
-    const newEnd = dragStartTask.value.milestone
-      ? newStart
-      : addDays(
-          new Date(originalTaskEnd.value),
-          Math.floor(
-            (new Date(newStart).getTime() - new Date(originalTaskStart.value).getTime()) /
-              (1000 * 60 * 60 * 24),
-          ),
-        )
-          .toISOString()
-          .split('T')[0]
-
-    // Update the task directly in props.tasks
-    const taskIndex = props.tasks?.findIndex((t) => Number(t.id) === dragStartTask.value!.id)
-    if (taskIndex !== -1 && props.tasks) {
-      props.tasks[taskIndex] = {
-        ...props.tasks[taskIndex],
-        start_planned: newStart,
-        end_planned: newEnd,
-      }
-      console.log('✅ Task moved to new position:', {
-        originalPixel,
-        newPixel,
-        originalDay: originalTaskStart.value,
-        newDay: newStart,
-        task: dragStartTask.value.title,
-      })
-    }
-  }
 }
+
 
 // Resize handlers
 function handleResizeStart(task: GanttTask, event: MouseEvent, type: 'start' | 'end') {
-  console.log('🔧 Resize started:', task.title, type)
   isResizing.value = true
   resizeType.value = type
   resizeStartX.value = event.clientX
   resizeStartTask.value = task
+
+  // Save original dates
+  originalResizeStart.value = task.start
+  originalResizeEnd.value = task.end
 
   // Prevent text selection during resize
   event.preventDefault()
@@ -962,54 +785,66 @@ function handleResizeMove(event: MouseEvent) {
   const daysMoved = Math.round(deltaX / cellWidth)
 
   if (daysMoved !== 0) {
-    console.log(
-      '🔧 Resizing task:',
-      resizeStartTask.value.title,
-      resizeType.value,
-      'by',
-      daysMoved,
-      'days',
-    )
-
-    const taskIndex = mappedTasks.value.findIndex((t) => t.id === resizeStartTask.value!.id)
+    const taskIndex = localTasks.value.findIndex((t) => Number(t.id) === resizeStartTask.value!.id)
     if (taskIndex !== -1) {
-      const task = mappedTasks.value[taskIndex]
-      let newStart = new Date(task.start)
-      let newEnd = new Date(task.end)
+      // Use original dates from when resize started
+      const originalStart = new Date(originalResizeStart.value)
+      const originalEnd = new Date(originalResizeEnd.value)
+
+      let newStart = new Date(originalStart)
+      let newEnd = new Date(originalEnd)
 
       if (resizeType.value === 'start') {
-        // Resize start - move start date
-        newStart = addDays(newStart, daysMoved)
-        // Ensure end date is not before start date
-        if (newEnd < newStart) {
-          newEnd = addDays(newStart, 1) // Minimum 1 day duration
+        // Resize start - move start date by the exact number of days moved
+        newStart = addDays(originalStart, daysMoved)
+
+        // Keep end date fixed
+        newEnd = new Date(originalEnd)
+
+        // Check project boundaries
+        if (projectRange.value) {
+          const projectStart = new Date(projectRange.value.startDate)
+          if (newStart < projectStart) {
+            newStart = new Date(projectStart)
+          }
+        }
+
+        // Ensure start is not after end (minimum 1 day duration)
+        if (newStart >= newEnd) {
+          newStart = addDays(newEnd, -1)
         }
       } else if (resizeType.value === 'end') {
-        // Resize end - move end date
-        newEnd = addDays(newEnd, daysMoved)
-        // Ensure end date is not before start date
-        if (newEnd < newStart) {
-          newEnd = addDays(newStart, 1) // Minimum 1 day duration
+        // Resize end - move end date by the exact number of days moved
+        newEnd = addDays(originalEnd, daysMoved)
+
+        // Keep start date fixed
+        newStart = new Date(originalStart)
+
+        // Check project boundaries
+        if (projectRange.value) {
+          const projectEnd = new Date(projectRange.value.endDate)
+          if (newEnd > projectEnd) {
+            newEnd = new Date(projectEnd)
+          }
+        }
+
+        // Ensure end is not before start (minimum 1 day duration)
+        if (newEnd <= newStart) {
+          newEnd = addDays(newStart, 1)
         }
       }
 
-      // Update the task in the array
-      mappedTasks.value[taskIndex] = {
-        ...task,
-        start: newStart.toISOString().split('T')[0],
-        end: newEnd.toISOString().split('T')[0],
-        duration: Math.ceil((newEnd.getTime() - newStart.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+      // Update the task in local state
+      localTasks.value[taskIndex] = {
+        ...localTasks.value[taskIndex],
+        start_planned: newStart.toISOString().split('T')[0],
+        end_planned: newEnd.toISOString().split('T')[0],
       }
 
-      console.log('📅 Task resized:', {
-        title: task.title,
-        type: resizeType.value,
-        oldStart: task.start,
-        oldEnd: task.end,
-        newStart: mappedTasks.value[taskIndex].start,
-        newEnd: mappedTasks.value[taskIndex].end,
-        newDuration: mappedTasks.value[taskIndex].duration,
-      })
+      // Update highlighted days for the resized task
+      if (newStart && newEnd && !isNaN(newStart.getTime()) && !isNaN(newEnd.getTime())) {
+        updateHighlightedDays(newStart, newEnd)
+      }
     }
   }
 }
@@ -1017,13 +852,13 @@ function handleResizeMove(event: MouseEvent) {
 function handleResizeEnd() {
   if (!isResizing.value || !resizeStartTask.value) return
 
-  console.log('🔧 Resize ended:', resizeStartTask.value.title)
-
   // Reset resize state
   isResizing.value = false
   resizeType.value = null
   resizeStartX.value = 0
   resizeStartTask.value = null
+  originalResizeStart.value = ''
+  originalResizeEnd.value = ''
 
   // Remove global event listeners
   document.removeEventListener('mousemove', handleResizeMove)
