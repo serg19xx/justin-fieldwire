@@ -40,7 +40,7 @@ export function taskToCalendarTask(
   const dependencyText = showDependencyIndicators ? getDependencyIndicators(task) : ''
 
   // Add task/milestone type icon at the beginning
-  const typeIcon = task.milestone ? getMilestoneTypeIcon(task.milestone_type) : '📋'
+  const typeIcon = task.milestone ? getMilestoneTypeIcon(task.milestone_type) : '📝'
 
   const calendarTask = {
     id: task.id,
@@ -53,6 +53,8 @@ export function taskToCalendarTask(
     editable: true, // Allow dragging
     startEditable: true, // Allow moving start date
     durationEditable: !task.milestone, // Disable resizing for milestones
+    // Add data attributes for selection
+    classNames: [`task-${task.id}`],
     extendedProps: {
       wbsPath: parseWbsPath(task.wbs_path), // Convert to array for display
       status: task.status,
@@ -61,6 +63,9 @@ export function taskToCalendarTask(
       progressPct: task.progress_pct,
       description: task.notes || `${task.wbs_path || 'No WBS'} - ${task.name}`,
       dependencies: task.dependencies || [],
+      // Add data attributes for selection
+      'data-event-id': String(task.id),
+      'data-id': String(task.id),
     },
   }
 
@@ -345,7 +350,7 @@ export function exportTasksToICal(tasks: Task[]): string {
         .join('\\n')
 
       // Create summary with type indicator
-      const typeIcon = task.milestone ? '🎯' : '📋'
+      const typeIcon = task.milestone ? '🎯' : '📝'
       const summary = `${typeIcon} ${task.name}`
 
       ical.push(

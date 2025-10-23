@@ -352,4 +352,33 @@ export const tasksApi = {
       throw error
     }
   },
+
+  // Reorder tasks
+  async reorderTasks(projectId: number, taskOrder: number[]): Promise<void> {
+    try {
+      console.log('🔄 Reordering tasks for project:', projectId, 'with order:', taskOrder)
+
+      const response = await api.put(`/api/v1/projects/${projectId}/tasks/reorder`, {
+        projectId: projectId,
+        order: taskOrder,
+      })
+
+      console.log('✅ Tasks reordered successfully:', response.data)
+    } catch (error) {
+      console.error('❌ Error reordering tasks:', error)
+
+      // Log detailed error information
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { data?: unknown; status?: number } }
+        console.error('🔍 Reorder API Error Details:', {
+          status: axiosError.response?.status,
+          data: axiosError.response?.data,
+          projectId,
+          taskOrder,
+        })
+      }
+
+      throw error
+    }
+  },
 }

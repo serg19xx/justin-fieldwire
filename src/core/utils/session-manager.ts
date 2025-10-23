@@ -160,7 +160,10 @@ export class SessionManager {
       // Token refresh check disabled
       // console.log('🔍 Checking if token needs refresh...')
 
-      const needsRefresh = shouldRefreshToken(5)
+      // DISABLED: Token refresh check disabled for development
+      console.log('🚫 Token refresh check DISABLED in session-manager')
+      const needsRefresh = false
+      // const needsRefresh = shouldRefreshToken(5)
       // console.log('🔍 Should refresh token (expires within 5 min):', needsRefresh)
 
       if (needsRefresh) {

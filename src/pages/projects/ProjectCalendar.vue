@@ -15,6 +15,7 @@ import { checkDependencyConstraints } from '@/core/utils/dependency-validator'
 import TaskDialog from '@/pages/projects/TaskDialog.vue'
 import TaskViewDialog from '@/pages/projects/TaskViewDialog.vue'
 import ProjectGantt from '@/pages/projects/ProjectGantt.vue'
+// ProjectGanttNew removed - was too buggy
 import TaskEditPanel from '@/pages/projects/TaskEditPanel.vue'
 import MilestoneDialog from '@/pages/projects/MilestoneDialog.vue'
 import SimpleBoundsDialog from '@/pages/projects/SimpleBoundsDialog.vue'
@@ -74,6 +75,9 @@ const tasks = ref<Task[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const viewMode = ref<'ical' | 'gantt' | 'list'>('ical')
+
+// Gantt version: 'old' | 'new'
+// ganttVersion removed - using only working Gantt
 const isDragging = ref(false)
 const isResizing = ref(false)
 const projectInfo = ref<Project | null>(null)
@@ -448,6 +452,14 @@ const calendarOptions = ref({
             const calendarEvent = calendar.getEventById(eventId)
             console.log('🔍 Calendar event found:', !!calendarEvent)
             if (calendarEvent) {
+              console.log('🔍 Calendar event details:', {
+                id: calendarEvent.id,
+                title: calendarEvent.title,
+                start: calendarEvent.start,
+                end: calendarEvent.end
+              })
+            }
+            if (calendarEvent) {
               // Try multiple approaches to add selection class
               let selectionAdded = false
 
@@ -485,17 +497,14 @@ const calendarOptions = ref({
                 }
               }
 
-              // Approach 3: Use event title to find element
+              // Approach 3: Use CSS class selector (most reliable)
               if (!selectionAdded) {
-                const eventTitle = calendarEvent.title || task.name
-                const allEvents = document.querySelectorAll('.fc-event')
-                for (const eventEl of allEvents) {
-                  if (eventEl.textContent?.includes(eventTitle)) {
-                    eventEl.classList.add('fc-event-selected')
-                    selectionAdded = true
-                    console.log('✅ Added selection class via title matching:', eventTitle, eventId)
-                    break
-                  }
+                const classSelector = `.task-${eventId}`
+                const eventElement = document.querySelector(classSelector)
+                if (eventElement) {
+                  eventElement.classList.add('fc-event-selected')
+                  selectionAdded = true
+                  console.log('✅ Added selection class via CSS class selector:', classSelector, eventId)
                 }
               }
 
@@ -634,52 +643,94 @@ function updateCalendarEvents(events: unknown[]) {
 // Function to restore task selection after DOM updates
 function restoreTaskSelection(taskId: string | number) {
   console.log('🔄 Restoring task selection for ID:', taskId)
+  console.log('🔄 Current viewMode:', viewMode.value)
+  console.log('🔄 Calendar ref exists:', !!calendarRef.value)
 
-  // Clear any existing selection first
-  const selectedElements = document.querySelectorAll('.fc-event-selected')
-  selectedElements.forEach((element) => {
-    element.classList.remove('fc-event-selected')
-  })
-
-  // Try to find and select the task element
-  const selectors = [
-    `[data-event-id="${taskId}"]`,
-    `.fc-event[data-event-id="${taskId}"]`,
-    `.fc-event[data-id="${taskId}"]`,
-    `[data-id="${taskId}"]`,
-  ]
-
-  let selectionRestored = false
-  for (const selector of selectors) {
-    const eventElement = document.querySelector(selector)
-    if (eventElement) {
-      eventElement.classList.add('fc-event-selected')
-      selectionRestored = true
-      console.log('✅ Task selection restored with selector:', selector)
-      break
-    }
+  // Check if this task is already selected to avoid double selection
+  const currentSelectedId = document.documentElement.style.getPropertyValue('--selected-task-id')
+  if (currentSelectedId === String(taskId)) {
+    console.log('🔄 Task already selected, skipping restoration')
+    return
   }
 
-  // If not found by ID, try to find by task name
-  if (!selectionRestored && selectedTask.value) {
-    const taskName = selectedTask.value.name
-    const allEvents = document.querySelectorAll('.fc-event')
-    for (const eventEl of allEvents) {
-      if (eventEl.textContent?.includes(taskName)) {
-        eventEl.classList.add('fc-event-selected')
-        selectionRestored = true
-        console.log('✅ Task selection restored by name:', taskName)
-        break
+  // Add a small delay to ensure DOM is fully updated
+  setTimeout(() => {
+    // Clear any existing selection first
+    const selectedElements = document.querySelectorAll('.fc-event-selected')
+    console.log('🔄 Found existing selected elements:', selectedElements.length)
+    selectedElements.forEach((element) => {
+      element.classList.remove('fc-event-selected')
+    })
+
+    // Try to find and select the task element with more specific selectors first
+    const selectors = [
+      `.fc-event.task-${taskId}`, // Most specific: CSS class with fc-event
+      `.task-${taskId}`, // CSS class selector
+      `[data-event-id="${taskId}"]`, // data-event-id attribute
+      `.fc-event[data-event-id="${taskId}"]`, // fc-event with data-event-id
+      `[data-id="${taskId}"]`, // data-id attribute
+      `.fc-event[data-id="${taskId}"]`, // fc-event with data-id
+    ]
+
+    console.log('🔄 Trying selectors (ordered by specificity):', selectors)
+    let selectionRestored = false
+    for (const selector of selectors) {
+      try {
+        const eventElement = document.querySelector(selector)
+        console.log('🔄 Selector:', selector, 'Found element:', !!eventElement)
+        if (eventElement) {
+          // Double-check that this is the right element by verifying the task ID
+          const elementTaskId = eventElement.getAttribute('data-event-id') ||
+                               eventElement.getAttribute('data-id') ||
+                               eventElement.className.match(/task-(\d+)/)?.[1]
+
+          if (elementTaskId === String(taskId)) {
+            eventElement.classList.add('fc-event-selected')
+            selectionRestored = true
+            console.log('✅ Task selection restored with selector:', selector, 'Task ID verified:', elementTaskId)
+            break
+          } else {
+            console.log('🔄 Found element but wrong task ID:', elementTaskId, 'Expected:', taskId)
+          }
+        }
+      } catch (error) {
+        console.log('🔄 Selector error:', selector, error)
       }
     }
-  }
 
-  if (!selectionRestored) {
-    console.log('⚠️ Could not restore task selection for ID:', taskId)
-  }
+    // Don't search by name to avoid selecting wrong tasks with similar names
 
-  // Also set CSS custom property
-  document.documentElement.style.setProperty('--selected-task-id', String(taskId))
+    if (!selectionRestored) {
+      console.log('⚠️ Could not restore task selection for ID:', taskId)
+      console.log('⚠️ All available events:', document.querySelectorAll('.fc-event').length)
+
+      // Detailed debugging of all events
+      const allEvents = document.querySelectorAll('.fc-event')
+      console.log('🔍 Detailed event analysis:')
+      allEvents.forEach((event, index) => {
+        const eventId = event.getAttribute('data-event-id') || event.getAttribute('data-id')
+        const className = event.className
+        const title = event.textContent?.trim()
+        const taskIdMatch = className.match(/task-(\d+)/)
+
+        console.log(`🔍 Event ${index}:`, {
+          title: title,
+          'data-event-id': event.getAttribute('data-event-id'),
+          'data-id': event.getAttribute('data-id'),
+          class: className,
+          taskIdFromClass: taskIdMatch?.[1],
+          isTarget: eventId === String(taskId) || taskIdMatch?.[1] === String(taskId),
+          allAttributes: Array.from(event.attributes).map(attr => `${attr.name}="${attr.value}"`)
+        })
+      })
+
+      console.log('⚠️ Available event IDs:', Array.from(document.querySelectorAll('.fc-event')).map(el => el.getAttribute('data-event-id') || el.getAttribute('data-id')))
+      console.log('⚠️ Available event classes:', Array.from(document.querySelectorAll('.fc-event')).map(el => el.className))
+    }
+
+    // Also set CSS custom property
+    document.documentElement.style.setProperty('--selected-task-id', String(taskId))
+  }, 50) // Small delay to ensure DOM is ready
 }
 
 // Load tasks from API
@@ -1906,6 +1957,59 @@ watch(shouldShowDependencyIndicators, () => {
   updateCalendarEvents(events)
 })
 
+// Watch for selected task changes to restore selection in calendar
+watch(selectedTask, (newSelectedTask) => {
+  console.log('🎯 selectedTask changed:', newSelectedTask?.name || 'null', 'viewMode:', viewMode.value)
+  if (newSelectedTask && viewMode.value === 'ical') {
+    console.log('🎯 Restoring task selection in calendar:', newSelectedTask.name)
+    // Use nextTick with delay to ensure calendar is fully rendered
+    nextTick(() => {
+      setTimeout(() => {
+        console.log('🎯 Attempting to restore task selection for ID:', newSelectedTask.id)
+        restoreTaskSelection(newSelectedTask.id)
+      }, 100) // Reduced delay to prevent double selection
+    })
+  } else if (!newSelectedTask && viewMode.value === 'ical') {
+    console.log('🎯 Clearing task selection in calendar')
+    // Clear selection in calendar
+    const calendar = calendarRef.value?.getApi()
+    if (calendar) {
+      // Remove selection from all events using DOM manipulation
+      const selectedElements = document.querySelectorAll('.fc-event-selected')
+      selectedElements.forEach((element) => {
+        element.classList.remove('fc-event-selected')
+      })
+      document.documentElement.style.removeProperty('--selected-task-id')
+    }
+  }
+}, { immediate: true })
+
+// Watch for view mode changes to restore selection when switching to calendar
+watch(viewMode, (newMode, oldMode) => {
+  console.log('🔄 viewMode changed from:', oldMode, 'to:', newMode, 'selectedTask:', selectedTask.value?.name || 'null')
+
+  if (newMode === 'ical') {
+    console.log('🔄 Switched to calendar view')
+
+    // Only restore if we have a selected task and it's not already selected in calendar
+    if (selectedTask.value) {
+      const currentSelectedId = document.documentElement.style.getPropertyValue('--selected-task-id')
+      if (currentSelectedId !== String(selectedTask.value.id)) {
+        console.log('🔄 Restoring task selection after view change:', selectedTask.value.name)
+        nextTick(() => {
+          setTimeout(() => {
+            restoreTaskSelection(selectedTask.value!.id)
+          }, 150) // Slightly longer delay for view changes
+        })
+      } else {
+        console.log('🔄 Task already selected in calendar, no need to restore')
+      }
+    } else {
+      console.log('🔄 No selected task to restore in calendar')
+    }
+  }
+})
+
 // Task list functions
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr)
@@ -1967,7 +2071,8 @@ function editTask(task: Task) {
 }
 
 async function duplicateTask(task: Task) {
-  console.log('📋 Duplicate task:', task.name)
+  console.log('📋 Duplicate task called with:', task.name)
+  console.log('📋 Task object:', task)
 
   try {
     // Create a simplified copy of the task
@@ -1977,6 +2082,7 @@ async function duplicateTask(task: Task) {
       end_planned: task.end_planned,
       status: 'planned' as const,
       milestone: task.milestone,
+      task_lead_id: task.task_lead_id, // Add required field
       dependencies:
         Array.isArray(task.dependencies) &&
         task.dependencies.length > 0 &&
@@ -2233,9 +2339,11 @@ function openMilestoneDialog(
 }
 
 function closeTaskDialog() {
+  console.log('🔒 Closing task dialog')
   taskDialog.value.isOpen = false
   taskDialog.value.task = null
   taskDialog.value.initialDate = undefined
+  console.log('✅ Task dialog closed successfully')
 }
 
 // TaskViewDialog functions
@@ -2336,6 +2444,9 @@ function handleTaskUpdate(updatedTask: Task) {
   emit('taskUpdate', updatedTask)
 }
 
+// New Gantt event handlers
+// New Gantt event handlers removed - using only working Gantt
+
 // Handle sort change from Gantt chart
 async function handleSortChanged(sortBy: 'start_date' | 'task_order') {
   console.log('🔄 Sort changed in Gantt:', sortBy)
@@ -2356,6 +2467,27 @@ async function handleSortChanged(sortBy: 'start_date' | 'task_order') {
   }
 }
 
+// Handle task order update from Gantt chart
+async function handleTaskOrderUpdated(taskOrderData: { projectId: number; order: number[] }) {
+  console.log('📤 Task order updated:', taskOrderData)
+
+  try {
+    // Send to backend API
+    await tasksApi.reorderTasks(taskOrderData.projectId, taskOrderData.order)
+    console.log('✅ Task order saved to backend successfully')
+  } catch (error) {
+    console.error('❌ Failed to save task order to backend:', error)
+    // TODO: Show user notification about the error
+  }
+}
+
+// Handle task selection from Gantt chart
+function handleTaskSelected(task: Task | null) {
+  console.log('🎯 Task selected in Gantt:', task?.name || 'none')
+  selectedTask.value = task
+}
+
+
 function handleOpenProjectSettings() {
   console.log('⚙️ Opening project settings from task dialog')
   // Emit event to parent component to open project settings
@@ -2364,6 +2496,8 @@ function handleOpenProjectSettings() {
 
 async function handleTaskSave(taskData: Partial<Task>) {
   console.log('💾 Saving task:', taskData)
+  console.log('💾 Dialog mode:', taskDialog.value.mode)
+  console.log('💾 Dialog task:', taskDialog.value.task)
 
   try {
     if (taskDialog.value.mode === 'create') {
@@ -2532,6 +2666,7 @@ async function handleTaskDelete(taskId: string) {
 
 async function handleTaskDuplicate(task: Task) {
   console.log('📋 Duplicating task from dialog:', task.name)
+  console.log('📋 Task data for duplication:', task)
 
   try {
     const duplicateData: TaskCreateUpdate = {
@@ -2702,7 +2837,7 @@ defineExpose({
                 <span class="text-gray-600">SS</span>
               </div>
               <div class="flex items-center space-x-1">
-                <span class="text-xs">🎯</span>
+                <span class="text-xs">🏁</span>
                 <span class="text-gray-600">FF</span>
               </div>
               <div class="flex items-center space-x-1">
@@ -2750,6 +2885,10 @@ defineExpose({
               <div class="flex items-center space-x-1">
                 <span class="text-xs">✅</span>
                 <span class="text-gray-600">Approval</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <span class="text-xs">🎯</span>
+                <span class="text-gray-600">Other</span>
               </div>
             </div>
           </div>
@@ -2838,7 +2977,7 @@ defineExpose({
                 class="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors"
                 title="Duplicate selected task"
               >
-                📋 Duplicate
+                📝 Duplicate
               </button>
 
               <!-- Search Navigation -->
@@ -2904,7 +3043,7 @@ defineExpose({
                 ]"
                 title="Task list view"
               >
-                📋 List
+                📝 List
               </button>
               <button
                 @click="viewMode = 'gantt'"
@@ -2918,6 +3057,8 @@ defineExpose({
               >
                 📊 Gantt
               </button>
+
+       <!-- Gantt Version Toggle removed - using only the working Gantt -->
             </div>
           </div>
         </div>
@@ -2997,7 +3138,7 @@ defineExpose({
                 ></div>
                 <!-- Task/Milestone Icon -->
                 <span v-if="task.milestone" class="text-lg">🎯</span>
-                <span v-else class="text-lg">📋</span>
+                <span v-else class="text-lg">📝</span>
                 <h4 class="font-medium text-gray-900 flex-1">{{ task.name }}</h4>
               </div>
 
@@ -3039,7 +3180,7 @@ defineExpose({
                   ></div>
                   <!-- Task/Milestone Icon -->
                   <span v-if="selectedTask.milestone" class="text-xl">🎯</span>
-                  <span v-else class="text-xl">📋</span>
+                  <span v-else class="text-xl">📝</span>
                   <h3 class="text-xl font-semibold text-gray-900">{{ selectedTask.name }}</h3>
                 </div>
                 <div class="flex items-center space-x-2">
@@ -3167,16 +3308,20 @@ defineExpose({
 
       <!-- Gantt View -->
       <div v-else-if="viewMode === 'gantt'" class="p-4 overflow-hidden" style="max-width: 100%; width: 100%;">
-        <ProjectGantt
-          :project-id="projectId"
-          :can-edit="props.canEdit"
-          :tasks="tasks"
-          :project-start-date="projectInfo?.date_start || undefined"
-          :project-end-date="projectInfo?.date_end || undefined"
-          :dynamic-range="false"
-          @task-update="handleTaskUpdate"
-          @sort-changed="handleSortChanged"
-        />
+         <!-- Gantt Chart -->
+         <ProjectGantt
+           :project-id="projectId"
+           :can-edit="props.canEdit"
+           :tasks="tasks"
+           :project-start-date="projectInfo?.date_start || ''"
+           :project-end-date="projectInfo?.date_end || ''"
+           :dynamic-range="false"
+           :selected-task-from-parent="selectedTask"
+           @task-update="handleTaskUpdate"
+           @sort-changed="handleSortChanged"
+           @task-order-updated="handleTaskOrderUpdated"
+           @task-selected="handleTaskSelected"
+         />
       </div>
 
       <!-- Task Dialog -->
@@ -3372,7 +3517,6 @@ defineExpose({
 :deep(.fc-event-resizer:hover) {
   background-color: #b91c1c !important;
   opacity: 1 !important;
-  transform: scale(1.1) !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
 }
 
@@ -3408,7 +3552,6 @@ defineExpose({
 :deep(.fc-event.fc-event-selected) {
   border: 3px solid #3b82f6 !important;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
-  transform: scale(1.05) !important;
   background-color: #dbeafe !important;
   z-index: 10 !important;
   z-index: 1000 !important;

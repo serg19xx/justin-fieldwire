@@ -28,19 +28,13 @@ api.interceptors.response.use(
       // Auto logout disabled - user stays logged in
       console.log('⚠️ 401 error - auto logout disabled, user stays logged in')
 
-      // Check if token is actually expired for logging
-      const token = localStorage.getItem('authToken')
-      if (token && isTokenExpired(token)) {
-        console.log('❌ Token is expired but auto logout disabled')
-      } else {
-        console.log('⚠️ 401 but token not expired - may be server issue')
-        console.log('🔍 Token details:', {
-          token: token ? `${token.substring(0, 20)}...` : 'No token',
-          url: error.config?.url,
-          method: error.config?.method,
-          headers: error.config?.headers,
-        })
-      }
+      // DISABLED: Token expiration checks disabled for development
+      console.log('🚫 Token expiration checks DISABLED - treating as server issue')
+      console.log('🔍 Request details:', {
+        url: error.config?.url,
+        method: error.config?.method,
+        headers: error.config?.headers,
+      })
     }
 
     return Promise.reject(error)
@@ -58,20 +52,23 @@ function getAuthToken(): string | null {
   return token
 }
 
-// Check if token is about to expire (within 5 minutes)
+// DISABLED: Token expiration checks disabled for development
 async function isTokenExpiringSoon(): Promise<boolean> {
-  const token = getAuthToken()
-  if (!token) return true
+  console.log('🚫 Token expiration soon check DISABLED')
+  return false
 
-  try {
-    // Use the new JWT utility function
-    const { isTokenExpiringSoon: checkExpiringSoon } = await import('./jwt-utils')
-    return checkExpiringSoon(token, 5)
-  } catch (error) {
-    console.warn('⚠️ Error checking token expiration:', error)
-    // Don't treat parsing errors as expiration - just skip the check
-    return false
-  }
+  // const token = getAuthToken()
+  // if (!token) return true
+
+  // try {
+  //   // Use the new JWT utility function
+  //   const { isTokenExpiringSoon: checkExpiringSoon } = await import('./jwt-utils')
+  //   return checkExpiringSoon(token, 5)
+  // } catch (error) {
+  //   console.warn('⚠️ Error checking token expiration:', error)
+  //   // Don't treat parsing errors as expiration - just skip the check
+  //   return false
+  // }
 }
 
 // Refresh token function (currently unused)
@@ -99,17 +96,8 @@ api.interceptors.request.use(
       return config
     }
 
-    // Check if token is expiring soon
-    try {
-      if (await isTokenExpiringSoon()) {
-        console.log('⚠️ Token is expiring soon, but skipping refresh for now')
-        // TODO: Implement proper token refresh when backend is fixed
-        console.log('⚠️ Backend JWT issue - skipping token refresh')
-      }
-    } catch (error) {
-      console.warn('⚠️ Error checking token expiration:', error)
-      // Continue with request even if token check fails
-    }
+    // DISABLED: Token expiration checks disabled for development
+    console.log('🚫 Token expiration checks DISABLED - skipping all checks')
 
     const token = getAuthToken()
     console.log(

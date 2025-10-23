@@ -68,25 +68,29 @@ export function parseJWT(token: string): JWTPayload | null {
  * @returns true if token is expired, false otherwise
  */
 export function isTokenExpired(token: string): boolean {
-  const payload = parseJWT(token)
-  if (!payload) {
-    return true
-  }
+  // DISABLED: Token expiration checks disabled for development
+  console.log('🚫 Token expiration check DISABLED')
+  return false
 
-  const currentTime = Math.floor(Date.now() / 1000) // Current time in Unix timestamp
-  const isExpired = payload.exp < currentTime
+  // const payload = parseJWT(token)
+  // if (!payload) {
+  //   return true
+  // }
 
-  if (isExpired) {
-    console.log('❌ Token is expired')
-    console.log('⏰ Token expires at:', new Date(payload.exp * 1000).toISOString())
-    console.log('⏰ Current time:', new Date(currentTime * 1000).toISOString())
-  } else {
-    const timeUntilExpiry = payload.exp - currentTime
-    console.log('✅ Token is valid')
-    console.log('⏰ Token expires in:', Math.floor(timeUntilExpiry / 60), 'minutes')
-  }
+  // const currentTime = Math.floor(Date.now() / 1000) // Current time in Unix timestamp
+  // const isExpired = payload.exp < currentTime
 
-  return isExpired
+  // if (isExpired) {
+  //   console.log('❌ Token is expired')
+  //   console.log('⏰ Token expires at:', new Date(payload.exp * 1000).toISOString())
+  //   console.log('⏰ Current time:', new Date(currentTime * 1000).toISOString())
+  // } else {
+  //   const timeUntilExpiry = payload.exp - currentTime
+  //   console.log('✅ Token is valid')
+  //   console.log('⏰ Token expires in:', Math.floor(timeUntilExpiry / 60), 'minutes')
+  // }
+
+  // return isExpired
 }
 
 /**
@@ -96,23 +100,27 @@ export function isTokenExpired(token: string): boolean {
  * @returns true if token expires within specified time
  */
 export function isTokenExpiringSoon(token: string, minutes: number = 5): boolean {
-  const payload = parseJWT(token)
-  if (!payload) {
-    return true
-  }
+  // DISABLED: Token expiration checks disabled for development
+  console.log('🚫 Token expiration soon check DISABLED')
+  return false
 
-  const currentTime = Math.floor(Date.now() / 1000)
-  const timeUntilExpiry = payload.exp - currentTime
-  const minutesUntilExpiry = timeUntilExpiry / 60
+  // const payload = parseJWT(token)
+  // if (!payload) {
+  //   return true
+  // }
 
-  const isExpiringSoon = minutesUntilExpiry <= minutes
+  // const currentTime = Math.floor(Date.now() / 1000)
+  // const timeUntilExpiry = payload.exp - currentTime
+  // const minutesUntilExpiry = timeUntilExpiry / 60
 
-  if (isExpiringSoon) {
-    console.log(`⚠️ Token expires soon (within ${minutes} minutes)`)
-    console.log('⏰ Minutes until expiry:', Math.floor(minutesUntilExpiry))
-  }
+  // const isExpiringSoon = minutesUntilExpiry <= minutes
 
-  return isExpiringSoon
+  // if (isExpiringSoon) {
+  //   console.log(`⚠️ Token expires soon (within ${minutes} minutes)`)
+  //   console.log('⏰ Minutes until expiry:', Math.floor(minutesUntilExpiry))
+  // }
+
+  // return isExpiringSoon
 }
 
 /**

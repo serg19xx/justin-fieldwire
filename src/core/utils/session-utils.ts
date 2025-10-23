@@ -196,29 +196,33 @@ export function getCurrentUserFromToken(): { id: number; email: string; name: st
  * @returns true if token needs refresh
  */
 export function shouldRefreshToken(minutes: number = 5): boolean {
-  const token = getStoredToken()
-  if (!token) {
-    console.log('🔍 No token found for refresh check')
-    return false
-  }
+  // DISABLED: Token expiration checks disabled for development
+  console.log('🚫 Token refresh check DISABLED in session-utils')
+  return false
 
-  const payload = parseJWT(token)
-  if (!payload) {
-    console.log('🔍 Invalid token payload for refresh check')
-    return false
-  }
+  // const token = getStoredToken()
+  // if (!token) {
+  //   console.log('🔍 No token found for refresh check')
+  //   return false
+  // }
 
-  const currentTime = Math.floor(Date.now() / 1000)
-  const timeUntilExpiry = payload.exp - currentTime
-  const minutesUntilExpiry = timeUntilExpiry / 60
+  // const payload = parseJWT(token)
+  // if (!payload) {
+  //   console.log('🔍 Invalid token payload for refresh check')
+  //   return false
+  // }
 
-  console.log('🔍 Token expiry check:', {
-    currentTime: new Date(currentTime * 1000).toISOString(),
-    expiryTime: new Date(payload.exp * 1000).toISOString(),
-    minutesUntilExpiry: Math.floor(minutesUntilExpiry),
-    threshold: minutes,
-    shouldRefresh: minutesUntilExpiry <= minutes,
-  })
+  // const currentTime = Math.floor(Date.now() / 1000)
+  // const timeUntilExpiry = payload.exp - currentTime
+  // const minutesUntilExpiry = timeUntilExpiry / 60
 
-  return minutesUntilExpiry <= minutes
+  // console.log('🔍 Token expiry check:', {
+  //   currentTime: new Date(currentTime * 1000).toISOString(),
+  //   expiryTime: new Date(payload.exp * 1000).toISOString(),
+  //   minutesUntilExpiry: Math.floor(minutesUntilExpiry),
+  //   threshold: minutes,
+  //   shouldRefresh: minutesUntilExpiry <= minutes,
+  // })
+
+  // return minutesUntilExpiry <= minutes
 }
