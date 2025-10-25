@@ -33,7 +33,7 @@
             >
               <option value="">Select a task</option>
               <option
-                v-for="task in availableTasks"
+                v-for="task in filteredTasks"
                 :key="task.id"
                 :value="String(task.id)"
               >
@@ -43,6 +43,9 @@
             </select>
             <p class="mt-1 text-xs text-gray-500">
               The task that must be completed before this task can start/finish
+            </p>
+            <p v-if="filteredTasks.length === 0" class="mt-1 text-xs text-red-500">
+              No available tasks (all tasks already have dependencies with this task)
             </p>
           </div>
 
@@ -146,18 +149,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import type { Task } from '@/core/types/task'
 
 // Props
 interface Props {
   isOpen: boolean
   availableTasks?: Task[]
+  currentTaskId?: string
+  existingDependencies?: Array<{ taskId: string; type: string; lagDays: number }>
 }
 
 const props = withDefaults(defineProps<Props>(), {
   isOpen: false,
   availableTasks: () => [],
+  currentTaskId: '',
+  existingDependencies: () => [],
 })
 
 // Emits
@@ -171,6 +178,16 @@ const form = ref({
   taskId: '',
   type: 'FS',
   lagDays: 0,
+})
+
+// Filter available tasks to exclude current task and already used tasks
+const filteredTasks = computed(() => {
+  const usedTaskIds = props.existingDependencies?.map(dep => dep.taskId) || []
+  const excludedIds = [props.currentTaskId, ...usedTaskIds].filter(Boolean)
+
+  return props.availableTasks?.filter(task =>
+    !excludedIds.includes(String(task.id))
+  ) || []
 })
 
 // Reset form when dialog opens

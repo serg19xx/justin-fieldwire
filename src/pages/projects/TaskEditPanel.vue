@@ -478,6 +478,8 @@
       v-if="showDependencyDialog"
       :is-open="showDependencyDialog"
       :available-tasks="availableTasks"
+      :current-task-id="task?.id ? String(task.id) : ''"
+      :existing-dependencies="form.dependencies"
       @close="showDependencyDialog = false"
       @add="addDependency"
     />

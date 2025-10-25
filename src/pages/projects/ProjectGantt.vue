@@ -25,6 +25,112 @@
           </svg>
           Clear All Dependencies
         </button>
+        <!-- Test Dependency Line -->
+        <button
+          @click="() => createTestDependencyLine('FS')"
+          class="flex items-center gap-2 px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md transition-colors"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+          </svg>
+          FS Test
+        </button>
+        <button
+          @click="() => createTestDependencyLine('SS')"
+          class="flex items-center gap-2 px-3 py-1 text-xs bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-md transition-colors"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+          </svg>
+          SS Test
+        </button>
+        <button
+          @click="() => createTestDependencyLine('FF')"
+          class="flex items-center gap-2 px-3 py-1 text-xs bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-md transition-colors"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+          </svg>
+          FF Test
+        </button>
+        <button
+          @click="() => createTestDependencyLine('SF')"
+          class="flex items-center gap-2 px-3 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+          </svg>
+          SF Test
+        </button>
+
+        <!-- Lag controls -->
+        <div v-if="testDependencyLine.visible" class="flex items-center gap-2 px-3 py-1 text-xs bg-gray-100 rounded-md">
+          <span class="text-gray-600">Lag:</span>
+          <button
+            @click="updateConstraintLag(`constraint-${testDependencyLine.fromTaskId}-${testDependencyLine.toTaskId}-${testDependencyLine.type}`, getConstraintLag(`constraint-${testDependencyLine.fromTaskId}-${testDependencyLine.toTaskId}-${testDependencyLine.type}`) - 1)"
+            class="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
+          >
+            -1d
+          </button>
+          <span class="px-2 py-1 bg-white border rounded min-w-[3rem] text-center">
+            {{ getConstraintLag(`constraint-${testDependencyLine.fromTaskId}-${testDependencyLine.toTaskId}-${testDependencyLine.type}`) }}d
+          </span>
+          <button
+            @click="updateConstraintLag(`constraint-${testDependencyLine.fromTaskId}-${testDependencyLine.toTaskId}-${testDependencyLine.type}`, getConstraintLag(`constraint-${testDependencyLine.fromTaskId}-${testDependencyLine.toTaskId}-${testDependencyLine.type}`) + 1)"
+            class="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
+          >
+            +1d
+          </button>
+        </div>
+
+        <!-- Constraint violation notifications -->
+        <div v-if="constraintViolations.length > 0" class="fixed top-4 right-4 z-50 space-y-2">
+          <div
+            v-for="violation in constraintViolations"
+            :key="violation.id"
+            class="bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-md shadow-lg max-w-sm"
+          >
+            <div class="flex items-start">
+              <div class="flex-shrink-0">
+                <svg class="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                </svg>
+              </div>
+              <div class="ml-3">
+                <h3 class="text-sm font-medium text-red-800">Constraint Violation</h3>
+                <div class="mt-1 text-sm text-red-700">
+                  {{ violation.message }}
+                </div>
+                <div v-if="violation.suggestedStart" class="mt-1 text-xs text-red-600">
+                  💡 Suggested start: {{ violation.suggestedStart }}
+                </div>
+                <div v-if="violation.suggestedEnd" class="mt-1 text-xs text-red-600">
+                  💡 Suggested end: {{ violation.suggestedEnd }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button
+          @click="loadRealDependencies"
+          class="flex items-center gap-2 px-3 py-1 text-xs bg-green-100 hover:bg-green-200 text-green-700 rounded-md transition-colors"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+          </svg>
+          Load Real
+        </button>
+        <!-- Clear Test Line -->
+        <button
+          @click="clearTestDependencyLine"
+          class="flex items-center gap-2 px-3 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors"
+        >
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+          Clear Line
+        </button>
         <!-- Sort Toggle -->
         <button
           @click="toggleSortByStartDate"
@@ -96,7 +202,7 @@
                   </div>
 
                   <!-- Task Number -->
-                  <span class="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded flex-shrink-0 font-mono">
+                  <span class="text-xs text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded flex-shrink-0 font-mono">
                     {{ mappedTasks.findIndex(t => t.id === task.id) + 1 }}
                   </span>
 
@@ -105,7 +211,7 @@
                 </div>
 
                 <!-- Duration Badge -->
-                <span class="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded flex-shrink-0">
+                <span class="ml-2 text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded flex-shrink-0">
                   {{ task.duration }}d
                 </span>
               </div>
@@ -115,7 +221,7 @@
             </div>
 
       <!-- Right Panel: Gantt Grid -->
-      <div class="gantt-right-panel" ref="rightPanelRef">
+      <div class="gantt-right-panel" ref="rightPanelRef" @scroll="handleDependencyLineScroll">
         <!-- Grid Header -->
         <div class="gantt-header-row gantt-grid-header">
           <div
@@ -152,13 +258,16 @@
                     ? 'ring-2 ring-blue-500 ring-opacity-100 shadow-lg z-20'
                     : '',
                   isDragging && dragStartTask?.id === task.id ? 'opacity-70' : '',
+                  testDependencyLine.visible && testDependencyLine.from.taskId === task.id ? 'ring-2 ring-green-600 bg-green-200 border-2 border-green-600' : '',
+                  testDependencyLine.visible && testDependencyLine.to.taskId === task.id ? 'ring-2 ring-orange-600 bg-orange-200 border-2 border-orange-600' : '',
                 ]"
                 class="task-bar absolute top-1/2 rounded h-6 flex items-center px-1 text-white text-xs font-medium select-none"
+                :data-task-id="task.id"
                 :style="{
                   ...getTaskBarStyle(task, day),
                   transform: isDragging && dragStartTask?.id === task.id
                     ? `translateY(-50%) translateX(${dragOffset}px)`
-                    : 'translateY(-50%)',
+                      : 'translateY(-50%)',
                 }"
                 @click.stop="handleTaskClick(task)"
                 @mousedown="handleTaskMouseDown(task, $event)"
@@ -175,6 +284,13 @@
                   <!-- Dependency indicators -->
                   <span v-if="task.dependencies && task.dependencies.length > 0" class="ml-1 text-xs bg-white bg-opacity-20 px-1 rounded">
                     📋{{ task.dependencies.length }}
+                  </span>
+                  <!-- Dependency line labels -->
+                  <span v-if="testDependencyLine.visible && testDependencyLine.from.taskId === task.id" class="ml-1 text-xs bg-green-600 text-white px-1 rounded font-bold">
+                    FROM
+                  </span>
+                  <span v-if="testDependencyLine.visible && testDependencyLine.to.taskId === task.id" class="ml-1 text-xs bg-orange-600 text-white px-1 rounded font-bold">
+                    TO
                   </span>
                 </span>
 
@@ -200,26 +316,80 @@
           <!-- Dependency Arrows SVG Layer -->
           <svg
             v-if="showDependencies"
-            class="dependency-arrows absolute inset-0 pointer-events-none z-10"
+            class="dependency-arrows absolute inset-0 pointer-events-none"
+            style="z-index: 1;"
             :width="projectRange ? (projectRange.totalDays * 33) : 0"
             :height="mappedTasks.length * 32"
           >
             <defs>
               <marker
                 id="arrowhead"
-                markerWidth="10"
-                markerHeight="7"
-                refX="9"
-                refY="3.5"
+                markerWidth="6"
+                markerHeight="4"
+                refX="5"
+                refY="2"
                 orient="auto"
               >
                 <polygon
-                  points="0 0, 10 3.5, 0 7"
-                  fill="#6b7280"
+                  points="0 0, 6 2, 0 4"
+                  fill="#dc2626"
+                  opacity="0.8"
                 />
               </marker>
             </defs>
-            <!-- All dependency lines removed -->
+            <!-- Test dependency line with broken path -->
+            <path
+              v-if="testDependencyLine.visible && testDependencyLine.path"
+              :d="testDependencyLine.path"
+              :stroke="dependencyTypes[testDependencyLine.type]?.color || '#dc2626'"
+              stroke-width="2"
+              fill="none"
+              marker-end="url(#arrowhead)"
+              class="test-dependency-line"
+              :stroke-dasharray="getStrokeDashArray(testDependencyLine.type)"
+              opacity="0.9"
+              @click="console.log('🎯 SVG path clicked')"
+            />
+
+            <!-- Real dependencies from API - DISABLED for now -->
+            <!-- <path
+              v-for="dependency in realDependencies.filter(dep => dep.visible && dep.path)"
+              :key="dependency.id"
+              :d="dependency.path"
+              stroke="#3b82f6"
+              stroke-width="2"
+              fill="none"
+              marker-end="url(#arrowhead)"
+              class="real-dependency-line"
+              @click="console.log('🎯 Real dependency clicked:', dependency.id)"
+            /> -->
+
+            <!-- Dependency type label - positioned over the line with background -->
+            <g v-if="testDependencyLine.visible">
+              <!-- Calculate line center position, lowered a bit more -->
+              <rect
+                :x="(testDependencyLine.from.x + testDependencyLine.to.x) / 2 - 8"
+                :y="(testDependencyLine.from.y + testDependencyLine.to.y) / 2 + 1"
+                width="16"
+                height="8"
+                fill="white"
+                stroke="white"
+                stroke-width="1"
+                rx="2"
+              />
+              <!-- Text label -->
+              <text
+                :x="(testDependencyLine.from.x + testDependencyLine.to.x) / 2"
+                :y="(testDependencyLine.from.y + testDependencyLine.to.y) / 2 + 8"
+                :fill="dependencyTypes[testDependencyLine.type]?.color || '#dc2626'"
+                class="text-xs font-bold"
+                text-anchor="middle"
+                font-size="10"
+                font-weight="bold"
+              >
+                {{ dependencyTypes[testDependencyLine.type]?.label || 'FS' }}
+              </text>
+            </g>
           </svg>
         </div>
       </div>
@@ -914,71 +1084,73 @@ function validateDependencies(task: GanttTask, newStart: Date, newEnd: Date): { 
   return { valid: conflicts.length === 0, conflicts }
 }
 
-function findDependentTasks(taskId: number): GanttTask[] {
-  return mappedTasks.value.filter(task =>
-    task.dependencies && task.dependencies.some(dep => dep.predecessor_id === taskId)
-  )
-}
+// Function to find dependent tasks (DISABLED)
+// function findDependentTasks(taskId: number): GanttTask[] {
+//   return mappedTasks.value.filter(task =>
+//     task.dependencies && task.dependencies.some(dep => dep.predecessor_id === taskId)
+//   )
+// }
 
-function cascadeMoveDependentTasks(movedTaskId: number, newStart: Date, newEnd: Date) {
-  const dependentTasks = findDependentTasks(movedTaskId)
+// Function to cascade move dependent tasks (DISABLED)
+// function cascadeMoveDependentTasks(movedTaskId: number, newStart: Date, newEnd: Date) {
+//   const dependentTasks = findDependentTasks(movedTaskId)
 
-  dependentTasks.forEach(dependentTask => {
-    const dep = dependentTask.dependencies?.find(d => d.predecessor_id === movedTaskId)
-    if (!dep) return
+//   dependentTasks.forEach(dependentTask => {
+//     const dep = dependentTask.dependencies?.find(d => d.predecessor_id === movedTaskId)
+//     if (!dep) return
 
-    const originalStart = new Date(dependentTask.start)
-    const originalEnd = new Date(dependentTask.end)
-    const duration = originalEnd.getTime() - originalStart.getTime()
+//     const originalStart = new Date(dependentTask.start)
+//     const originalEnd = new Date(dependentTask.end)
+//     const duration = originalEnd.getTime() - originalStart.getTime()
 
-    let newDependentStart: Date
-    let newDependentEnd: Date
+//     let newDependentStart: Date
+//     let newDependentEnd: Date
 
-    switch (dep.type) {
-      case 'FS': // Finish-to-Start: Dependent starts after predecessor finishes + lag
-        newDependentStart = new Date(newEnd)
-        newDependentStart.setDate(newDependentStart.getDate() + dep.lag_days)
-        newDependentEnd = new Date(newDependentStart.getTime() + duration)
-        break
+//     switch (dep.type) {
+//       case 'FS': // Finish-to-Start: Dependent starts after predecessor finishes + lag
+//         newDependentStart = new Date(newEnd)
+//         newDependentStart.setDate(newDependentStart.getDate() + dep.lag_days)
+//         newDependentEnd = new Date(newDependentStart.getTime() + duration)
+//         break
 
-      case 'SS': // Start-to-Start: Dependent starts when predecessor starts + lag
-        newDependentStart = new Date(newStart)
-        newDependentStart.setDate(newDependentStart.getDate() + dep.lag_days)
-        newDependentEnd = new Date(newDependentStart.getTime() + duration)
-        break
+//       case 'SS': // Start-to-Start: Dependent starts when predecessor starts + lag
+//         newDependentStart = new Date(newStart)
+//         newDependentStart.setDate(newDependentStart.getDate() + dep.lag_days)
+//         newDependentEnd = new Date(newDependentStart.getTime() + duration)
+//         break
 
-      case 'FF': // Finish-to-Finish: Dependent finishes when predecessor finishes + lag
-        newDependentEnd = new Date(newEnd)
-        newDependentEnd.setDate(newDependentEnd.getDate() + dep.lag_days)
-        newDependentStart = new Date(newDependentEnd.getTime() - duration)
-        break
+//       case 'FF': // Finish-to-Finish: Dependent finishes when predecessor finishes + lag
+//         newDependentEnd = new Date(newEnd)
+//         newDependentEnd.setDate(newDependentEnd.getDate() + dep.lag_days)
+//         newDependentStart = new Date(newDependentEnd.getTime() - duration)
+//         break
 
-      case 'SF': // Start-to-Finish: Dependent finishes when predecessor starts + lag
-        newDependentEnd = new Date(newStart)
-        newDependentEnd.setDate(newDependentEnd.getDate() + dep.lag_days)
-        newDependentStart = new Date(newDependentEnd.getTime() - duration)
-        break
+//       case 'SF': // Start-to-Finish: Dependent finishes when predecessor starts + lag
+//         newDependentEnd = new Date(newStart)
+//         newDependentEnd.setDate(newDependentEnd.getDate() + dep.lag_days)
+//         newDependentStart = new Date(newDependentEnd.getTime() - duration)
+//         break
 
-      default:
-        return
-    }
+//       default:
+//         return
+//     }
 
-    // Update the dependent task in local state
-    const taskIndex = localTasks.value.findIndex(t => Number(t.id) === dependentTask.id)
-    if (taskIndex !== -1) {
-      localTasks.value[taskIndex] = {
-        ...localTasks.value[taskIndex],
-        start_planned: newDependentStart.toISOString().split('T')[0],
-        end_planned: newDependentEnd.toISOString().split('T')[0],
-      }
+//     // Update the dependent task in local state
+//     const taskIndex = localTasks.value.findIndex(t => Number(t.id) === dependentTask.id)
+//     if (taskIndex !== -1) {
+//       localTasks.value[taskIndex] = {
+//         ...localTasks.value[taskIndex],
+//         start_planned: newDependentStart.toISOString().split('T')[0],
+//         end_planned: newDependentEnd.toISOString().split('T')[0],
+//       }
 
-      console.log(`🔄 Cascaded move: ${dependentTask.title} to ${newDependentStart.toISOString().split('T')[0]} - ${newDependentEnd.toISOString().split('T')[0]}`)
+//       console.log(`🔄 Cascaded move: ${dependentTask.title} to ${newDependentStart.toISOString().split('T')[0]} - ${newDependentEnd.toISOString().split('T')[0]}`)
 
-      // Recursively cascade to tasks that depend on this one
-      cascadeMoveDependentTasks(dependentTask.id, newDependentStart, newDependentEnd)
-    }
-  })
-}
+//       // Recursively cascade to tasks that depend on this one (DISABLED)
+//       // cascadeMoveDependentTasks(dependentTask.id, newDependentStart, newDependentEnd)
+//     }
+//   })
+// }
 
 function mapStatus(status: Task['status'] | string): GanttTask['status'] {
   switch (status) {
@@ -1424,7 +1596,980 @@ function handleTaskListClick(task: GanttTask) {
   }
 }
 
-// Test dependency line removed
+// Test dependency line for broken path
+const testDependencyLine = ref({
+  from: { x: 0, y: 0, taskId: 1 },  // Will be calculated from first task
+  to: { x: 0, y: 0, taskId: 2 },    // Will be calculated from second task
+  fromTaskId: 1,  // ID of predecessor task
+  toTaskId: 2,    // ID of successor task
+  visible: false,
+  path: '',        // SVG path for the line
+  type: 'FS' as 'FS' | 'SS' | 'FF' | 'SF'  // Dependency type
+})
+
+// Real dependencies from API
+const realDependencies = ref<Array<{
+  id: string
+  fromTaskId: number
+  toTaskId: number
+  type: 'FS' | 'SS' | 'FF' | 'SF'
+  from: { x: number; y: number; taskId: number }
+  to: { x: number; y: number; taskId: number }
+  path: string
+  visible: boolean
+}>>([])
+
+// Global SVG offset for dependency lines
+const svgOffset = ref(0)
+
+// Dependency types - simplified: always end → start, but with different visual styles
+const dependencyTypes = {
+  'FS': { // Finish-to-Start: end of predecessor → start of successor
+    fromPoint: 'end',
+    toPoint: 'start',
+    style: 'solid',
+    color: '#3b82f6', // Blue
+    label: 'FS'
+  },
+  'SS': { // Start-to-Start: end of predecessor → start of successor (simplified)
+    fromPoint: 'end',
+    toPoint: 'start',
+    style: 'dashed',
+    color: '#8b5cf6', // Purple
+    label: 'SS'
+  },
+  'FF': { // Finish-to-Finish: end of predecessor → start of successor (simplified)
+    fromPoint: 'end',
+    toPoint: 'start',
+    style: 'double',
+    color: '#f59e0b', // Orange
+    label: 'FF'
+  },
+  'SF': { // Start-to-Finish: end of predecessor → start of successor (simplified)
+    fromPoint: 'end',
+    toPoint: 'start',
+    style: 'wavy',
+    color: '#ef4444', // Red
+    label: 'SF'
+  }
+}
+
+// Function to get stroke dash array based on dependency type
+function getStrokeDashArray(dependencyType: 'FS' | 'SS' | 'FF' | 'SF'): string {
+  const depConfig = dependencyTypes[dependencyType]
+  if (!depConfig) return 'none'
+
+  switch (depConfig.style) {
+    case 'solid':
+      return 'none'
+    case 'dashed':
+      return '5,3'
+    case 'double':
+      return '2,2,8,2'
+    case 'wavy':
+      return '1,1'
+    default:
+      return 'none'
+  }
+}
+
+// Constraint system for dependencies with lag support
+const constraints = ref<Array<{
+  id: string
+  fromTaskId: number
+  toTaskId: number
+  type: 'FS' | 'SS' | 'FF' | 'SF'
+  lagDays: number // Lag in days (can be negative for lead time)
+  active: boolean
+}>>([])
+
+// Constraint violation notifications
+const constraintViolations = ref<Array<{
+  id: string
+  message: string
+  suggestedStart?: string
+  suggestedEnd?: string
+  timestamp: number
+}>>([])
+
+// Function to check if a task movement violates constraints
+function checkTaskConstraints(taskId: number, newStart: string, newEnd: string): {
+  canMove: boolean
+  violations: Array<{
+    constraintId: string
+    message: string
+    suggestedStart?: string
+    suggestedEnd?: string
+  }>
+} {
+  const violations: Array<{
+    constraintId: string
+    message: string
+    suggestedStart?: string
+    suggestedEnd?: string
+  }> = []
+
+  // Find constraints involving this task
+  const relevantConstraints = constraints.value.filter(c =>
+    c.active && (c.fromTaskId === taskId || c.toTaskId === taskId)
+  )
+
+  for (const constraint of relevantConstraints) {
+    const fromTask = mappedTasks.value.find(t => t.id === constraint.fromTaskId)
+    const toTask = mappedTasks.value.find(t => t.id === constraint.toTaskId)
+
+    if (!fromTask || !toTask) continue
+
+    // Check constraint based on type with lag consideration
+    switch (constraint.type) {
+      case 'FS': // Finish-to-Start: successor cannot start before predecessor finishes + lag
+        if (constraint.toTaskId === taskId) {
+          // Calculate the earliest start date considering lag
+          const predecessorEndDate = new Date(fromTask.end)
+          const lagDate = addDays(predecessorEndDate, constraint.lagDays)
+          // FS: successor starts the day AFTER predecessor finishes + lag
+          const earliestStart = addDays(lagDate, 1).toISOString().split('T')[0]
+
+          if (newStart < earliestStart) {
+            violations.push({
+              constraintId: constraint.id,
+              message: `Task cannot start before predecessor finishes + ${constraint.lagDays} days (${earliestStart})`,
+              suggestedStart: earliestStart
+            })
+          }
+        }
+        break
+
+      case 'SS': // Start-to-Start: successor cannot start before predecessor starts + lag
+        if (constraint.toTaskId === taskId) {
+          const predecessorStartDate = new Date(fromTask.start)
+          const lagDate = addDays(predecessorStartDate, constraint.lagDays)
+          const earliestStart = lagDate.toISOString().split('T')[0]
+
+          console.log(`🔒 SS constraint check: task ${taskId} wants to start ${newStart}, earliest allowed: ${earliestStart}`)
+          console.log(`🔒 Predecessor starts: ${fromTask.start}, lag: ${constraint.lagDays} days`)
+
+          if (newStart < earliestStart) {
+            console.log(`🔒 SS constraint VIOLATED! Cannot start before ${earliestStart}`)
+            violations.push({
+              constraintId: constraint.id,
+              message: `Task cannot start before predecessor starts + ${constraint.lagDays} days (${earliestStart})`,
+              suggestedStart: earliestStart
+            })
+          } else {
+            console.log(`🔒 SS constraint OK - can start on or after ${earliestStart}`)
+          }
+        }
+        break
+
+      case 'FF': // Finish-to-Finish: successor cannot finish before predecessor finishes + lag
+        if (constraint.toTaskId === taskId) {
+          const predecessorEndDate = new Date(fromTask.end)
+          const lagDate = addDays(predecessorEndDate, constraint.lagDays)
+          const earliestEnd = lagDate.toISOString().split('T')[0]
+
+          if (newEnd < earliestEnd) {
+            violations.push({
+              constraintId: constraint.id,
+              message: `Task cannot finish before predecessor finishes + ${constraint.lagDays} days (${earliestEnd})`,
+              suggestedEnd: earliestEnd
+            })
+          }
+        }
+        break
+
+      case 'SF': // Start-to-Finish: successor cannot finish before predecessor starts + lag
+        if (constraint.toTaskId === taskId) {
+          const predecessorStartDate = new Date(fromTask.start)
+          const lagDate = addDays(predecessorStartDate, constraint.lagDays)
+          const earliestEnd = lagDate.toISOString().split('T')[0]
+
+          console.log(`🔒 SF constraint check: task ${taskId} wants to end ${newEnd}, earliest allowed: ${earliestEnd}`)
+          console.log(`🔒 Predecessor starts: ${fromTask.start}, lag: ${constraint.lagDays} days`)
+
+          if (newEnd < earliestEnd) {
+            console.log(`🔒 SF constraint VIOLATED! Cannot finish before ${earliestEnd}`)
+            violations.push({
+              constraintId: constraint.id,
+              message: `Task cannot finish before predecessor starts + ${constraint.lagDays} days (${earliestEnd})`,
+              suggestedEnd: earliestEnd
+            })
+          } else {
+            console.log(`🔒 SF constraint OK - can finish on or after ${earliestEnd}`)
+          }
+        }
+        break
+    }
+  }
+
+  return {
+    canMove: violations.length === 0,
+    violations
+  }
+}
+
+// Function to update constraint lag
+function updateConstraintLag(constraintId: string, lagDays: number) {
+  const constraint = constraints.value.find(c => c.id === constraintId)
+  if (constraint) {
+    constraint.lagDays = lagDays
+    console.log(`🔒 Updated constraint ${constraintId} lag to ${lagDays} days`)
+
+    // Trigger cascade update when lag changes
+    const fromTask = mappedTasks.value.find(t => t.id === constraint.fromTaskId)
+    if (fromTask) {
+      console.log(`🔄 Triggering cascade update due to lag change`)
+      performCascadeUpdates(constraint.fromTaskId, fromTask.start, fromTask.end)
+    }
+  }
+}
+
+// Function to get constraint lag
+function getConstraintLag(constraintId: string): number {
+  const constraint = constraints.value.find(c => c.id === constraintId)
+  return constraint?.lagDays || 0
+}
+
+// Function to perform cascade updates when a task moves
+function performCascadeUpdates(movedTaskId: number, newStart: string, newEnd: string, saveToApi: boolean = true) {
+  console.log(`🔄 Performing cascade updates for task ${movedTaskId}`)
+
+  // Find all constraints where this task is a predecessor
+  const affectedConstraints = constraints.value.filter(c =>
+    c.active && c.fromTaskId === movedTaskId
+  )
+
+  console.log(`🔄 Found ${affectedConstraints.length} affected constraints`)
+
+  for (const constraint of affectedConstraints) {
+    const successorTask = mappedTasks.value.find(t => t.id === constraint.toTaskId)
+    if (!successorTask) continue
+
+    console.log(`🔄 Updating successor task: ${successorTask.title} (${constraint.type})`)
+
+    // Calculate new dates for successor based on constraint type
+    let newSuccessorStart = successorTask.start
+    let newSuccessorEnd = successorTask.end
+
+    const predecessorStartDate = new Date(newStart)
+    const predecessorEndDate = new Date(newEnd)
+    const lagDate = addDays(predecessorStartDate, constraint.lagDays)
+    const lagEndDate = addDays(predecessorEndDate, constraint.lagDays)
+
+    switch (constraint.type) {
+      case 'FS': // Finish-to-Start: successor starts after predecessor finishes + lag
+        // FS: successor starts the day AFTER predecessor finishes + lag
+        newSuccessorStart = addDays(lagEndDate, 1).toISOString().split('T')[0]
+        // Keep duration, adjust end date
+        const duration = Math.ceil((new Date(successorTask.end).getTime() - new Date(successorTask.start).getTime()) / (1000 * 60 * 60 * 24)) + 1
+        newSuccessorEnd = addDays(lagEndDate, duration).toISOString().split('T')[0]
+        break
+
+      case 'SS': // Start-to-Start: successor starts when predecessor starts + lag
+        // SS: successor starts when predecessor starts + lag (not when predecessor ends)
+        console.log(`🔄 SS calculation: predecessor starts ${newStart}, lag ${constraint.lagDays} days`)
+        console.log(`🔄 lagDate: ${lagDate.toISOString().split('T')[0]}`)
+        newSuccessorStart = lagDate.toISOString().split('T')[0]
+        // Keep duration, adjust end date
+        const ssDuration = Math.ceil((new Date(successorTask.end).getTime() - new Date(successorTask.start).getTime()) / (1000 * 60 * 60 * 24)) + 1
+        newSuccessorEnd = addDays(lagDate, ssDuration - 1).toISOString().split('T')[0]
+        console.log(`🔄 SS result: ${newSuccessorStart} - ${newSuccessorEnd}`)
+        break
+
+      case 'FF': // Finish-to-Finish: successor finishes when predecessor finishes + lag
+        newSuccessorEnd = lagEndDate.toISOString().split('T')[0]
+        // Keep duration, adjust start date
+        const ffDuration = Math.ceil((new Date(successorTask.end).getTime() - new Date(successorTask.start).getTime()) / (1000 * 60 * 60 * 24)) + 1
+        newSuccessorStart = addDays(lagEndDate, -(ffDuration - 1)).toISOString().split('T')[0]
+        break
+
+      case 'SF': // Start-to-Finish: successor finishes when predecessor starts + lag
+        // SF: successor finishes when predecessor starts + lag
+        console.log(`🔄 SF calculation: predecessor starts ${newStart}, lag ${constraint.lagDays} days`)
+        console.log(`🔄 lagDate: ${lagDate.toISOString().split('T')[0]}`)
+        newSuccessorEnd = lagDate.toISOString().split('T')[0]
+        // Keep duration, adjust start date
+        const sfDuration = Math.ceil((new Date(successorTask.end).getTime() - new Date(successorTask.start).getTime()) / (1000 * 60 * 60 * 24)) + 1
+        newSuccessorStart = addDays(lagDate, -(sfDuration - 1)).toISOString().split('T')[0]
+        console.log(`🔄 SF result: ${newSuccessorStart} - ${newSuccessorEnd}`)
+        break
+    }
+
+    console.log(`🔄 Cascade update: ${successorTask.title} ${successorTask.start}-${successorTask.end} → ${newSuccessorStart}-${newSuccessorEnd}`)
+
+    // Update the successor task in local state
+    const taskIndex = localTasks.value.findIndex(t => Number(t.id) === constraint.toTaskId)
+    if (taskIndex !== -1) {
+      localTasks.value[taskIndex] = {
+        ...localTasks.value[taskIndex],
+        start_planned: newSuccessorStart,
+        end_planned: newSuccessorEnd,
+      }
+
+      // Save changes to API only if requested
+      if (saveToApi) {
+        saveTaskChanges(String(constraint.toTaskId), newSuccessorStart, newSuccessorEnd)
+        console.log(`✅ Updated successor task: ${successorTask.title} (saved to API)`)
+      } else {
+        console.log(`✅ Updated successor task: ${successorTask.title} (local only)`)
+      }
+    }
+  }
+
+  console.log(`🔄 Cascade updates completed for task ${movedTaskId}`)
+}
+
+// Function to update SVG offset
+function updateSvgOffset() {
+  const svgElement = document.querySelector('.dependency-arrows') as HTMLElement
+  const gridContainer = document.querySelector('.gantt-right-panel') as HTMLElement
+  if (svgElement && gridContainer) {
+    const svgRect = svgElement.getBoundingClientRect()
+    const gridRect = gridContainer.getBoundingClientRect()
+    svgOffset.value = svgRect.left - gridRect.left
+    console.log('🔄 SVG offset updated:', svgOffset.value)
+  }
+}
+
+// Function to get connection point for a task based on dependency type
+function getTaskConnectionPoint(task: GanttTask, point: 'start' | 'end'): { x: number; y: number } | null {
+  if (point === 'start') {
+    return getTaskBarPosition(task)
+  } else {
+    return getTaskBarEndPosition(task)
+  }
+}
+
+// Function to create simplified dependency line path - always end → start
+function getBrokenLinePath(from: { x: number; y: number }, to: { x: number; y: number }): string {
+  // Simplified logic: always end → start
+  const cellWidth = 33 // Width of one day cell
+  const halfCell = cellWidth / 2 // Half cell offset
+
+  // Start from end of source task (right edge)
+  const startX = from.x
+
+  // Go right by half cell, then down
+  const rightX = from.x + halfCell
+
+  // Always end at start of target task (left edge)
+  const endX = to.x
+
+  // Create proper Gantt path: from task end → right half cell → down → to task start
+  const path = `M ${startX} ${from.y} H ${rightX} V ${to.y} H ${endX}`
+
+  console.log('🎯 Simplified dependency path:', {
+    from: { x: from.x, y: from.y },
+    to: { x: to.x, y: to.y },
+    startX,
+    rightX,
+    endX,
+    path
+  })
+
+  return path
+}
+
+// Function to get task bar position - USE DOM COORDINATES
+function getTaskBarPosition(task: GanttTask): { x: number; y: number } | null {
+  // Use the SAME calculation as getTaskBarStyle!
+  const startDate = new Date(task.start + 'T00:00:00.000Z')
+  const projectStart = projectRange.value?.startDate || new Date()
+
+  const daysFromStart = Math.floor((startDate.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24))
+
+  // Use the SAME left position as in getTaskBarStyle: left: '1px' + daysFromStart * 33
+  const x = 1 + daysFromStart * 33
+
+  // Use REAL DOM coordinates for Y position
+  const taskBar = document.querySelector(`[data-task-id="${task.id}"]`) as HTMLElement
+  if (!taskBar) return null
+
+  const rect = taskBar.getBoundingClientRect()
+  const gridContainer = document.querySelector('.gantt-right-panel') as HTMLElement
+  if (!gridContainer) return null
+
+  const gridRect = gridContainer.getBoundingClientRect()
+  const y = rect.top - gridRect.top + rect.height / 2
+
+  return { x, y }
+}
+
+// Function to get task bar end position - CALCULATED COORDINATES
+function getTaskBarEndPosition(task: GanttTask): { x: number; y: number } | null {
+  // Use the SAME calculation as getTaskBarStyle!
+  const startDate = new Date(task.start + 'T00:00:00.000Z')
+  const projectStart = projectRange.value?.startDate || new Date()
+
+  const daysFromStart = Math.floor((startDate.getTime() - projectStart.getTime()) / (1000 * 60 * 60 * 24))
+  const daysDiff = task.duration
+
+  // Use the SAME width calculation as in getTaskBarStyle
+  const width = daysDiff * 33 + (daysDiff - 1) * 1 - daysDiff - 2
+  const minWidth = 29
+  const actualWidth = Math.max(width, minWidth)
+
+  // Right edge = left edge + width
+  const x = 1 + daysFromStart * 33 + actualWidth
+
+  // Use REAL DOM coordinates for Y position
+  const taskBar = document.querySelector(`[data-task-id="${task.id}"]`) as HTMLElement
+  if (!taskBar) return null
+
+  const rect = taskBar.getBoundingClientRect()
+  const gridContainer = document.querySelector('.gantt-right-panel') as HTMLElement
+  if (!gridContainer) return null
+
+  const gridRect = gridContainer.getBoundingClientRect()
+  const y = rect.top - gridRect.top + rect.height / 2
+
+  return { x, y }
+}
+
+// Function to create dependency line between two tasks with specific type
+function createDependencyLine(fromTaskId: number, toTaskId: number, dependencyType: 'FS' | 'SS' | 'FF' | 'SF' = 'FS') {
+  const fromTask = mappedTasks.value.find(t => t.id === fromTaskId)
+  const toTask = mappedTasks.value.find(t => t.id === toTaskId)
+
+  if (!fromTask || !toTask) {
+    console.log('❌ Tasks not found for dependency line')
+    return
+  }
+
+  // Get dependency type configuration
+  const depConfig = dependencyTypes[dependencyType]
+  if (!depConfig) {
+    console.log('❌ Unknown dependency type:', dependencyType)
+    return
+  }
+
+  // Get connection points based on dependency type
+  const fromPos = getTaskConnectionPoint(fromTask, depConfig.fromPoint as 'start' | 'end')
+  const toPos = getTaskConnectionPoint(toTask, depConfig.toPoint as 'start' | 'end')
+
+  if (!fromPos || !toPos) {
+    console.log('❌ Could not calculate task positions')
+    return
+  }
+
+  // Update SVG offset before creating line
+  updateSvgOffset()
+
+  // Get current scroll position
+  const scrollLeft = rightPanelRef.value?.scrollLeft || 0
+
+  // Update test dependency line with global SVG offset correction and scroll
+  testDependencyLine.value = {
+    from: {
+      x: fromPos.x - svgOffset.value - scrollLeft,
+      y: fromPos.y,
+      taskId: fromTaskId
+    },
+    to: {
+      x: toPos.x - svgOffset.value - scrollLeft,
+      y: toPos.y,
+      taskId: toTaskId
+    },
+    fromTaskId: fromTaskId,
+    toTaskId: toTaskId,
+    visible: true,
+    path: '', // Will be set below
+    type: dependencyType // Store the dependency type
+  }
+
+  console.log(`🎯 Created ${dependencyType} dependency:`, fromTask.title, '→', toTask.title)
+  console.log('Connection points:', depConfig.fromPoint, '→', depConfig.toPoint)
+
+  // Update the path with simplified line and scroll offset
+  const path = getBrokenLinePath(
+    { x: fromPos.x - svgOffset.value - scrollLeft, y: fromPos.y },
+    { x: toPos.x - svgOffset.value - scrollLeft, y: toPos.y }
+  )
+
+  // Store the path for rendering
+  testDependencyLine.value.path = path
+
+  // Check if dependency already exists between these tasks
+  const existingDependency = constraints.value.find(c =>
+    (c.fromTaskId === fromTaskId && c.toTaskId === toTaskId) ||
+    (c.fromTaskId === toTaskId && c.toTaskId === fromTaskId)
+  )
+
+  if (existingDependency) {
+    console.warn(`⚠️ Dependency already exists between tasks ${fromTaskId} and ${toTaskId}`)
+    console.warn(`⚠️ Existing: ${existingDependency.type} from ${existingDependency.fromTaskId} to ${existingDependency.toTaskId}`)
+    console.warn(`⚠️ Cannot create ${dependencyType} from ${fromTaskId} to ${toTaskId}`)
+
+    // Show user notification
+    constraintViolations.value.push({
+      id: `duplicate-${Date.now()}`,
+      message: `Dependency already exists between these tasks (${existingDependency.type})`,
+      timestamp: Date.now()
+    })
+
+    // Auto-clear notification after 3 seconds
+    setTimeout(() => {
+      constraintViolations.value = constraintViolations.value.filter(v => v.id !== `duplicate-${Date.now()}`)
+    }, 3000)
+
+    return
+  }
+
+  // Create constraint for this dependency with default lag
+  const constraintId = `constraint-${fromTaskId}-${toTaskId}-${dependencyType}`
+  const existingConstraint = constraints.value.find(c => c.id === constraintId)
+
+  if (!existingConstraint) {
+    constraints.value.push({
+      id: constraintId,
+      fromTaskId: fromTaskId,
+      toTaskId: toTaskId,
+      type: dependencyType,
+      lagDays: 0, // Default no lag
+      active: true
+    })
+    console.log(`🔒 Created constraint: ${dependencyType} from task ${fromTaskId} to task ${toTaskId} with 0 days lag`)
+
+    // Auto-sync dependent task position according to constraint
+    console.log(`🔄 Auto-syncing dependent task position according to ${dependencyType} constraint`)
+    performCascadeUpdates(fromTaskId, fromTask.start, fromTask.end, false) // Don't save to API during dependency creation
+  }
+
+  console.log('🎯 Final dependency line data:', {
+    visible: testDependencyLine.value.visible,
+    path: testDependencyLine.value.path,
+    from: testDependencyLine.value.from,
+    to: testDependencyLine.value.to,
+    dependencyType
+  })
+
+  console.log('=== FROM Task Info ===')
+  console.log('Name:', fromTask.title)
+  console.log('Task days range:', fromTask.start, '-', fromTask.end)
+  console.log('Task X coordinates:', fromPos.x, '-', fromPos.x)
+  console.log('Line <path> FROM:', fromPos)
+
+  console.log('=== TO Task Info ===')
+  console.log('Name:', toTask.title)
+  console.log('Task days range:', toTask.start, '-', toTask.end)
+  console.log('Task X coordinates:', toPos.x, '-', toPos.x)
+  console.log('Line <path> TO:', toPos)
+
+  console.log('=== SVG INFO ===')
+  const svgElementDebug = document.querySelector('.dependency-arrows') as HTMLElement
+  if (svgElementDebug) {
+    const svgRect = svgElementDebug.getBoundingClientRect()
+    const gridContainer = document.querySelector('.gantt-right-panel') as HTMLElement
+    if (gridContainer) {
+      const gridRect = gridContainer.getBoundingClientRect()
+      console.log('SVG position:', svgRect.left - gridRect.left, svgRect.top - gridRect.top)
+      console.log('SVG size:', svgRect.width, 'x', svgRect.height)
+    }
+  }
+
+  console.log('=== CORRECTED COORDINATES ===')
+  console.log('SVG offset:', svgOffset.value)
+  console.log('FROM corrected:', fromPos.x - svgOffset.value, fromPos.y)
+  console.log('TO corrected:', toPos.x - svgOffset.value, toPos.y)
+
+  console.log('=== LINE PATH ===')
+  console.log('Line created:', fromTask.title, '→', toTask.title, 'at', fromPos, '→', toPos)
+}
+
+// Function to create test dependency line between first two tasks
+function createTestDependencyLine(dependencyType: 'FS' | 'SS' | 'FF' | 'SF' = 'FS') {
+  if (mappedTasks.value.length < 2) {
+    console.log('❌ Need at least 2 tasks to create dependency line')
+    return
+  }
+
+  const firstTask = mappedTasks.value[0]
+  const secondTask = mappedTasks.value[1]
+
+  console.log('🎯 Creating test dependency line between:', firstTask.title, '→', secondTask.title)
+  console.log('🎯 First task dates:', firstTask.start, 'to', firstTask.end)
+  console.log('🎯 Second task dates:', secondTask.start, 'to', secondTask.end)
+  console.log('🎯 Project range:', {
+    start: projectRange.value?.startDate.toISOString(),
+    end: projectRange.value?.endDate.toISOString(),
+    totalDays: projectRange.value?.totalDays
+  })
+
+  // Determine which task is earlier (predecessor) and which is later (successor)
+  const firstTaskStart = new Date(firstTask.start)
+  const secondTaskStart = new Date(secondTask.start)
+
+  let predecessorTask, successorTask
+  if (firstTaskStart <= secondTaskStart) {
+    predecessorTask = firstTask
+    successorTask = secondTask
+  } else {
+    predecessorTask = secondTask
+    successorTask = firstTask
+  }
+
+  console.log('🎯 Predecessor (earlier):', predecessorTask.title, '→ Successor (later):', successorTask.title)
+
+  // Create dependency line: predecessor → successor
+  createDependencyLine(predecessorTask.id, successorTask.id, dependencyType)
+}
+
+// Function to clear test dependency line
+function clearTestDependencyLine() {
+  testDependencyLine.value.visible = false
+  console.log('🧹 Cleared test dependency line')
+}
+
+// Function to load real dependencies from API data
+function loadRealDependencies() {
+  console.log('🔄 Loading real dependencies from tasks...')
+
+  // Clear existing dependencies
+  realDependencies.value = []
+
+  // Find all tasks with dependencies
+  mappedTasks.value.forEach(task => {
+    if (task.dependencies && Array.isArray(task.dependencies) && task.dependencies.length > 0) {
+      console.log(`🔗 Task "${task.title}" has dependencies:`, task.dependencies)
+
+      task.dependencies.forEach((dep: number | { predecessor_id: number; type: string; lag_days: number }) => {
+        // Handle both old format (just IDs) and new format (objects)
+        let predecessorId: number
+        let dependencyType: 'FS' | 'SS' | 'FF' | 'SF' = 'FS'
+        // let lagDays = 0 // Not used yet
+
+        if (typeof dep === 'number') {
+          // Old format: just predecessor ID
+          predecessorId = dep
+        } else if (typeof dep === 'object' && dep.predecessor_id) {
+          // New format: object with predecessor_id, type, lag_days
+          predecessorId = dep.predecessor_id
+          dependencyType = (dep.type as 'FS' | 'SS' | 'FF' | 'SF') || 'FS'
+          // lagDays = dep.lag_days || 0 // Not used yet
+        } else {
+          console.warn('⚠️ Unknown dependency format:', dep)
+          return
+        }
+
+        // Find predecessor task
+        const predecessorTask = mappedTasks.value.find(t => t.id === predecessorId)
+        if (!predecessorTask) {
+          console.warn(`⚠️ Predecessor task ${predecessorId} not found for dependency`)
+          return
+        }
+
+        // Create dependency line
+        const dependencyId = `${predecessorId}-${task.id}-${dependencyType}`
+        const dependency = {
+          id: dependencyId,
+          fromTaskId: predecessorId,
+          toTaskId: task.id,
+          type: dependencyType,
+          from: { x: 0, y: 0, taskId: predecessorId },
+          to: { x: 0, y: 0, taskId: task.id },
+          path: '',
+          visible: true
+        }
+
+        // Calculate positions
+        updateRealDependencyPositions(dependency)
+
+        realDependencies.value.push(dependency)
+        console.log(`✅ Created dependency: ${predecessorTask.title} → ${task.title} (${dependencyType})`)
+      })
+    }
+  })
+
+  console.log(`🎯 Loaded ${realDependencies.value.length} real dependencies`)
+}
+
+// Function to update real dependencies on scroll
+function updateRealDependenciesOnScroll() {
+  const scrollLeft = rightPanelRef.value?.scrollLeft || 0
+
+  realDependencies.value.forEach(dependency => {
+    const fromTask = mappedTasks.value.find(t => t.id === dependency.fromTaskId)
+    const toTask = mappedTasks.value.find(t => t.id === dependency.toTaskId)
+
+    if (!fromTask || !toTask) return
+
+    // Get dependency type configuration
+    const depConfig = dependencyTypes[dependency.type as keyof typeof dependencyTypes]
+    if (!depConfig) return
+
+    // Get correct connection points based on dependency type
+    const fromPos = getTaskConnectionPoint(fromTask, depConfig.fromPoint as 'start' | 'end')
+    const toPos = getTaskConnectionPoint(toTask, depConfig.toPoint as 'start' | 'end')
+
+    if (!fromPos || !toPos) return
+
+    // Update SVG offset
+    updateSvgOffset()
+
+    // Update positions with scroll offset
+    dependency.from = {
+      x: fromPos.x - svgOffset.value - scrollLeft,
+      y: fromPos.y,
+      taskId: dependency.fromTaskId
+    }
+    dependency.to = {
+      x: toPos.x - svgOffset.value - scrollLeft,
+      y: toPos.y,
+      taskId: dependency.toTaskId
+    }
+
+    // Recalculate path with scroll offset
+    dependency.path = getBrokenLinePath(
+      { x: fromPos.x - svgOffset.value - scrollLeft, y: fromPos.y },
+      { x: toPos.x - svgOffset.value - scrollLeft, y: toPos.y }
+    )
+  })
+
+  console.log('🔄 Updated real dependencies on scroll:', {
+    scrollLeft,
+    count: realDependencies.value.length
+  })
+}
+
+// Function to update positions for real dependencies
+function updateRealDependencyPositions(dependency: {
+  id: string
+  fromTaskId: number
+  toTaskId: number
+  type: 'FS' | 'SS' | 'FF' | 'SF'
+  from: { x: number; y: number; taskId: number }
+  to: { x: number; y: number; taskId: number }
+  path: string
+  visible: boolean
+}) {
+  const fromTask = mappedTasks.value.find(t => t.id === dependency.fromTaskId)
+  const toTask = mappedTasks.value.find(t => t.id === dependency.toTaskId)
+
+  if (!fromTask || !toTask) return
+
+  // Get dependency type configuration
+  const depConfig = dependencyTypes[dependency.type as keyof typeof dependencyTypes]
+  if (!depConfig) return
+
+  // Get connection points based on dependency type
+  const fromPos = getTaskConnectionPoint(fromTask, depConfig.fromPoint as 'start' | 'end')
+  const toPos = getTaskConnectionPoint(toTask, depConfig.toPoint as 'start' | 'end')
+
+  if (!fromPos || !toPos) return
+
+  // Update SVG offset
+  updateSvgOffset()
+
+  // Update positions
+  dependency.from = {
+    x: fromPos.x - svgOffset.value,
+    y: fromPos.y,
+    taskId: dependency.fromTaskId
+  }
+  dependency.to = {
+    x: toPos.x - svgOffset.value,
+    y: toPos.y,
+    taskId: dependency.toTaskId
+  }
+
+  // Update path
+  dependency.path = getBrokenLinePath(
+    { x: fromPos.x - svgOffset.value, y: fromPos.y },
+    { x: toPos.x - svgOffset.value, y: toPos.y }
+  )
+}
+
+// Function to update dependency line positions (cascade update)
+function updateDependencyLinePositions() {
+  if (!testDependencyLine.value.visible) return
+
+  const fromTask = mappedTasks.value.find(t => t.id === testDependencyLine.value.fromTaskId)
+  const toTask = mappedTasks.value.find(t => t.id === testDependencyLine.value.toTaskId)
+
+  if (!fromTask || !toTask) return
+
+  // Update SVG offset before updating positions
+  updateSvgOffset()
+
+  // Get current scroll position
+  const scrollLeft = rightPanelRef.value?.scrollLeft || 0
+
+  // Use the stored dependency type from the line
+  const dependencyType = testDependencyLine.value.type
+
+  // Get dependency type configuration
+  const depConfig = dependencyTypes[dependencyType]
+  if (!depConfig) return
+
+  // Get current positions from DOM (real-time coordinates) using the SAME connection points
+  const fromPos = getTaskConnectionPoint(fromTask, depConfig.fromPoint as 'start' | 'end')
+  const toPos = getTaskConnectionPoint(toTask, depConfig.toPoint as 'start' | 'end')
+
+  if (!fromPos || !toPos) return
+
+  // Update line positions with global SVG offset correction and scroll
+  testDependencyLine.value.from = {
+    x: fromPos.x - svgOffset.value - scrollLeft,
+    y: fromPos.y,
+    taskId: fromTask.id
+  }
+  testDependencyLine.value.to = {
+    x: toPos.x - svgOffset.value - scrollLeft,
+    y: toPos.y,
+    taskId: toTask.id
+  }
+
+  // Update the path with new positions using simplified logic and scroll
+  const path = getBrokenLinePath(
+    { x: fromPos.x - svgOffset.value - scrollLeft, y: fromPos.y },
+    { x: toPos.x - svgOffset.value - scrollLeft, y: toPos.y }
+  )
+
+  testDependencyLine.value.path = path
+
+  console.log('🔄 Line updated with new path:', {
+    fromPos,
+    toPos,
+    svgOffset: svgOffset.value,
+    scrollLeft,
+    path,
+    dependencyType,
+    fromPoint: depConfig.fromPoint,
+    toPoint: depConfig.toPoint
+  })
+}
+
+// Watch for changes that should update dependency lines
+watch([mappedTasks], () => {
+  if (testDependencyLine.value.visible) {
+    console.log('🔄 Tasks changed, updating line')
+    updateDependencyLinePositions()
+  }
+
+  // Load real dependencies when tasks change
+  loadRealDependencies()
+}, { deep: true })
+
+// Debounced resize handler
+let resizeTimeout: number | null = null
+
+// Watch for window resize to update dependency lines
+window.addEventListener('resize', () => {
+  // Clear previous timeout
+  if (resizeTimeout) {
+    clearTimeout(resizeTimeout)
+  }
+
+  // Debounce resize events
+  resizeTimeout = setTimeout(() => {
+    // Update SVG offset first
+    updateSvgOffset()
+
+    if (testDependencyLine.value.visible) {
+      console.log('🔄 Window resized, updating dependency line')
+      updateDependencyLinePositions()
+    }
+
+    // Update real dependencies on window resize
+    if (realDependencies.value.length > 0) {
+      console.log('🔄 Window resized, updating real dependencies')
+      realDependencies.value.forEach(dependency => {
+        updateRealDependencyPositions(dependency)
+      })
+    }
+  }, 100) // 100ms debounce
+})
+
+// Scroll synchronization between left and right panels
+const leftPanelRef = ref<HTMLElement>()
+const rightPanelRef = ref<HTMLElement>()
+
+// Watch for scroll events to update dependency lines
+watch(() => rightPanelRef.value?.scrollLeft, () => {
+  if (testDependencyLine.value.visible) {
+    console.log('🔄 Panel scrolled, updating dependency line')
+    updateDependencyLinePositions()
+  }
+
+  // Update real dependencies on scroll
+  if (realDependencies.value.length > 0) {
+    console.log('🔄 Panel scrolled, updating real dependencies')
+    updateRealDependenciesOnScroll()
+  }
+})
+
+// Handle scroll events to update dependency line positions
+function handleDependencyLineScroll() {
+  if (testDependencyLine.value.visible) {
+    // Get current scroll position
+    const scrollLeft = rightPanelRef.value?.scrollLeft || 0
+    console.log('🔄 Scrolling dependency line, scrollLeft:', scrollLeft)
+
+    // Update line positions with scroll offset
+    updateDependencyLineWithScroll(scrollLeft)
+  }
+}
+
+// Function to update dependency line with scroll offset
+function updateDependencyLineWithScroll(scrollLeft: number) {
+  if (!testDependencyLine.value.visible) return
+
+  const fromTask = mappedTasks.value.find(t => t.id === testDependencyLine.value.fromTaskId)
+  const toTask = mappedTasks.value.find(t => t.id === testDependencyLine.value.toTaskId)
+
+  if (!fromTask || !toTask) return
+
+  // Use the stored dependency type to get correct connection points
+  const dependencyType = testDependencyLine.value.type
+  const depConfig = dependencyTypes[dependencyType]
+  if (!depConfig) return
+
+  // Get correct connection points based on dependency type
+  const fromPos = getTaskConnectionPoint(fromTask, depConfig.fromPoint as 'start' | 'end')
+  const toPos = getTaskConnectionPoint(toTask, depConfig.toPoint as 'start' | 'end')
+
+  if (!fromPos || !toPos) return
+
+  // Update SVG offset
+  updateSvgOffset()
+
+  // Apply scroll offset to X coordinates
+  testDependencyLine.value = {
+    from: {
+      x: fromPos.x - svgOffset.value - scrollLeft,
+      y: fromPos.y,
+      taskId: testDependencyLine.value.fromTaskId
+    },
+    to: {
+      x: toPos.x - svgOffset.value - scrollLeft,
+      y: toPos.y,
+      taskId: testDependencyLine.value.toTaskId
+    },
+    fromTaskId: testDependencyLine.value.fromTaskId,
+    toTaskId: testDependencyLine.value.toTaskId,
+    visible: true,
+    path: '', // Will be recalculated
+    type: testDependencyLine.value.type
+  }
+
+  // Recalculate path with scroll offset
+  const path = getBrokenLinePath(
+    { x: fromPos.x - svgOffset.value - scrollLeft, y: fromPos.y },
+    { x: toPos.x - svgOffset.value - scrollLeft, y: toPos.y }
+  )
+
+  testDependencyLine.value.path = path
+
+  console.log('🔄 Updated line with scroll offset:', {
+    fromX: fromPos.x,
+    toX: toPos.x,
+    scrollLeft,
+    svgOffset: svgOffset.value,
+    dependencyType,
+    fromPoint: depConfig.fromPoint,
+    toPoint: depConfig.toPoint
+  })
+}
 
 // Auto-scroll to center the task bar in the viewport
 function scrollToTask(task: GanttTask) {
@@ -1474,7 +2619,7 @@ function scrollToTask(task: GanttTask) {
   }
   // Otherwise, center the task
   else {
-    const centerPosition = taskCenterPosition - viewportWidth / 2
+  const centerPosition = taskCenterPosition - viewportWidth / 2
     finalScrollLeft = Math.max(0, Math.min(centerPosition, maxScrollLeft))
   }
 
@@ -1556,26 +2701,35 @@ function handleMouseMove(event: MouseEvent) {
 }
 
 function handleMouseUp() {
+  console.log(`🖱️ handleMouseUp called: isDragging=${isDragging.value}, dragStartTask=${dragStartTask.value?.title}, dragOffset=${dragOffset.value}`)
 
   if (!isDragging.value || !dragStartTask.value) {
+    console.log(`🖱️ Not dragging or no task - cleaning up`)
     // Clean up if not dragging
     cleanupDrag()
     return
   }
 
   // Process drag if there was movement
+  console.log(`🖱️ Checking movement: |${dragOffset.value}| > 5 = ${Math.abs(dragOffset.value) > 5}`)
   if (Math.abs(dragOffset.value) > 5) { // Only process if moved more than 5px
+    console.log(`🖱️ Processing drag for task: ${dragStartTask.value.title}`)
     const task = dragStartTask.value
     const originalStart = new Date(originalTaskStart.value)
     const originalEnd = new Date(originalTaskEnd.value)
 
     // Calculate new position
     const dayIndex = Math.floor(dragOffset.value / 33) // 33px per day
+    console.log(`🖱️ Calculated dayIndex: ${dayIndex} from dragOffset: ${dragOffset.value}`)
+
     const newStart = new Date(originalStart)
     newStart.setDate(newStart.getDate() + dayIndex)
 
     const newEnd = new Date(originalEnd)
     newEnd.setDate(newEnd.getDate() + dayIndex)
+
+    console.log(`🖱️ Original dates: ${originalStart.toISOString().split('T')[0]} - ${originalEnd.toISOString().split('T')[0]}`)
+    console.log(`🖱️ New dates: ${newStart.toISOString().split('T')[0]} - ${newEnd.toISOString().split('T')[0]}`)
 
     // Check project boundaries
     if (projectRange.value) {
@@ -1600,6 +2754,43 @@ function handleMouseUp() {
       if (newStart < projectStart) {
         newStart.setTime(projectStart.getTime())
       }
+    }
+
+    console.log(`🖱️ After boundary checks: ${newStart.toISOString().split('T')[0]} - ${newEnd.toISOString().split('T')[0]}`)
+
+    // Check constraints before allowing movement
+    console.log(`🔒 Checking constraints for task ${task.id} (${task.title})`)
+    console.log(`🔒 Proposed dates: ${newStart.toISOString().split('T')[0]} - ${newEnd.toISOString().split('T')[0]}`)
+    console.log(`🔒 Active constraints: ${constraints.value.filter(c => c.active).length}`)
+
+    const constraintCheck = checkTaskConstraints(
+      task.id,
+      newStart.toISOString().split('T')[0],
+      newEnd.toISOString().split('T')[0]
+    )
+
+    if (!constraintCheck.canMove) {
+      console.warn('🔒 Cannot move task - violates constraints:', constraintCheck.violations)
+
+      // Add constraint violations to notifications
+      constraintCheck.violations.forEach(violation => {
+        constraintViolations.value.push({
+          id: `violation-${Date.now()}-${Math.random()}`,
+          message: violation.message,
+          suggestedStart: violation.suggestedStart,
+          suggestedEnd: violation.suggestedEnd,
+          timestamp: Date.now()
+        })
+      })
+
+      // Auto-clear violations after 5 seconds
+      setTimeout(() => {
+        constraintViolations.value = []
+      }, 5000)
+
+      // Reset to original position
+      cleanupDrag()
+      return
     }
 
     // Check if task has dependencies that restrict movement
@@ -1658,11 +2849,20 @@ function handleMouseUp() {
         // Highlighted days now calculated in getDayHeaderClasses
       }
 
-      // Cascade move dependent tasks
-      cascadeMoveDependentTasks(task.id, newStart, newEnd)
+      // Update dependency line if it's connected to this task (cascade update)
+      if (testDependencyLine.value.visible &&
+          (testDependencyLine.value.fromTaskId === task.id || testDependencyLine.value.toTaskId === task.id)) {
+        console.log('🔄 Updating dependency line after task move')
+        updateDependencyLinePositions()
+      }
 
       // Save changes to API
       saveTaskChanges(String(task.id), newStart.toISOString().split('T')[0], newEnd.toISOString().split('T')[0])
+
+      // Perform cascade updates for dependent tasks
+      performCascadeUpdates(task.id, newStart.toISOString().split('T')[0], newEnd.toISOString().split('T')[0])
+    } else {
+      console.log(`🔒 Constraint violated - not performing cascade updates`)
     }
   }
 
@@ -1774,6 +2974,13 @@ function handleResizeMove(event: MouseEvent) {
 
         // Save changes to API
         saveTaskChanges(String(resizeStartTask.value.id), newStart.toISOString().split('T')[0], newEnd.toISOString().split('T')[0])
+
+        // Update dependency line if it's connected to this task (cascade update)
+        if (testDependencyLine.value.visible &&
+            (testDependencyLine.value.fromTaskId === resizeStartTask.value.id || testDependencyLine.value.toTaskId === resizeStartTask.value.id)) {
+          console.log('🔄 Updating dependency line after task resize')
+          updateDependencyLinePositions()
+        }
       }
     }
   }
@@ -1795,9 +3002,7 @@ function handleResizeEnd() {
   document.removeEventListener('mouseup', handleResizeEnd)
 }
 
-// Scroll synchronization between left and right panels
-const leftPanelRef = ref<HTMLElement>()
-const rightPanelRef = ref<HTMLElement>()
+// Scroll synchronization between left and right panels (refs declared above)
 
 const syncScroll = (source: HTMLElement, target: HTMLElement) => {
   target.scrollTop = source.scrollTop
@@ -1905,6 +3110,13 @@ const handleTaskListDrop = (task: GanttTask, event: DragEvent) => {
 
     console.log('✅ Tasks reordered locally')
 
+    // Update dependency line if it's connected to reordered tasks
+    if (testDependencyLine.value.visible &&
+        (testDependencyLine.value.fromTaskId === draggedTask.value.id || testDependencyLine.value.toTaskId === draggedTask.value.id)) {
+      console.log('🔄 Updating dependency line after task reorder')
+      updateDependencyLinePositions()
+    }
+
     // Create and emit task order structure for backend
     const taskOrderData = createTaskOrderStructure()
     console.log('📤 Task order structure:', taskOrderData)
@@ -2003,6 +3215,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+  z-index: 20; /* Above everything */
 }
 
 /* Right Panel: Gantt Grid */
@@ -2059,6 +3273,8 @@ onUnmounted(() => {
   flex: 1;
   overflow-y: hidden; /* Disable individual scroll */
   overflow-x: hidden;
+  position: relative;
+  z-index: 15; /* Above dependency arrows */
 }
 
 /* Task Rows */
@@ -2133,6 +3349,11 @@ onUnmounted(() => {
   width: 100%;
   display: flex;
   align-items: center;
+  color: #374151; /* Dark gray text */
+}
+
+.gantt-task-cell span {
+  color: #374151; /* Dark gray text for task titles */
 }
 
 /* Grid Content */
@@ -2222,7 +3443,7 @@ onUnmounted(() => {
 /* Task bars - hide grid lines inside and add shadow */
 .task-bar {
   position: relative;
-  z-index: 5;
+  z-index: 10; /* Above dependency arrows */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
@@ -2265,7 +3486,7 @@ onUnmounted(() => {
 /* Dependency Arrows */
 .dependency-arrows {
   pointer-events: none;
-  z-index: 5;
+  z-index: 1; /* Under task list */
 }
 
 .dependency-arrows line {
