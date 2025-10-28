@@ -14,6 +14,19 @@
             />
           </div>
 
+          <!-- Create Project Button -->
+          <div class="flex items-center gap-2">
+            <button
+              @click="createProject"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+              Create Project
+            </button>
+          </div>
+
           <!-- Filters -->
           <div class="flex gap-2">
             <!-- Status Filter -->
@@ -191,6 +204,11 @@
                   Manager
                 </th>
                 <th
+                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48"
+                >
+                  Created By
+                </th>
+                <th
                   class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32"
                 >
                   Actions
@@ -233,7 +251,13 @@
                   {{ project.priority }}
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 w-48">
-                  {{ project.prj_managger || 'Unassigned' }}
+                  {{ (project as any).manager_name || 'Unassigned' }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 w-48">
+                  <div>
+                    <div class="font-medium">{{ (project as any).created_by_name || 'Unknown' }}</div>
+                    <div class="text-xs text-gray-500">ID: {{ project.created_by || 'N/A' }}</div>
+                  </div>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-sm font-medium w-32">
                   <div class="flex space-x-2">
@@ -243,12 +267,21 @@
                     >
                       View
                     </button>
+                    <!-- Only show edit button if user has edit permissions -->
                     <button
+                      v-if="canEditProject(project)"
                       @click="editProject(project.id)"
                       class="text-gray-600 hover:text-gray-900"
                     >
                       Edit
                     </button>
+                    <!-- Show read-only indicator for administrators viewing other projects -->
+                    <span
+                      v-else-if="authStore.currentUser?.role_code === 'admin'"
+                      class="text-gray-400 text-xs"
+                    >
+                      Read-only
+                    </span>
                   </div>
                 </td>
               </tr>
@@ -356,6 +389,13 @@
         <h3 class="mt-2 text-sm font-medium text-gray-900">No projects found</h3>
         <p class="mt-1 text-sm text-gray-500">Get started by creating a new project.</p>
       </div>
+
+      <!-- Project Dialog -->
+      <ProjectDialog
+        :is-open="showCreateDialog"
+        @close="showCreateDialog = false"
+        @created="handleProjectCreated"
+      />
     </div>
   </component>
 </template>
@@ -368,6 +408,7 @@ import GlobalLayout from '@/layouts/GlobalLayout.vue'
 import ProjectLayout from '@/layouts/ProjectLayout.vue'
 import TaskLayout from '@/layouts/TaskLayout.vue'
 import { projectApi, type Project as ApiProject } from '@/core/utils/project-api'
+import ProjectDialog from './ProjectDialog.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -394,6 +435,8 @@ const loading = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref('')
 const sortBy = ref('')
+const showCreateDialog = ref(false)
+// Removed managers ref - now using prj_manager_name from API
 
 // Pagination
 const currentPage = ref(1)
@@ -477,11 +520,27 @@ function formatDate(dateString: string) {
   })
 }
 
+// Removed getManagerName and loadManagers functions - now using prj_manager_name from API
+
 async function loadProjects() {
   loading.value = true
   try {
     console.log('🚀 Loading projects from API...')
-    const response = await projectApi.getAll(1, 100, {})
+
+    // Prepare filters based on user role
+    const filters: Record<string, unknown> = {}
+
+    // Project managers can only see their own projects
+    if (authStore.currentUser?.role_code === 'project_manager') {
+      filters.prj_manager = authStore.currentUser.id
+      console.log('🔒 Project Manager: filtering by manager ID:', authStore.currentUser.id)
+    }
+    // Administrators see all projects (no filter)
+    else if (authStore.currentUser?.role_code === 'admin') {
+      console.log('🔓 Administrator: loading all projects')
+    }
+
+    const response = await projectApi.getAll(1, 100, filters)
     console.log('📦 API response:', response)
     projects.value = response.projects
     console.log('✅ Projects loaded:', projects.value.length)
@@ -500,6 +559,35 @@ function viewProject(projectId: number) {
 function editProject(projectId: number) {
   // TODO: Implement edit functionality
   console.log('Edit project:', projectId)
+}
+
+function createProject() {
+  console.log('Create new project')
+  showCreateDialog.value = true
+}
+
+function handleProjectCreated(project: ApiProject) {
+  console.log('✅ Project created:', project)
+  // Reload projects to show the new one
+  loadProjects()
+  showCreateDialog.value = false
+}
+
+// Check if user can edit a specific project
+function canEditProject(project: ApiProject): boolean {
+  if (!authStore.currentUser) return false
+
+  // Project managers can only edit their own projects
+  if (authStore.currentUser.role_code === 'project_manager') {
+    return project.prj_manager === authStore.currentUser.id
+  }
+
+  // Administrators have read-only access to all projects
+  if (authStore.currentUser.role_code === 'admin') {
+    return false // Admins can view but not edit
+  }
+
+  return false
 }
 
 // Pagination functions

@@ -23,7 +23,10 @@ export interface Project {
   date_start: string
   date_end: string
   status: string
-  prj_managger?: number
+  prj_manager?: number
+  manager_name?: string
+  created_by?: number
+  created_by_name?: string
   created_at: string
   updated_at: string
 }

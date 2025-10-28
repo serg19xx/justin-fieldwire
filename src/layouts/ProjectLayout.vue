@@ -47,6 +47,15 @@
           >
             Reports
           </RouterLink>
+          <!-- Admin Settings - Only visible for System Administrators -->
+          <RouterLink
+            v-if="authStore.currentUser?.job_title === 'System Administrator'"
+            to="/admin-settings"
+            class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
+            :class="{ 'bg-green-700 text-white': $route.path === '/admin-settings' }"
+          >
+            Admin Settings
+          </RouterLink>
         </nav>
 
         <!-- User menu -->
@@ -127,6 +136,15 @@
             class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
           >
             Reports
+          </RouterLink>
+          <!-- Admin Settings - Only visible for System Administrators -->
+          <RouterLink
+            v-if="authStore.currentUser?.job_title === 'System Administrator'"
+            to="/admin-settings"
+            @click="closeMobileMenu"
+            class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
+          >
+            Admin Settings
           </RouterLink>
         </nav>
       </div>

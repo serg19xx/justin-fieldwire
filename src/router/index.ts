@@ -101,6 +101,23 @@ const router = createRouter({
       },
     },
     {
+      path: '/admin-settings',
+      component: () => {
+        const authStore = useAuthStore()
+        const jobTitle = authStore.currentUser?.job_title
+
+        console.log('🔍 Router admin-settings debug:', { jobTitle })
+
+        // Only System Administrators can access admin settings
+        if (jobTitle === 'System Administrator') {
+          return import('../pages/admin/AdminSettings.vue')
+        } else {
+          // Redirect non-admins to dashboard
+          return import('../pages/dashboard/GlobalDashboard.vue')
+        }
+      },
+    },
+    {
       path: '/projects',
       component: () => {
         const authStore = useAuthStore()

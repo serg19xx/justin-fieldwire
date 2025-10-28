@@ -290,6 +290,7 @@ export const hrResourcesApi = {
       status?: string
       user_status?: string
       role_code?: string
+      role_id?: number
       job_title?: string
       search?: string
       archived?: boolean
@@ -327,7 +328,7 @@ export const hrResourcesApi = {
         email: authStore.currentUser?.email,
         role_code: authStore.currentUser?.role_code,
         role_category: authStore.currentUser?.role_category,
-        isAuthenticated: authStore.isAuthenticated
+        isAuthenticated: authStore.isAuthenticated,
       })
 
       // Строим query параметры
@@ -339,6 +340,7 @@ export const hrResourcesApi = {
       if (filters.status) params.append('status', filters.status)
       if (filters.user_status) params.append('user_status', filters.user_status)
       if (filters.role_code) params.append('role_code', filters.role_code)
+      if (filters.role_id) params.append('role_id', filters.role_id.toString())
       if (filters.job_title) params.append('job_title', filters.job_title)
       if (filters.search) params.append('search', filters.search)
       if (filters.archived !== undefined) params.append('archived', filters.archived.toString())
