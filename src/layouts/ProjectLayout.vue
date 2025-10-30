@@ -151,7 +151,7 @@
     </div>
 
     <!-- Main content -->
-    <main class="pt-8 min-h-screen">
+    <main class="pt-16 min-h-screen">
       <slot />
     </main>
   </div>

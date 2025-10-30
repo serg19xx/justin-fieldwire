@@ -1939,7 +1939,7 @@ watch(
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col ml-64 pt-4">
+    <div class="flex-1 flex flex-col ml-64">
       <!-- Content Header -->
       <div class="bg-white shadow-sm border-b border-gray-200 px-6 py-2 fixed top-12 left-64 right-0 z-40" style="margin-top: 0; padding-top: 0.5rem; padding-bottom: 0.5rem;">
         <div class="flex items-center justify-between">
@@ -2066,7 +2066,7 @@ watch(
                   @click="exportTasksToICalLocal"
                   :disabled="isExporting"
                   :class="[
-                    'px-4 py-2 rounded-md transition-colors text-sm font-medium flex items-center space-x-2',
+                    'px-4 rounded-md transition-colors text-sm font-medium flex items-center space-x-2 h-7',
                     isExporting
                       ? 'bg-gray-400 text-white cursor-not-allowed'
                       : 'bg-green-600 text-white hover:bg-green-700',
@@ -2109,14 +2109,14 @@ watch(
                 <div v-if="editingMode === 'edit' && canEditProject" class="flex items-center space-x-2">
                   <button
                     @click="handleDuplicateFromHeader"
-                    class="px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-1"
+                    class="px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-1 h-7"
                   >
                     <span>📋</span>
                     <span>Duplicate</span>
                   </button>
                   <button
                     @click="handleDeleteFromHeader"
-                    class="px-3 py-1.5 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center space-x-1"
+                    class="px-3 py-1.5 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center space-x-1 h-7"
                   >
                     <span>🗑️</span>
                     <span>Delete</span>
@@ -2130,7 +2130,7 @@ watch(
               <button
                 v-if="canEditProject"
                 @click="uploadPhoto"
-                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                class="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium h-7 flex items-center"
               >
                 + Upload Photo
               </button>
@@ -2141,7 +2141,7 @@ watch(
               <button
                 v-if="canEditProject"
                 @click="addTeamMember"
-                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                class="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium h-7 flex items-center"
               >
                 + Add Member
               </button>
@@ -2206,7 +2206,7 @@ watch(
       </div>
 
       <!-- Content Body -->
-      <div class="flex-1 overflow-y-auto overflow-x-hidden px-6 pt-16" style="padding-bottom: 0;">
+      <div class="flex-1 overflow-y-auto overflow-x-hidden px-6 pt-12" style="padding-bottom: 0;">
         <!-- Loading State -->
         <div v-if="loading" class="flex items-center justify-center h-full">
           <div class="text-center">

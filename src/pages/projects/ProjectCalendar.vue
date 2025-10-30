@@ -2916,24 +2916,7 @@ defineExpose({
           <span class="text-sm text-red-700">{{ error }}</span>
         </div>
       </div>
-      <div v-else-if="tasks.length === 0" class="bg-gray-50 border-b border-gray-200 px-4 py-2">
-        <div class="flex items-center">
-          <svg
-            class="h-4 w-4 text-gray-400 mr-2"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012-2"
-            ></path>
-          </svg>
-          <span class="text-sm text-gray-700">No tasks found for this project.</span>
-        </div>
-      </div>
+      
 
       <!-- Task Count -->
       <div class="p-4 border-b border-gray-200">
@@ -3079,7 +3062,7 @@ defineExpose({
         <div v-if="tasks.length === 0" class="text-center text-gray-500 py-8">
           <div class="text-4xl mb-4">📋</div>
           <h3 class="text-lg font-medium mb-2">No Tasks</h3>
-          <p class="text-sm">No tasks found for this project</p>
+          
         </div>
         <div v-else class="flex gap-6">
           <!-- Left: Task List (50%) -->

@@ -37,37 +37,7 @@
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
-                <div class="flex items-center">
-                  <span>Role</span>
-                  <div class="ml-1 group relative">
-                    <svg
-                      class="h-4 w-4 text-gray-400 cursor-help"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      ></path>
-                    </svg>
-                    <div
-                      class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10"
-                    >
-                      Role in this project (not job title)
-                      <div
-                        class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Status
+                Role
               </th>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -83,7 +53,7 @@
             </tr>
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="member in teamMembers" :key="(member as any).id" class="hover:bg-gray-50">
+            <tr v-for="(member, index) in safeMembers" :key="(member as any).id ?? (member as any).user_id ?? index" class="hover:bg-gray-50">
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="flex items-center">
                   <div class="flex-shrink-0 h-10 w-10">
@@ -159,19 +129,8 @@
                   </span>
                 </div>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span
-                  :class="
-                    (member as any).status === 1
-                      ? 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800'
-                      : 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800'
-                  "
-                >
-                  {{ (member as any).status === 1 ? 'Active' : 'Inactive' }}
-                </span>
-              </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ new Date((member as any).added_at).toLocaleDateString() }}
+                {{ (member as any).added_at ? new Date((member as any).added_at).toLocaleDateString() : '—' }}
               </td>
               <td v-if="canEdit" class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                 <button
@@ -219,6 +178,8 @@
       </div>
     </div>
   </div>
+
+  
 </template>
 
 <script setup lang="ts">
@@ -233,7 +194,11 @@ interface Props {
   canEdit: boolean
 }
 
-defineProps<Props>()
+import { computed } from 'vue'
+const props = defineProps<Props>()
+
+// Filter out null/undefined members to avoid runtime errors
+const safeMembers = computed(() => (Array.isArray(props.teamMembers) ? props.teamMembers.filter(Boolean) : []))
 
 // Emits
 const emit = defineEmits<{
@@ -278,4 +243,6 @@ const handleImageError = (event: Event) => {
     `
   }
 }
+
+// Tooltip removed per request
 </script>

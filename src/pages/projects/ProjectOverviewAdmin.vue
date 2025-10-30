@@ -1,5 +1,5 @@
 <template>
-  <div class="px-4 md:px-6 pt-4">
+  <div class="px-4 md:px-6">
     <div class="bg-white shadow rounded-lg p-4 mb-4">
       <h1 class="text-lg font-semibold text-gray-900">Project Overview</h1>
       <p class="text-sm text-gray-500">Read-only dashboard for administrators</p>
@@ -87,8 +87,8 @@
           Contact Project Manager to request updates or clarifications.
         </div>
         <div class="flex items-center gap-3">
-          <button disabled class="px-3 py-2 bg-gray-200 text-gray-600 rounded cursor-not-allowed">Message PM</button>
-          <button disabled class="px-3 py-2 bg-gray-200 text-gray-600 rounded cursor-not-allowed">Schedule Call</button>
+          <button disabled class="px-3 py-1.5 bg-gray-200 text-gray-600 rounded cursor-not-allowed h-7 flex items-center">Message PM</button>
+          <button disabled class="px-3 py-1.5 bg-gray-200 text-gray-600 rounded cursor-not-allowed h-7 flex items-center">Schedule Call</button>
         </div>
         <p class="text-xs text-gray-500 mt-2">Actions are placeholders for now.</p>
       </div>

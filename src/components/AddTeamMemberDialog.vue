@@ -144,8 +144,24 @@ async function addTeamMembers() {
     const newMembers = await Promise.all(promises)
     console.log('✅ Team members added successfully:', newMembers.length)
 
-    // Emit success for each member and close dialog
-    newMembers.forEach((member) => emit('memberAdded', member))
+    // Enrich returned members with selected user display data to avoid placeholder rows
+    newMembers.forEach((member) => {
+      const matched = selectedUsers.value.find((u) => u.id === (member as any).user_id || u.id === (member as any).id)
+      if (matched) {
+        const enriched = {
+          ...member,
+          name: getUserDisplayName(matched),
+          email: (matched as any).email || (member as any).email,
+          job_title: (matched as any).job_title || (member as any).job_title,
+          avatar_url: (matched as any).avatar_url || (member as any).avatar_url,
+          full_img_url: (matched as any).full_img_url || (member as any).full_img_url,
+          status: (matched as any).status ?? (member as any).status ?? 1,
+        }
+        emit('memberAdded', enriched as unknown as ProjectTeamMember)
+      } else {
+        emit('memberAdded', member)
+      }
+    })
     closeDialog()
   } catch (err: unknown) {
     console.error('❌ Error adding team members:', err)
@@ -306,7 +322,7 @@ function clearAllSelections() {
               v-model="searchQuery"
               type="text"
               placeholder="Search by name, email, or user type..."
-              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400"
             />
           </div>
 
@@ -354,11 +370,11 @@ function clearAllSelections() {
                   </div>
                   <div class="flex items-center space-x-2">
                     <select
-                      :value="user.role"
+                      v-model="user.teamRole"
                       @change="updateUserRole(user, ($event.target as HTMLSelectElement).value)"
-                      class="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      class="text-xs px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white text-gray-900 relative z-10"
                     >
-                      <option v-for="role in roleOptions" :key="role.value" :value="role.value">
+                      <option v-for="role in roleOptions" :key="role.value" :value="role.value" class="text-gray-900">
                         {{ role.label }}
                       </option>
                     </select>
