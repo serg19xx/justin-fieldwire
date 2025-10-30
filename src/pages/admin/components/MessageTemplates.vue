@@ -26,12 +26,12 @@
 
     <!-- Filters -->
     <div class="bg-white p-4 rounded-lg border border-gray-200">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
           <select
             v-model="filters.category"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Categories</option>
             <option value="system">System</option>
@@ -42,25 +42,14 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
           <select
             v-model="filters.type"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">All Types</option>
             <option value="email">Email</option>
             <option value="sms">SMS</option>
           </select>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
-          <select
-            v-model="filters.eventType"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">All Events</option>
-            <option v-for="eventType in eventTypes" :key="eventType.type" :value="eventType.type">
-              {{ eventType.name }}
-            </option>
-          </select>
-        </div>
+
         <div class="flex items-end">
           <button
             @click="clearFilters"
@@ -93,11 +82,7 @@
               >
                 Type
               </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Event
-              </th>
+
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
@@ -150,13 +135,7 @@
                   {{ template.type.toUpperCase() }}
                 </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span
-                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
-                >
-                  {{ template.event_type }}
-                </span>
-              </td>
+
               <td class="px-6 py-4 whitespace-nowrap">
                 <span
                   :class="
@@ -264,7 +243,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { adminApi, type MessageTemplate, type EventType } from '@/core/utils/admin-api'
+import { adminApi, type MessageTemplate, type EventType, type CreateMessageTemplateRequest, type UpdateMessageTemplateRequest } from '@/core/utils/admin-api'
 import MessageTemplateDialog from './MessageTemplateDialog.vue'
 import MessageTemplatePreview from './MessageTemplatePreview.vue'
 
@@ -281,7 +260,6 @@ const previewTemplateData = ref<MessageTemplate | null>(null)
 const filters = ref({
   category: '',
   type: '',
-  eventType: '',
 })
 
 // Computed
@@ -289,7 +267,7 @@ const filteredTemplates = computed(() => {
   return templates.value.filter((template) => {
     if (filters.value.category && template.category !== filters.value.category) return false
     if (filters.value.type && template.type !== filters.value.type) return false
-    if (filters.value.eventType && template.event_type !== filters.value.eventType) return false
+
     return true
   })
 })
@@ -298,13 +276,17 @@ const filteredTemplates = computed(() => {
 async function loadData() {
   loading.value = true
   try {
-    const [templatesData, eventTypesData] = await Promise.all([
-      adminApi.getMessageTemplates(),
-      adminApi.getEventTypes(),
-    ])
+    const p1 = adminApi
+      .getMessageTemplates()
+      .then((data) => (templates.value = data))
+      .catch(() => (templates.value = []))
 
-    templates.value = templatesData
-    eventTypes.value = eventTypesData
+    const p2 = adminApi
+      .getEventTypes()
+      .then((data) => (eventTypes.value = data))
+      .catch(() => void 0)
+
+    await Promise.allSettled([p1, p2])
   } catch (error) {
     console.error('Error loading message templates data:', error)
     // Don't set empty array, keep existing data
@@ -315,10 +297,7 @@ async function loadData() {
   }
 }
 
-function getEventTypeName(eventType: string): string {
-  const type = eventTypes.value.find((t) => t.type === eventType)
-  return type?.name || eventType
-}
+
 
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleDateString()
@@ -349,17 +328,24 @@ function closePreview() {
   previewTemplateData.value = null
 }
 
-async function handleSave(templateData: any) {
+async function handleSave(templateData: CreateMessageTemplateRequest | UpdateMessageTemplateRequest) {
   try {
     if (editingTemplate.value) {
-      await adminApi.updateMessageTemplate(editingTemplate.value.id, templateData)
+      await adminApi.updateMessageTemplate(editingTemplate.value.id, templateData as UpdateMessageTemplateRequest)
     } else {
-      await adminApi.createMessageTemplate(templateData)
+      await adminApi.createMessageTemplate(templateData as CreateMessageTemplateRequest)
     }
     await loadData()
     closeDialog()
   } catch (error) {
-    console.error('Error saving message template:', error)
+    const err = error as { response?: { data?: unknown; status?: number } }
+    console.error('Error saving message template:', err)
+    if (err.response?.data) {
+      console.error('Server response:', err.response.data)
+      alert(`Failed to save template: ${JSON.stringify(err.response.data)}`)
+    } else {
+      alert('Failed to save template: unknown error')
+    }
   }
 }
 
@@ -378,7 +364,6 @@ function clearFilters() {
   filters.value = {
     category: '',
     type: '',
-    eventType: '',
   }
 }
 

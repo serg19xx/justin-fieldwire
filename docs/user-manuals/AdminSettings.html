@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin Settings – User Manual</title>
+    <style>
+      :root {
+        --fg: #111827;
+        --muted: #4b5563;
+        --rule: #e5e7eb;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          Helvetica,
+          Arial,
+          'Apple Color Emoji',
+          'Segoe UI Emoji';
+        color: var(--fg);
+        line-height: 1.55;
+      }
+      .container {
+        max-width: 860px;
+        margin: 32px auto;
+        padding: 0 20px;
+      }
+      h1 {
+        font-size: 28px;
+        margin: 0 0 16px;
+      }
+      h2 {
+        font-size: 20px;
+        margin: 28px 0 10px;
+      }
+      h3 {
+        font-size: 16px;
+        margin: 20px 0 8px;
+      }
+      p {
+        margin: 8px 0;
+      }
+      ul,
+      ol {
+        margin: 8px 0 8px 22px;
+      }
+      code {
+        background: #f3f4f6;
+        padding: 1px 4px;
+        border-radius: 3px;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .rule {
+        border-top: 1px solid var(--rule);
+        margin: 20px 0;
+      }
+      .k {
+        font-weight: 600;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      th,
+      td {
+        border: 1px solid var(--rule);
+        padding: 6px 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+      @media print {
+        a[href]:after {
+          content: '';
+        }
+        .container {
+          margin: 10mm auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Admin Settings – User Manual</h1>
+      <p class="muted">Audience: Administrators</p>
+      <p>
+        Purpose: Configure automated event rules and message templates used across the application.
+      </p>
+
+      <h2>Contents</h2>
+      <ul>
+        <li>Event Rules</li>
+        <li>Message Templates</li>
+      </ul>
+
+      <h2>General UI</h2>
+      <ul>
+        <li>Filters sit on top of each table to narrow results.</li>
+        <li>Actions appear at the right of each row: Preview/Edit/Delete where applicable.</li>
+        <li>System items are read-only; custom items are user-created and editable.</li>
+      </ul>
+
+      <div class="rule"></div>
+
+      <h2>Event Rules</h2>
+      <h3>What it is</h3>
+      <ul>
+        <li>
+          A rule reacts to a system event (e.g., <code>TASK_CREATED</code>) and triggers one or more
+          actions.
+        </li>
+        <li>
+          System rules are pre-defined and cannot be deleted. Custom rules are created by users.
+        </li>
+      </ul>
+
+      <h3>Key columns</h3>
+      <ul>
+        <li><span class="k">Event Type</span>: Event identifier in UPPER_SNAKE_CASE.</li>
+        <li><span class="k">Rule Type</span>: system or custom.</li>
+        <li><span class="k">Status</span>: Active/Inactive.</li>
+        <li><span class="k">Execution</span>: Where the rule executes (Server/N8N/Both/Auto).</li>
+        <li><span class="k">Updated</span>: Last update date.</li>
+      </ul>
+
+      <h3>Filtering</h3>
+      <ul>
+        <li>Rule Type: system/custom.</li>
+        <li>Status: Active/Inactive.</li>
+        <li>Execution Location: Server/N8N/Both/Auto.</li>
+        <li>Search Event Type: substring match in event type.</li>
+      </ul>
+
+      <h3>Create/Edit Rule</h3>
+      <ol>
+        <li>Click <span class="k">Create Rule</span> or <span class="k">Edit</span> on a row.</li>
+        <li>
+          Fill fields:
+          <ul>
+            <li>Event Type (required): UPPER_SNAKE_CASE, e.g., <code>PROJECT_CREATED</code>.</li>
+            <li>Rule Enabled: toggle on/off.</li>
+            <li>Severity: Important/Critical.</li>
+            <li>Priority: Auto, or explicit Critical/High/Normal/Low.</li>
+            <li>Execution Location: Server/N8N/Both or Auto.</li>
+            <li>Comment: optional description.</li>
+          </ul>
+        </li>
+        <li>
+          Actions (at least one required):
+          <ul>
+            <li>
+              <span class="k">Notify</span>
+              <ul>
+                <li>Channels: Email/SMS/Push/Webhook/Slack (select one or more).</li>
+                <li>
+                  Channel templates (Email/SMS only): choose a message template or use default.
+                </li>
+                <li>Store for dashboard: persist notification metadata for dashboards.</li>
+              </ul>
+            </li>
+            <li>
+              <span class="k">Create Report</span>
+              <ul>
+                <li>Period: Daily/Weekly/Monthly/Quarterly/Custom (e.g., <code>P7D</code>).</li>
+                <li>Recipients: select roles to receive the report.</li>
+                <li>Store for dashboard: same as above.</li>
+              </ul>
+            </li>
+            <li>
+              <span class="k">Log Only</span>
+              <ul>
+                <li>Store for dashboard: flag only; no outward notification.</li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+        <li>
+          Conditions (optional, can combine):
+          <ul>
+            <li>Strict mode: when on, all selected conditions must be met.</li>
+            <li>Notify Roles: select roles; set priority (Required/Preferred/Optional).</li>
+            <li>
+              Time Conditions: timezone, business-hours/weekdays flags, and time range (start/end).
+            </li>
+            <li>Project Conditions: min budget, statuses.</li>
+            <li>Task Conditions: statuses and overdue-only flag.</li>
+          </ul>
+        </li>
+        <li>Save. Rules require at least one action; otherwise saving is blocked.</li>
+      </ol>
+
+      <h3>Edit/Delete</h3>
+      <ul>
+        <li>Edit: allowed for any rule. For system rules, deletion is disabled.</li>
+        <li>Delete: allowed ONLY for custom rules.</li>
+      </ul>
+
+      <h3>Notes</h3>
+      <ul>
+        <li>If a Notify action exists, at least one role must be selected in Notify Roles.</li>
+        <li>Time range defaults to 09:00–17:00 if missing.</li>
+      </ul>
+
+      <div class="rule"></div>
+
+      <h2>Message Templates</h2>
+      <h3>What it is</h3>
+      <ul>
+        <li>
+          Reusable content for notifications (Email/SMS). Attach to Notify actions in Event Rules.
+        </li>
+      </ul>
+
+      <h3>Key columns</h3>
+      <ul>
+        <li>Name</li>
+        <li>Category: system/custom (system templates are read-only)</li>
+        <li>Type: Email/SMS</li>
+        <li>Status: Active/Inactive</li>
+        <li>Created: creation date</li>
+      </ul>
+
+      <h3>Filtering</h3>
+      <ul>
+        <li>Category: system/custom</li>
+        <li>Type: email/sms</li>
+      </ul>
+
+      <h3>Create/Edit Template</h3>
+      <ol>
+        <li>Click <span class="k">Create Template</span> or <span class="k">Edit</span>.</li>
+        <li>
+          Fill fields:
+          <ul>
+            <li>Template Name (required)</li>
+            <li>Type (required): Email or SMS</li>
+            <li>Email Subject (required for Email)</li>
+            <li>
+              Template Content (required): supports plain text and HTML; variables as
+              <code>{{VARIABLE_NAME}}</code>.
+            </li>
+          </ul>
+        </li>
+        <li>
+          Toolbar (Email): basic tags – <code>strong</code>/<code>em</code>, <code>p</code>,
+          <code>br</code>, <code>h2</code>/<code>h3</code>, <code>ul</code>/<code>ol</code>,
+          <code>span</code>, <code>div</code>, <code>a</code>.
+        </li>
+        <li>
+          Variables: auto-detected; set human-readable labels in the Variables section. Labels are
+          saved with the template.
+        </li>
+        <li>Status: enable/disable the template.</li>
+        <li>Preview: shows rendered HTML (Email) or text (SMS).</li>
+        <li>Save: user-created templates are saved with category <code>custom</code>.</li>
+      </ol>
+
+      <h3>Delete</h3>
+      <ul>
+        <li>Allowed ONLY for custom templates; system templates are read-only.</li>
+      </ul>
+
+      <h3>Variables</h3>
+      <ul>
+        <li>Syntax: <code>{{VARIABLE_NAME}}</code> (alphanumeric and underscore).</li>
+        <li>
+          Examples: <code>{{PROJECT_NAME}}</code>, <code>{{TASK_NAME}}</code>,
+          <code>{{ASSIGNEE_NAME}}</code>, <code>{{DUE_DATE}}</code>, <code>{{CREATED_BY}}</code>
+        </li>
+        <li>On save, variables are included as a map of <code>{ key: label }</code>.</li>
+      </ul>
+
+      <h3>Best Practices</h3>
+      <ul>
+        <li>Keep template names descriptive (e.g., "Task Assigned – Email").</li>
+        <li>Prefer simple, semantic HTML; a parent email layout will add header/footer.</li>
+        <li>Avoid heavy styling; keep content focused.</li>
+        <li>Use variables consistently and keep labels readable.</li>
+      </ul>
+
+      <h3>Troubleshooting</h3>
+      <ul>
+        <li>
+          400 Bad Request: check required fields (Name, Type, Body; Subject for Email). Ensure
+          variable labels are present when variables exist.
+        </li>
+        <li>System template not editable: by design. Create a custom template instead.</li>
+        <li>Preview shows raw text: ensure Email type and the preview is enabled.</li>
+      </ul>
+
+      <h3>Security</h3>
+      <ul>
+        <li>Do not include inline scripts or untrusted HTML.</li>
+        <li>Server must sanitize external values on delivery.</li>
+      </ul>
+    </div>
+  </body>
+</html>

@@ -1,9 +1,9 @@
 <template>
-  <div
-    v-if="isOpen"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[110] p-4"
-    @click="closePreview"
-  >
+  <teleport to="body">
+    <div
+      v-if="isOpen"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2000]"
+    >
     <div
       class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
       @click.stop
@@ -29,26 +29,21 @@
         <div class="mb-6">
           <div class="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span class="font-medium text-gray-700">Type:</span>
+              <span class="font-medium text-gray-700">Category:</span>
               <span
-                :class="template?.template_type === 'system' ? 'text-blue-600' : 'text-green-600'"
+                :class="template?.category === 'system' ? 'text-blue-600' : 'text-green-600'"
                 class="ml-2 font-medium"
               >
-                {{ template?.template_type }}
+                {{ template?.category }}
               </span>
             </div>
             <div>
               <span class="font-medium text-gray-700">Message Type:</span>
               <span class="ml-2 font-medium text-gray-900">
-                {{ template?.message_type?.toUpperCase() }}
+                {{ template?.type?.toUpperCase() }}
               </span>
             </div>
-            <div>
-              <span class="font-medium text-gray-700">Event:</span>
-              <span class="ml-2 font-medium text-gray-900">
-                {{ getEventTypeName(template?.event_type || '') }}
-              </span>
-            </div>
+
             <div>
               <span class="font-medium text-gray-700">Status:</span>
               <span
@@ -65,7 +60,7 @@
         <div class="space-y-4">
           <!-- Email Subject (if email template) -->
           <div
-            v-if="template?.message_type === 'email'"
+            v-if="template?.type === 'email'"
             class="border border-gray-200 rounded-lg p-4"
           >
             <h3 class="text-sm font-medium text-gray-700 mb-2">Email Subject</h3>
@@ -84,13 +79,13 @@
 
           <!-- Variables Used -->
           <div
-            v-if="template?.variables && template.variables.length > 0"
+            v-if="template?.variables && Object.keys(template.variables).length > 0"
             class="border border-gray-200 rounded-lg p-4"
           >
             <h3 class="text-sm font-medium text-gray-700 mb-2">Variables Used</h3>
             <div class="flex flex-wrap gap-2">
               <span
-                v-for="variable in template.variables"
+                v-for="variable in Object.keys(template.variables)"
                 :key="variable"
                 class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800"
               >
@@ -104,7 +99,7 @@
             <h3 class="text-sm font-medium text-gray-700 mb-2">Test Data Used</h3>
             <div class="bg-gray-50 rounded p-3 text-xs">
               <div class="grid grid-cols-2 gap-2">
-                <div v-for="variable in template?.variables" :key="variable">
+                <div v-for="variable in Object.keys(template?.variables || {})" :key="variable">
                   <span class="font-medium">{{ variable }}:</span>
                   <span class="ml-1">{{ getMockValue(variable) }}</span>
                 </div>
@@ -124,7 +119,8 @@
         </div>
       </div>
     </div>
-  </div>
+    </div>
+  </teleport>
 </template>
 
 <script setup lang="ts">
@@ -150,31 +146,14 @@ const emit = defineEmits<{
 }>()
 
 // Computed
-const selectedEventType = computed(() => {
-  return props.eventTypes.find((et) => et.type === props.template?.event_type)
-})
 
-const previewSubject = computed(() => {
-  return replaceVariables(props.template?.subject || '')
-})
 
-const previewContent = computed(() => {
-  return replaceVariables(props.template?.content || '').replace(/\n/g, '<br>')
-})
+const previewSubject = computed(() => props.template?.subject || '')
+
+const previewContent = computed(() => (props.template?.body || '').replace(/\n/g, '<br>'))
 
 // Methods
-function replaceVariables(text: string): string {
-  if (!selectedEventType.value) return text
 
-  let result = text
-  selectedEventType.value.available_variables.forEach((variable) => {
-    const placeholder = `{{${variable}}}`
-    const mockValue = getMockValue(variable)
-    result = result.replace(new RegExp(placeholder, 'g'), mockValue)
-  })
-
-  return result
-}
 
 function getMockValue(variable: string): string {
   const mockValues: Record<string, string> = {
@@ -198,10 +177,7 @@ function getVariableDisplay(variable: string): string {
   return `{{${variable}}}`
 }
 
-function getEventTypeName(eventType: string): string {
-  const type = props.eventTypes.find((t) => t.type === eventType)
-  return type?.name || eventType
-}
+
 
 function closePreview() {
   emit('close')

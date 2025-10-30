@@ -32,7 +32,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Rule Type</label>
           <select
             v-model="filters.ruleType"
-            class="w-full h-10 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+            class="w-full h-10 px-4 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
           >
             <option value="">All Types</option>
             <option value="system">System</option>
@@ -52,7 +52,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
           <select
             v-model="filters.enabled"
-            class="w-full h-10 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+            class="w-full h-10 px-4 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
           >
             <option value="">All Statuses</option>
             <option value="true">Active</option>
@@ -63,7 +63,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Execution Location</label>
           <select
             v-model="filters.executionLocation"
-            class="w-full h-10 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+            class="w-full h-10 px-4 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
           >
             <option value="">All Locations</option>
             <option value="server">Server</option>
@@ -159,8 +159,12 @@
                     Edit
                   </button>
                   <button
-                    @click="deleteRule(rule.event_type)"
-                    class="text-red-600 hover:text-red-900"
+                    @click="deleteRule(rule)"
+                    :disabled="getRuleType(rule) === 'system'"
+                    :class="[
+                      'text-red-600',
+                      getRuleType(rule) === 'system' ? 'opacity-40 cursor-not-allowed' : 'hover:text-red-900'
+                    ]"
                   >
                     Delete
                   </button>
@@ -349,17 +353,27 @@ const filteredRules = computed(() => {
 async function loadData() {
   loading.value = true
   try {
-    const [rulesData, eventTypesData, conditionsData, actionsData] = await Promise.all([
-      adminApi.getEventRules(),
-      adminApi.getEventTypes(),
-      adminApi.getEventRuleConditions(),
-      adminApi.getEventRuleActions(),
-    ])
+    const p1 = adminApi
+      .getEventRules()
+      .then((data) => (rules.value = data))
+      .catch(() => (rules.value = []))
 
-    rules.value = rulesData
-    eventTypes.value = eventTypesData
-    conditions.value = conditionsData
-    actions.value = actionsData
+    const p2 = adminApi
+      .getEventTypes()
+      .then((data) => (eventTypes.value = data))
+      .catch(() => void 0)
+
+    const p3 = adminApi
+      .getEventRuleConditions()
+      .then((data) => (conditions.value = data))
+      .catch(() => (conditions.value = []))
+
+    const p4 = adminApi
+      .getEventRuleActions()
+      .then((data) => (actions.value = data))
+      .catch(() => (actions.value = []))
+
+    await Promise.allSettled([p1, p2, p3, p4])
   } catch (error) {
     console.error('Error loading event rules data:', error)
     // For now, use mock data
@@ -428,10 +442,14 @@ async function handleSave(ruleData: EventRule) {
   }
 }
 
-async function deleteRule(eventType: string) {
+async function deleteRule(rule: EventRule) {
+  if (getRuleType(rule) === 'system') {
+    alert('Only custom (user-created) rules can be deleted')
+    return
+  }
   if (confirm('Are you sure you want to delete this event rule?')) {
     try {
-      await adminApi.deleteEventRule(eventType)
+      await adminApi.deleteEventRule(rule.event_type)
       await loadData()
     } catch (error) {
       console.error('Error deleting event rule:', error)

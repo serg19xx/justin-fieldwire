@@ -1,9 +1,9 @@
 <template>
-  <div
-    v-if="isOpen"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[110] p-4"
-    @click="closeDialog"
-  >
+  <teleport to="body">
+    <div
+      v-if="isOpen"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2000]"
+    >
     <div
       class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto"
       @click.stop
@@ -78,7 +78,7 @@
                 <select
                   v-model="form.severity"
                   required
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
                 >
                   <option value="important">Important</option>
                   <option value="critical">Critical</option>
@@ -91,7 +91,7 @@
                 </label>
                 <select
                   v-model="form.priority"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
                 >
                   <option :value="null">Auto ({{ computedPriority }})</option>
                   <option value="critical">Critical</option>
@@ -107,7 +107,7 @@
                 </label>
                 <select
                   v-model="form.execution_location"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
                 >
                   <option :value="null">Auto</option>
                   <option value="server">Server</option>
@@ -215,7 +215,7 @@
                       </label>
                       <select
                         v-model="action.channel_templates![channel]"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
                       >
                         <option :value="null">Use default template</option>
                         <option
@@ -250,7 +250,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Period *</label>
                     <select
                       v-model="action.period"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
                     >
                       <option value="daily">Daily</option>
                       <option value="weekly">Weekly</option>
@@ -355,7 +355,7 @@
               <label class="flex items-center">
                 <input
                   type="checkbox"
-                  v-model="form.conditions.strict_mode"
+                  v-model="strictMode"
                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
                 />
                 <span class="text-gray-900 font-medium">Strict mode (all conditions must be met)</span>
@@ -448,7 +448,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
                     <select
                       v-model="form.conditions.time_conditions.value.timezone"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
                   >
                       <option value="America/New_York">America/New_York</option>
                       <option value="America/Los_Angeles">America/Los_Angeles</option>
@@ -461,7 +461,7 @@
                     <div>
                       <label class="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
                       <input
-                        v-model="form.conditions.time_conditions.value.time_range.start"
+                        v-model="timeRange.start"
                         type="time"
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
                       />
@@ -469,7 +469,7 @@
                     <div>
                       <label class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
                       <input
-                        v-model="form.conditions.time_conditions.value.time_range.end"
+                        v-model="timeRange.end"
                         type="time"
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
                       />
@@ -615,7 +615,8 @@
         </form>
       </div>
     </div>
-  </div>
+    </div>
+  </teleport>
 </template>
 
 <script setup lang="ts">
@@ -699,6 +700,37 @@ function getActionTypeLabel(type: string): string {
   }
   return labels[type] || type
 }
+
+// Safe accessors to satisfy template type-checking
+const strictMode = computed<boolean>({
+  get() {
+    ensureConditionsObject()
+    return Boolean(form.value.conditions!.strict_mode)
+  },
+  set(val: boolean) {
+    ensureConditionsObject()
+    form.value.conditions!.strict_mode = val
+  },
+})
+
+const timeRange = computed<{ start: string; end: string }>({
+  get() {
+    normalizeConditions()
+    const tr = form.value.conditions!.time_conditions!.value!.time_range!
+    return { start: tr.start as string, end: tr.end as string }
+  },
+  set(val) {
+    ensureConditionsObject()
+    if (!form.value.conditions!.time_conditions) {
+      addCondition('time_conditions')
+    }
+    normalizeConditions()
+    form.value.conditions!.time_conditions!.value!.time_range = {
+      start: val.start,
+      end: val.end,
+    }
+  },
+})
 
 function parseLegacyActions(input: unknown): EventRuleAction[] {
   if (Array.isArray(input)) {
@@ -818,7 +850,7 @@ function addCondition(type: 'notify_roles' | 'time_conditions' | 'project_condit
   if (!form.value.conditions) {
     form.value.conditions = { strict_mode: false } as EventConditions
   }
-  
+
   if (type === 'notify_roles') {
     form.value.conditions.notify_roles = {
       value: [],
@@ -865,6 +897,29 @@ function removeCondition(type: string) {
     if (type === 'time_conditions') delete form.value.conditions.time_conditions
     if (type === 'project_conditions') delete form.value.conditions.project_conditions
     if (type === 'task_conditions') delete form.value.conditions.task_conditions
+  }
+}
+
+function normalizeConditions() {
+  ensureConditionsObject()
+  const c = form.value.conditions!
+  if (c.time_conditions) {
+    const tc = c.time_conditions as unknown as {
+      value?: {
+        business_hours_only?: boolean
+        weekdays_only?: boolean
+        timezone?: string
+        time_range?: { start?: string; end?: string }
+      }
+      priority?: string
+    }
+    if (!tc.value) tc.value = {}
+    if (tc.value.business_hours_only === undefined) tc.value.business_hours_only = false
+    if (tc.value.weekdays_only === undefined) tc.value.weekdays_only = false
+    if (!tc.value.timezone) tc.value.timezone = 'America/New_York'
+    if (!tc.value.time_range) tc.value.time_range = { start: '09:00', end: '17:00' }
+    if (!tc.value.time_range.start) tc.value.time_range.start = '09:00'
+    if (!tc.value.time_range.end) tc.value.time_range.end = '17:00'
   }
 }
 
@@ -949,6 +1004,7 @@ watch(
         updated_at: newRule.updated_at,
         updated_by: newRule.updated_by,
       }
+      normalizeConditions()
     } else {
       // Reset form for new rule
       form.value = {
@@ -963,6 +1019,7 @@ watch(
         execution_location: null,
         comment: '',
       }
+      normalizeConditions()
     }
     validationErrors.value = {}
   },

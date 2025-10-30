@@ -1,9 +1,9 @@
 <template>
-  <div
-    v-if="isOpen"
-    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[110] p-4"
-    @click="closeDialog"
-  >
+  <teleport to="body">
+    <div
+      v-if="isOpen"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2000]"
+    >
     <div
       class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
       @click.stop
@@ -51,48 +51,18 @@
               </p>
             </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Template Type <span class="text-red-500">*</span>
-              </label>
-              <select
-                v-model="form.template_type"
-                required
-                :disabled="editingTemplate?.template_type === 'system'"
-                :class="[
-                  'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
-                  validationErrors.template_type
-                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                    : 'border-gray-300',
-                  editingTemplate?.template_type === 'system'
-                    ? 'bg-gray-100 cursor-not-allowed'
-                    : '',
-                ]"
-              >
-                <option value="custom">Custom</option>
-                <option value="system">System</option>
-              </select>
-              <p v-if="validationErrors.template_type" class="mt-1 text-sm text-red-600">
-                {{ validationErrors.template_type }}
-              </p>
-              <p
-                v-if="editingTemplate?.template_type === 'system'"
-                class="mt-1 text-xs text-gray-500"
-              >
-                System templates cannot be changed to custom
-              </p>
-            </div>
+
 
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
                 Message Type <span class="text-red-500">*</span>
               </label>
               <select
-                v-model="form.message_type"
+                v-model="form.type"
                 required
                 :class="[
-                  'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
-                  validationErrors.message_type
+                  'w-full px-3 py-2 border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500',
+                  validationErrors.type
                     ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
                     : 'border-gray-300',
                 ]"
@@ -100,42 +70,15 @@
                 <option value="email">Email</option>
                 <option value="sms">SMS</option>
               </select>
-              <p v-if="validationErrors.message_type" class="mt-1 text-sm text-red-600">
-                {{ validationErrors.message_type }}
+              <p v-if="validationErrors.type" class="mt-1 text-sm text-red-600">
+                {{ validationErrors.type }}
               </p>
             </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Event Type <span class="text-red-500">*</span>
-              </label>
-              <select
-                v-model="form.event_type"
-                required
-                :class="[
-                  'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
-                  validationErrors.event_type
-                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-                    : 'border-gray-300',
-                ]"
-              >
-                <option value="">Select event type</option>
-                <option
-                  v-for="eventType in eventTypes"
-                  :key="eventType.type"
-                  :value="eventType.type"
-                >
-                  {{ eventType.name }}
-                </option>
-              </select>
-              <p v-if="validationErrors.event_type" class="mt-1 text-sm text-red-600">
-                {{ validationErrors.event_type }}
-              </p>
-            </div>
           </div>
 
           <!-- Email Subject (only for email templates) -->
-          <div v-if="form.message_type === 'email'" class="mb-6">
+          <div v-if="form.type === 'email'" class="mb-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Email Subject <span class="text-red-500">*</span>
             </label>
@@ -156,26 +99,7 @@
             </p>
           </div>
 
-          <!-- Available Variables -->
-          <div v-if="selectedEventType" class="mb-6">
-            <h3 class="text-lg font-medium text-gray-900 mb-3">Available Variables</h3>
-            <div class="bg-gray-50 rounded-lg p-4">
-              <p class="text-sm text-gray-600 mb-3">
-                Use these variables in your template by wrapping them in double curly braces:
-              </p>
-              <div class="flex flex-wrap gap-2">
-                <button
-                  v-for="variable in selectedEventType.available_variables"
-                  :key="variable"
-                  type="button"
-                  @click="insertVariable(variable)"
-                  class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer"
-                >
-                  {{ getVariableDisplay(variable) }}
-                </button>
-              </div>
-            </div>
-          </div>
+
 
           <!-- Template Content -->
           <div class="mb-6">
@@ -208,23 +132,60 @@
               </div>
             </div>
 
+            <!-- Light HTML Toolbar for Email templates -->
+            <div v-if="form.type === 'email'" class="mb-2 flex flex-wrap gap-1 text-xs">
+              <button type="button" @click="onCmd('bold')" class="px-2 py-1 border rounded bg-white hover:bg-gray-50">B</button>
+              <button type="button" @click="onCmd('italic')" class="px-2 py-1 border rounded bg-white hover:bg-gray-50"><em>I</em></button>
+              <span class="mx-1 text-gray-300">|</span>
+              <button type="button" @click="onCmd('p')" class="px-2 py-1 border rounded bg-white hover:bg-gray-50">p</button>
+              <button type="button" @click="onCmd('br')" class="px-2 py-1 border rounded bg-white hover:bg-gray-50">br</button>
+              <button type="button" @click="onCmd('h2')" class="px-2 py-1 border rounded bg-white hover:bg-gray-50">h2</button>
+              <button type="button" @click="onCmd('h3')" class="px-2 py-1 border rounded bg-white hover:bg-gray-50">h3</button>
+              <span class="mx-1 text-gray-300">|</span>
+              <button type="button" @click="onCmd('ul')" class="px-2 py-1 border rounded bg-white hover:bg-gray-50">ul</button>
+              <button type="button" @click="onCmd('ol')" class="px-2 py-1 border rounded bg-white hover:bg-gray-50">ol</button>
+              <span class="mx-1 text-gray-300">|</span>
+              <button type="button" @click="onCmd('span')" class="px-2 py-1 border rounded bg-white hover:bg-gray-50">span</button>
+              <button type="button" @click="onCmd('div')" class="px-2 py-1 border rounded bg-white hover:bg-gray-50">div</button>
+              <span class="mx-1 text-gray-300">|</span>
+              <button type="button" @click="onCmd('link')" class="px-2 py-1 border rounded bg-white hover:bg-gray-50">link</button>
+            </div>
+
+            <div class="mb-3 text-xs text-gray-600">
+              Use variables by wrapping them in double curly braces, for example:
+              <code v-pre class="px-1 py-0.5 rounded bg-gray-100 text-gray-800">{{PROJECT_NAME}}</code>.
+              Common variables:
+              <div class="mt-2 flex flex-wrap gap-2">
+                <button
+                  v-for="v in commonVariables"
+                  :key="v"
+                  type="button"
+                  @click="insertVariable(v)"
+                  class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 hover:bg-blue-200"
+                >
+                  {{ formatVar(v) }}
+                </button>
+              </div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <!-- Editor -->
               <div>
                 <textarea
-                  v-model="form.content"
+                  ref="editorRef"
+                  v-model="form.body"
                   required
                   rows="12"
                   :class="[
                     'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm',
-                    validationErrors.content
+                    validationErrors.body
                       ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
                       : 'border-gray-300',
                   ]"
                   placeholder="Enter template content..."
                 ></textarea>
-                <p v-if="validationErrors.content" class="mt-1 text-sm text-red-600">
-                  {{ validationErrors.content }}
+                <p v-if="validationErrors.body" class="mt-1 text-sm text-red-600">
+                  {{ validationErrors.body }}
                 </p>
               </div>
 
@@ -232,11 +193,36 @@
               <div v-if="showPreview" class="border border-gray-300 rounded-md p-4 bg-gray-50">
                 <h4 class="text-sm font-medium text-gray-700 mb-2">Preview</h4>
                 <div class="bg-white border rounded p-3 text-sm">
-                  <div v-if="form.message_type === 'email'" class="mb-2">
+                  <div v-if="form.type === 'email'" class="mb-2">
                     <strong>Subject:</strong> {{ previewSubject }}
                   </div>
                   <div v-html="previewContent"></div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Variables Editor -->
+          <div v-if="Object.keys(variablesMap).length > 0" class="mb-6">
+            <h3 class="text-lg font-medium text-gray-900 mb-3">Variables</h3>
+            <p class="text-xs text-gray-600 mb-3">
+              Customize labels shown to users for each variable. Keys are detected from content automatically.
+            </p>
+            <div class="space-y-2">
+              <div
+                v-for="key in Object.keys(variablesMap)"
+                :key="key"
+                class="grid grid-cols-1 md:grid-cols-3 gap-3 items-center"
+              >
+                <div class="text-xs md:text-sm font-mono text-gray-700">
+                  {{ formatVar(key) }}
+                </div>
+                <input
+                  v-model="variablesMap[key]"
+                  type="text"
+                  class="md:col-span-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter label"
+                />
               </div>
             </div>
           </div>
@@ -275,12 +261,13 @@
         </form>
       </div>
     </div>
-  </div>
+    </div>
+  </teleport>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import type { MessageTemplate, EventType } from '@/core/utils/admin-api'
+import type { MessageTemplate, EventType, CreateMessageTemplateRequest, UpdateMessageTemplateRequest } from '@/core/utils/admin-api'
 
 // Props
 interface Props {
@@ -298,7 +285,7 @@ const props = withDefaults(defineProps<Props>(), {
 // Emits
 const emit = defineEmits<{
   close: []
-  save: [template: any]
+  save: [template: CreateMessageTemplateRequest | UpdateMessageTemplateRequest]
 }>()
 
 // State
@@ -308,84 +295,38 @@ const validationErrors = ref<Record<string, string>>({})
 
 const form = ref({
   name: '',
-  template_type: 'custom' as 'system' | 'custom',
-  message_type: 'email' as 'sms' | 'email',
-  event_type: '',
+  type: 'email' as 'sms' | 'email',
   subject: '',
-  content: '',
+  body: '',
   is_active: true,
 })
+
+const commonVariables = [
+  'PROJECT_NAME',
+  'TASK_NAME',
+  'ASSIGNEE_NAME',
+  'DUE_DATE',
+  'CREATED_BY',
+] as const
+
+const variablesMap = ref<Record<string, string>>({})
+const editorRef = ref<HTMLTextAreaElement | null>(null)
 
 // Computed
 const editingTemplate = computed(() => props.template)
 
-const selectedEventType = computed(() => {
-  return props.eventTypes.find((et) => et.type === form.value.event_type)
-})
 
-const previewSubject = computed(() => {
-  return replaceVariables(form.value.subject || '')
-})
 
-const previewContent = computed(() => {
-  return replaceVariables(form.value.content || '').replace(/\n/g, '<br>')
-})
+const previewSubject = computed(() => form.value.subject || '')
+
+const previewContent = computed(() => (form.value.body || '').replace(/\n/g, '<br>'))
 
 // Methods
-function replaceVariables(text: string): string {
-  if (!selectedEventType.value) return text
 
-  let result = text
-  selectedEventType.value.available_variables.forEach((variable) => {
-    const placeholder = `{{${variable}}}`
-    const mockValue = getMockValue(variable)
-    result = result.replace(new RegExp(placeholder, 'g'), mockValue)
-  })
 
-  return result
-}
 
-function getMockValue(variable: string): string {
-  const mockValues: Record<string, string> = {
-    task_name: 'Install Windows',
-    project_name: 'Office Renovation',
-    assignee_name: 'John Smith',
-    due_date: '2024-01-15',
-    created_by: 'Jane Doe',
-    completed_date: '2024-01-14',
-    completed_by: 'John Smith',
-    project_manager: 'Mike Johnson',
-    start_date: '2024-01-01',
-    end_date: '2024-03-31',
-    days_remaining: '3',
-  }
 
-  return mockValues[variable] || `[${variable}]`
-}
 
-function getVariableDisplay(variable: string): string {
-  return `{{${variable}}}`
-}
-
-function insertVariable(variable: string) {
-  const textarea = document.querySelector('textarea') as HTMLTextAreaElement
-  if (textarea) {
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const text = textarea.value
-    const before = text.substring(0, start)
-    const after = text.substring(end, text.length)
-    const variableText = `{{${variable}}}`
-
-    form.value.content = before + variableText + after
-
-    // Set cursor position after the inserted variable
-    setTimeout(() => {
-      textarea.focus()
-      textarea.setSelectionRange(start + variableText.length, start + variableText.length)
-    }, 0)
-  }
-}
 
 function validateForm(): boolean {
   const errors: Record<string, string> = {}
@@ -394,16 +335,12 @@ function validateForm(): boolean {
     errors.name = 'Template name is required'
   }
 
-  if (!form.value.event_type) {
-    errors.event_type = 'Event type is required'
-  }
-
-  if (form.value.message_type === 'email' && !form.value.subject.trim()) {
+  if (form.value.type === 'email' && !form.value.subject.trim()) {
     errors.subject = 'Email subject is required'
   }
 
-  if (!form.value.content.trim()) {
-    errors.content = 'Template content is required'
+  if (!form.value.body.trim()) {
+    errors.body = 'Template content is required'
   }
 
   validationErrors.value = errors
@@ -417,15 +354,131 @@ async function handleSubmit() {
 
   isSubmitting.value = true
   try {
-    const templateData = {
-      ...form.value,
-      variables: selectedEventType.value?.available_variables || [],
+    const base = {
+      name: form.value.name,
+      type: form.value.type,
+      body: form.value.body,
+      is_active: form.value.is_active,
+      category: 'custom' as const,
+    }
+
+    // Use current variables map (keeps user-edited labels)
+    const variables = { ...variablesMap.value }
+
+    const templateData: CreateMessageTemplateRequest = {
+      ...base,
+      ...(Object.keys(variables).length > 0 ? { variables } : {}),
+      ...(form.value.type === 'email' && form.value.subject.trim()
+        ? { subject: form.value.subject.trim() }
+        : {}),
     }
 
     emit('save', templateData)
   } finally {
     isSubmitting.value = false
   }
+}
+
+function insertVariable(variable: string) {
+  const textarea = editorRef.value as HTMLTextAreaElement | null
+  if (textarea) {
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const text = textarea.value
+    const before = text.substring(0, start)
+    const after = text.substring(end, text.length)
+    const variableText = `{{${variable}}}`
+
+    form.value.body = before + variableText + after
+
+    setTimeout(() => {
+      textarea.focus()
+      textarea.setSelectionRange(start + variableText.length, start + variableText.length)
+    }, 0)
+  }
+}
+
+function formatVar(variable: string): string {
+  return `{{${variable}}}`
+}
+
+function extractVariablesFromBody(
+  body: string,
+  existing?: Record<string, string> | undefined,
+): Record<string, string> {
+  const result: Record<string, string> = {}
+  if (!body) return result
+  const regex = /\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g
+  let match: RegExpExecArray | null
+  const seen = new Set<string>()
+  while ((match = regex.exec(body)) !== null) {
+    const key = match[1]
+    if (seen.has(key)) continue
+    seen.add(key)
+    // Preserve existing label if present; otherwise generate a readable label
+    const existingLabel = existing?.[key]
+    result[key] = existingLabel ?? toReadableLabel(key)
+  }
+  return result
+}
+
+function toReadableLabel(key: string): string {
+  // Convert "PROJECT_NAME" or "project_name" to "Project name"
+  const normalized = key.replace(/_/g, ' ')
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase()
+}
+
+// Keep variablesMap in sync with body content and existing variables when editing
+watch(
+  () => form.value.body,
+  (newBody) => {
+    const extracted = extractVariablesFromBody(newBody, variablesMap.value)
+    // Remove keys not present anymore
+    const next: Record<string, string> = {}
+    Object.keys(extracted).forEach((k) => {
+      next[k] = extracted[k]
+    })
+    variablesMap.value = next
+  },
+  { immediate: true },
+)
+
+// Simple HTML commands operating on textarea selection
+function onCmd(cmd: 'bold' | 'italic' | 'p' | 'br' | 'ul' | 'ol' | 'span' | 'div' | 'h2' | 'h3' | 'link') {
+  const el = editorRef.value
+  if (!el) return
+  const start = el.selectionStart
+  const end = el.selectionEnd
+  const value = form.value.body
+  const selected = value.substring(start, end)
+
+  function replace(withText: string) {
+    form.value.body = value.substring(0, start) + withText + value.substring(end)
+    const cursor = start + withText.length
+    requestAnimationFrame(() => {
+      const target = editorRef.value
+      if (!target) return
+      target.focus()
+      target.setSelectionRange(cursor, cursor)
+    })
+  }
+
+  function wrap(openTag: string, closeTag: string) {
+    const content = selected || 'text'
+    replace(`${openTag}${content}${closeTag}`)
+  }
+
+  if (cmd === 'bold') return wrap('<strong>', '</strong>')
+  if (cmd === 'italic') return wrap('<em>', '</em>')
+  if (cmd === 'p') return wrap('<p>', '</p>')
+  if (cmd === 'br') return replace('<br>')
+  if (cmd === 'h2') return wrap('<h2>', '</h2>')
+  if (cmd === 'h3') return wrap('<h3>', '</h3>')
+  if (cmd === 'span') return wrap('<span>', '</span>')
+  if (cmd === 'div') return wrap('<div>', '</div>')
+  if (cmd === 'ul') return replace('<ul>\n  <li>Item 1</li>\n  <li>Item 2</li>\n</ul>')
+  if (cmd === 'ol') return replace('<ol>\n  <li>Item 1</li>\n  <li>Item 2</li>\n</ol>')
+  if (cmd === 'link') return wrap('<a href="https://example.com">', '</a>')
 }
 
 function closeDialog() {
@@ -439,24 +492,22 @@ watch(
     if (newTemplate) {
       form.value = {
         name: newTemplate.name,
-        template_type: newTemplate.template_type,
-        message_type: newTemplate.message_type,
-        event_type: newTemplate.event_type,
+        type: newTemplate.type,
         subject: newTemplate.subject || '',
-        content: newTemplate.content,
+        body: newTemplate.body,
         is_active: newTemplate.is_active,
       }
+      variablesMap.value = { ...(newTemplate.variables || {}) }
     } else {
       // Reset form for new template
       form.value = {
         name: '',
-        template_type: 'custom',
-        message_type: 'email',
-        event_type: '',
+        type: 'email',
         subject: '',
-        content: '',
+        body: '',
         is_active: true,
       }
+      variablesMap.value = {}
     }
     validationErrors.value = {}
   },
