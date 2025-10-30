@@ -32,7 +32,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Rule Type</label>
           <select
             v-model="filters.ruleType"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full h-10 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
           >
             <option value="">All Types</option>
             <option value="system">System</option>
@@ -45,14 +45,14 @@
             v-model="filters.searchEventType"
             type="text"
             placeholder="Search by event type..."
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full h-10 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
           />
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
           <select
             v-model="filters.enabled"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full h-10 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
           >
             <option value="">All Statuses</option>
             <option value="true">Active</option>
@@ -63,18 +63,19 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Execution Location</label>
           <select
             v-model="filters.executionLocation"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full h-10 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
           >
             <option value="">All Locations</option>
             <option value="server">Server</option>
-            <option value="auto">Auto</option>
-            <option value="null">Manual</option>
+            <option value="n8n">N8N</option>
+            <option value="both">Both</option>
+            <option value="null">Auto</option>
           </select>
         </div>
         <div class="flex items-end">
           <button
             @click="clearFilters"
-            class="w-full px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class="w-full h-10 px-4 border border-gray-300 text-sm font-medium rounded-lg text-gray-800 bg-white hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-all duration-200 hover:border-blue-400"
           >
             Clear Filters
           </button>
@@ -92,11 +93,6 @@
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
               >
                 Event Type
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Actions
               </th>
               <th
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -132,17 +128,6 @@
                 <div class="text-xs text-gray-500">{{ rule.comment }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="flex flex-wrap gap-1">
-                  <span
-                    v-for="action in rule.actions"
-                    :key="action"
-                    class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800"
-                  >
-                    {{ action }}
-                  </span>
-                </div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
                 <span
                   :class="
                     getRuleType(rule) === 'system'
@@ -163,7 +148,7 @@
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ rule.execution_location || 'Manual' }}
+                {{ rule.execution_location || 'Auto' }}
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 {{ formatDate(rule.updated_at) }}
@@ -241,19 +226,97 @@ import {
   adminApi,
   type EventRule,
   type EventType,
-  type EventRuleCondition,
+  type EventRuleConditionType,
+  type EventRuleActionType,
   type EventRuleAction,
+  type NotifyChannel,
 } from '@/core/utils/admin-api'
 import EventRuleDialog from './EventRuleDialog.vue'
 
 // State
 const rules = ref<EventRule[]>([])
 const eventTypes = ref<EventType[]>([])
-const conditions = ref<EventRuleCondition[]>([])
-const actions = ref<EventRuleAction[]>([])
+const conditions = ref<EventRuleConditionType[]>([])
+const actions = ref<EventRuleActionType[]>([])
 const loading = ref(false)
 const showDialog = ref(false)
 const editingRule = ref<EventRule | null>(null)
+// Helpers
+function sanitizeRule(rule: EventRule): EventRule {
+  // Deep clone with typing
+  const clone = JSON.parse(JSON.stringify(rule)) as EventRule
+
+  // Normalize execution_location: only 'server' | 'n8n' | 'both' | null
+  if (clone.execution_location !== 'server' && clone.execution_location !== 'n8n' && clone.execution_location !== 'both') {
+    clone.execution_location = null
+  }
+
+  // Normalize priority: allow null or one of allowed
+  if (
+    clone.priority !== 'critical' &&
+    clone.priority !== 'high' &&
+    clone.priority !== 'normal' &&
+    clone.priority !== 'low'
+  ) {
+    clone.priority = null
+  }
+
+  // Actions normalization
+  if (Array.isArray(clone.actions)) {
+    const allowedChannels: NotifyChannel[] = ['email', 'sms', 'push', 'webhook', 'slack']
+    clone.actions = clone.actions.map((a: EventRuleAction) => {
+      if (a.type === 'notify') {
+        a.channels = Array.isArray(a.channels)
+          ? (a.channels.filter((c) => allowedChannels.includes(c as NotifyChannel)) as NotifyChannel[])
+          : []
+        // Keep templates only for email/sms; ensure number|null
+        const ct: Partial<Record<NotifyChannel, number | null>> = {}
+        const source = a.channel_templates as Partial<Record<NotifyChannel, number | null>> | undefined
+        if (source) {
+          if (source.email !== undefined) ct.email = source.email ?? null
+          if (source.sms !== undefined) ct.sms = source.sms ?? null
+        }
+        a.channel_templates = ct
+        a.store_for_dashboard = Boolean(a.store_for_dashboard)
+      }
+      if (a.type === 'create_report') {
+        const allowed = ['daily', 'weekly', 'monthly', 'quarterly', 'custom']
+        const p = a.period ?? 'daily'
+        if (!allowed.includes(p)) a.period = 'daily'
+        if (a.period !== 'custom') delete a.custom_period
+        if (!Array.isArray(a.recipients)) a.recipients = []
+        a.store_for_dashboard = Boolean(a.store_for_dashboard)
+      }
+      if (a.type === 'log_only') {
+        a.store_for_dashboard = Boolean(a.store_for_dashboard)
+      }
+      return a
+    })
+  }
+
+  // Conditions: ensure object and valid notify_roles structure
+  if (!clone.conditions || typeof clone.conditions !== 'object') {
+    clone.conditions = { strict_mode: false }
+  }
+  return clone as EventRule
+}
+
+// Send new schema directly to backend
+function buildNewSchemaPayload(rule: EventRule): EventRule {
+  return {
+    event_type: rule.event_type,
+    enabled: rule.enabled,
+    severity: rule.severity,
+    priority: rule.priority,
+    actions: rule.actions,
+    conditions: rule.conditions,
+    execution_location: rule.execution_location,
+    comment: rule.comment,
+    updated_at: rule.updated_at,
+    updated_by: rule.updated_by,
+  }
+}
+
 
 // Filters
 const filters = ref({
@@ -315,8 +378,10 @@ function getRuleType(rule: EventRule): 'system' | 'custom' {
   return rule.updated_by === null ? 'system' : 'custom'
 }
 
-function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString()
+function formatDate(dateString?: string): string {
+  if (!dateString) return '-'
+  const d = new Date(dateString)
+  return isNaN(d.getTime()) ? '-' : d.toLocaleDateString()
 }
 
 function openCreateDialog() {
@@ -334,17 +399,32 @@ function closeDialog() {
   editingRule.value = null
 }
 
-async function handleSave(ruleData: any) {
+async function handleSave(ruleData: EventRule) {
   try {
+    const payload = sanitizeRule(ruleData)
+    // Send new schema directly to backend
+    const newSchema = buildNewSchemaPayload(payload)
+    console.log('📝 Submitting new schema event-rule payload:', newSchema)
+    if (!Array.isArray(newSchema.actions) || newSchema.actions.length === 0) {
+      alert('Add at least one action before saving the rule')
+      return
+    }
     if (editingRule.value) {
-      await adminApi.updateEventRule(editingRule.value.id, ruleData)
+      await adminApi.updateEventRule(editingRule.value.event_type, newSchema)
     } else {
-      await adminApi.createEventRule(ruleData)
+      await adminApi.createEventRule(newSchema)
     }
     await loadData()
     closeDialog()
   } catch (error) {
-    console.error('Error saving event rule:', error)
+    const err = error as { response?: { data?: unknown; status?: number } }
+    console.error('Error saving event rule:', err)
+    if (err.response?.data) {
+      console.error('Server response:', err.response.data)
+      alert(`Failed to save rule: ${JSON.stringify(err.response.data)}`)
+    } else {
+      alert('Failed to save rule: unknown error')
+    }
   }
 }
 

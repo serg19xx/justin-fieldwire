@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen" @click="handleClickOutside">
     <!-- Auth pages (login, password change, reset password) -->
-    <template v-if="['/login', '/reset-password', '/password-change'].includes(route.path)">
+    <template v-if="route.matched.some(r => r.meta && r.meta.isAuthPage)">
       <RouterView />
     </template>
 
@@ -59,10 +59,15 @@ const authStore = useAuthStore()
 
 // Auto-redirect unauthenticated users to login (except for auth pages)
 watch(() => authStore.isAuthenticated, (isAuthenticated) => {
-  const authPages = ['/login', '/reset-password', '/password-change']
+  // Wait for router to process the route
+  if (!route.matched.length) {
+    return
+  }
+
+  const onAuthPage = route.matched.some(r => r.meta && r.meta.isAuthPage)
 
   // Don't redirect if we're on an auth page
-  if (authPages.includes(route.path)) {
+  if (onAuthPage) {
     return
   }
 

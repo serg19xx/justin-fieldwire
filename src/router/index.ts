@@ -9,17 +9,19 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: () => import('@/pages/auth/views/LoginView.vue'),
+      meta: { requiresAuth: false, isAuthPage: true },
     },
     {
       path: '/password-change',
       name: 'password-change',
       component: () => import('@/pages/auth/views/PasswordChangeView.vue'),
-      meta: { requiresAuth: false }, // Allow access for users with temporary passwords
+      meta: { requiresAuth: false, isAuthPage: true }, // Allow access for users with temporary passwords
     },
     {
       path: '/reset-password',
       name: 'reset-password',
       component: () => import('@/pages/auth/views/ResetPasswordView.vue'),
+      meta: { requiresAuth: false, isAuthPage: true },
     },
 
     // Main application routes
@@ -153,9 +155,9 @@ router.beforeEach(async (to, from, next) => {
   // All routes require authentication by default
 
   // Public routes that don't require authentication
-  const publicRoutes = ['/login', '/reset-password']
+  const isPublic = to.matched.some((record) => record.meta && record.meta.requiresAuth === false)
 
-  if (publicRoutes.includes(to.path)) {
+  if (isPublic) {
     console.log('🛡️ Public route - allowing access')
     next()
     return

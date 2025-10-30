@@ -47,7 +47,7 @@
         </div>
 
         <!-- Tab Content -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <!-- Event Rules Tab -->
           <div v-if="activeTab === 'event-rules'">
             <EventRules />

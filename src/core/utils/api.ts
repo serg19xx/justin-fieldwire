@@ -99,21 +99,15 @@ api.interceptors.request.use(
     // DISABLED: Token expiration checks disabled for development
     console.log('🚫 Token expiration checks DISABLED - skipping all checks')
 
+    // Get real token from storage
     const token = getAuthToken()
-    console.log(
-      '🔑 Request interceptor - Token check:',
-      token ? `Bearer ${token.substring(0, 20)}...` : 'No token found',
-    )
-    console.log('🔑 Request interceptor - Request URL:', config.url)
-    console.log('🔑 Request interceptor - Current headers:', config.headers)
-
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
-      console.log('✅ Authorization header added to request')
-      console.log('🔑 Request interceptor - Final headers:', config.headers)
+      console.log('🔑 Using real token from storage')
     } else {
-      console.log('❌ No auth token, request will be unauthorized')
+      console.log('🔑 No token found - request will be unauthorized')
     }
+    
     return config
   },
   (error) => {
