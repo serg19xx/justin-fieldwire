@@ -1,12 +1,14 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { useAuthStore } from '@/core/stores/auth'
 import InviteBuilderDialog from '@/components/InviteBuilderDialog.vue'
 import { hrResourcesApi } from '@/core/utils/hr-api'
 import { type WorkerUser } from '@/core/utils/hr-api'
 import { type UserType } from '@/core/utils/constants'
 
 // Store (removed unused variables)
+const authStore = useAuthStore()
 
 // Project workers data
 const builders = ref<WorkerUser[]>([])
@@ -721,6 +723,7 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
     <!-- Dialogs -->
     <InviteBuilderDialog
       :is-open="isInviteDialogOpen"
+      :inviter-id="authStore.currentUser?.id"
       @close="closeInviteDialog"
       @invite-sent="handleInviteSent"
     />

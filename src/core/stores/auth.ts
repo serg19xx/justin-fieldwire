@@ -14,6 +14,7 @@ export interface User {
   name: string
   first_name?: string
   last_name?: string
+  role_id?: number
   role_category?: 'global' | 'project' | 'task'
   role_code?:
     | 'admin'
@@ -130,6 +131,7 @@ export const useAuthStore = defineStore('auth', () => {
         name: user.name,
         first_name: user.first_name,
         last_name: user.last_name,
+        role_id: user.role_id,
         phone: user.phone,
         job_title: user.job_title,
         role_category: user.role_category,
@@ -605,6 +607,7 @@ export const useAuthStore = defineStore('auth', () => {
           name: backendUser.name,
           first_name: backendUser.first_name,
           last_name: backendUser.last_name,
+          role_id: backendUser.role_id,
           role_category: backendUser.role_category,
           role_code: backendUser.role_code,
           two_factor_enabled: isTwoFactorEnabled(backendUser.two_factor_enabled),

@@ -227,6 +227,17 @@ const isInviteDialogOpen = ref(false)
 const isUserDetailsOpen = ref(false)
 const selectedUser = ref<WorkerUser | null>(null)
 
+// Admin detection
+const isAdminUser = computed(() => {
+  const u = authStore.currentUser
+  if (!u) return false
+  const roleId: number | undefined = typeof (u as any).role_id === 'string' ? Number((u as any).role_id) : (u as any).role_id
+  return roleId === 9 || u.role_code === 'admin' || u.job_title === 'System Administrator'
+})
+
+// Project Manager detection
+const isProjectManagerUser = computed(() => authStore.currentUser?.role_code === 'project_manager')
+
 // View mode state
 const viewMode = ref<'registered' | 'pending'>('registered')
 
@@ -239,6 +250,10 @@ const hrManagerMode = ref<'project' | 'task'>('project')
 
 function closeInviteDialog() {
   isInviteDialogOpen.value = false
+}
+
+function openInviteDialog() {
+  isInviteDialogOpen.value = true
 }
 
 function openUserDetails(user: WorkerUser) {
@@ -362,7 +377,7 @@ function handleInviteSent(data: {
   <div class="px-4 pt-4 md:px-6 md:pt-6" style="margin-top: 0; padding-top: 2rem; padding-bottom: 0;">
     <!-- Search and Actions Bar -->
     <div class="bg-white shadow rounded-lg p-2 sm:p-3" style="margin-bottom: 0.5rem;">
-      <div class="flex flex-col sm:flex-row gap-4">
+      <div class="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
         <!-- Search -->
         <div class="flex-1">
           <input
@@ -373,8 +388,18 @@ function handleInviteSent(data: {
           />
         </div>
 
-        <!-- Filters -->
-        <div class="flex gap-2">
+        <!-- Right actions: Add button (admin), filters -->
+        <div class="flex gap-2 items-center">
+          <!-- Add button visible for admin -->
+          <button
+            v-if="isAdminUser || isProjectManagerUser"
+            @click="openInviteDialog"
+            class="px-2 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
+          >
+            + Add Worker
+          </button>
+
+          <!-- Filters -->
           <!-- Status Filter -->
           <div class="relative">
             <select
@@ -846,6 +871,7 @@ function handleInviteSent(data: {
     <!-- Dialogs -->
     <InviteBuilderDialog
       :is-open="isInviteDialogOpen"
+  :inviter-id="authStore.currentUser?.id"
       @close="closeInviteDialog"
       @invite-sent="handleInviteSent"
     />

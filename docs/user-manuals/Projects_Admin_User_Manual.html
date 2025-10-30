@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Projects – Admin User Manual</title>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, Arial, sans-serif;
+        line-height: 1.5;
+        color: #111827;
+        margin: 16px;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #0f172a;
+      }
+      code,
+      pre {
+        background: #f8fafc;
+        padding: 2px 4px;
+        border-radius: 4px;
+      }
+      .md {
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Projects – Admin User Manual (Read‑Only)</h1>
+    <p><strong>Audience:</strong> System Administrators.</p>
+    <p>
+      Admin sees a global, read‑only projects experience with server‑side pagination, filtering and
+      a dedicated overview page per project.
+    </p>
+
+    <h2>Navigation</h2>
+    <ul>
+      <li>Header → All Projects</li>
+      <li>All projects list: <code>/projects</code></li>
+      <li>Project overview (read‑only): <code>/projects/:id/admin</code></li>
+    </ul>
+
+    <h2>All Projects (Admin)</h2>
+    <ul>
+      <li>Server search (300ms debounce): <code>search</code></li>
+      <li>Server filters: <code>status</code>, <code>priority</code></li>
+      <li>
+        Server sort: <code>sort_by</code>, <code>sort_order</code> (e.g., <code>prj_name</code>,
+        <code>priority</code>)
+      </li>
+      <li>Server pagination: <code>page</code>, <code>limit</code></li>
+      <li>Columns: Project, Client (address), Status, Priority, Manager, Created by</li>
+      <li>Action: Details → opens the Admin overview page</li>
+      <li>“Create Project” is hidden for Admin</li>
+    </ul>
+
+    <h2>Project Overview (Read‑Only)</h2>
+    <ul>
+      <li>Summary: name, address, status, priority, dates, manager, created by</li>
+      <li>Analytics: task counters (Total/Completed/In Progress/Pending)</li>
+      <li>Timeline: simple, non‑interactive Gantt‑like list (sequence only)</li>
+      <li>Activity History: recent high‑level events (read‑only)</li>
+      <li>Communication: placeholders to contact PM (no actions yet)</li>
+    </ul>
+
+    <h2>Not Permitted for Admin</h2>
+    <ul>
+      <li>Creating or editing projects</li>
+      <li>Editing tasks or project structure</li>
+    </ul>
+
+    <h2>Tips</h2>
+    <ul>
+      <li>Use filters for quick triage by status/priority</li>
+      <li>Use the overview to assess state before contacting the PM</li>
+      <li>“All Projects” label confirms global scope</li>
+    </ul>
+
+    <h2>Troubleshooting</h2>
+    <ul>
+      <li>Empty overview: refresh; demo data may appear if API returns no data</li>
+      <li>Details opens PM view: ensure URL includes <code>/admin</code></li>
+      <li>Search not filtering: pause typing (debounce) and check network requests</li>
+    </ul>
+  </body>
+</html>

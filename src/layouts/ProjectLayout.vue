@@ -31,7 +31,7 @@
             class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
             :class="{ 'bg-green-700 text-white': $route.path.startsWith('/projects') }"
           >
-            My Projects
+            {{ authStore.currentUser?.job_title === 'System Administrator' ? 'All Projects' : 'My Projects' }}
           </RouterLink>
           <RouterLink
             to="/team"
@@ -121,7 +121,7 @@
             @click="closeMobileMenu"
             class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
           >
-            My Projects
+            {{ authStore.currentUser?.job_title === 'System Administrator' ? 'All Projects' : 'My Projects' }}
           </RouterLink>
           <RouterLink
             to="/team"

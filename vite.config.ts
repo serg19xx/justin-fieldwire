@@ -24,10 +24,17 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['vue', 'vue-router', 'pinia'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('@fullcalendar')) return 'vendor-fullcalendar'
+            if (id.includes('vue-advanced-cropper')) return 'vendor-cropper'
+            if (id.includes('axios')) return 'vendor-axios'
+            if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) return 'vendor-vue'
+            return 'vendor'
+          }
         },
       },
     },

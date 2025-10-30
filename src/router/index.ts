@@ -133,15 +133,41 @@ const router = createRouter({
     },
     {
       path: '/projects/:id',
-      component: () => {
+      beforeEnter: (to, from, next) => {
         const authStore = useAuthStore()
         const roleCode = authStore.currentUser?.role_code
+        let roleId: number | string | undefined = (authStore.currentUser as unknown as { role_id?: number | string })?.role_id
 
-        console.log('🔍 Router project detail debug:', { roleCode })
+        if (roleId === undefined || roleCode === undefined) {
+          try {
+            const saved = localStorage.getItem('user')
+            if (saved) {
+              const parsed = JSON.parse(saved) as { role_id?: number | string; role_code?: string }
+              if (parsed?.role_id !== undefined) roleId = parsed.role_id
+            }
+          } catch {
+            // ignore
+          }
+        }
 
-        // All users get ProjectDetailPrj (layout is handled by App.vue)
-        return import('../pages/projects/ProjectDetailPrj.vue')
+        const roleIdNum = typeof roleId === 'string' ? Number(roleId) : roleId
+        const isAdmin = roleCode === 'admin' || roleIdNum === 9
+
+        console.log('🔀 Redirecting project route based on role:', { roleCode, roleId: roleIdNum, isAdmin })
+        if (isAdmin) {
+          next({ path: `/projects/${to.params.id}/admin` })
+        } else {
+          next({ path: `/projects/${to.params.id}/detail` })
+        }
       },
+    },
+    {
+      path: '/projects/:id/admin',
+      component: () => import('../pages/projects/ProjectOverviewAdmin.vue'),
+    },
+    {
+      path: '/projects/:id/detail',
+      component: () => import('../pages/projects/ProjectDetailPrj.vue'),
     },
   ],
 })

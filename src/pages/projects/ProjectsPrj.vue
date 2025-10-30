@@ -14,8 +14,8 @@
             />
           </div>
 
-          <!-- Create Project Button -->
-          <div class="flex items-center gap-2">
+          <!-- Create Project Button (hidden for admins) -->
+          <div class="flex items-center gap-2" v-if="!isAdminUser">
             <button
               @click="createProject"
               class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2"
@@ -40,6 +40,25 @@
                 <option value="completed" class="text-gray-700">Completed</option>
                 <option value="pending" class="text-gray-700">Pending</option>
                 <option value="on-hold" class="text-gray-700">On Hold</option>
+              </select>
+              <!-- Dropdown Arrow -->
+              <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Priority Filter -->
+            <div class="relative">
+              <select
+                v-model="priorityFilter"
+                class="px-2 py-1 pr-6 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-700 appearance-none cursor-pointer"
+              >
+                <option value="" class="text-gray-500">All Priorities</option>
+                <option value="low" class="text-gray-700">Low</option>
+                <option value="medium" class="text-gray-700">Medium</option>
+                <option value="high" class="text-gray-700">High</option>
               </select>
               <!-- Dropdown Arrow -->
               <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
@@ -216,7 +235,7 @@
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="project in paginatedProjects" :key="project.id" class="hover:bg-gray-50">
+              <tr v-for="project in displayedProjects" :key="project.id" class="hover:bg-gray-50">
                 <td class="px-4 py-4 whitespace-nowrap w-48">
                   <div>
                     <div class="text-sm font-medium text-gray-900">{{ project.prj_name }}</div>
@@ -265,7 +284,7 @@
                       @click="viewProject(project.id)"
                       class="text-blue-600 hover:text-blue-900"
                     >
-                      View
+                      Details
                     </button>
                     <!-- Only show edit button if user has edit permissions -->
                     <button
@@ -372,7 +391,7 @@
       </div>
 
       <!-- Empty State -->
-      <div v-if="paginatedProjects.length === 0" class="text-center py-8" style="padding-bottom: 0; margin-bottom: 0;">
+      <div v-if="displayedProjects.length === 0" class="text-center py-8" style="padding-bottom: 0; margin-bottom: 0;">
         <svg
           class="mx-auto h-12 w-12 text-gray-400"
           fill="none"
@@ -401,8 +420,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
 import GlobalLayout from '@/layouts/GlobalLayout.vue'
 import ProjectLayout from '@/layouts/ProjectLayout.vue'
@@ -411,6 +430,7 @@ import { projectApi, type Project as ApiProject } from '@/core/utils/project-api
 import ProjectDialog from './ProjectDialog.vue'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 // Layout selection
@@ -429,11 +449,20 @@ const layoutComponent = computed(() => {
   }
 })
 
+// Robust admin detection
+const isAdminUser = computed(() => {
+  const u = authStore.currentUser
+  if (!u) return false
+  const roleId = typeof u.role_id === 'string' ? Number(u.role_id) : u.role_id
+  return roleId === 9 || u.role_code === 'admin' || u.job_title === 'System Administrator'
+})
+
 // Reactive data
 const projects = ref<ApiProject[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref('')
+const priorityFilter = ref('')
 const sortBy = ref('')
 const showCreateDialog = ref(false)
 // Removed managers ref - now using prj_manager_name from API
@@ -442,6 +471,10 @@ const showCreateDialog = ref(false)
 const currentPage = ref(1)
 const itemsPerPage = ref(10)
 const pageSizeOptions = [10, 25, 50, 100]
+
+// Server pagination metadata (when provided by API)
+const serverTotalItems = ref<number | null>(null)
+const serverTotalPages = ref<number | null>(null)
 
 // Computed properties
 const filteredProjects = computed(() => {
@@ -462,6 +495,11 @@ const filteredProjects = computed(() => {
     filtered = filtered.filter((project) => project.status === statusFilter.value)
   }
 
+  // Filter by priority
+  if (priorityFilter.value) {
+    filtered = filtered.filter((project) => (project.priority || '').toLowerCase() === priorityFilter.value)
+  }
+
   // Apply sorting (placeholder - logic to be implemented later)
   if (sortBy.value) {
     console.log('Sort by:', sortBy.value)
@@ -472,12 +510,27 @@ const filteredProjects = computed(() => {
 })
 
 // Pagination computed properties
-const totalItems = computed(() => filteredProjects.value.length)
-const totalPages = computed(() => Math.ceil(totalItems.value / itemsPerPage.value))
+const useServerPaging = computed(() => authStore.currentUser?.role_code === 'admin')
+
+const totalItems = computed(() =>
+  useServerPaging.value && serverTotalItems.value != null
+    ? serverTotalItems.value
+    : filteredProjects.value.length,
+)
+
+const totalPages = computed(() =>
+  useServerPaging.value && serverTotalPages.value != null
+    ? serverTotalPages.value
+    : Math.ceil(totalItems.value / itemsPerPage.value),
+)
 const startIndex = computed(() => (currentPage.value - 1) * itemsPerPage.value)
 const endIndex = computed(() => Math.min(startIndex.value + itemsPerPage.value, totalItems.value))
 
-const paginatedProjects = computed(() => {
+const displayedProjects = computed(() => {
+  if (useServerPaging.value) {
+    // Server already returns the page slice
+    return projects.value
+  }
   return filteredProjects.value.slice(startIndex.value, endIndex.value)
 })
 
@@ -522,6 +575,22 @@ function formatDate(dateString: string) {
 
 // Removed getManagerName and loadManagers functions - now using prj_manager_name from API
 
+function parseSort(sortValue: string): { sort_by?: string; sort_order?: 'asc' | 'desc' } {
+  if (!sortValue) return {}
+  const [field, order] = sortValue.split('-')
+  const sortByMap: Record<string, string> = {
+    name: 'prj_name',
+    client: 'address',
+    status: 'status',
+    progress: 'progress',
+    priority: 'priority',
+    manager: 'manager_name',
+  }
+  const sort_by = sortByMap[field] || field
+  const sort_order = order === 'desc' ? 'desc' : 'asc'
+  return { sort_by, sort_order }
+}
+
 async function loadProjects() {
   loading.value = true
   try {
@@ -534,26 +603,45 @@ async function loadProjects() {
     if (authStore.currentUser?.role_code === 'project_manager') {
       filters.prj_manager = authStore.currentUser.id
       console.log('🔒 Project Manager: filtering by manager ID:', authStore.currentUser.id)
-    }
-    // Administrators see all projects (no filter)
-    else if (authStore.currentUser?.role_code === 'admin') {
-      console.log('🔓 Administrator: loading all projects')
+    } else if (authStore.currentUser?.role_code === 'admin') {
+      // Administrators: server-side pagination, filtering, sorting
+      if (searchQuery.value) filters.search = searchQuery.value
+      if (statusFilter.value) filters.status = statusFilter.value
+      if (priorityFilter.value) filters.priority = priorityFilter.value
+      const sortParams = parseSort(sortBy.value)
+      Object.assign(filters, sortParams)
     }
 
-    const response = await projectApi.getAll(1, 100, filters)
+    const page = useServerPaging.value ? currentPage.value : 1
+    const limit = useServerPaging.value ? itemsPerPage.value : 100
+
+    const response = await projectApi.getAll(page, limit, filters)
     console.log('📦 API response:', response)
-    projects.value = response.projects
+    // Expecting { projects, pagination? }
+    projects.value = response.projects || response.data || []
+
+    // Capture server pagination if provided
+    const p = (response.pagination || response.meta || null) as
+      | { total?: number; last_page?: number; current_page?: number }
+      | null
+    serverTotalItems.value = typeof response.total === 'number' ? response.total : p?.total ?? null
+    serverTotalPages.value = typeof response.last_page === 'number' ? response.last_page : p?.last_page ?? null
     console.log('✅ Projects loaded:', projects.value.length)
   } catch (error) {
     console.error('❌ Error loading projects:', error)
     projects.value = []
+    serverTotalItems.value = null
+    serverTotalPages.value = null
   } finally {
     loading.value = false
   }
 }
 
 function viewProject(projectId: number) {
-  router.push(`/projects/${projectId}`)
+  const target = isAdminUser.value
+    ? `/projects/${projectId}/admin`
+    : `/projects/${projectId}/detail`
+  router.push(target)
 }
 
 function editProject(projectId: number) {
@@ -603,8 +691,34 @@ function changePageSize(newSize: number) {
 }
 
 // Lifecycle
+// Sync query params (admin only)
 onMounted(() => {
+  if (useServerPaging.value) {
+    const q = route.query
+    currentPage.value = q.page ? Number(q.page) || 1 : 1
+    itemsPerPage.value = q.limit ? Number(q.limit) || 10 : 10
+  }
   loadProjects()
+})
+
+// Update data when paging/filtering changes (admin)
+watch([currentPage, itemsPerPage], () => {
+  if (useServerPaging.value) {
+    router.replace({ query: { ...route.query, page: String(currentPage.value), limit: String(itemsPerPage.value) } })
+    loadProjects()
+  }
+})
+
+// Debounce search
+let searchTimeout: number | undefined
+watch([searchQuery, statusFilter, priorityFilter, sortBy], () => {
+  if (useServerPaging.value) {
+    window.clearTimeout(searchTimeout)
+    searchTimeout = window.setTimeout(() => {
+      currentPage.value = 1
+      loadProjects()
+    }, 300)
+  }
 })
 
 defineOptions({

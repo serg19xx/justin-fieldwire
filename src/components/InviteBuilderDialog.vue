@@ -5,6 +5,7 @@ import { getRoles } from '@/core/utils/hr-api'
 
 interface Props {
   isOpen: boolean
+  inviterId?: number
 }
 
 interface Emits {
@@ -19,7 +20,7 @@ interface Emits {
   }): void
 }
 
-const { isOpen } = defineProps<Props>()
+const { isOpen, inviterId } = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const email = ref('')
@@ -182,6 +183,7 @@ async function sendInvitation() {
       user_type: userType.value, // Keep user_type as string for compatibility
       job_title: specialization.value || null,
       phone: phone.value.trim() || null,
+      invited_by: inviterId ?? null,
     }
 
     console.log('📤 Sending invitation with data:', inviteData)
