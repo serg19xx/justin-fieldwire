@@ -20,7 +20,7 @@
                     class="w-16 h-16 flex-shrink-0"
                   >
                     <img
-                      :src="member.avatar_url || member.full_img_url"
+                      :src="member.avatar_url || member.full_img_url || ''"
                       :alt="member.name"
                       class="w-16 h-16 rounded-full object-cover"
                     />
@@ -33,7 +33,7 @@
                       {{
                         (member?.name || 'Unknown')
                           .split(' ')
-                          .map((n) => n.charAt(0))
+                          .map((n: string) => n.charAt(0))
                           .join('')
                       }}
                     </span>
@@ -271,13 +271,42 @@
 </template>
 
 <script setup lang="ts">
+import type { ProjectTeamMember } from '@/core/utils/project-api'
+
 defineOptions({
   name: 'TeamMemberDetailsDialog',
 })
 
+interface ExtendedTeamMember extends ProjectTeamMember {
+  phone?: string | null
+  avatar_url?: string | null
+  full_img_url?: string | null
+  first_name?: string | null
+  last_name?: string | null
+  dob?: string | null
+  gender?: string | null
+  nationality?: string | null
+  country_of_origin?: string | null
+  workforce_group?: string | null
+  city?: string | null
+  professional_data?: Array<{
+    education_level?: string
+    field_of_study?: string
+    institution_name?: string
+    graduation_year?: string
+    total_experience?: string
+    specialized_experience?: string
+    key_projects?: string
+    previous_employers?: string
+    references?: string
+    specialized_skills?: string
+    professional_summary?: string
+  }>
+}
+
 interface Props {
   isOpen: boolean
-  member: any
+  member: ExtendedTeamMember | null
 }
 
 defineProps<Props>()

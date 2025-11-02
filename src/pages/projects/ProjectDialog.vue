@@ -189,10 +189,9 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { projectApi } from '@/core/utils/project-api'
-import { hrResourcesApi } from '@/core/utils/hr-api'
+import { projectApi, type Project } from '@/core/utils/project-api'
+import { hrResourcesApi, type WorkerUser } from '@/core/utils/hr-api'
 import { useAuthStore } from '@/core/stores/auth'
-import api from '@/core/utils/api'
 
 // Props
 interface Props {
@@ -206,7 +205,7 @@ const props = withDefaults(defineProps<Props>(), {
 // Emits
 const emit = defineEmits<{
   close: []
-  created: [project: any]
+  created: [project: Project]
 }>()
 
 // Auth store
@@ -271,15 +270,15 @@ function validateForm() {
   if (!form.value.prj_name?.trim()) {
     errors.prj_name = 'Project name is required'
   }
-  
+
   if (!form.value.address?.trim()) {
     errors.address = 'Address is required'
   }
-  
+
   if (!form.value.date_start) {
     errors.date_start = 'Start date is required'
   }
-  
+
   if (!form.value.date_end) {
     errors.date_end = 'End date is required'
   }
@@ -377,7 +376,7 @@ async function loadManagers() {
         console.log('✅ Managers loaded from API:', response.workers)
 
         // Build managers list from workers
-        availableManagers.value = response.workers.map((worker: any) => ({
+        availableManagers.value = response.workers.map((worker: WorkerUser) => ({
           id: worker.id,
           name: `${worker.first_name} ${worker.last_name}`.trim() || worker.email,
           email: worker.email,

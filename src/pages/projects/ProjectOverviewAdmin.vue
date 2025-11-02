@@ -94,7 +94,7 @@
       </div>
     </div>
   </div>
-  
+
 </template>
 
 <script setup lang="ts">
@@ -102,6 +102,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { projectApi, type Project as ApiProject } from '@/core/utils/project-api'
 import { tasksApi } from '@/core/utils/tasks-api'
+import type { Task } from '@/core/types/task'
 
 const route = useRoute()
 
@@ -163,15 +164,15 @@ onMounted(async () => {
   try {
     // Load project
     project.value = await projectApi.getById(id)
-  } catch (e) {
+  } catch {
     project.value = null
   }
   try {
     // Load first page of tasks for simple read-only analytics
     const resp = await tasksApi.getAll(id, 1, 100)
-    const list = resp.tasks || resp.data || []
-    tasks.value = list.map((x: any) => ({ id: x.id, title: x.title, status: x.status }))
-  } catch (e) {
+    const list = resp.tasks || []
+    tasks.value = list.map((x: Task) => ({ id: Number(x.id), title: x.name, status: x.status }))
+  } catch {
     tasks.value = []
   }
 

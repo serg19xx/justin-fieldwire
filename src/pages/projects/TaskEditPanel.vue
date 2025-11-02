@@ -623,9 +623,6 @@ watch(
 )
 
 // Methods
-function closePanel() {
-  emit('close')
-}
 
 function handleBasicInfoSave() {
   // Transform dependencies to match Task type
@@ -640,17 +637,6 @@ function handleBasicInfoSave() {
   emit('save', taskData)
 }
 
-function handleDelete() {
-  if (props.task && confirm('Are you sure you want to delete this task?')) {
-    emit('delete', String(props.task.id))
-  }
-}
-
-function handleDuplicate() {
-  if (props.task) {
-    emit('duplicate', props.task)
-  }
-}
 
 // Dependencies methods
 function openDependencyDialog() {

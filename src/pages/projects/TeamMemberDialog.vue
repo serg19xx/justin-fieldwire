@@ -125,7 +125,7 @@ interface Props {
   availablePeople?: Array<{ id: number; name: string; role: string }>
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   isOpen: false,
   availablePeople: () => [],
 })
