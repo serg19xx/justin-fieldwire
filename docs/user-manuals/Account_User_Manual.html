@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Account – User Manual</title>
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, Arial, sans-serif;
+        line-height: 1.5;
+        color: #111827;
+        margin: 16px;
+      }
+      h1,
+      h2,
+      h3 {
+        color: #0f172a;
+      }
+      code,
+      pre {
+        background: #f8fafc;
+        padding: 2px 4px;
+        border-radius: 4px;
+      }
+      .md {
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Account – User Manual</h1>
+    <p><strong>Audience:</strong> All users (Workers, Project Managers, Administrators).</p>
+    <p>
+      This guide explains how to manage your account profile, including personal information,
+      professional details, emergency contacts, and system settings such as password changes and
+      two-factor authentication.
+    </p>
+
+    <h2>Navigation</h2>
+    <ul>
+      <li>Global header → Account (or user menu → Account)</li>
+      <li>URL: <code>/account</code></li>
+    </ul>
+
+    <h2>Overview</h2>
+    <p>The Account page is organized into four main tabs accessible via a tab navigation bar:</p>
+    <ul>
+      <li><strong>Basic Info</strong> 👤 — Personal information and work status</li>
+      <li><strong>Professional</strong> 💼 — Work experience, education, certifications, skills</li>
+      <li><strong>Emergency</strong> 🚨 — Emergency contacts, medical information, insurance</li>
+      <li><strong>System</strong> ⚙️ — Security settings, password, account information</li>
+    </ul>
+    <p>
+      On mobile devices, the tab navigation appears as a dropdown select menu instead of horizontal
+      tabs.
+    </p>
+
+    <h2>Basic Info Tab</h2>
+    <p>The Basic Info tab contains your core personal information and work availability status.</p>
+
+    <h3>Avatar Section</h3>
+    <ul>
+      <li>
+        Upload or update your profile photo by clicking the avatar widget
+        <ul>
+          <li>Supported formats: common image formats (JPG, PNG, etc.)</li>
+          <li>The avatar is displayed throughout the application</li>
+          <li>Changes are saved automatically when you upload a new image</li>
+        </ul>
+      </li>
+      <li>Your displayed name, gender, age, and specialty are shown below the avatar</li>
+    </ul>
+
+    <h3>Work Status</h3>
+    <ul>
+      <li>
+        <strong>Active Status:</strong> You are available for new projects and tasks. Managers can
+        assign work to you.
+      </li>
+      <li>
+        <strong>Inactive Status:</strong> You are not available for new work. You will not receive
+        new project assignments or tasks.
+      </li>
+      <li>
+        Toggle your status using the switch control
+        <ul>
+          <li>
+            When setting status to Inactive, you must:
+            <ul>
+              <li>Select a reason (Vacation, Sick Leave, Personal Leave, Training, or Other)</li>
+              <li>Optionally provide additional details</li>
+              <li>Optionally set an "Unavailable until" date</li>
+              <li>Click "Save Inactive Status" to confirm</li>
+            </ul>
+          </li>
+          <li>
+            When setting status to Active, the change is applied immediately without additional
+            confirmation
+          </li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>Profile Information</h3>
+    <p>The form includes the following fields:</p>
+
+    <h4>Required Fields</h4>
+    <ul>
+      <li><strong>First Name *</strong> — Your first name (text input)</li>
+      <li><strong>Last Name *</strong> — Your last name (text input)</li>
+      <li><strong>Job Title *</strong> — Your current job title or position (text input)</li>
+      <li><strong>City *</strong> — Your city of residence (text input, max 100 characters)</li>
+    </ul>
+
+    <h4>Optional Fields</h4>
+    <ul>
+      <li>
+        <strong>Phone Number</strong> — Your contact phone number (formatted automatically as you
+        type, format: +1xxxxxxxxxx)
+      </li>
+      <li><strong>Gender</strong> — Select from dropdown: Male, Female, or leave blank</li>
+      <li><strong>Date of Birth</strong> — Select your birth date using the date picker</li>
+      <li>
+        <strong>Additional Information</strong> — Free-text area for any additional information
+        about yourself
+      </li>
+    </ul>
+
+    <h3>Cultural & Language Information</h3>
+    <p>
+      This section helps form effective work teams based on cultural compatibility and language
+      skills.
+    </p>
+    <ul>
+      <li><strong>Nationality</strong> — Your nationality (optional text input)</li>
+      <li><strong>Country of Origin</strong> — Your country of origin (optional text input)</li>
+      <li>
+        <strong>Workforce Group *</strong> — Select your workforce group from the dropdown menu
+        (required)
+      </li>
+      <li>
+        <strong>Languages *</strong> — Add one or more languages with proficiency levels
+        <ul>
+          <li>Click "+ Add Language" to add a language</li>
+          <li>For each language, select the language name and proficiency level</li>
+          <li>Proficiency levels: Basic, Intermediate, Fluent</li>
+          <li>Click "Remove" to delete a language entry</li>
+          <li>At least one language with a proficiency level is required</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>Saving Changes</h3>
+    <ul>
+      <li>Click "Update Profile" at the bottom of the form to save all changes</li>
+      <li>Validation errors will be displayed in red below the relevant fields</li>
+      <li>Success and error messages appear at the bottom of the form</li>
+    </ul>
+
+    <h2>Professional Tab</h2>
+    <p>
+      The Professional tab contains detailed information about your work experience, education,
+      certifications, and professional skills.
+    </p>
+
+    <h3>Work Experience</h3>
+    <ul>
+      <li>
+        <strong>Total Years of Experience</strong> — Enter the total number of years of work
+        experience (numeric input)
+      </li>
+      <li>
+        <strong>Specialized Experience</strong> — Describe your specialized experience (e.g.,
+        High-rise construction, residential, commercial)
+      </li>
+      <li>
+        <strong>Previous Employers</strong> — List your previous employers and positions (textarea)
+      </li>
+      <li>
+        <strong>Professional References</strong> — Provide professional references with names,
+        positions, companies, and contact information (textarea)
+      </li>
+    </ul>
+
+    <h3>Education</h3>
+    <ul>
+      <li>
+        <strong>Highest Education Level</strong> — Select from: High School Diploma, Trade
+        School/College, Apprenticeship Program, University Degree, Other
+      </li>
+      <li><strong>Institution Name</strong> — Name of the school, college, or university</li>
+      <li><strong>Graduation Year</strong> — Year of graduation (numeric input, format: YYYY)</li>
+      <li>
+        <strong>Field of Study</strong> — Your field of study (e.g., Construction Management, Civil
+        Engineering)
+      </li>
+    </ul>
+
+    <h3>Certifications & Licenses</h3>
+    <ul>
+      <li>
+        <strong>Red Seal Certification</strong> — Select: Certified, Apprentice, or Not applicable
+      </li>
+      <li><strong>Provincial Trade Certificate</strong> — Enter certificate number and province</li>
+      <li><strong>Driver's License Class</strong> — Select: G1, G2, G, D, A, or No license</li>
+      <li><strong>Union Membership</strong> — Enter union name and local number</li>
+    </ul>
+
+    <h3>Safety Certifications</h3>
+    <ul>
+      <li><strong>WHMIS Certificate</strong> — Select: Current, Expired, or Not certified</li>
+      <li><strong>First Aid/CPR</strong> — Select: Current, Expired, or Not certified</li>
+      <li><strong>Fall Protection</strong> — Select: Current, Expired, or Not certified</li>
+      <li><strong>Confined Space Entry</strong> — Select: Current, Expired, or Not certified</li>
+      <li><strong>Lockout/Tagout</strong> — Select: Current, Expired, or Not certified</li>
+      <li>
+        <strong>Other Safety Certifications</strong> — List any other safety certifications
+        (textarea)
+      </li>
+    </ul>
+
+    <h3>Skills & Equipment</h3>
+    <ul>
+      <li>
+        <strong>Specialized Skills</strong> — Describe your specialized skills (e.g., Welding,
+        electrical work, plumbing, concrete work)
+      </li>
+      <li><strong>Equipment & Tools</strong> — List equipment and tools you can operate</li>
+      <li>
+        <strong>Willing to Travel</strong> — Select: Local only, Within province, Across Canada, or
+        International
+      </li>
+      <li>
+        <strong>Availability</strong> — Select: Full-time, Part-time, Contract, Seasonal, or On-call
+      </li>
+    </ul>
+
+    <h3>Professional Summary</h3>
+    <ul>
+      <li>
+        <strong>Professional Summary</strong> — Brief description of your professional background,
+        key achievements, and what makes you unique as a construction professional
+      </li>
+      <li>
+        <strong>Key Projects</strong> — Describe your most significant projects or achievements
+      </li>
+    </ul>
+
+    <h3>Saving Changes</h3>
+    <ul>
+      <li>Click "Save Professional Information" at the bottom to save all professional data</li>
+      <li>Success and error messages will appear above the save button</li>
+    </ul>
+
+    <h2>Emergency Tab</h2>
+    <p>
+      The Emergency tab contains information that will be used in case of emergency situations on
+      the construction site.
+    </p>
+
+    <h3>Emergency Contacts</h3>
+    <ul>
+      <li>
+        <strong>Primary Contact</strong> — Required emergency contact information:
+        <ul>
+          <li>Name — Full name of the primary contact</li>
+          <li>Phone — Contact phone number (formatted automatically)</li>
+          <li>Relationship — Relationship to you (e.g., Wife, Mother, Brother)</li>
+        </ul>
+      </li>
+      <li>
+        <strong>Secondary Contact</strong> — Optional additional emergency contact:
+        <ul>
+          <li>Name — Full name of the secondary contact</li>
+          <li>Phone — Contact phone number (formatted automatically)</li>
+          <li>Relationship — Relationship to you (e.g., Friend, Colleague)</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>Medical Information</h3>
+    <ul>
+      <li><strong>Blood Type</strong> — Enter your blood type (e.g., A+, B-, O+, AB-)</li>
+      <li><strong>Allergies</strong> — List any allergies (e.g., Penicillin, dust, latex)</li>
+      <li>
+        <strong>Medical Conditions</strong> — List any medical conditions (e.g., Diabetes, asthma,
+        heart condition)
+      </li>
+      <li>
+        <strong>Current Medications</strong> — List current medications (e.g., Insulin, aspirin,
+        blood pressure medication)
+      </li>
+      <li>
+        <strong>Additional Medical Notes</strong> — Any additional medical information that could be
+        important in an emergency
+      </li>
+    </ul>
+
+    <h3>Insurance Information</h3>
+    <ul>
+      <li><strong>Insurance Company</strong> — Name of your insurance company</li>
+      <li><strong>Policy Number</strong> — Your insurance policy number</li>
+      <li>
+        <strong>Emergency Contact at Insurance</strong> — Phone number or contact person at the
+        insurance company
+      </li>
+    </ul>
+
+    <h3>Saving Changes</h3>
+    <ul>
+      <li>Click "Save Emergency Information" at the bottom to save all emergency data</li>
+      <li>Success and error messages will appear above the save button</li>
+    </ul>
+
+    <h2>System Tab</h2>
+    <p>
+      The System tab contains security settings and account information that you cannot directly
+      edit.
+    </p>
+
+    <h3>Two-Factor Authentication (2FA)</h3>
+    <ul>
+      <li>
+        Toggle 2FA on or off using the switch control
+        <ul>
+          <li>
+            When enabled, you will be required to provide a second authentication factor when
+            logging in
+          </li>
+          <li>This enhances the security of your account</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h3>Change Password</h3>
+    <p>
+      Use this section to change your account password. The form includes real-time validation to
+      ensure your password meets security requirements.
+    </p>
+
+    <h4>Password Requirements</h4>
+    <ul>
+      <li>Minimum 8 characters</li>
+      <li>At least one uppercase letter (A-Z)</li>
+      <li>At least one lowercase letter (a-z)</li>
+      <li>At least one number (0-9)</li>
+      <li>At least one special character (@$!%*?&)</li>
+    </ul>
+
+    <h4>Changing Your Password</h4>
+    <ol>
+      <li>Enter your current password in the "Current Password" field</li>
+      <li>
+        Enter your new password in the "New Password" field
+        <ul>
+          <li>Validation errors will appear below the field if requirements are not met</li>
+        </ul>
+      </li>
+      <li>
+        Confirm your new password in the "Confirm New Password" field
+        <ul>
+          <li>An error will appear if the passwords do not match</li>
+        </ul>
+      </li>
+      <li>Click "Change Password" when all fields are valid and passwords match</li>
+    </ol>
+
+    <h3>Account Information</h3>
+    <p>This section displays read-only account information:</p>
+    <ul>
+      <li>
+        <strong>Email:</strong> Your registered email address (cannot be changed from this page)
+      </li>
+      <li>
+        <strong>Role:</strong> Your current role in the system (e.g., Worker, Project Manager,
+        Administrator)
+      </li>
+      <li><strong>Status:</strong> Your account status (Active or Inactive)</li>
+      <li>
+        <strong>Last Login:</strong> Date and time of your last login, or "Never" if you haven't
+        logged in yet
+      </li>
+    </ul>
+
+    <h2>Tips</h2>
+    <ul>
+      <li>
+        Keep your profile information up to date, especially emergency contacts and medical
+        information
+      </li>
+      <li>Use the work status toggle to indicate your availability for new projects</li>
+      <li>
+        When setting your status to Inactive, provide a reason and expected return date if known
+      </li>
+      <li>
+        Complete all professional information sections to improve your profile visibility for
+        project managers
+      </li>
+      <li>Add multiple languages with proficiency levels to increase team compatibility</li>
+      <li>Regularly update your safety certifications to ensure they are current</li>
+      <li>Enable two-factor authentication for enhanced account security</li>
+      <li>Use a strong password that meets all security requirements</li>
+    </ul>
+
+    <h2>Troubleshooting</h2>
+    <ul>
+      <li>
+        <strong>Form validation errors:</strong> Check that all required fields (marked with *) are
+        filled in correctly
+      </li>
+      <li>
+        <strong>Unable to save profile:</strong> Ensure you have filled all required fields and that
+        validation errors are resolved
+      </li>
+      <li>
+        <strong>Avatar not uploading:</strong> Check that the file is a supported image format and
+        not too large
+      </li>
+      <li>
+        <strong>Password change fails:</strong> Verify that your current password is correct and
+        that the new password meets all requirements
+      </li>
+      <li>
+        <strong>Password requirements not met:</strong> Review the password requirements list and
+        ensure your new password includes all required character types
+      </li>
+      <li>
+        <strong>Languages not saving:</strong> Make sure each language has both a language selected
+        and a proficiency level chosen
+      </li>
+      <li>
+        <strong>Cannot change email or role:</strong> These fields are managed by administrators and
+        cannot be changed from the Account page
+      </li>
+    </ul>
+  </body>
+</html>
