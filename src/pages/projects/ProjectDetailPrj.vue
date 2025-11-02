@@ -2207,6 +2207,8 @@ watch(
 
       <!-- Content Body -->
       <div class="flex-1 overflow-y-auto overflow-x-hidden px-6" style="padding-bottom: 0;">
+        <!-- Spacer for fixed toolbar -->
+        <div class="h-16"></div>
         <!-- Loading State -->
         <div v-if="loading" class="flex items-center justify-center h-full">
           <div class="text-center">
