@@ -1,6 +1,5 @@
 <template>
-  <component :is="layoutComponent">
-    <div class="px-4 md:px-6" style="margin-top: 0; padding-bottom: 0;">
+  <div class="px-4 py-6 md:px-6" style="padding-bottom: 0;">
       <!-- Search and Filters -->
       <div class="bg-white shadow rounded-lg p-2 sm:p-3" style="margin-bottom: 0.5rem;">
         <div class="flex flex-col sm:flex-row gap-4">
@@ -416,38 +415,18 @@
         @created="handleProjectCreated"
       />
     </div>
-  </component>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
-import GlobalLayout from '@/layouts/GlobalLayout.vue'
-import ProjectLayout from '@/layouts/ProjectLayout.vue'
-import TaskLayout from '@/layouts/TaskLayout.vue'
 import { projectApi, type Project as ApiProject } from '@/core/utils/project-api'
 import ProjectDialog from './ProjectDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
-
-// Layout selection
-const layoutComponent = computed(() => {
-  const category = authStore.currentUser?.role_category
-
-  switch (category) {
-    case 'global':
-      return GlobalLayout
-    case 'project':
-      return ProjectLayout
-    case 'task':
-      return TaskLayout
-    default:
-      return ProjectLayout
-  }
-})
 
 // Robust admin detection
 const isAdminUser = computed(() => {

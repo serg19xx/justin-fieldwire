@@ -255,7 +255,7 @@ async function loadProjects() {
       startDate: apiProject.date_start,
       endDate: apiProject.date_end,
       status: apiProject.status,
-      projectManager: apiProject.prj_managger || undefined, // cspell:ignore managger
+      projectManager: apiProject.prj_manager || undefined,
       description: '',
       createdAt: apiProject.created_at,
       updatedAt: apiProject.updated_at,
@@ -297,7 +297,7 @@ async function loadProject() {
       startDate: apiResponse.date_start,
       endDate: apiResponse.date_end,
       status: apiResponse.status,
-      projectManager: apiResponse.prj_managger || undefined, // cspell:ignore managger
+      projectManager: apiResponse.prj_manager || undefined,
       description: '',
       createdAt: apiResponse.created_at,
       updatedAt: apiResponse.updated_at,
@@ -2206,7 +2206,7 @@ watch(
       </div>
 
       <!-- Content Body -->
-      <div class="flex-1 overflow-y-auto overflow-x-hidden px-6 pt-12" style="padding-bottom: 0;">
+      <div class="flex-1 overflow-y-auto overflow-x-hidden px-6" style="padding-bottom: 0;">
         <!-- Loading State -->
         <div v-if="loading" class="flex items-center justify-center h-full">
           <div class="text-center">

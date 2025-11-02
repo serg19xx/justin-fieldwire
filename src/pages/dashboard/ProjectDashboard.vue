@@ -1,11 +1,5 @@
 <template>
-  <div class="p-6 pt-4 md:pt-6">
-      <!-- Dashboard Header -->
-      <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">Project Dashboard</h1>
-        <p class="text-gray-600 mt-2">Manage your projects and track progress</p>
-      </div>
-
+  <div class="px-4 py-6 md:px-6">
       <!-- Stats Cards -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div class="bg-white rounded-lg shadow p-6">

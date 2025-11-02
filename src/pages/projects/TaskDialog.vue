@@ -464,7 +464,7 @@ const isProjectOwner = computed(() => {
 
   // Check if current user is the project creator/owner
   // Check if user is project manager
-  return projectInfo.value.prj_managger === authStore.currentUser.id
+  return projectInfo.value.prj_manager === authStore.currentUser.id
 })
 
 // Check if user can manage project (owner or admin)

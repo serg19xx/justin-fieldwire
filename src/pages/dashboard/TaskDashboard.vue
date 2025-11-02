@@ -1,10 +1,5 @@
 <template>
-  <div class="task-dashboard pt-4 md:pt-6">
-    <div class="bg-orange-600 text-white p-6 rounded-lg mb-6">
-      <h1 class="text-3xl font-bold">Task Dashboard</h1>
-      <p class="text-orange-100">Mobile interface for workers</p>
-    </div>
-
+  <div class="px-4 py-6 md:px-6">
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div class="bg-white p-6 rounded-lg shadow">
         <h3 class="text-lg font-semibold mb-4">My Tasks</h3>
@@ -53,8 +48,3 @@ const authStore = useAuthStore()
 const user = authStore.currentUser
 </script>
 
-<style scoped>
-.task-dashboard {
-  padding: 2rem;
-}
-</style>

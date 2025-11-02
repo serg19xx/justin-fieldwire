@@ -1,28 +1,7 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <div class="bg-white shadow-sm border-b border-gray-200">
-      <div class="px-6 py-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900">Admin Settings</h1>
-            <p class="mt-1 text-sm text-gray-600">
-              Manage system rules, events, and message templates
-            </p>
-          </div>
-          <div class="flex items-center space-x-3">
-            <span
-              class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800"
-            >
-              Admin Only
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Main Content -->
-    <div class="px-6 py-8">
+    <div class="px-4 py-6 md:px-6">
       <div class="max-w-7xl mx-auto">
         <!-- Tabs Navigation -->
         <div class="border-b border-gray-200 mb-8">

@@ -374,7 +374,7 @@ function handleInviteSent(data: {
 </script>
 
 <template>
-  <div class="px-4 pt-4 md:px-6 md:pt-6" style="margin-top: 0; padding-top: 2rem; padding-bottom: 0;">
+  <div class="px-4 py-6 md:px-6" style="padding-bottom: 0;">
     <!-- Search and Actions Bar -->
     <div class="bg-white shadow rounded-lg p-2 sm:p-3" style="margin-bottom: 0.5rem;">
       <div class="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">

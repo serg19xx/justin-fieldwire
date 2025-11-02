@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl mx-auto px-4 py-6 md:px-6">
 
       <!-- Loading State -->
       <div v-if="isLoading" class="flex justify-center items-center py-12">
@@ -2373,7 +2373,7 @@ async function changePassword() {
     console.log('🔄 Changing password for user:', authStore.currentUser?.id)
     console.log('🔍 AuthStore methods:', Object.keys(authStore))
     console.log('🔍 All authStore properties:', authStore)
-    console.log('🔍 changePassword function exists:', typeof (authStore as Record<string, unknown>).changePassword)
+    console.log('🔍 changePassword function exists:', typeof (authStore as unknown as Record<string, unknown>).changePassword)
 
     // Temporary workaround - call API directly
     console.log('🔧 Using direct API call as workaround')

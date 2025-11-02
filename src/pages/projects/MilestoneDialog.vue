@@ -270,7 +270,7 @@ const authStore = useAuthStore()
 // Check if current user is project owner/creator
 // const isProjectOwner = computed(() => {
 //   if (!projectInfo.value || !authStore.currentUser) return false
-//   return projectInfo.value.prj_managger === authStore.currentUser.id
+//   return projectInfo.value.prj_manager === authStore.currentUser.id
 // })
 
 // Check if user can manage project (owner or admin)

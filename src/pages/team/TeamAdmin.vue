@@ -305,7 +305,7 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
 </script>
 
 <template>
-  <div class="space-y-4 p-4 pt-4 md:space-y-6 md:p-6 md:pt-6">
+  <div class="space-y-4 px-4 py-6 md:space-y-6 md:px-6">
     <!-- Search and Actions Bar -->
     <div class="bg-white shadow rounded-lg p-3 sm:p-4">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
