@@ -659,7 +659,7 @@ const isSubmitting = ref(false)
 const validationErrors = ref<Record<string, string>>({})
 // inline add buttons used directly; no modals
 
-const channels = ['email', 'sms', 'push', 'webhook', 'slack']
+const channels = ['email', 'sms', 'webhook']
 const roles = ['admin', 'project_manager', 'contractor', 'architect', 'viewer', 'guest']
 
 const templates = ref<{

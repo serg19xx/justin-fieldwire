@@ -267,7 +267,7 @@ function sanitizeRule(rule: EventRule): EventRule {
 
   // Actions normalization
   if (Array.isArray(clone.actions)) {
-    const allowedChannels: NotifyChannel[] = ['email', 'sms', 'push', 'webhook', 'slack']
+    const allowedChannels: NotifyChannel[] = ['email', 'sms', 'webhook']
     clone.actions = clone.actions.map((a: EventRuleAction) => {
       if (a.type === 'notify') {
         a.channels = Array.isArray(a.channels)

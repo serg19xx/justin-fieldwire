@@ -45,9 +45,12 @@ Create/Edit Rule
    - Comment: optional description.
 3) Actions (at least one required):
    - Notify
-     - Channels: Email/SMS/Push/Webhook/Slack (select one or more).
+     - Channels: Email/SMS/Webhook (select one or more).
+       - **Email**: Sends notification via email to user's registered email address. Supports HTML/text templates. Best for detailed information and non-urgent alerts.
+       - **SMS**: Sends text message to user's phone number. Limited to 160 characters. Best for urgent, time-sensitive alerts that require immediate attention.
+       - **Webhook**: Sends HTTP POST request to a configured external URL with event data in JSON format. Allows integration with third-party systems. Best for system-to-system communication and automation.
      - Channel templates (Email/SMS only): choose a message template ID or leave default.
-     - Store for dashboard: flag to persist notification metadata for dashboards.
+     - **Dashboard enabled**: flag to persist notification metadata for dashboards. When enabled, notifications will be stored and visible in the system dashboard for reporting and tracking purposes.
    - Create Report
      - Period: Daily/Weekly/Monthly/Quarterly/Custom (specify ISO-like period e.g., P7D).
      - Recipients: select roles to receive the report.
