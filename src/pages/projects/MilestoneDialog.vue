@@ -573,12 +573,9 @@ watch(
       }
       console.log('📅 Form initialized for edit/view mode:', form.value)
 
-      // Load invited people for edit and view modes
-      if ((props.mode === 'edit' || props.mode === 'view') && props.task.id) {
-        await loadInvitedPeople()
-      } else {
-        invitedPeople.value = []
-      }
+      // Don't load invited people here - it will be loaded in the other watch
+      // to avoid duplicate calls and ensure proper order
+      invitedPeople.value = []
     } else if (isOpen && props.mode === 'create') {
       invitedPeople.value = []
     }
@@ -610,7 +607,103 @@ async function loadAvailablePeople() {
     return
   }
 
-  // For existing milestones, try to load project team members first
+  // For existing milestones (edit/view mode), try to use cached task team members first
+  // This avoids an extra API call if we're already loading task team for invited people
+  if (props.mode === 'edit' && props.task?.id && props.projectId && taskTeamMembersCache.value) {
+    try {
+      console.log('👥 Using cached task team members for available people:', props.task.id)
+      const members = taskTeamMembersCache.value
+
+      // Map task team members to available people format
+      const { getDisplayRole } = await import('@/core/utils/role-utils')
+      const mappedPeople = members
+        .filter((m: ProjectTeamMember) => m.role_in_project !== 'invited' && m.role_in_project !== 'Invited') // Exclude invited people
+        .map((member: ProjectTeamMember & { full_name?: string; first_name?: string; last_name?: string; role_name?: string; role_code?: string; project_role?: string; role?: string; team_member_id?: number }) => ({
+          id: member.id || member.user_id || member.team_member_id,
+          name: member.full_name || `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.name || 'Unknown',
+          role: getDisplayRole({
+            role_name: member.role_name,
+            role_code: member.role_code,
+            project_role: member.project_role,
+            role: member.role,
+          }),
+        }))
+
+      // Filter to show only project managers and other relevant roles (exclude admin)
+      availablePeople.value = mappedPeople
+        .filter((person: { id?: number; name: string; role: string }): person is { id: number; name: string; role: string } => {
+          if (!person.id) return false
+          const roleLower = person.role.toLowerCase()
+          return (
+            roleLower.includes('project manager') ||
+            roleLower.includes('project_manager') ||
+            roleLower !== 'admin'
+          )
+        })
+
+      console.log('✅ Available people loaded from cached task team:', availablePeople.value.length)
+
+      // If we got some people, return early (no need for project team call)
+      if (availablePeople.value.length > 0) {
+        return
+      }
+    } catch (error) {
+      console.warn('⚠️ Error using cached task team members, falling back to project team:', error)
+      // Fall through to load project team
+    }
+  }
+
+  // For existing milestones (edit/view mode), try to load task team members first
+  // This avoids an extra API call if we're already loading task team for invited people
+  if (props.mode === 'edit' && props.task?.id && props.projectId && !taskTeamMembersCache.value) {
+    try {
+      console.log('👥 Loading task team members for milestone (will cache for reuse):', props.task.id)
+      const response = await projectApi.getTaskTeamMembers(props.projectId, Number(props.task.id))
+      const members = response.data?.team_members || response.team_members || []
+
+      // Cache the members for reuse
+      taskTeamMembersCache.value = members
+
+      // Map task team members to available people format
+      const { getDisplayRole } = await import('@/core/utils/role-utils')
+      const mappedPeople = members
+        .filter((m: ProjectTeamMember) => m.role_in_project !== 'invited' && m.role_in_project !== 'Invited') // Exclude invited people
+        .map((member: ProjectTeamMember & { full_name?: string; first_name?: string; last_name?: string; role_name?: string; role_code?: string; project_role?: string; role?: string; team_member_id?: number }) => ({
+          id: member.id || member.user_id || member.team_member_id,
+          name: member.full_name || `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.name || 'Unknown',
+          role: getDisplayRole({
+            role_name: member.role_name,
+            role_code: member.role_code,
+            project_role: member.project_role,
+            role: member.role,
+          }),
+        }))
+
+      // Filter to show only project managers and other relevant roles (exclude admin)
+      availablePeople.value = mappedPeople
+        .filter((person: { id?: number; name: string; role: string }): person is { id: number; name: string; role: string } => {
+          if (!person.id) return false
+          const roleLower = person.role.toLowerCase()
+          return (
+            roleLower.includes('project manager') ||
+            roleLower.includes('project_manager') ||
+            roleLower !== 'admin'
+          )
+        })
+
+      console.log('✅ Available people loaded from task team:', availablePeople.value.length)
+
+      // If we got some people, return early (no need for project team call)
+      if (availablePeople.value.length > 0) {
+        return
+      }
+    } catch (error) {
+      console.warn('⚠️ Error loading task team members, falling back to project team:', error)
+      // Fall through to load project team
+    }
+  }
+
+  // For existing milestones, try to load project team members
   if (!props.projectId) {
     console.warn('⚠️ No project ID provided, cannot load team members')
     availablePeople.value = []
@@ -638,14 +731,16 @@ async function loadAvailablePeople() {
     }))
 
     // Filter to show only project managers and other relevant roles (exclude admin)
-    availablePeople.value = mappedPeople.filter((person: { role: string; id: number }) => {
-      const roleLower = person.role.toLowerCase()
-      return (
-        roleLower.includes('project manager') ||
-        roleLower.includes('project_manager') ||
-        roleLower !== 'admin'
-      )
-    })
+    availablePeople.value = mappedPeople
+      .filter((person: { id?: number; name: string; role: string }): person is { id: number; name: string; role: string } => {
+        if (!person.id) return false
+        const roleLower = person.role.toLowerCase()
+        return (
+          roleLower.includes('project manager') ||
+          roleLower.includes('project_manager') ||
+          roleLower !== 'admin'
+        )
+      })
 
     console.log('✅ Available people loaded:', availablePeople.value.length)
     console.log('👥 People data:', availablePeople.value)
@@ -724,6 +819,8 @@ async function loadAllSystemUsers() {
 // Invited people
 const invitedPeople = ref<ProjectTeamMember[]>([])
 const showInvitedPersonDialog = ref(false)
+// Cache for task team members to avoid duplicate API calls
+const taskTeamMembersCache = ref<ProjectTeamMember[] | null>(null)
 const invitedPersonForm = ref({
   name: '',
   email: '',
@@ -764,10 +861,31 @@ async function loadProjectInfo() {
 
 watch(
   [() => props.isOpen, () => props.task, () => props.mode],
-  () => {
+  async () => {
+    console.log('🔄 Watch triggered:', {
+      isOpen: props.isOpen,
+      mode: props.mode,
+      taskId: props.task?.id,
+      projectId: props.projectId,
+    })
+
     if (props.isOpen) {
       loadProjectInfo()
-      loadAvailablePeople()
+      // For edit mode with task, load task team first (will be reused for available people)
+      if ((props.mode === 'edit' || props.mode === 'view') && props.task?.id && props.projectId) {
+        console.log('📋 Loading data for edit/view mode')
+        // Load task team members first (this will cache the data)
+        await loadInvitedPeople() // This loads task team members and caches them
+        console.log('✅ After loadInvitedPeople, invitedPeople.value.length:', invitedPeople.value.length)
+        await loadAvailablePeople() // This will reuse the cached data
+        console.log('✅ After loadAvailablePeople, invitedPeople.value.length:', invitedPeople.value.length)
+      } else {
+        await loadAvailablePeople()
+      }
+    } else {
+      // Clear cache when dialog closes
+      taskTeamMembersCache.value = null
+      invitedPeople.value = []
     }
   },
   { immediate: true },
@@ -867,6 +985,8 @@ function closeDialog() {
     suggestedEnd: '',
     reason: '',
   }
+  // Clear cache when dialog closes
+  taskTeamMembersCache.value = null
 }
 
 function openProjectSettings() {
@@ -1052,18 +1172,213 @@ function removeInvitedPerson(teamMemberId: number) {
 
 async function loadInvitedPeople() {
   if (!props.task?.id || !props.projectId) {
+    console.log('⚠️ Cannot load invited people - missing task.id or projectId', {
+      taskId: props.task?.id,
+      projectId: props.projectId,
+    })
     invitedPeople.value = []
     return
   }
 
   try {
+    // Use cache if available (set by previous call)
+    if (taskTeamMembersCache.value) {
+      console.log('📦 Using cached task team members:', taskTeamMembersCache.value.length)
+      const members = taskTeamMembersCache.value
+
+      // Debug: log all members and their roles
+      console.log('🔍 All cached members:', members.map((m: ProjectTeamMember) => ({
+        id: m.id,
+        name: m.name,
+        role_in_project: m.role_in_project,
+        has_invited_people: !!m.invited_people,
+      })))
+
+      const filtered = members.filter((m: ProjectTeamMember) => {
+        const role = m.role_in_project?.toLowerCase() || ''
+        return role === 'invited'
+      })
+
+      // Force reactivity update
+      invitedPeople.value = [...filtered]
+
+      console.log('✅ Loaded invited people from cache:', invitedPeople.value.length)
+      console.log('👥 Invited people data:', invitedPeople.value)
+
+      // Force DOM update
+      await nextTick()
+      console.log('🔄 After nextTick (cache), invitedPeople.value.length:', invitedPeople.value.length)
+      return
+    }
+
+    console.log('📞 Loading task team members from API...', {
+      projectId: props.projectId,
+      taskId: props.task.id,
+    })
     const response = await projectApi.getTaskTeamMembers(props.projectId, Number(props.task.id))
-    const members = response.data?.team_members || response.team_members || []
-    // Filter only invited people
-    invitedPeople.value = members.filter((m: ProjectTeamMember) =>
-      m.role_in_project === 'invited' || m.role_in_project === 'Invited'
-    )
+    console.log('📥 Full API response:', JSON.stringify(response, null, 2))
+    console.log('📥 Response structure:', {
+      hasData: !!response.data,
+      hasTeamMembers: !!response.data?.team_members,
+      hasTeamMembersDirect: !!response.team_members,
+      dataKeys: response.data ? Object.keys(response.data) : [],
+      responseKeys: Object.keys(response),
+    })
+
+    // Try multiple possible paths for team members
+    const members = response.data?.team_members || response.data?.data?.team_members || response.team_members || response.data || []
+    console.log('👥 All team members from API:', members.length)
+    console.log('👥 Members type:', Array.isArray(members) ? 'array' : typeof members)
+
+    // Debug: log all members and their roles
+    if (Array.isArray(members)) {
+      console.log('🔍 All team members with roles:', members.map((m: ProjectTeamMember) => ({
+        id: m.id,
+        name: m.name,
+        role_in_project: m.role_in_project,
+        user_id: m.user_id,
+        has_invited_people: !!m.invited_people,
+        invited_people: m.invited_people,
+        fullObject: m,
+      })))
+    } else {
+      console.log('⚠️ Members is not an array:', members)
+    }
+
+    // Check if invited people are in a separate field
+    const invitedFromSeparateField = response.data?.invited_people || response.data?.invited_members || response.invited_people || response.invited_members || []
+    console.log('👥 Invited people from separate field:', Array.isArray(invitedFromSeparateField) ? invitedFromSeparateField.length : 'not an array')
+    console.log('👥 Invited people data:', invitedFromSeparateField)
+
+    // Cache the members for reuse
+    taskTeamMembersCache.value = Array.isArray(members) ? members : []
+
+    // Filter only invited people - check multiple possible role values
+    let filtered: ProjectTeamMember[] = []
+
+    if (Array.isArray(members)) {
+      // First, check for members with role_in_project = 'invited'
+      filtered = members.filter((m: ProjectTeamMember) => {
+        const role = m.role_in_project?.toLowerCase() || ''
+        const isInvited = role === 'invited'
+        console.log(`🔍 Member ${m.id} (${m.name}): role_in_project="${m.role_in_project}", role.toLowerCase()="${role}", isInvited=${isInvited}`)
+        return isInvited
+      })
+
+      // Second, extract invited people from invited_people array inside each member
+      console.log('🔍 Checking for invited_people arrays inside members...')
+      members.forEach((m: ProjectTeamMember) => {
+        // Check if member has invited_people as an array
+        if (Array.isArray(m.invited_people) && m.invited_people.length > 0) {
+          console.log(`✅ Found ${m.invited_people.length} invited people in member ${m.id} (${m.name})`)
+          const mappedInvited: ProjectTeamMember[] = m.invited_people
+            .map((invited: ProjectTeamMember['invited_people'], index: number) => {
+              if (!invited || typeof invited !== 'object') {
+                console.warn('⚠️ Invalid invited person data:', invited)
+                return null
+              }
+
+              const invitedData: ProjectTeamMember['invited_people'] = {
+                name: invited.name || '',
+                email: invited.email,
+                company: invited.company,
+                phone: invited.phone,
+                notes: invited.notes,
+                avatar: invited.avatar,
+              }
+
+              const taskId = props.task?.id ? Number(props.task.id) : null
+              return {
+                id: (m.id * 1000) + index, // Generate unique ID based on member ID and index
+                project_id: props.projectId,
+                task_id: taskId,
+                user_id: null,
+                role_in_project: 'invited',
+                assigned_at: m.assigned_at || new Date().toISOString(),
+                name: invitedData.name,
+                email: invitedData.email,
+                invited_people: invitedData,
+              } as ProjectTeamMember
+            })
+            .filter((item): item is ProjectTeamMember => item !== null)
+
+          filtered = [...filtered, ...mappedInvited]
+          console.log(`👥 Added ${mappedInvited.length} invited people from member ${m.id}`)
+        } else if (m.invited_people && typeof m.invited_people === 'object' && !Array.isArray(m.invited_people)) {
+          // Handle case where invited_people is a single object, not an array
+          console.log(`✅ Found single invited person object in member ${m.id} (${m.name})`)
+          const invited = m.invited_people as ProjectTeamMember['invited_people']
+          if (invited) {
+            const invitedData: ProjectTeamMember['invited_people'] = {
+              name: invited.name || '',
+              email: invited.email,
+              company: invited.company,
+              phone: invited.phone,
+              notes: invited.notes,
+              avatar: invited.avatar,
+            }
+
+            const taskId = props.task?.id ? Number(props.task.id) : null
+            filtered.push({
+              id: m.id * 1000,
+              project_id: props.projectId,
+              task_id: taskId,
+              user_id: null,
+              role_in_project: 'invited',
+              assigned_at: m.assigned_at || new Date().toISOString(),
+              name: invitedData.name,
+              email: invitedData.email,
+              invited_people: invitedData,
+            } as ProjectTeamMember)
+          }
+        }
+      })
+    }
+
+    // If we have invited people in a separate field, add them
+    if (Array.isArray(invitedFromSeparateField) && invitedFromSeparateField.length > 0 && props.task?.id) {
+      console.log('✅ Found invited people in separate field, adding them')
+      const taskId = props.task.id
+      // Map invited people to ProjectTeamMember format
+      const mappedInvited = invitedFromSeparateField.map((invited: Record<string, unknown>) => {
+        const invitedData: ProjectTeamMember['invited_people'] = {
+          name: (invited.name as string) || '',
+          email: invited.email as string | undefined,
+          company: invited.company as string | undefined,
+          phone: invited.phone as string | undefined,
+          notes: invited.notes as string | undefined,
+          avatar: invited.avatar as string | undefined,
+        }
+        return {
+          id: (invited.id as number) || Date.now(),
+          project_id: props.projectId,
+          task_id: Number(taskId),
+          user_id: null,
+          role_in_project: 'invited',
+          assigned_at: (invited.assigned_at as string) || new Date().toISOString(),
+          name: invitedData.name,
+          email: invitedData.email,
+          invited_people: invitedData,
+        }
+      })
+      filtered = [...filtered, ...mappedInvited]
+      console.log('👥 Combined invited people:', filtered.length)
+    }
+
+    // Force reactivity update
+    invitedPeople.value = [...filtered]
+
     console.log('✅ Loaded invited people:', invitedPeople.value.length)
+    console.log('👥 Filtered invited people:', invitedPeople.value.map((p: ProjectTeamMember) => ({
+      id: p.id,
+      name: p.name,
+      role_in_project: p.role_in_project,
+      invited_people: p.invited_people,
+    })))
+
+    // Force DOM update
+    await nextTick()
+    console.log('🔄 After nextTick, invitedPeople.value.length:', invitedPeople.value.length)
   } catch (error) {
     console.error('❌ Error loading invited people:', error)
     invitedPeople.value = []
