@@ -2,7 +2,6 @@
   <div
     v-if="isOpen"
     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4"
-    @click="closeDialog"
   >
     <div
       class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
@@ -42,7 +41,7 @@
               :disabled="mode === 'view'"
               type="text"
               required
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
               placeholder="Enter milestone name"
             />
           </div>
@@ -54,12 +53,12 @@
             </label>
             <select
               v-model="form.project_lead"
-              :disabled="mode === 'view'"
+              :disabled="mode === 'view' || isProjectManager"
               required
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-700 text-gray-900"
             >
               <option value="">Select responsible person</option>
-              <option v-for="person in availablePeople" :key="person.id" :value="person.id">
+              <option v-for="person in availablePeople" :key="person.id" :value="person.id" class="text-gray-900">
                 {{ person.name }} ({{ person.role }})
               </option>
             </select>
@@ -73,7 +72,7 @@
               :disabled="mode === 'view'"
               type="date"
               required
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
             />
           </div>
 
@@ -83,7 +82,7 @@
             <select
               v-model="form.status"
               :disabled="mode === 'view'"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
             >
               <option value="planned">Planned</option>
               <option value="in_progress">In Progress</option>
@@ -99,7 +98,7 @@
             <select
               v-model="form.milestone_type"
               :disabled="mode === 'view'"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
             >
               <option value="inspection">🔍 Inspection</option>
               <option value="visit">🏗️ Site Visit</option>
@@ -118,9 +117,82 @@
               v-model="form.notes"
               :disabled="mode === 'view'"
               rows="3"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
               placeholder="Milestone description and notes"
             ></textarea>
+          </div>
+
+          <!-- Invited People Section -->
+          <div v-if="mode === 'edit' || mode === 'create'" class="mb-6 border-t border-gray-200 pt-6">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Invited People</label>
+                <p class="text-xs text-gray-500">External people invited to this milestone (informational)</p>
+              </div>
+              <button
+                v-if="mode === 'create' || mode === 'edit'"
+                @click="openInvitedPersonDialog"
+                type="button"
+                class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                + Add Invited Person
+              </button>
+            </div>
+            <div v-if="invitedPeople.length === 0" class="text-center py-6 text-gray-500 bg-gray-50 rounded-md">
+              <svg
+                class="mx-auto h-8 w-8 text-gray-400 mb-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                ></path>
+              </svg>
+              <p class="text-sm">No invited people yet.</p>
+              <p class="text-xs mt-1">Click "Add Invited Person" to add external invitees.</p>
+            </div>
+            <div v-else class="space-y-2">
+              <div
+                v-for="invited in invitedPeople"
+                :key="invited.id"
+                class="flex items-center justify-between p-3 bg-blue-50 rounded-md border border-blue-200"
+              >
+                <div class="flex items-center space-x-3 flex-1 min-w-0">
+                  <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span v-if="getInvitedAvatar(invited)" class="w-8 h-8 rounded-full overflow-hidden">
+                      <img :src="getInvitedAvatar(invited)" :alt="getInvitedName(invited)" class="w-full h-full object-cover" />
+                    </span>
+                    <span v-else class="text-xs font-medium text-blue-600">
+                      {{ getInvitedPersonInitials(getInvitedName(invited)) }}
+                    </span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900 truncate">{{ getInvitedName(invited) }}</p>
+                    <p v-if="getInvitedEmail(invited)" class="text-xs text-gray-500 truncate">{{ getInvitedEmail(invited) }}</p>
+                    <p v-if="getInvitedCompany(invited)" class="text-xs text-gray-400 truncate">{{ getInvitedCompany(invited) }}</p>
+                  </div>
+                </div>
+                <button
+                  v-if="mode === 'create' || mode === 'edit'"
+                  @click="removeInvitedPerson(invited.id)"
+                  class="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors flex-shrink-0"
+                  title="Remove invited person"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    ></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
 
           <!-- Validation Messages -->
@@ -234,18 +306,106 @@
         </form>
       </div>
     </div>
+
+    <!-- Invited Person Dialog -->
+    <div
+      v-if="showInvitedPersonDialog"
+      class="fixed inset-0 z-50 overflow-y-auto"
+      @click.self="showInvitedPersonDialog = false"
+    >
+      <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" @click="showInvitedPersonDialog = false"></div>
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Add Invited Person</h3>
+            <form @submit.prevent="handleAddInvitedPerson" class="space-y-4">
+              <div>
+                <label for="invited-name" class="block text-sm font-medium text-gray-700">Name *</label>
+                <input
+                  id="invited-name"
+                  v-model="invitedPersonForm.name"
+                  type="text"
+                  required
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-gray-900"
+                  placeholder="John Doe"
+                />
+              </div>
+              <div>
+                <label for="invited-email" class="block text-sm font-medium text-gray-700">Email</label>
+                <input
+                  id="invited-email"
+                  v-model="invitedPersonForm.email"
+                  type="email"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-gray-900"
+                  placeholder="john@example.com"
+                />
+              </div>
+              <div>
+                <label for="invited-company" class="block text-sm font-medium text-gray-700">Company</label>
+                <input
+                  id="invited-company"
+                  v-model="invitedPersonForm.company"
+                  type="text"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-gray-900"
+                  placeholder="Company Name"
+                />
+              </div>
+              <div>
+                <label for="invited-phone" class="block text-sm font-medium text-gray-700">Phone</label>
+                <input
+                  id="invited-phone"
+                  v-model="invitedPersonForm.phone"
+                  type="tel"
+                  @input="handlePhoneInput"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-gray-900"
+                  placeholder="+1 (555) 123-4567"
+                  maxlength="17"
+                />
+                <p class="mt-1 text-xs text-gray-500">Format: +1 (XXX) XXX-XXXX or +1XXXXXXXXXX</p>
+              </div>
+              <div>
+                <label for="invited-notes" class="block text-sm font-medium text-gray-700">Notes</label>
+                <textarea
+                  id="invited-notes"
+                  v-model="invitedPersonForm.notes"
+                  rows="3"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm text-gray-900"
+                  placeholder="Additional information..."
+                ></textarea>
+              </div>
+              <div class="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  @click="showInvitedPersonDialog = false"
+                  class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Add Person
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import type { Task, TaskStatus, MilestoneType } from '@/core/types/task'
+import type { Task, TaskStatus, MilestoneType, TaskCreateUpdate } from '@/core/types/task'
 import {
   validateTask,
   suggestProjectBoundsExtension,
   type ValidationResult,
 } from '@/core/utils/task-validation'
-import { projectApi, type Project } from '@/core/utils/project-api'
+import { projectApi, type Project, type ProjectTeamMember } from '@/core/utils/project-api'
+import type { WorkerUser } from '@/core/utils/hr-api'
 import { useAuthStore } from '@/core/stores/auth'
 
 // Props
@@ -290,6 +450,11 @@ const canManageProject = computed(() => {
   // Temporary: always return true for debugging
   console.log('🔧 FORCING canManageProject to true for debugging')
   return true
+})
+
+// Check if user is project manager
+const isProjectManager = computed(() => {
+  return authStore.currentUser?.role_code === 'project_manager'
 })
 
 // Emits
@@ -347,6 +512,11 @@ watch(
       })
 
       // Reset form for create mode
+      // For PM, automatically set project_lead to current user
+      const defaultProjectLead = isProjectManager.value && authStore.currentUser?.id
+        ? authStore.currentUser.id
+        : null
+
       form.value = {
         name: '',
         start_planned: startDate,
@@ -354,14 +524,26 @@ watch(
         milestone_type: 'other' as MilestoneType,
         status: 'planned' as TaskStatus,
         notes: '',
-        project_lead: null as number | null,
+        project_lead: defaultProjectLead as number | null,
       }
+
+      // Clear invited people for new milestone
+      invitedPeople.value = []
 
       // Force update after next tick to ensure DOM is updated
       await nextTick()
+
+      // Ensure project_lead is set after availablePeople is loaded
+      if (defaultProjectLead && form.value.project_lead !== defaultProjectLead) {
+        console.log('🔄 Setting project_lead after nextTick:', defaultProjectLead)
+        form.value.project_lead = defaultProjectLead
+      }
+
       console.log('✅ Form initialized for create mode:', {
         initialDate: props.initialDate,
         startPlanned: form.value.start_planned,
+        projectLead: form.value.project_lead,
+        defaultProjectLead,
       })
 
       // Double-check that the date is set correctly
@@ -374,6 +556,12 @@ watch(
       }
     } else if (isOpen && props.task) {
       // Initialize form with task data for edit/view mode
+      // For PM in edit mode, if no project_lead is set, use current user
+      let projectLead = props.task.task_lead_id || null
+      if (isProjectManager.value && !projectLead && authStore.currentUser?.id) {
+        projectLead = authStore.currentUser.id
+      }
+
       form.value = {
         name: props.task.name || '',
         start_planned: props.task.start_planned || '',
@@ -381,9 +569,18 @@ watch(
         milestone_type: props.task.milestone_type || 'other',
         status: props.task.status || 'planned',
         notes: props.task.notes || '',
-        project_lead: props.task.task_lead_id || null,
+        project_lead: projectLead,
       }
       console.log('📅 Form initialized for edit/view mode:', form.value)
+
+      // Load invited people for edit and view modes
+      if ((props.mode === 'edit' || props.mode === 'view') && props.task.id) {
+        await loadInvitedPeople()
+      } else {
+        invitedPeople.value = []
+      }
+    } else if (isOpen && props.mode === 'create') {
+      invitedPeople.value = []
     }
   },
 )
@@ -402,14 +599,139 @@ watch(
   },
 )
 
-// Available data for dropdowns
-const availablePeople = ref<Array<{ id: number; name: string; role: string }>>([
-  { id: 47, name: 'Mike Davis', role: 'Project Manager' },
-  { id: 23, name: 'John Smith', role: 'Foreman' },
-  { id: 15, name: 'Sarah Johnson', role: 'Electrician' },
-  { id: 8, name: 'Safety Team', role: 'Inspector' },
-  { id: 52, name: 'Unknown User', role: 'Worker' },
-])
+// Available data for dropdowns - loaded from API
+const availablePeople = ref<Array<{ id: number; name: string; role: string }>>([])
+
+// Load available people - for new milestones load all system users, for existing milestones load project team
+async function loadAvailablePeople() {
+  // For new milestones (create mode), load all system users
+  if (props.mode === 'create') {
+    await loadAllSystemUsers()
+    return
+  }
+
+  // For existing milestones, try to load project team members first
+  if (!props.projectId) {
+    console.warn('⚠️ No project ID provided, cannot load team members')
+    availablePeople.value = []
+    return
+  }
+
+  try {
+    console.log('👥 Loading project team members for project:', props.projectId)
+    const response = await projectApi.getTeamMembers(props.projectId)
+    console.log('🔍 Full API response:', response)
+
+    // Map the API response structure to our expected format
+    // Map using unified role formatter
+    const { getDisplayRole } = await import('@/core/utils/role-utils')
+    const apiTeamMembers = response.data?.team_members || response.team_members || []
+    const mappedPeople = apiTeamMembers.map((member: ProjectTeamMember & { full_name?: string; first_name?: string; last_name?: string; role_name?: string; role_code?: string; project_role?: string; role?: string; team_member_id?: number }) => ({
+      id: member.id || member.user_id || member.team_member_id,
+      name: member.full_name || `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.name || 'Unknown',
+      role: getDisplayRole({
+        role_name: member.role_name,
+        role_code: member.role_code,
+        project_role: member.project_role,
+        role: member.role,
+      }),
+    }))
+
+    // Filter to show only project managers and other relevant roles (exclude admin)
+    availablePeople.value = mappedPeople.filter((person: { role: string; id: number }) => {
+      const roleLower = person.role.toLowerCase()
+      return (
+        roleLower.includes('project manager') ||
+        roleLower.includes('project_manager') ||
+        roleLower !== 'admin'
+      )
+    })
+
+    console.log('✅ Available people loaded:', availablePeople.value.length)
+    console.log('👥 People data:', availablePeople.value)
+
+    // If project team is empty, fallback to all system users
+    if (availablePeople.value.length === 0) {
+      console.log('⚠️ Project team is empty, loading all system users as fallback')
+      await loadAllSystemUsers()
+    }
+  } catch (error) {
+    console.error('❌ Error loading project team members:', error)
+    // Fallback to all system users
+    await loadAllSystemUsers()
+  }
+}
+
+// Load all system users (excluding admin) - for new milestones
+async function loadAllSystemUsers() {
+  try {
+    console.log('👥 Loading all system users (excluding admin)')
+    // Use hrResourcesApi to get all workers
+    const { hrResourcesApi } = await import('@/core/utils/hr-api')
+    const response = await hrResourcesApi.getAllWorkerUsers(1, 1000, {
+      status: '1', // active only
+      invitation_status: 'registered',
+    })
+
+    if ('workers' in response && Array.isArray(response.workers)) {
+      // Filter out admin only (project managers can be assigned to milestones)
+      const filteredWorkers = response.workers.filter((worker: { role_code?: string }) => {
+        return worker.role_code !== 'admin'
+      })
+
+      // Map to our format using unified role formatter
+      const { getDisplayRole: getDisplayRoleForMilestone } = await import('@/core/utils/role-utils')
+      availablePeople.value = filteredWorkers.map((worker: WorkerUser) => ({
+        id: worker.id,
+        name: `${worker.first_name || ''} ${worker.last_name || ''}`.trim() || worker.name || 'Unknown',
+        role: getDisplayRoleForMilestone({
+          role_name: worker.role_name,
+          role_code: worker.role_code,
+          role: worker.role?.name || undefined,
+        }),
+      }))
+
+      // If current user is PM and not in the list, add them
+      if (isProjectManager.value && authStore.currentUser?.id) {
+        const pmExists = availablePeople.value.some(p => p.id === authStore.currentUser!.id)
+        if (!pmExists) {
+          availablePeople.value.unshift({
+            id: authStore.currentUser.id,
+            name: authStore.currentUser.name || `${authStore.currentUser.first_name || ''} ${authStore.currentUser.last_name || ''}`.trim() || 'Current User',
+            role: authStore.currentUser.role_name || 'Project Manager',
+          })
+          console.log('✅ Added current PM to available people list')
+        }
+      }
+
+      console.log('✅ All system users loaded:', availablePeople.value.length)
+    }
+  } catch (error) {
+    console.error('❌ Error loading all system users:', error)
+    availablePeople.value = []
+
+    // Fallback: if PM, add current user to list
+    if (isProjectManager.value && authStore.currentUser?.id) {
+      availablePeople.value = [{
+        id: authStore.currentUser.id,
+        name: authStore.currentUser.name || `${authStore.currentUser.first_name || ''} ${authStore.currentUser.last_name || ''}`.trim() || 'Current User',
+        role: authStore.currentUser.role_name || 'Project Manager',
+      }]
+    }
+  }
+}
+
+// Invited people
+const invitedPeople = ref<ProjectTeamMember[]>([])
+const showInvitedPersonDialog = ref(false)
+const invitedPersonForm = ref({
+  name: '',
+  email: '',
+  company: '',
+  phone: '',
+  notes: '',
+  avatar: '',
+})
 
 // Load project information (only if not provided via props)
 async function loadProjectInfo() {
@@ -445,6 +767,7 @@ watch(
   () => {
     if (props.isOpen) {
       loadProjectInfo()
+      loadAvailablePeople()
     }
   },
   { immediate: true },
@@ -565,7 +888,32 @@ function handleSubmit() {
 
   console.log('✅ Milestone validation passed, proceeding with save')
 
-  const taskData: Partial<Task> = {
+  // Prepare invited people data for API
+  // For milestones, always send array (empty [] if no invited people, never null)
+  const invitedPeopleData = invitedPeople.value
+    .filter(invited => {
+      // For create mode, include all (they have temporary IDs)
+      // For edit mode, include only those with role_in_project = 'invited'
+      if (props.mode === 'create') {
+        return true
+      }
+      return invited.role_in_project === 'invited' || invited.role_in_project === 'Invited'
+    })
+    .map(invited => ({
+      name: getInvitedName(invited),
+      email: getInvitedEmail(invited),
+      company: getInvitedCompany(invited),
+      phone: invited.invited_people?.phone,
+      notes: invited.invited_people?.notes,
+      avatar: getInvitedAvatar(invited),
+    }))
+
+  // Always ensure invited_people is an array (never null for milestones)
+  // If no invited people, send empty array []
+  // Explicitly set as array to ensure it's never undefined or null
+  const finalInvitedPeople = Array.isArray(invitedPeopleData) ? invitedPeopleData : []
+
+  const taskData: TaskCreateUpdate & { id?: string } = {
     ...form.value,
     project_id: props.projectId,
     // For milestones, end_planned = start_planned
@@ -577,9 +925,21 @@ function handleSubmit() {
     dependencies: [],
     resources: [],
     team_members: [],
+    // Explicitly set milestone fields
+    milestone: form.value.milestone_type || 'other',
+    milestone_type: form.value.milestone_type || 'other',
     // Send task lead
     task_lead_id: form.value.project_lead || undefined,
+    // Send invited people - ALWAYS an array for milestones (empty [] if none, never null)
+    invited_people: finalInvitedPeople,
   }
+
+  console.log('👥 Invited people data being sent:', {
+    invitedPeopleCount: invitedPeople.value.length,
+    invitedPeopleDataCount: invitedPeopleData.length,
+    finalInvitedPeopleCount: finalInvitedPeople.length,
+    finalInvitedPeople,
+  })
 
   if (props.mode === 'edit' && props.task) {
     taskData.id = props.task.id
@@ -599,5 +959,142 @@ function handleDelete() {
       closeDialog()
     }
   }
+}
+
+// Phone formatting function for invited person
+function formatPhoneNumber(value: string): string {
+  // Remove all non-digit characters
+  const digits = value.replace(/\D/g, '')
+
+  // If empty, return empty
+  if (!digits) return ''
+
+  // If starts with 1, format as +1 (XXX) XXX-XXXX
+  if (digits.startsWith('1') && digits.length <= 11) {
+    const areaCode = digits.slice(1, 4)
+    const firstPart = digits.slice(4, 7)
+    const secondPart = digits.slice(7, 11)
+
+    if (digits.length <= 1) return '+1'
+    if (digits.length <= 4) return `+1 (${areaCode}`
+    if (digits.length <= 7) return `+1 (${areaCode}) ${firstPart}`
+    return `+1 (${areaCode}) ${firstPart}-${secondPart}`
+  }
+
+  // If doesn't start with 1, add +1 prefix
+  if (digits.length <= 10) {
+    const areaCode = digits.slice(0, 3)
+    const firstPart = digits.slice(3, 6)
+    const secondPart = digits.slice(6, 10)
+
+    if (digits.length <= 0) return ''
+    if (digits.length <= 3) return `+1 (${areaCode}`
+    if (digits.length <= 6) return `+1 (${areaCode}) ${firstPart}`
+    return `+1 (${areaCode}) ${firstPart}-${secondPart}`
+  }
+
+  // If too long, truncate to 10 digits after +1
+  const truncated = digits.slice(0, 11)
+  const areaCode = truncated.slice(1, 4)
+  const firstPart = truncated.slice(4, 7)
+  const secondPart = truncated.slice(7, 11)
+  return `+1 (${areaCode}) ${firstPart}-${secondPart}`
+}
+
+function handlePhoneInput(event: Event) {
+  const target = event.target as HTMLInputElement
+  const formatted = formatPhoneNumber(target.value)
+  invitedPersonForm.value.phone = formatted
+}
+
+// Invited people methods
+function openInvitedPersonDialog() {
+  invitedPersonForm.value = {
+    name: '',
+    email: '',
+    company: '',
+    phone: '',
+    notes: '',
+    avatar: '',
+  }
+  showInvitedPersonDialog.value = true
+}
+
+function handleAddInvitedPerson() {
+  // Add to local list (will be sent together on save)
+  const newInvited: ProjectTeamMember = {
+    id: Date.now(), // Temporary ID for local tracking
+    project_id: props.projectId,
+    task_id: props.task?.id ? Number(props.task.id) : null,
+    user_id: null,
+    role_in_project: 'invited',
+    assigned_at: new Date().toISOString(),
+    invited_people: {
+      name: invitedPersonForm.value.name,
+      email: invitedPersonForm.value.email || undefined,
+      company: invitedPersonForm.value.company || undefined,
+      phone: invitedPersonForm.value.phone || undefined,
+      notes: invitedPersonForm.value.notes || undefined,
+      avatar: invitedPersonForm.value.avatar || undefined,
+    },
+  }
+  invitedPeople.value.push(newInvited)
+  showInvitedPersonDialog.value = false
+}
+
+function removeInvitedPerson(teamMemberId: number) {
+  // Remove from local list (will be sent together on save)
+  const index = invitedPeople.value.findIndex(invited => invited.id === teamMemberId)
+  if (index !== -1) {
+    invitedPeople.value.splice(index, 1)
+  }
+}
+
+async function loadInvitedPeople() {
+  if (!props.task?.id || !props.projectId) {
+    invitedPeople.value = []
+    return
+  }
+
+  try {
+    const response = await projectApi.getTaskTeamMembers(props.projectId, Number(props.task.id))
+    const members = response.data?.team_members || response.team_members || []
+    // Filter only invited people
+    invitedPeople.value = members.filter((m: ProjectTeamMember) =>
+      m.role_in_project === 'invited' || m.role_in_project === 'Invited'
+    )
+    console.log('✅ Loaded invited people:', invitedPeople.value.length)
+  } catch (error) {
+    console.error('❌ Error loading invited people:', error)
+    invitedPeople.value = []
+  }
+}
+
+function getInvitedName(invited: ProjectTeamMember): string {
+  if (invited.invited_people?.name) {
+    return invited.invited_people.name
+  }
+  return invited.name || 'Unknown'
+}
+
+function getInvitedEmail(invited: ProjectTeamMember): string | undefined {
+  return invited.invited_people?.email || invited.email
+}
+
+function getInvitedCompany(invited: ProjectTeamMember): string | undefined {
+  return invited.invited_people?.company
+}
+
+function getInvitedAvatar(invited: ProjectTeamMember): string | undefined {
+  return invited.invited_people?.avatar
+}
+
+function getInvitedPersonInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((word) => word.charAt(0))
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
 }
 </script>

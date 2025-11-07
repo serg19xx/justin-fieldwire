@@ -1,8 +1,20 @@
 import type { Task, CalendarTask, TaskStatus, MilestoneType } from '@/core/types/task'
+import { isMilestone } from '@/core/types/task'
 
 // WBS utility functions
-export function parseWbsPath(wbsPath?: string): string[] {
-  return wbsPath ? wbsPath.split('.') : []
+export function parseWbsPath(wbsPath?: string | string[] | null): string[] {
+  // If already an array, return it
+  if (Array.isArray(wbsPath)) {
+    return wbsPath
+  }
+
+  // If it's a string, split it
+  if (typeof wbsPath === 'string' && wbsPath.length > 0) {
+    return wbsPath.split('.')
+  }
+
+  // If null, undefined, or empty string, return empty array
+  return []
 }
 
 export function formatWbsPath(wbsArray: string[]): string {
@@ -33,6 +45,17 @@ export function taskToCalendarTask(
   task: Task,
   showDependencyIndicators: boolean = true,
 ): CalendarTask {
+  // Validate that task has required start date
+  if (!task.start_planned) {
+    console.error('❌ Task missing start_planned date:', {
+      id: task.id,
+      name: task.name,
+      start_planned: task.start_planned,
+      end_planned: task.end_planned,
+    })
+    throw new Error(`Task ${task.name} (ID: ${task.id}) is missing start_planned date`)
+  }
+
   // Add progress percentage to title
   const progressText = task.progress_pct > 0 ? ` (${task.progress_pct}%)` : ''
 
@@ -40,26 +63,47 @@ export function taskToCalendarTask(
   const dependencyText = showDependencyIndicators ? getDependencyIndicators(task) : ''
 
   // Add task/milestone type icon at the beginning
-  const typeIcon = task.milestone ? getMilestoneTypeIcon(task.milestone_type) : '📝'
+  const taskIsMilestone = isMilestone(task.milestone)
+  const milestoneType = taskIsMilestone
+    ? typeof task.milestone === 'string'
+      ? task.milestone
+      : task.milestone_type
+    : undefined
+  const typeIcon = taskIsMilestone ? getMilestoneTypeIcon(milestoneType) : '📝'
+
+  // Validate date format - ensure start date is in YYYY-MM-DD format
+  let startDate = task.start_planned
+  if (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+    console.warn('⚠️ Invalid start_planned format, attempting to fix:', startDate)
+    try {
+      const date = new Date(startDate)
+      if (!isNaN(date.getTime())) {
+        startDate = date.toISOString().split('T')[0]
+        console.log('✅ Fixed start date format:', startDate)
+      }
+    } catch (e) {
+      console.error('❌ Failed to fix start date format:', e)
+    }
+  }
 
   const calendarTask = {
-    id: task.id,
+    id: String(task.id),
     title: `${typeIcon} ${task.name}${progressText}${dependencyText}`,
-    start: task.start_planned,
+    start: startDate,
     end: task.end_planned ? processEndDateForDisplay(task.end_planned) : undefined,
     allDay: true, // All tasks are all-day events
     color: getTaskColor(task.status),
     // For milestones: allow dragging but disable resizing
     editable: true, // Allow dragging
     startEditable: true, // Allow moving start date
-    durationEditable: !task.milestone, // Disable resizing for milestones
+    durationEditable: !isMilestone(task.milestone), // Disable resizing for milestones
     // Add data attributes for selection
     classNames: [`task-${task.id}`],
     extendedProps: {
       wbsPath: parseWbsPath(task.wbs_path), // Convert to array for display
       status: task.status,
       assignees: (task.assignees || []).map(String), // Convert numbers to strings for compatibility
-      milestone: task.milestone,
+      milestone: isMilestone(task.milestone),
       progressPct: task.progress_pct,
       description: task.notes || `${task.wbs_path || 'No WBS'} - ${task.name}`,
       dependencies: task.dependencies || [],
@@ -69,7 +113,14 @@ export function taskToCalendarTask(
     },
   }
 
-  console.log('🔄 Converting task to calendar event:', task.name, '→', calendarTask)
+  console.log('🔄 Converting task to calendar event:', {
+    taskName: task.name,
+    taskId: task.id,
+    start_planned: task.start_planned,
+    end_planned: task.end_planned,
+    calendarStart: calendarTask.start,
+    calendarEnd: calendarTask.end,
+  })
   return calendarTask
 }
 
@@ -254,14 +305,15 @@ export function getTaskStatusLabel(status: TaskStatus): string {
   }
 }
 
-// Calculate task duration in days
+// Calculate task duration in days (inclusive of both start and end dates)
 export function calculateTaskDuration(startDate: string, endDate?: string): number {
   if (!endDate) return 1
 
   const start = new Date(startDate)
   const end = new Date(endDate)
   const diffTime = Math.abs(end.getTime() - start.getTime())
-  return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  // +1 to include both start and end days (inclusive)
+  return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1
 }
 
 // Generate WBS path string
@@ -344,13 +396,16 @@ export function exportTasksToICal(tasks: Task[]): string {
         `Status: ${task.status}`,
         task.progress_pct > 0 ? `Progress: ${task.progress_pct}%` : '',
         task.notes ? `Notes: ${task.notes}` : '',
-        task.milestone ? `Type: ${task.milestone_type || 'Milestone'}` : 'Type: Task',
+        isMilestone(task.milestone)
+          ? `Type: ${typeof task.milestone === 'string' ? task.milestone : task.milestone_type || 'Milestone'}`
+          : 'Type: Task',
       ]
         .filter(Boolean)
         .join('\\n')
 
       // Create summary with type indicator
-      const typeIcon = task.milestone ? '🎯' : '📝'
+      const taskIsMilestone = isMilestone(task.milestone)
+      const typeIcon = taskIsMilestone ? '🎯' : '📝'
       const summary = `${typeIcon} ${task.name}`
 
       ical.push(
@@ -362,7 +417,7 @@ export function exportTasksToICal(tasks: Task[]): string {
         `SUMMARY:${summary}`,
         `DESCRIPTION:${description}`,
         `STATUS:${task.status === 'done' ? 'CONFIRMED' : 'TENTATIVE'}`,
-        `CATEGORIES:${task.milestone ? 'MILESTONE' : 'TASK'}`,
+        `CATEGORIES:${taskIsMilestone ? 'MILESTONE' : 'TASK'}`,
         `PRIORITY:${getTaskPriority(task).toUpperCase()}`,
         'END:VEVENT',
       )
@@ -386,7 +441,7 @@ export function exportTasksToGantt(tasks: Task[]): unknown {
       end_date: task.end_planned,
       duration: task.duration_days || calculateTaskDuration(task.start_planned, task.end_planned),
       progress: task.progress_pct || 0,
-      type: task.milestone ? 'milestone' : 'task',
+      type: isMilestone(task.milestone) ? 'milestone' : 'task',
       color: getTaskColor(task.status),
       parent:
         task.wbs_path && task.wbs_path.split('.').length > 1

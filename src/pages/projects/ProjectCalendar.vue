@@ -9,7 +9,7 @@ import type { Task, TaskStatus, TaskCreateUpdate, TaskFilter } from '@/core/type
 import { taskToCalendarTask, getTaskColor, processEndDateForDisplay } from '@/core/utils/task-utils'
 import { useAuthStore } from '@/core/stores/auth'
 import { tasksApi } from '@/core/utils/tasks-api'
-import { projectApi, type Project } from '@/core/utils/project-api'
+import { projectApi, type Project, type ProjectTeamMember } from '@/core/utils/project-api'
 import { checkProjectBounds } from '@/core/utils/project-bounds-checker'
 import { checkDependencyConstraints } from '@/core/utils/dependency-validator'
 import TaskDialog from '@/pages/projects/TaskDialog.vue'
@@ -752,10 +752,34 @@ async function loadTasks() {
     tasks.value = response.tasks || []
     console.log('📋 Tasks array updated:', tasks.value.length, 'tasks')
 
+    // Filter out tasks without start_planned date (they can't be displayed in calendar)
+    const tasksWithDates = tasks.value.filter((task) => {
+      if (!task.start_planned) {
+        console.warn('⚠️ Task missing start_planned date, skipping calendar display:', {
+          id: task.id,
+          name: task.name,
+          start_planned: task.start_planned,
+          end_planned: task.end_planned,
+        })
+        return false
+      }
+      return true
+    })
+    console.log('📋 Tasks with dates:', tasksWithDates.length, 'out of', tasks.value.length)
+
     // Convert tasks to calendar events
-    const events = tasks.value.map((task) =>
-      taskToCalendarTask(task, shouldShowDependencyIndicators.value),
-    )
+    const events = tasksWithDates.map((task) => {
+      const calendarEvent = taskToCalendarTask(task, shouldShowDependencyIndicators.value)
+      console.log('📅 Task converted to calendar event:', {
+        taskId: task.id,
+        taskName: task.name,
+        start: calendarEvent.start,
+        end: calendarEvent.end,
+        hasStart: !!calendarEvent.start,
+        hasEnd: !!calendarEvent.end,
+      })
+      return calendarEvent
+    })
     console.log('📅 Converted to calendar events:', events.length, 'events')
 
     // Update calendar events
@@ -1352,11 +1376,17 @@ async function handleEventDrop(info: unknown) {
         endPlanned: taskData.endPlanned,
       }
 
-      console.log('📤 Updating task dates via API after drag:', updatePayload)
+      console.log('🖱️ Drag & Drop: Updating task via PUT /api/v1/projects/{project_id}/tasks/{task_id}', {
+        projectId: props.projectId,
+        taskId,
+        payload: updatePayload,
+        start_planned: taskData.startPlanned,
+        end_planned: taskData.endPlanned,
+      })
 
       try {
         const updatedTask = await tasksApi.update(props.projectId, taskId, updatePayload)
-        console.log('✅ Task dates updated via API after drag:', updatedTask)
+        console.log('✅ Drag & Drop: Task dates updated successfully:', updatedTask)
 
         // Update local task data without reloading from API
         const taskIndex = tasks.value.findIndex((t) => t.id.toString() === taskId)
@@ -1835,17 +1865,17 @@ async function handleEventResize(info: unknown) {
       // Duration will be calculated automatically by frontend
     }
 
-    console.log('📤 Updating task size via API:', updatePayload)
-    console.log('📤 TaskData before API call:', {
-      startPlanned: taskData.startPlanned,
-      endPlanned: taskData.endPlanned,
-      start_planned: taskData.start_planned,
-      end_planned: taskData.end_planned,
+    console.log('🔄 Resize: Updating task via PUT /api/v1/projects/{project_id}/tasks/{task_id}', {
+      projectId: props.projectId,
+      taskId,
+      payload: updatePayload,
+      start_planned: taskData.startPlanned,
+      end_planned: taskData.endPlanned,
     })
 
     try {
       const updatedTask = await tasksApi.update(props.projectId, taskId, updatePayload)
-      console.log('✅ Task size updated via API:', updatedTask)
+      console.log('✅ Resize: Task dates updated successfully:', updatedTask)
 
       // Reload tasks from API to get fresh data
       await loadTasks()
@@ -2220,7 +2250,7 @@ function getTaskTeamInfo(task: Task): Array<{ id: number; name: string; role: st
 
   // Add task lead
   if (task.task_lead_id) {
-    const leadPerson = availablePeople.find((p) => p.id === task.task_lead_id)
+    const leadPerson = availablePeople.value.find((p) => p.id === task.task_lead_id)
     if (leadPerson) {
       team.push({ ...leadPerson, role: `${leadPerson.role} (Lead)` })
     }
@@ -2229,7 +2259,7 @@ function getTaskTeamInfo(task: Task): Array<{ id: number; name: string; role: st
   // Add team members
   if (task.team_members) {
     task.team_members.forEach((memberId) => {
-      const member = availablePeople.find((p) => p.id === memberId)
+      const member = availablePeople.value.find((p) => p.id === memberId)
       if (member) {
         team.push(member)
       }
@@ -2239,14 +2269,36 @@ function getTaskTeamInfo(task: Task): Array<{ id: number; name: string; role: st
   return team
 }
 
-// Mock people data for display
-const availablePeople = [
-  { id: 47, name: 'Mike Davis', role: 'Project Manager' },
-  { id: 23, name: 'John Smith', role: 'Foreman' },
-  { id: 15, name: 'Sarah Johnson', role: 'Electrician' },
-  { id: 8, name: 'Safety Team', role: 'Inspector' },
-  { id: 52, name: 'Unknown User', role: 'Worker' }, // Add missing user
-]
+// Available people data - loaded from API
+const availablePeople = ref<Array<{ id: number; name: string; role: string }>>([])
+
+// Load project team members from API
+async function loadAvailablePeople() {
+  if (!props.projectId) {
+    console.warn('⚠️ No project ID provided, cannot load team members')
+    availablePeople.value = []
+    return
+  }
+
+  try {
+    console.log('👥 Loading project team members for calendar display, project:', props.projectId)
+    const response = await projectApi.getTeamMembers(props.projectId)
+    console.log('🔍 Full API response:', response)
+
+    // Map the API response structure to our expected format
+    const apiTeamMembers = response.data?.team_members || response.team_members || []
+    availablePeople.value = apiTeamMembers.map((member: ProjectTeamMember & { team_member_id?: number; full_name?: string; first_name?: string; last_name?: string; role_name?: string; project_role?: string; role?: string }) => ({
+      id: member.id || member.user_id || member.team_member_id || 0,
+      name: member.full_name || `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.name || 'Unknown',
+      role: member.role_name || member.project_role || member.role_in_project || member.role || 'Worker',
+    }))
+
+    console.log('✅ Available people loaded for calendar:', availablePeople.value.length)
+  } catch (error) {
+    console.error('❌ Error loading project team members:', error)
+    availablePeople.value = []
+  }
+}
 
 // Task dialog functions
 function openTaskDialog(
@@ -2374,27 +2426,46 @@ function closeTaskEditPanel() {
   emit('editPanelOpen', false, null, undefined)
 }
 
-async function handleTaskEditPanelSave(taskData: Partial<Task>) {
-  console.log('💾 Saving task from edit panel:', taskData)
+async function handleTaskEditPanelSave(taskData: (Partial<TaskCreateUpdate> | Partial<Task>) & { id?: string }) {
+  console.log('='.repeat(80))
+  console.log('📥 ProjectCalendar: handleTaskEditPanelSave called')
+  console.log('📋 Edit panel mode:', taskEditPanel.value.mode)
+  console.log('📋 Task ID in data:', taskData.id)
+  console.log('📋 Task from panel:', taskEditPanel.value.task?.id)
+  console.log('📋 Full taskData received:', JSON.stringify(taskData, null, 2))
+  console.log('='.repeat(80))
 
-  if (taskEditPanel.value.mode === 'edit' && taskEditPanel.value.task) {
-    // Update existing task - add the task id to the data
-    const updatedData = {
-      ...taskData,
-      id: taskEditPanel.value.task.id,
+  try {
+    // Determine if this is create or update
+    const isUpdate = !!(taskData.id || (taskEditPanel.value.mode === 'edit' && taskEditPanel.value.task?.id))
+    const taskId = taskData.id || taskEditPanel.value.task?.id
+
+    if (isUpdate && taskId) {
+      // Update existing task
+      console.log('✏️ Updating existing task:', taskId)
+      const updatedData = {
+        ...taskData,
+        id: taskId,
+      }
+      // Temporarily set taskDialog mode to 'edit' for handleTaskSave
+      const previousMode = taskDialog.value.mode
+      taskDialog.value.mode = 'edit'
+      await handleTaskSave(updatedData)
+      taskDialog.value.mode = previousMode
+    } else {
+      // Create new task
+      console.log('➕ Creating new task')
+      taskDialog.value.mode = 'create'
+      await handleTaskSave(taskData as TaskCreateUpdate)
     }
-    // Temporarily set taskDialog mode to 'edit' for handleTaskSave
-    const previousMode = taskDialog.value.mode
-    taskDialog.value.mode = 'edit'
-    await handleTaskSave(updatedData)
-    taskDialog.value.mode = previousMode
-  } else {
-    // Create new task
-    taskDialog.value.mode = 'create'
-    await handleTaskSave(taskData as TaskCreateUpdate)
-  }
 
-  closeTaskEditPanel()
+    // Only close panel on success
+    closeTaskEditPanel()
+  } catch (error) {
+    console.error('❌ Error saving task from edit panel:', error)
+    // Error message is already shown by handleTaskSave
+    // Don't close panel on error so user can retry
+  }
 }
 
 async function handleTaskEditPanelDelete(taskId: string) {
@@ -2494,40 +2565,72 @@ function handleOpenProjectSettings() {
   emit('openProjectSettings')
 }
 
-async function handleTaskSave(taskData: Partial<Task>) {
-  console.log('💾 Saving task:', taskData)
-  console.log('💾 Dialog mode:', taskDialog.value.mode)
-  console.log('💾 Dialog task:', taskDialog.value.task)
+async function handleTaskSave(taskData: (Partial<TaskCreateUpdate> | Partial<Task>) & { id?: string }) {
+  console.log('='.repeat(80))
+  console.log('📥 ProjectCalendar: handleTaskSave called')
+  console.log('📋 Dialog mode:', taskDialog.value.mode)
+  console.log('📋 Task data ID:', taskData.id)
+  console.log('📋 Full taskData:', JSON.stringify(taskData, null, 2))
+  console.log('='.repeat(80))
+
+  // Determine if this is create or update based on taskData.id
+  const isUpdate = !!taskData.id
+  const dialogMode = taskDialog.value.mode || (isUpdate ? 'edit' : 'create')
 
   try {
-    if (taskDialog.value.mode === 'create') {
+    if (dialogMode === 'create' && !isUpdate) {
       // Create new task via API
       console.log('➕ Creating new task via API')
 
-      // Create minimal payload with only required fields first
-      const createPayload: Record<string, unknown> = {
-        wbsPath: taskData.wbs_path || '',
-        name: taskData.name || '',
-        startPlanned: taskData.start_planned || '',
-        endPlanned: taskData.end_planned || taskData.start_planned || '',
-        milestone: taskData.milestone || false,
-        status: taskData.status || 'planned',
-        progressPct: taskData.progress_pct || 0,
+      // Build create payload - use camelCase for TaskCreateUpdate interface
+      console.log('📋 Full taskData for create:', JSON.stringify(taskData, null, 2))
+
+      const createPayload: Record<string, unknown> = {}
+
+      // Required fields
+      createPayload.name = taskData.name || ''
+      createPayload.startPlanned = taskData.start_planned || ''
+      createPayload.endPlanned = taskData.end_planned || taskData.start_planned || ''
+      createPayload.status = taskData.status || 'planned'
+      createPayload.progressPct = taskData.progress_pct || 0
+
+      // Optional fields
+      if (taskData.wbs_path) createPayload.wbsPath = taskData.wbs_path
+      if (taskData.duration_days) createPayload.durationDays = taskData.duration_days
+      if (taskData.notes) createPayload.notes = taskData.notes
+
+      // Handle milestone - convert to milestone_type for TaskCreateUpdate
+      if (taskData.milestone_type !== undefined && taskData.milestone_type !== null) {
+        createPayload.milestone_type = taskData.milestone_type
+        console.log('🎯 Setting milestone_type for create:', taskData.milestone_type)
+      } else if (taskData.milestone !== undefined && taskData.milestone !== null && taskData.milestone !== false && taskData.milestone !== 0) {
+        if (typeof taskData.milestone === 'string') {
+          createPayload.milestone_type = taskData.milestone
+          console.log('🎯 Setting milestone_type from milestone (string):', taskData.milestone)
+        } else if (taskData.milestone === true) {
+          createPayload.milestone_type = 'other'
+          console.log('🎯 Setting milestone_type to "other" (boolean true)')
+        }
+      } else {
+        console.log('🎯 No milestone data, not setting milestone_type')
       }
 
-      // Add optional fields only if they have values
-      if (taskData.notes) {
-        createPayload.notes = taskData.notes
+      // Team and resources - only include if they have values
+      if (taskData.task_lead_id !== undefined && taskData.task_lead_id !== null && taskData.task_lead_id !== 0 && typeof taskData.task_lead_id === 'number') {
+        const leadId = Number(taskData.task_lead_id)
+        if (!isNaN(leadId) && leadId > 0) {
+          createPayload.task_lead_id = leadId
+          console.log('👤 Setting task_lead_id for create:', createPayload.task_lead_id)
+        } else {
+          console.log('👤 task_lead_id is not a valid positive number, skipping:', taskData.task_lead_id)
+        }
+      } else {
+        console.log('👤 task_lead_id is undefined/null/0/empty, not including in create payload')
       }
 
-      // Add task lead if assigned
-      if (taskData.task_lead_id) {
-        createPayload.task_lead_id = taskData.task_lead_id
-      }
-
-      // Add team members if any
       if (taskData.team_members && taskData.team_members.length > 0) {
         createPayload.team_members = taskData.team_members
+        console.log('👥 Setting team_members for create:', taskData.team_members)
       }
 
       if (taskData.resources && taskData.resources.length > 0) {
@@ -2535,109 +2638,203 @@ async function handleTaskSave(taskData: Partial<Task>) {
       }
 
       if (taskData.dependencies && taskData.dependencies.length > 0) {
-        createPayload.dependencies = taskData.dependencies
+        // Convert dependencies from Task format (number[] or objects) to TaskCreateUpdate format (objects only)
+        if (Array.isArray(taskData.dependencies)) {
+          const deps = taskData.dependencies
+          if (deps.length > 0 && typeof deps[0] === 'number') {
+            // Convert number[] to dependency objects
+            createPayload.dependencies = (deps as number[]).map(id => ({
+              predecessor_id: id,
+              type: 'FS',
+              lag_days: 0
+            }))
+          } else {
+            // Already in correct format
+            createPayload.dependencies = deps as Array<{ predecessor_id: number; type: string; lag_days: number }>
+          }
+        }
+      }
+
+      // Handle invited_people for milestones - always set [] for milestones, never null
+      const isMilestone = createPayload.milestone_type || taskData.milestone || taskData.milestone_type
+      if (isMilestone) {
+        // For milestones, always set invited_people (empty array if none, never null)
+        // invited_people exists only in TaskCreateUpdate, not in Task
+        if ('invited_people' in taskData && taskData.invited_people !== undefined && Array.isArray(taskData.invited_people) && taskData.invited_people.length > 0) {
+          createPayload.invited_people = taskData.invited_people
+          console.log('👥 Setting invited_people for milestone create:', taskData.invited_people)
+        } else {
+          // Empty array for milestone with no invited people (ALWAYS set, never null for milestones)
+          createPayload.invited_people = []
+          console.log('👥 No invited people, setting empty array [] for milestone create (never null)')
+        }
+      } else {
+        // For regular tasks, explicitly set to null
+        createPayload.invited_people = null
+        console.log('👥 Regular task, setting invited_people to null')
       }
 
       console.log('📤 Sending create payload:', createPayload)
       console.log('📤 Payload JSON:', JSON.stringify(createPayload, null, 2))
 
-      try {
-        const newTask = await tasksApi.create(
-          props.projectId,
-          createPayload as unknown as TaskCreateUpdate,
-        )
-        console.log('✅ Task created via API:', newTask)
+      const newTask = await tasksApi.create(
+        props.projectId,
+        createPayload as unknown as TaskCreateUpdate,
+      )
+      console.log('✅ Task created via API:', newTask)
 
-        // Reload tasks from API to get fresh data
-        await loadTasks()
+      // Reload tasks from API to get fresh data
+      await loadTasks()
 
-        // Reapply project bounds styling after task creation
-        setTimeout(() => {
-          applyProjectBoundsStyling()
-        }, 100)
-      } catch (apiError) {
-        console.error('❌ API creation failed, adding locally:', apiError)
+      // Reapply project bounds styling after task creation
+      setTimeout(() => {
+        applyProjectBoundsStyling()
+      }, 100)
 
-        // Fallback: add to local array if API fails
-        const newTask: Task = {
-          ...taskData,
-          id: `temp-${Date.now()}`,
-          project_id: props.projectId,
-          assignees: taskData.assignees || [],
-          resources: taskData.resources || [],
-          dependencies: taskData.dependencies || [],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        } as Task
-
-        tasks.value.push(newTask)
-        console.log('✅ Task created locally as fallback')
-
-        // Update calendar
-        const events = tasks.value.map((task) =>
-          taskToCalendarTask(task, shouldShowDependencyIndicators.value),
-        )
-        updateCalendarEvents(events)
+      // Close milestone dialog if it was open
+      if (milestoneDialog.value.isOpen && milestoneDialog.value.mode === 'create') {
+        closeMilestoneDialog()
+      } else {
+        closeTaskDialog()
       }
     } else {
       // Update existing task via API
       console.log('✏️ Updating task via API:', taskData.id)
+      console.log('📋 Full taskData received:', JSON.stringify(taskData, null, 2))
 
-      const updatePayload = {
-        wbs_path: taskData.wbs_path,
-        name: taskData.name,
-        start_planned: taskData.start_planned,
-        end_planned: taskData.end_planned,
-        duration_days: taskData.duration_days,
-        milestone: taskData.milestone,
-        status: taskData.status,
-        progress_pct: taskData.progress_pct,
-        notes: taskData.notes,
-        task_lead_id: taskData.task_lead_id,
-        team_members: taskData.team_members || [],
-        resources: taskData.resources || [],
-        dependencies: taskData.dependencies || [],
+      // Build update payload - use snake_case for API
+      const updatePayload: Record<string, unknown> = {}
+
+      // Required/important fields
+      if (taskData.name !== undefined) updatePayload.name = taskData.name
+      if (taskData.start_planned !== undefined) updatePayload.start_planned = taskData.start_planned
+      if (taskData.end_planned !== undefined) updatePayload.end_planned = taskData.end_planned
+      if (taskData.status !== undefined) updatePayload.status = taskData.status
+      if (taskData.progress_pct !== undefined) updatePayload.progress_pct = taskData.progress_pct
+
+      // Optional fields - only include if they exist
+      if (taskData.wbs_path !== undefined) updatePayload.wbs_path = taskData.wbs_path
+      if (taskData.duration_days !== undefined) updatePayload.duration_days = taskData.duration_days
+      if (taskData.notes !== undefined) updatePayload.notes = taskData.notes
+
+      // Handle milestone - API expects 'milestone' field (not milestone_type)
+      if (taskData.milestone_type !== undefined && taskData.milestone_type !== null) {
+        updatePayload.milestone = taskData.milestone_type
+        console.log('🎯 Setting milestone from milestone_type:', taskData.milestone_type)
+      } else if (taskData.milestone !== undefined && taskData.milestone !== null && taskData.milestone !== false && taskData.milestone !== 0) {
+        if (typeof taskData.milestone === 'string') {
+          updatePayload.milestone = taskData.milestone
+          console.log('🎯 Setting milestone from milestone (string):', taskData.milestone)
+        } else if (taskData.milestone === true) {
+          updatePayload.milestone = 'other'
+          console.log('🎯 Setting milestone to "other" (boolean true)')
+        } else {
+          updatePayload.milestone = null
+          console.log('🎯 Setting milestone to null')
+        }
+      } else {
+        updatePayload.milestone = null
+        console.log('🎯 No milestone data, setting to null')
+      }
+
+      // Team and resources
+      if (taskData.task_lead_id !== undefined && taskData.task_lead_id !== null && taskData.task_lead_id !== 0 && typeof taskData.task_lead_id === 'number') {
+        const leadId = Number(taskData.task_lead_id)
+        if (!isNaN(leadId) && leadId > 0) {
+          updatePayload.task_lead_id = leadId
+          console.log('👤 Setting task_lead_id for update:', updatePayload.task_lead_id)
+        } else {
+          console.log('👤 task_lead_id is not a valid positive number, skipping:', taskData.task_lead_id)
+        }
+      } else if (taskData.task_lead_id === null) {
+        // Explicitly set to null if it's explicitly null (to clear the field)
+        updatePayload.task_lead_id = null
+        console.log('👤 Setting task_lead_id to null to clear the field')
+      } else {
+        console.log('👤 task_lead_id is undefined/0/empty, not including in update payload')
+      }
+
+      if (taskData.team_members !== undefined) {
+        updatePayload.team_members = taskData.team_members || []
+        console.log('👥 Setting team_members:', taskData.team_members)
+      }
+
+      if (taskData.resources !== undefined) {
+        updatePayload.resources = taskData.resources || []
+      }
+
+      if (taskData.dependencies !== undefined) {
+        // Convert dependencies from Task format (number[] or objects) to TaskCreateUpdate format (objects only)
+        if (Array.isArray(taskData.dependencies) && taskData.dependencies.length > 0) {
+          const deps = taskData.dependencies
+          if (typeof deps[0] === 'number') {
+            // Convert number[] to dependency objects
+            updatePayload.dependencies = (deps as number[]).map(id => ({
+              predecessor_id: id,
+              type: 'FS',
+              lag_days: 0
+            }))
+          } else {
+            // Already in correct format
+            updatePayload.dependencies = deps as Array<{ predecessor_id: number; type: string; lag_days: number }>
+          }
+        } else {
+          updatePayload.dependencies = []
+        }
+      }
+
+      // Handle invited_people for milestones - always set [] for milestones, never null
+      if (updatePayload.milestone || taskData.milestone || taskData.milestone_type) {
+        // For milestones, always set invited_people (empty array if none)
+        // invited_people exists only in TaskCreateUpdate, not in Task
+        if ('invited_people' in taskData && taskData.invited_people !== undefined && Array.isArray(taskData.invited_people)) {
+          updatePayload.invited_people = taskData.invited_people
+          console.log('👥 Setting invited_people for milestone update:', taskData.invited_people)
+        } else {
+          // Empty array for milestone with no invited people (never null for milestones)
+          updatePayload.invited_people = []
+          console.log('👥 No invited people, setting empty array for milestone update')
+        }
       }
 
       console.log('📤 Sending update payload:', updatePayload)
 
-      try {
-        const updatedTask = await tasksApi.update(
-          props.projectId,
-          taskData.id!,
-          updatePayload as unknown as Partial<TaskCreateUpdate>,
-        )
-        console.log('✅ Task updated via API:', updatedTask)
+      const updatedTask = await tasksApi.update(
+        props.projectId,
+        taskData.id!,
+        updatePayload as unknown as Partial<TaskCreateUpdate>,
+      )
+      console.log('✅ Task updated via API:', updatedTask)
 
-        // Reload tasks from API to get fresh data
-        await loadTasks()
+      // Reload tasks from API to get fresh data
+      await loadTasks()
 
-        // Reapply project bounds styling after task update
-        setTimeout(() => {
-          applyProjectBoundsStyling()
-        }, 100)
-      } catch (apiError) {
-        console.error('❌ API update failed, updating locally:', apiError)
+      // Reapply project bounds styling after task update
+      setTimeout(() => {
+        applyProjectBoundsStyling()
+      }, 100)
 
-        // Fallback: update local array if API fails
-        const taskIndex = tasks.value.findIndex((t) => t.id === taskData.id)
-        if (taskIndex !== -1) {
-          tasks.value[taskIndex] = { ...tasks.value[taskIndex], ...taskData }
-          console.log('✅ Task updated locally as fallback')
+      // Close milestone dialog if it was open
+      if (milestoneDialog.value.isOpen && milestoneDialog.value.mode === 'edit') {
+        closeMilestoneDialog()
+      } else {
+        closeTaskDialog()
+      }
+    }
+  } catch (error) {
+    console.error('❌ Error saving task:', error)
 
-          // Update calendar
-          const events = tasks.value.map((task) =>
-            taskToCalendarTask(task, shouldShowDependencyIndicators.value),
-          )
-          updateCalendarEvents(events)
-        }
+    // Extract error message from server response
+    let errorMessage = 'Failed to save task. Please try again.'
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as { response?: { data?: { message?: string; error_code?: number } } }
+      if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message
       }
     }
 
-    closeTaskDialog()
-  } catch (error) {
-    console.error('❌ Error saving task:', error)
-    alert('Error saving task. Please try again.')
+    alert(`❌ ${errorMessage}`)
+    // Don't close dialog on error so user can retry
   }
 }
 
@@ -2738,9 +2935,10 @@ onMounted(() => {
   console.log('📅 Current month/year:', currentMonth, currentYear)
   console.log('🔧 ProjectCalendar canEdit:', props.canEdit)
 
-  // Load project info and tasks from API
+  // Load project info, tasks, and team members from API
   loadProjectInfo()
   loadTasks()
+  loadAvailablePeople()
 })
 
 // Clear search function
@@ -2916,7 +3114,7 @@ defineExpose({
           <span class="text-sm text-red-700">{{ error }}</span>
         </div>
       </div>
-      
+
 
       <!-- Task Count -->
       <div class="p-4 border-b border-gray-200">
@@ -3062,7 +3260,7 @@ defineExpose({
         <div v-if="tasks.length === 0" class="text-center text-gray-500 py-8">
           <div class="text-4xl mb-4">📋</div>
           <h3 class="text-lg font-medium mb-2">No Tasks</h3>
-          
+
         </div>
         <div v-else class="flex gap-6">
           <!-- Left: Task List (50%) -->
@@ -3395,6 +3593,22 @@ defineExpose({
 </template>
 
 <style scoped>
+/* Calendar header title - make it dark and visible */
+:deep(.fc-toolbar-title) {
+  color: #111827 !important; /* text-gray-900 */
+  font-weight: 600 !important;
+  font-size: 1.25rem !important;
+}
+
+:deep(.fc-header-toolbar) {
+  color: #111827 !important;
+}
+
+:deep(.fc-toolbar-title h2) {
+  color: #111827 !important; /* text-gray-900 */
+  font-weight: 600 !important;
+}
+
 /* Project bounds styling - Enhanced visibility */
 :deep(.fc-daygrid-day.fc-day-outside-project-bounds) {
   background: linear-gradient(135deg, #f1f3f4 0%, #e8eaed 100%) !important;

@@ -802,6 +802,9 @@ const mappedTasks = computed<GanttTask[]>(() => {
       }
 
 
+      // Convert milestone to boolean - milestone can be MilestoneType | null | 0 | false
+      const isMilestone = typeof t.milestone === 'string' || (typeof t.milestone === 'boolean' && t.milestone) || (typeof t.milestone === 'number' && t.milestone > 0)
+
       return {
         id: Number(t.id),
         title: t.name,
@@ -809,8 +812,8 @@ const mappedTasks = computed<GanttTask[]>(() => {
         end: endDate || t.start_planned,
         duration: duration,
         status: mapStatus(t.status),
-        milestone: t.milestone || false,
-        milestone_type: t.milestone_type,
+        milestone: isMilestone ? true : undefined,
+        milestone_type: typeof t.milestone === 'string' ? t.milestone : t.milestone_type,
         task_type: undefined,
         dependencies: Array.isArray(t.dependencies) && t.dependencies.length > 0 && typeof t.dependencies[0] === 'object'
           ? t.dependencies as Array<{ predecessor_id: number; type: 'FS' | 'SS' | 'FF' | 'SF'; lag_days: number }>
@@ -1316,6 +1319,17 @@ async function handleTaskSave(taskData: TaskCreateUpdate) {
   } catch (error) {
     console.error('❌ Error saving task:', error)
     console.error('❌ Error details:', error)
+
+    // Extract error message from server response
+    let errorMessage = 'Failed to save task. Please try again.'
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as { response?: { data?: { message?: string; error_code?: number } } }
+      if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message
+      }
+    }
+
+    alert(`❌ ${errorMessage}`)
     // Don't close dialog on error so user can retry
   }
 }
@@ -1908,8 +1922,14 @@ function performCascadeUpdates(movedTaskId: number, newStart: string, newEnd: st
 
       // Save changes to API only if requested
       if (saveToApi) {
+        console.log('🔄 Cascade update: Saving dependent task via PUT /api/v1/projects/{project_id}/tasks/{task_id}', {
+          projectId: props.projectId,
+          taskId: String(constraint.toTaskId),
+          start_planned: newSuccessorStart,
+          end_planned: newSuccessorEnd,
+        })
         saveTaskChanges(String(constraint.toTaskId), newSuccessorStart, newSuccessorEnd)
-        console.log(`✅ Updated successor task: ${successorTask.title} (saved to API)`)
+        console.log(`✅ Cascade update: Updated successor task: ${successorTask.title} (saved to API)`)
       } else {
         console.log(`✅ Updated successor task: ${successorTask.title} (local only)`)
       }
@@ -3142,10 +3162,16 @@ const saveTaskChanges = async (taskId: string, newStart: string, newEnd: string)
       end_planned: newEnd,
     }
 
-    console.log('💾 Saving task changes:', { taskId, updatePayload })
+    console.log('🖱️ Drag & Drop: Saving task changes via PUT /api/v1/projects/{project_id}/tasks/{task_id}', {
+      projectId: props.projectId,
+      taskId,
+      payload: updatePayload,
+      start_planned: newStart,
+      end_planned: newEnd,
+    })
 
     const updatedTask = await tasksApi.update(props.projectId, taskId, updatePayload)
-    console.log('✅ Task saved successfully:', updatedTask)
+    console.log('✅ Drag & Drop: Task saved successfully:', updatedTask)
 
     // Update local tasks with the response from API
     const taskIndex = localTasks.value.findIndex(t => t.id === taskId)

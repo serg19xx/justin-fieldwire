@@ -30,7 +30,7 @@ interface ApiTeamMember {
   full_img_url: string
 }
 import { tasksApi } from '@/core/utils/tasks-api'
-import type { Task } from '@/core/types/task'
+import type { Task, TaskCreateUpdate } from '@/core/types/task'
 import AddTeamMemberDialog from '@/components/AddTeamMemberDialog.vue'
 import FileUploadDialog from '@/components/FileUploadDialog.vue'
 import PlansSection from './PlansSection.vue'
@@ -68,6 +68,7 @@ const activeSection = ref<'plans' | 'tasks' | 'photos' | 'team' | 'settings'>('p
 const settingsForm = ref({
   name: '',
   address: '',
+  description: '',
   priority: 'low',
   status: 'draft',
   startDate: '',
@@ -81,6 +82,10 @@ const loadingTeam = ref(false)
 const showAddTeamMemberDialog = ref(false)
 const showMemberDetailsDialog = ref(false)
 const selectedMember = ref<ProjectTeamMember | null>(null)
+
+// Tasks for Team Section
+const projectTasks = ref<Task[]>([])
+const loadingTasks = ref(false)
 
 // Export state
 const isExporting = ref(false)
@@ -256,7 +261,7 @@ async function loadProjects() {
       endDate: apiProject.date_end,
       status: apiProject.status,
       projectManager: apiProject.prj_manager || undefined,
-      description: '',
+      description: apiProject.description || '',
       createdAt: apiProject.created_at,
       updatedAt: apiProject.updated_at,
     }))
@@ -298,7 +303,7 @@ async function loadProject() {
       endDate: apiResponse.date_end,
       status: apiResponse.status,
       projectManager: apiResponse.prj_manager || undefined,
-      description: '',
+      description: apiResponse.description || '',
       createdAt: apiResponse.created_at,
       updatedAt: apiResponse.updated_at,
     }
@@ -330,6 +335,25 @@ function setActiveSection(section: 'plans' | 'tasks' | 'photos' | 'team' | 'sett
   // Load team members when switching to team
   if (section === 'team' && project.value) {
     loadTeamMembers()
+    loadProjectTasks()
+  }
+}
+
+// Load project tasks for Team Section
+async function loadProjectTasks() {
+  if (!project.value) return
+
+  loadingTasks.value = true
+  try {
+    console.log('📋 Loading tasks for Team Section, project:', project.value.id)
+    const response = await tasksApi.getAll(project.value.id)
+    projectTasks.value = response.tasks || []
+    console.log('✅ Tasks loaded for Team Section:', projectTasks.value.length)
+  } catch (error) {
+    console.error('❌ Error loading tasks for Team Section:', error)
+    projectTasks.value = []
+  } finally {
+    loadingTasks.value = false
   }
 }
 
@@ -353,6 +377,7 @@ function loadSettingsForm() {
     settingsForm.value = {
       name: project.value.name || '',
       address: project.value.address || '',
+      description: project.value.description || '',
       priority: project.value.priority || 'low',
       status: project.value.status || 'draft',
       startDate: project.value.startDate || '',
@@ -375,6 +400,7 @@ async function saveSettings() {
     const updateData = {
       prj_name: formData?.name?.trim() || '',
       address: formData?.address?.trim() || '',
+      description: formData?.description?.trim() || '',
       priority: formData?.priority || 'low',
       status: formData?.status || 'draft',
       date_start: formData?.startDate || '',
@@ -389,6 +415,7 @@ async function saveSettings() {
     if (project.value) {
       project.value.name = updateData.prj_name
       project.value.address = updateData.address
+      project.value.description = updateData.description
       project.value.priority = updateData.priority
       project.value.status = updateData.status
       project.value.startDate = updateData.date_start
@@ -441,28 +468,100 @@ async function loadTeamMembers() {
 
     // Map the new API response structure to our expected format
     const apiTeamMembers = response.data?.team_members || response.team_members || []
-    teamMembers.value = apiTeamMembers.map((member: ApiTeamMember) => ({
-      id: member.team_member_id,
+
+    // Remove duplicates by user_id - each user should appear only once
+    // Use a Map to track unique users by user_id
+    interface TeamMemberData {
+      id: number
+      project_id: number
+      user_id: number
+      role: string
+      added_at: string
+      added_by?: number
+      name: string
+      email?: string
+      user_type?: string
+      job_title?: string
+      status?: string
+      phone?: string
+      first_name?: string
+      last_name?: string
+      role_code?: string
+      role_category?: string
+      avatar_url?: string
+      full_img_url?: string
+    }
+    const uniqueMembersMap = new Map<number, TeamMemberData>()
+
+    apiTeamMembers.forEach((member: ApiTeamMember) => {
+      const userId = member.id // user_id from API
+      // If user already exists, prefer the one with task_lead role or keep the first one
+      if (!uniqueMembersMap.has(userId)) {
+        uniqueMembersMap.set(userId, {
+          id: member.team_member_id,
+          project_id: member.project_id,
+          user_id: userId,
+          role: member.project_role,
+          added_at: member.added_at,
+          added_by: member.invited_by,
+          name: member.full_name,
+          email: member.email,
+          user_type: member.role_name,
+          job_title: member.job_title,
+          status: member.status,
+          phone: member.phone,
+          first_name: member.first_name,
+          last_name: member.last_name,
+          role_code: member.role_code,
+          role_category: member.role_category,
+          avatar_url: member.avatar_url,
+          full_img_url: member.full_img_url
+        })
+      } else {
+        // If user already exists, check if current one has task_lead role
+        const existing = uniqueMembersMap.get(userId)
+        if (existing && member.project_role === 'task_lead' && existing.role !== 'task_lead') {
+          // Replace with task_lead version
+          uniqueMembersMap.set(userId, {
+            id: member.team_member_id,
+            project_id: member.project_id,
+            user_id: userId,
+            role: member.project_role,
+            added_at: member.added_at,
+            added_by: member.invited_by,
+            name: member.full_name,
+            email: member.email,
+            user_type: member.role_name,
+            job_title: member.job_title,
+            status: member.status,
+            phone: member.phone,
+            first_name: member.first_name,
+            last_name: member.last_name,
+            role_code: member.role_code,
+            role_category: member.role_category,
+            avatar_url: member.avatar_url,
+            full_img_url: member.full_img_url
+          })
+        }
+      }
+    })
+
+    teamMembers.value = Array.from(uniqueMembersMap.values()).map((member): ProjectTeamMember => ({
+      id: member.id,
       project_id: member.project_id,
-      user_id: member.id,
-      role: member.project_role,
-      added_at: member.added_at,
-      added_by: member.invited_by,
-      name: member.full_name,
+      user_id: member.user_id,
+      role_in_project: member.role,
+      assigned_at: member.added_at,
+      added_by: member.added_by,
+      name: member.name,
       email: member.email,
-      user_type: member.role_name,
+      user_type: member.user_type,
       job_title: member.job_title,
-      status: member.status,
-      phone: member.phone,
-      first_name: member.first_name,
-      last_name: member.last_name,
-      role_code: member.role_code,
-      role_category: member.role_category,
-      avatar_url: member.avatar_url,
-      full_img_url: member.full_img_url
+      status: member.status ? Number(member.status) : undefined,
     }))
 
-    console.log('✅ Team members loaded from API:', teamMembers.value.length)
+    console.log('✅ Team members loaded from API (before deduplication):', apiTeamMembers.length)
+    console.log('✅ Team members after deduplication:', teamMembers.value.length)
     console.log('👥 Team members data:', teamMembers.value)
   } catch (error) {
     console.error('❌ Error loading team members:', error)
@@ -1461,6 +1560,61 @@ function addTeamMember() {
   showAddTeamMemberDialog.value = true
 }
 
+// Handle remove worker from task
+async function handleRemoveWorkerFromTask(workerId: number, taskId: string) {
+  try {
+    console.log('👥 Removing worker', workerId, 'from task', taskId)
+
+    // Find task
+    const task = projectTasks.value.find(t => t.id === taskId)
+    if (!task) {
+      console.error('❌ Task not found:', taskId)
+      return
+    }
+
+    // Remove worker from task_lead_id or team_members
+    const updateData: Partial<Task> = {
+      id: task.id,
+      name: task.name,
+      start_planned: task.start_planned,
+      end_planned: task.end_planned,
+      status: task.status,
+      progress_pct: task.progress_pct || 0,
+      project_id: project.value!.id,
+      task_lead_id: task.task_lead_id === workerId ? undefined : task.task_lead_id,
+      team_members: (task.team_members || []).filter(id => id !== workerId),
+      resources: task.resources || [],
+      wbs_path: task.wbs_path,
+      notes: task.notes,
+      milestone: task.milestone,
+      milestone_type: typeof task.milestone === 'string' ? task.milestone : task.milestone_type,
+    }
+
+    // Update task via API
+    await tasksApi.update(project.value!.id, taskId, updateData as Partial<TaskCreateUpdate>)
+    console.log('✅ Worker removed from task')
+
+    // Reload tasks
+    await loadProjectTasks()
+  } catch (error) {
+    console.error('❌ Error removing worker from task:', error)
+    alert('Failed to remove worker from task. Please try again.')
+  }
+}
+
+// Handle add worker to task
+function handleAddWorkerToTask(taskId: string) {
+  // Open task edit panel with this task
+  const task = projectTasks.value.find(t => t.id === taskId)
+  if (task) {
+    editingTask.value = task
+    editingMode.value = 'edit'
+    isTaskEditPanelOpen.value = true
+    // Switch to Team Members tab in edit panel
+    // This will be handled by TaskEditPanel itself
+  }
+}
+
 // Load all tasks for search
 async function loadTasksForSearch() {
   if (!project.value?.id) return
@@ -1593,7 +1747,7 @@ async function saveRoleChanges() {
     if (memberIndex > -1) {
       teamMembers.value[memberIndex] = {
         ...teamMembers.value[memberIndex],
-        role: editRoleDialog.value.newRole,
+        role_in_project: editRoleDialog.value.newRole,
       }
     }
 
@@ -1652,15 +1806,51 @@ function handleTaskDuplicate(task: unknown) {
 
 // Handle edit panel open/close
 function handleEditPanelOpen(isOpen: boolean, task?: Task | null, mode?: 'create' | 'edit') {
-  isTaskEditPanelOpen.value = isOpen
+  console.log('📥 ProjectDetailPrj received editPanelOpen:', { isOpen, hasTask: !!task, mode })
+  // If task is null, it means close signal
+  const shouldOpen = isOpen && task !== null
+  isTaskEditPanelOpen.value = shouldOpen
   editingTask.value = task || null
   editingMode.value = mode || 'edit'
+  console.log('📥 Updated state:', { isTaskEditPanelOpen: isTaskEditPanelOpen.value, editingTask: editingTask.value?.name })
 }
 
 // Handle actions from header buttons
 function handleCloseEditPanel() {
-  if (calendarRef.value && typeof calendarRef.value.closeTaskEditPanel === 'function') {
-    calendarRef.value.closeTaskEditPanel()
+  console.log('🔙 Closing edit panel, current state:', {
+    isTaskEditPanelOpen: isTaskEditPanelOpen.value,
+    tasksSectionRef: !!tasksSectionRef.value,
+    calendarRef: !!tasksSectionRef.value?.calendarRef,
+    calendarRefValue: !!tasksSectionRef.value?.calendarRef?.value,
+  })
+
+  // Update local state to close the panel UI
+  isTaskEditPanelOpen.value = false
+  editingTask.value = null
+  editingMode.value = 'edit'
+
+  // Also trigger the close event to sync with ProjectCalendar
+  // This will call handleEditPanelOpen with null, which will propagate to ProjectCalendar
+  handleEditPanelOpen(false, null, 'edit')
+
+  // Try to call closeTaskEditPanel via calendar ref as well
+  const tasksSection = tasksSectionRef.value
+  if (tasksSection) {
+    // Try calendarRef.value (component instance)
+    let calendar = tasksSection.calendarRef?.value
+    if (!calendar) {
+      // Try calendarRef directly (might be the component itself)
+      calendar = tasksSection.calendarRef
+    }
+
+    if (calendar && typeof calendar.closeTaskEditPanel === 'function') {
+      console.log('✅ Calling closeTaskEditPanel via calendar ref')
+      calendar.closeTaskEditPanel()
+    } else {
+      console.log('ℹ️ Calendar ref not available or method not found, but state updated')
+    }
+  } else {
+    console.log('ℹ️ TasksSection ref not available, but state updated')
   }
 }
 
@@ -2292,7 +2482,10 @@ watch(
               @event-resize="handleEventResize"
               @task-update="handleTaskUpdate"
               @task-duplicate="handleTaskDuplicate"
-            @edit-panel-open="(task: unknown) => handleEditPanelOpen(true, task as Task | null, 'edit')"
+            @edit-panel-open="(task: unknown) => {
+              const isOpen = task !== null && task !== undefined
+              handleEditPanelOpen(isOpen, task as Task | null, 'edit')
+            }"
           />
 
           <!-- Photos Section -->
@@ -2302,11 +2495,15 @@ watch(
           <TeamSection
             v-else-if="activeSection === 'team'"
             :team-members="teamMembers"
-            :loading-team="loadingTeam"
+            :tasks="projectTasks"
+            :loading-team="loadingTeam || loadingTasks"
             :can-edit="canEditProject"
+            :project-id="project?.id || 0"
             @member-details="(member: unknown) => openMemberDetails(member as ProjectTeamMember)"
             @remove-team-member="(member: unknown) => removeTeamMember(member as ProjectTeamMember)"
             @add-team-member="addTeamMember"
+            @remove-worker-from-task="handleRemoveWorkerFromTask"
+            @add-worker-to-task="handleAddWorkerToTask"
           />
 
           <!-- Settings Section -->

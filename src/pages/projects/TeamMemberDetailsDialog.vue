@@ -45,10 +45,10 @@
                     <p class="text-sm text-gray-500">ID: {{ member?.user_id }}</p>
                     <div class="mt-2 flex flex-wrap gap-2">
                       <span
-                        v-if="member?.role"
+                        v-if="member?.role_in_project"
                         class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
                       >
-                        {{ member.role }}
+                        {{ member.role_in_project }}
                       </span>
                       <span
                         v-if="member?.user_type"

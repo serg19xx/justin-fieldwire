@@ -27,6 +27,19 @@ export type TaskStatus = 'planned' | 'in_progress' | 'done' | 'blocked' | 'delay
 // Milestone task types
 export type MilestoneType = 'inspection' | 'visit' | 'meeting' | 'review' | 'delivery' | 'approval' | 'other'
 
+// Helper function to check if value is a milestone
+export function isMilestone(milestone: MilestoneType | string | number | boolean | null | undefined): boolean {
+  if (milestone === null || milestone === undefined || milestone === false || milestone === 0 || milestone === '') {
+    return false
+  }
+  if (typeof milestone === 'boolean') return milestone
+  if (typeof milestone === 'number') return milestone > 0
+  if (typeof milestone === 'string') {
+    return ['inspection', 'visit', 'meeting', 'review', 'delivery', 'approval', 'other'].includes(milestone)
+  }
+  return false
+}
+
 // Main Task interface (matches database structure)
 export interface Task {
   id: string
@@ -36,8 +49,8 @@ export interface Task {
   start_planned: string // DATE from database
   end_planned?: string // DATE from database
   duration_days?: number
-  milestone: boolean
-  milestone_type?: MilestoneType
+  milestone: MilestoneType | null | 0 | false // null/0/false = regular task, text code = milestone type
+  milestone_type?: MilestoneType // Computed property for backward compatibility (same as milestone)
   status: TaskStatus
   progress_pct: number
   notes?: string
@@ -89,14 +102,15 @@ export interface TaskCreateUpdate {
   start_planned: string
   end_planned?: string
   duration_days?: number
-  milestone?: boolean
-  milestone_type?: MilestoneType
+  milestone?: MilestoneType | null | 0 | false // null/0/false = regular task, text code = milestone type
+  milestone_type?: MilestoneType // Computed property for backward compatibility (same as milestone)
   status?: TaskStatus
   progress_pct?: number
   notes?: string
   task_lead_id?: number
   team_members?: number[]
   assignees?: number[]
+  invited_people?: Array<{ name: string; email?: string; company?: string; phone?: string; notes?: string; avatar?: string }> // For milestones - can be passed during creation
   resources?: string[]
   dependencies?: Array<{ predecessor_id: number; type: string; lag_days: number }>
   task_order?: number // Order for manual sorting in Gantt chart

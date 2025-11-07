@@ -29,6 +29,18 @@
           ></textarea>
         </div>
 
+        <!-- Project Description -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2"> Description </label>
+          <textarea
+            v-model="settingsForm.description"
+            :disabled="!canEdit"
+            rows="4"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
+            placeholder="Enter project description (optional)"
+          ></textarea>
+        </div>
+
         <!-- Priority and Status -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- Priority -->
@@ -140,6 +152,7 @@ defineOptions({
 interface ProjectData {
   name: string
   address: string
+  description?: string
   startDate: string
   endDate: string
   priority: string
@@ -168,6 +181,7 @@ const isSaving = ref(false)
 const settingsForm = reactive({
   name: '',
   address: '',
+  description: '',
   priority: 'medium',
   status: 'draft',
   startDate: '',
@@ -203,6 +217,7 @@ function initializeForm() {
 
     settingsForm.name = String(project.name || '')
     settingsForm.address = String(project.address || '')
+    settingsForm.description = String(project.description || '')
     settingsForm.priority = String(project.priority || 'medium')
     settingsForm.status = String(project.status || 'draft')
     settingsForm.startDate = String(project.startDate || '')

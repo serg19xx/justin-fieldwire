@@ -2,7 +2,6 @@
   <div
     v-if="isOpen"
     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4"
-    @click="closeDialog"
   >
     <div
       class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
@@ -42,7 +41,7 @@
               :disabled="mode === 'view'"
               type="text"
               required
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
               placeholder="Enter task name"
             />
           </div>
@@ -57,25 +56,26 @@
                 v-model="form.wbs_path"
                 :disabled="mode === 'view'"
                 type="text"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
                 placeholder="e.g., 1.1.1"
               />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                Project Lead <span class="text-red-400">*</span>
+                Foreman / Brigadier <span class="text-gray-400">(optional)</span>
               </label>
               <select
                 v-model="form.project_lead"
                 :disabled="mode === 'view'"
-                required
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
+                :class="{ 'text-gray-500': !form.project_lead }"
               >
-                <option value="">Select responsible person</option>
-                <option v-for="person in availablePeople" :key="person.id" :value="person.id">
+                <option value="" class="text-gray-500">Select foreman/brigadier</option>
+                <option v-for="person in availablePeople" :key="person.id" :value="person.id" class="text-gray-900">
                   {{ person.name }} ({{ person.role }})
                 </option>
               </select>
+              <p class="mt-1 text-xs text-gray-500">Select a foreman or brigadier responsible for this task</p>
             </div>
           </div>
 
@@ -90,7 +90,7 @@
                 type="date"
                 required
                 :class="[
-                  'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:bg-gray-50',
+                  'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900',
                   hasDateValidationError('start') ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
                 ]"
               />
@@ -102,7 +102,7 @@
                 :disabled="mode === 'view'"
                 type="date"
                 :class="[
-                  'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:bg-gray-50',
+                  'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900',
                   hasDateValidationError('end') ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
                 ]"
               />
@@ -130,7 +130,7 @@
                 type="number"
                 min="0"
                 max="100"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
               />
             </div>
           </div>
@@ -142,7 +142,7 @@
             <select
               v-model="form.status"
               :disabled="mode === 'view'"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
             >
               <option value="planned">Planned</option>
               <option value="in_progress">In Progress</option>
@@ -174,7 +174,7 @@
                 <select
                   v-model="dep.taskId"
                   :disabled="mode === 'view'"
-                  class="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                  class="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 text-gray-900"
                 >
                   <option value="">Select predecessor task</option>
                   <option v-for="task in availableTasks || []" :key="task.id" :value="String(task.id)">
@@ -184,7 +184,7 @@
                 <select
                   v-model="dep.type"
                   :disabled="mode === 'view'"
-                  class="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                  class="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 text-gray-900"
                 >
                   <option value="FS">Finish-to-Start</option>
                   <option value="SS">Start-to-Start</option>
@@ -197,7 +197,7 @@
                   type="number"
                   min="0"
                   placeholder="Lag"
-                  class="w-16 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                  class="w-16 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500 text-gray-900"
                 />
                 <span class="text-xs text-gray-500">days</span>
                 <button
@@ -243,7 +243,7 @@
                   :disabled="mode === 'view'"
                   type="text"
                   placeholder="e.g., excavator_1, concrete_mixer, crane_2"
-                  class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 text-sm"
+                  class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900 text-sm"
                 />
                 <button
                   v-if="mode !== 'view'"
@@ -286,7 +286,7 @@
                 <select
                   v-model="form.team_members[index]"
                   :disabled="mode === 'view'"
-                  class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 text-sm"
+                  class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900 text-sm"
                 >
                   <option value="">Select team member</option>
                   <option v-for="person in availablePeople" :key="person.id" :value="person.id">
@@ -327,7 +327,7 @@
               v-model="form.notes"
               :disabled="mode === 'view'"
               rows="3"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
               placeholder="Task description and notes"
             ></textarea>
           </div>
@@ -431,9 +431,11 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import type { Task, TaskStatus } from '@/core/types/task'
+import type { Task, TaskStatus, MilestoneType } from '@/core/types/task'
+import { isMilestone } from '@/core/types/task'
 import { validateTask, suggestProjectBoundsExtension, type ValidationResult } from '@/core/utils/task-validation'
-import { projectApi, type Project } from '@/core/utils/project-api'
+import { projectApi, type Project, type ProjectTeamMember } from '@/core/utils/project-api'
+import type { WorkerUser } from '@/core/utils/hr-api'
 import { useAuthStore } from '@/core/stores/auth'
 
 // Props
@@ -456,6 +458,11 @@ const props = withDefaults(defineProps<Props>(), {
 
 // Auth store
 const authStore = useAuthStore()
+
+// Check if user is project manager
+const isProjectManager = computed(() => {
+  return authStore.currentUser?.role_code === 'project_manager'
+})
 
 
 // Check if current user is project owner/creator
@@ -553,6 +560,8 @@ watch(() => props.isOpen, async (isOpen) => {
       notes: '',
       dependencies: [] as Array<{ taskId: string; type: string; lagDays: number }>,
       resources: [] as string[],
+      // For regular tasks, PM can select project lead (foreman/brigadier)
+      // Don't auto-set for regular tasks - let PM choose
       project_lead: null as number | null,
       team_members: [] as number[],
     }
@@ -581,7 +590,7 @@ watch(() => props.isOpen, async (isOpen) => {
       start_planned: props.task.start_planned || '',
       end_planned: props.task.end_planned || '',
       duration_days: props.task.duration_days || 1,
-      milestone: props.task.milestone || false,
+      milestone: isMilestone(props.task.milestone),
       status: props.task.status || 'planned',
       progress_pct: props.task.progress_pct || 0,
       notes: props.task.notes || '',
@@ -600,7 +609,19 @@ watch(() => props.isOpen, async (isOpen) => {
         }
       }),
       resources: props.task.resources || [],
-      project_lead: props.task.task_lead_id || null,
+      // For tasks, use task_lead_id from task (PM can select foreman/brigadier)
+      // For milestones, if PM and no project_lead, use current user
+      project_lead: (() => {
+        let projectLead = props.task.task_lead_id || null
+        const taskIsMilestone = isMilestone(props.task.milestone)
+        // Only auto-set for milestones if PM and no project_lead
+        // For regular tasks, keep existing task_lead_id or null (PM can select)
+        if (taskIsMilestone && isProjectManager.value && !projectLead && authStore.currentUser?.id) {
+          projectLead = authStore.currentUser.id
+        }
+        // Don't auto-set for regular tasks - use what's in the task
+        return projectLead
+      })(),
       team_members: props.task.team_members || [],
     }
     console.log('📅 Form initialized for edit/view mode:', form.value)
@@ -618,14 +639,165 @@ watch(() => props.initialDate, (newInitialDate) => {
   }
 })
 
-// Available data for dropdowns
-const availablePeople = ref<Array<{ id: number; name: string; role: string }>>([
-  { id: 47, name: 'Mike Davis', role: 'Project Manager' },
-  { id: 23, name: 'John Smith', role: 'Foreman' },
-  { id: 15, name: 'Sarah Johnson', role: 'Electrician' },
-  { id: 8, name: 'Safety Team', role: 'Inspector' },
-  { id: 52, name: 'Unknown User', role: 'Worker' }, // Add missing user
-])
+// Available data for dropdowns - loaded from API
+const availablePeople = ref<Array<{ id: number; name: string; role: string }>>([])
+
+// Load available people - for new tasks load all system users, for existing tasks use availability check
+async function loadAvailablePeople() {
+  // For new tasks (create mode), load all system users (excluding admin and PM)
+  if (props.mode === 'create') {
+    await loadAllSystemUsers()
+    return
+  }
+
+  // For existing tasks (edit mode), use availability check API
+  if (props.mode === 'edit' && props.task?.id) {
+    await loadAvailableWorkersForTask()
+    return
+  }
+
+  // Fallback: load project team members
+  if (!props.projectId) {
+    console.warn('⚠️ No project ID provided, cannot load team members')
+    availablePeople.value = []
+    return
+  }
+
+  try {
+    console.log('👥 Loading project team members for project:', props.projectId)
+    const response = await projectApi.getTeamMembers(props.projectId)
+    console.log('🔍 Full API response:', response)
+
+    // Map the API response structure to our expected format using unified role formatter
+    const { getDisplayRole } = await import('@/core/utils/role-utils')
+    const apiTeamMembers = response.data?.team_members || response.team_members || []
+    const mappedPeople = apiTeamMembers.map((member: ProjectTeamMember & { team_member_id?: number; full_name?: string; first_name?: string; last_name?: string; role_name?: string; role_code?: string; project_role?: string; role?: { name?: string | null; code?: string | null } }) => ({
+      id: member.id || member.user_id || member.team_member_id || 0,
+      name: member.full_name || `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.name || 'Unknown',
+      role: getDisplayRole({
+        role_name: member.role_name,
+        role_code: member.role_code,
+        project_role: member.project_role,
+        role: typeof member.role === 'object' && member.role ? { name: member.role.name || undefined, code: member.role.code || undefined } : undefined,
+      }),
+    }))
+
+    // Filter to show only foremen/brigadiers and other relevant roles (exclude admin and project_manager)
+    availablePeople.value = mappedPeople.filter((person: { role: string; id: number }) => {
+      const roleLower = person.role.toLowerCase()
+      return (
+        roleLower.includes('foreman') ||
+        roleLower.includes('brigadier') ||
+        roleLower.includes('supervisor') ||
+        roleLower.includes('lead') ||
+        (roleLower !== 'admin' && roleLower !== 'project manager' && roleLower !== 'project_manager')
+      )
+    })
+
+    console.log('✅ Available people loaded:', availablePeople.value.length)
+    console.log('👥 People data:', availablePeople.value)
+
+    // If project team is empty, fallback to all system users
+    if (availablePeople.value.length === 0) {
+      console.log('⚠️ Project team is empty, loading all system users as fallback')
+      await loadAllSystemUsers()
+    }
+  } catch (error) {
+    console.error('❌ Error loading project team members:', error)
+    // Fallback to all system users
+    await loadAllSystemUsers()
+  }
+}
+
+// Load available workers for existing task (with availability check and excluding already assigned)
+async function loadAvailableWorkersForTask() {
+  if (!props.task?.id || !form.value.start_planned || !form.value.end_planned) {
+    console.log('⚠️ Cannot load available workers: missing task ID or dates')
+    // Fallback to all system users
+    await loadAllSystemUsers()
+    return
+  }
+
+  try {
+    console.log('👥 Loading available workers for task:', props.task.id)
+    console.log('📅 Task dates:', form.value.start_planned, 'to', form.value.end_planned)
+
+    // Use API endpoint to get available workers with availability check
+    const { tasksApi } = await import('@/core/utils/tasks-api')
+    const availableWorkers = await tasksApi.getAvailableWorkers(
+      props.task.id,
+      form.value.start_planned,
+      form.value.end_planned,
+    )
+
+    console.log('✅ Available workers loaded:', availableWorkers.length)
+    console.log('👥 Available workers:', availableWorkers)
+
+    // Exclude already assigned team members (they are already excluded by API, but double-check)
+    const currentTeamMembers = form.value.team_members || []
+    const currentTaskLead = form.value.project_lead || props.task.task_lead_id || null
+    const assignedIds = new Set([...currentTeamMembers, currentTaskLead].filter(id => id && id > 0))
+
+    const filteredWorkers = availableWorkers.filter((worker) => !assignedIds.has(worker.id))
+
+    // Map to our format
+    availablePeople.value = filteredWorkers.map((worker) => ({
+      id: worker.id,
+      name: worker.name,
+      role: worker.role,
+    }))
+
+    console.log('👥 Excluded already assigned:', assignedIds.size, 'workers')
+    console.log('👥 Available after filtering:', availablePeople.value.length)
+
+  } catch (error) {
+    console.error('❌ Error loading available workers:', error)
+    // Fallback: load all system users
+    await loadAllSystemUsers()
+  }
+}
+
+// Load all system users (excluding admin and PM) - for new tasks
+async function loadAllSystemUsers() {
+  try {
+    console.log('👥 Loading all system users (excluding admin/PM)')
+    // Use hrResourcesApi to get all workers
+    const { hrResourcesApi } = await import('@/core/utils/hr-api')
+    const response = await hrResourcesApi.getAllWorkerUsers(1, 1000, {
+      status: '1', // active only
+      invitation_status: 'registered',
+    })
+
+    if ('workers' in response && Array.isArray(response.workers)) {
+      // Filter out admin and project_manager
+      const filteredWorkers = response.workers.filter((worker: WorkerUser) => {
+        return worker.role_code !== 'admin' && worker.role_code !== 'project_manager'
+      })
+
+      // Exclude already assigned team members
+      const currentTeamMembers = form.value.team_members || []
+      const furtherFiltered = filteredWorkers.filter((worker: WorkerUser) => !currentTeamMembers.includes(worker.id))
+
+      // Map to our format using unified role formatter
+      const { getDisplayRole } = await import('@/core/utils/role-utils')
+      availablePeople.value = furtherFiltered.map((worker: WorkerUser) => ({
+        id: worker.id,
+        name: `${worker.first_name || ''} ${worker.last_name || ''}`.trim() || worker.name || 'Unknown',
+        role: getDisplayRole({
+          role_name: worker.role_name,
+          role_code: worker.role_code,
+          role: typeof worker.role === 'object' && worker.role ? { name: worker.role.name || undefined, code: worker.role.code || undefined } : undefined,
+        }),
+      }))
+
+      console.log('✅ All system users loaded:', availablePeople.value.length)
+      console.log('👥 Excluded already assigned:', currentTeamMembers.length, 'workers')
+    }
+  } catch (error) {
+    console.error('❌ Error loading all system users:', error)
+    availablePeople.value = []
+  }
+}
 
 // Computed duration
 const computedDuration = computed(() => {
@@ -715,14 +887,38 @@ async function loadProjectInfo() {
 }
 
 watch(
-  [() => props.isOpen, () => props.task, () => props.mode],
-  () => {
+  [() => props.isOpen, () => props.task, () => props.mode, () => props.projectId],
+  async () => {
     if (props.isOpen) {
       resetForm()
       loadProjectInfo()
+      await loadAvailablePeople()
     }
   },
   { immediate: true },
+)
+
+// Watch for date changes to reload available workers (for edit mode)
+watch(
+  [() => form.value.start_planned, () => form.value.end_planned],
+  async ([startDate, endDate]) => {
+    if (props.isOpen && props.mode === 'edit' && props.task?.id && startDate && endDate) {
+      console.log('📅 Dates changed, reloading available workers')
+      await loadAvailableWorkersForTask()
+    }
+  },
+)
+
+// Watch for team_members changes to update available list (for edit mode)
+watch(
+  () => form.value.team_members,
+  async () => {
+    if (props.isOpen && props.mode === 'edit' && props.task?.id) {
+      console.log('👥 Team members changed, updating available list')
+      await loadAvailableWorkersForTask()
+    }
+  },
+  { deep: true },
 )
 
 // Watch for form changes to validate in real-time
@@ -752,7 +948,8 @@ function resetForm() {
       availablePeople.value.map((p) => ({ id: p.id, name: p.name })),
     )
 
-    // Add missing users to the list if they don't exist
+    // Add missing users to the list if they don't exist (for backward compatibility)
+    // This handles cases where task_lead_id references a user not in the project team
     const leadId =
       props.task.task_lead_id ||
       (props.task.assignees && props.task.assignees.length > 0 ? props.task.assignees[0] : null)
@@ -766,7 +963,8 @@ function resetForm() {
       console.log('🔧 Found existing person:', existingPerson)
 
       if (!existingPerson) {
-        console.log('🔧 Adding missing user to list:', leadId)
+        console.warn('⚠️ Task lead user not found in project team, adding placeholder:', leadId)
+        // Add placeholder to allow selection (this shouldn't happen if API returns all team members)
         availablePeople.value.push({ id: Number(leadId), name: `User ${leadId}`, role: 'Worker' })
         console.log(
           '🔧 Updated people list:',
@@ -829,7 +1027,7 @@ function resetForm() {
       start_planned: props.task.start_planned,
       end_planned: props.task.end_planned || '',
       duration_days: props.task.duration_days || 1,
-      milestone: props.task.milestone,
+      milestone: isMilestone(props.task.milestone),
       status: props.task.status,
       progress_pct: props.task.progress_pct,
       notes: props.task.notes || '',
@@ -1013,6 +1211,9 @@ function handleSubmit() {
   const taskData: Partial<Task> = {
     ...form.value,
     project_id: props.projectId,
+    // Convert milestone from boolean to MilestoneType | false
+    milestone: form.value.milestone ? (props.task?.milestone_type || (typeof props.task?.milestone === 'string' ? props.task.milestone : 'other' as MilestoneType)) : false,
+    milestone_type: form.value.milestone ? (props.task?.milestone_type || (typeof props.task?.milestone === 'string' ? props.task.milestone : 'other' as MilestoneType)) : undefined,
     // Convert empty strings to null/undefined
     end_planned: form.value.end_planned || undefined,
     wbs_path: form.value.wbs_path || undefined,
@@ -1029,7 +1230,16 @@ function handleSubmit() {
     // Clean up resources - remove empty strings
     resources: form.value.resources.filter((r) => r.trim()),
     // Send task lead and team members separately
-    task_lead_id: form.value.project_lead || undefined,
+    // Only include task_lead_id if it's a valid positive number
+    task_lead_id: (() => {
+      const leadId = form.value.project_lead
+      if (leadId !== null && leadId !== undefined && leadId !== 0 && typeof leadId === 'number') {
+        if (leadId > 0) {
+          return leadId
+        }
+      }
+      return undefined
+    })(),
     team_members: (() => {
       console.log('👥 Raw team_members from form:', form.value.team_members)
       const filtered = form.value.team_members.filter((a) => a > 0)

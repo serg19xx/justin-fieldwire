@@ -202,6 +202,11 @@
                   Client
                 </th>
                 <th
+                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64"
+                >
+                  Description
+                </th>
+                <th
                   class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32"
                 >
                   Status
@@ -245,6 +250,11 @@
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 w-64">
                   {{ project.address }}
+                </td>
+                <td class="px-4 py-4 text-sm text-gray-900 w-64">
+                  <div class="max-w-xs truncate" :title="(project as any).description || ''">
+                    {{ (project as any).description || '-' }}
+                  </div>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap w-32">
                   <span

@@ -1,5 +1,6 @@
 import { api } from './api'
 import type { Task, TaskCreateUpdate, TaskFilter, TaskStats } from '@/core/types/task'
+import { isMilestone, type MilestoneType } from '@/core/types/task'
 
 // API response interfaces
 interface TasksResponse {
@@ -83,7 +84,13 @@ export const tasksApi = {
           start_planned: task.start_planned,
           end_planned: task.end_planned,
           duration_days: task.duration_days,
-          milestone: Boolean(task.milestone),
+          // milestone can be text code (MilestoneType) or number/boolean (for backward compatibility)
+          milestone: typeof task.milestone === 'string' 
+            ? task.milestone as MilestoneType
+            : (task.milestone ? 'other' : null),
+          milestone_type: typeof task.milestone === 'string' 
+            ? task.milestone as MilestoneType
+            : (task.milestone ? 'other' : undefined),
           status: task.status,
           progress_pct: task.progress_pct || 0,
           notes: task.notes,
@@ -152,7 +159,22 @@ export const tasksApi = {
       if (data.endPlanned !== undefined) apiData.end_planned = data.endPlanned
       if (data.start_planned !== undefined) apiData.start_planned = data.start_planned
       if (data.end_planned !== undefined) apiData.end_planned = data.end_planned
-      if (data.milestone !== undefined) apiData.milestone = data.milestone
+      // Handle milestone: store text code directly, or null/0 for regular tasks
+      if (data.milestone_type !== undefined && data.milestone_type !== null) {
+        apiData.milestone = data.milestone_type
+      } else if (data.milestone !== undefined && data.milestone !== null && data.milestone !== false && data.milestone !== 0) {
+        // If milestone is provided as string, use it; if boolean true, use 'other'; if false/null/0, use null
+        if (typeof data.milestone === 'string') {
+          apiData.milestone = data.milestone
+        } else if (data.milestone === true) {
+          apiData.milestone = 'other'
+        } else {
+          apiData.milestone = null
+        }
+      } else {
+        // No milestone specified, set to null for regular task
+        apiData.milestone = null
+      }
       if (data.status !== undefined) apiData.status = data.status
       if (data.progress_pct !== undefined) apiData.progress_pct = data.progress_pct
 
@@ -188,16 +210,17 @@ export const tasksApi = {
       }
       if (data.notes !== undefined) apiData.notes = data.notes
 
-      // Validate task_lead_id - use existing user ID (47 - Mike Davis)
-      if (data.task_lead_id !== undefined) {
-        // Use a valid user ID that exists in the system
-        apiData.task_lead_id = 47 // Mike Davis - Project Manager
-        console.log(
-          '👤 Using valid task_lead_id:',
-          apiData.task_lead_id,
-          'instead of:',
-          data.task_lead_id,
-        )
+      // Use task_lead_id from data if provided and valid (not null, 0, or empty string)
+      if (data.task_lead_id !== undefined && data.task_lead_id !== null && data.task_lead_id !== 0 && data.task_lead_id !== '') {
+        const leadId = Number(data.task_lead_id)
+        if (!isNaN(leadId) && leadId > 0) {
+          apiData.task_lead_id = leadId
+          console.log('👤 Using task_lead_id from data:', apiData.task_lead_id)
+        } else {
+          console.log('👤 task_lead_id is not a valid positive number, skipping:', data.task_lead_id)
+        }
+      } else {
+        console.log('👤 task_lead_id is undefined/null/0/empty, not including in payload')
       }
       if (data.team_members !== undefined) {
         apiData.team_members = data.team_members
@@ -207,6 +230,22 @@ export const tasksApi = {
           'type:',
           typeof data.team_members,
         )
+      }
+      // Invited people only for milestones
+      if (data.milestone || data.milestone_type) {
+        // For milestones, always set invited_people (empty array if none, never null)
+        if (data.invited_people !== undefined && Array.isArray(data.invited_people) && data.invited_people.length > 0) {
+          apiData.invited_people = data.invited_people
+          console.log('👥 Invited people being sent:', data.invited_people)
+        } else {
+          // Empty array for milestone with no invited people (always set, never null)
+          apiData.invited_people = []
+          console.log('👥 No invited people, sending empty array for milestone (never null)')
+        }
+      } else {
+        // For regular tasks, set to null
+        apiData.invited_people = null
+        console.log('👥 Regular task, setting invited_people to null')
       }
       if (data.resources !== undefined) {
         apiData.resources = data.resources
@@ -231,6 +270,34 @@ export const tasksApi = {
       // Send full data to API
       const response = await api.post(`/api/v1/projects/${projectId}/tasks`, apiData)
       console.log('✅ Task created successfully:', response.data)
+      
+      // Check if response contains error status
+      if (response.data.status === 'error' || response.data.error_code) {
+        const errorMessage = response.data.message || 'Failed to create task'
+        console.error('❌ Server returned error in response:', errorMessage)
+        const error = new Error(errorMessage) as Error & { response?: { data?: { message?: string; error_code?: number } } }
+        error.response = {
+          data: {
+            message: errorMessage,
+            error_code: response.data.error_code,
+          },
+        }
+        throw error
+      }
+      
+      // Validate response structure
+      if (!response.data.data || !response.data.data.task) {
+        const errorMessage = 'Invalid response format from server'
+        console.error('❌ Invalid response structure:', response.data)
+        const error = new Error(errorMessage) as Error & { response?: { data?: { message?: string } } }
+        error.response = {
+          data: {
+            message: errorMessage,
+          },
+        }
+        throw error
+      }
+      
       return response.data.data.task
     } catch (error) {
       console.error('Error creating task:', error)
@@ -273,21 +340,102 @@ export const tasksApi = {
       if (data.end_planned !== undefined) apiData.end_planned = data.end_planned
       if (data.durationDays !== undefined) apiData.duration_days = data.durationDays
       if (data.duration_days !== undefined) apiData.duration_days = data.duration_days
-      if (data.milestone !== undefined) apiData.milestone = data.milestone
+      // Handle milestone: store text code directly, or null/0 for regular tasks
+      if (data.milestone_type !== undefined && data.milestone_type !== null) {
+        apiData.milestone = data.milestone_type
+      } else if (data.milestone !== undefined && data.milestone !== null && data.milestone !== false && data.milestone !== 0) {
+        // If milestone is provided as string, use it; if boolean true, use 'other'; if false/null/0, use null
+        if (typeof data.milestone === 'string') {
+          apiData.milestone = data.milestone
+        } else if (data.milestone === true) {
+          apiData.milestone = 'other'
+        } else {
+          apiData.milestone = null
+        }
+      } else {
+        // No milestone specified, set to null for regular task
+        apiData.milestone = null
+      }
       if (data.status !== undefined) apiData.status = data.status
       if (data.progress_pct !== undefined) apiData.progress_pct = data.progress_pct
       if (data.notes !== undefined) apiData.notes = data.notes
-      if (data.task_lead_id !== undefined) apiData.task_lead_id = data.task_lead_id
+      // Use task_lead_id from data if provided and valid (not null, 0, or empty string)
+      if (data.task_lead_id !== undefined && data.task_lead_id !== null && data.task_lead_id !== 0 && data.task_lead_id !== '') {
+        const leadId = Number(data.task_lead_id)
+        if (!isNaN(leadId) && leadId > 0) {
+          apiData.task_lead_id = leadId
+          console.log('👤 Using task_lead_id from data for update:', apiData.task_lead_id)
+        } else {
+          console.log('👤 task_lead_id is not a valid positive number, skipping:', data.task_lead_id)
+        }
+      } else if (data.task_lead_id === null) {
+        // Explicitly set to null if it's explicitly null (to clear the field)
+        apiData.task_lead_id = null
+        console.log('👤 Setting task_lead_id to null to clear the field')
+      } else {
+        console.log('👤 task_lead_id is undefined/0/empty, not including in update payload')
+      }
       if (data.team_members !== undefined) apiData.team_members = data.team_members
+      // Invited people only for milestones
+      if (data.milestone || data.milestone_type) {
+        // For milestones, always set invited_people (empty array if none, never null)
+        if (data.invited_people !== undefined && Array.isArray(data.invited_people) && data.invited_people.length > 0) {
+          apiData.invited_people = data.invited_people
+          console.log('👥 Invited people being sent for update:', data.invited_people)
+        } else {
+          // Empty array for milestone with no invited people (always set, never null)
+          apiData.invited_people = []
+          console.log('👥 No invited people, sending empty array for milestone update (never null)')
+        }
+      } else {
+        // For regular tasks, set to null
+        apiData.invited_people = null
+        console.log('👥 Regular task update, setting invited_people to null')
+      }
       if (data.resources !== undefined) apiData.resources = data.resources
       if (data.dependencies !== undefined) apiData.dependencies = data.dependencies
       if (data.task_order !== undefined) apiData.task_order = data.task_order
       // Note: baseline_start, baseline_end, actual_start, actual_end, slack_days are not part of TaskCreateUpdate
 
-      console.log('📤 Updating task with data:', data)
-      console.log('📤 Converted to API format:', apiData)
-      const response = await api.put(`/api/v1/projects/${projectId}/tasks/${taskId}`, apiData)
-      console.log('✅ Task updated successfully:', response.data)
+      const url = `/api/v1/projects/${projectId}/tasks/${taskId}`
+      console.log('📤 PUT request to update task:', url)
+      console.log('📤 Request payload:', apiData)
+      if (apiData.start_planned || apiData.end_planned) {
+        console.log('📅 Drag & Drop detected - updating dates:', {
+          start_planned: apiData.start_planned,
+          end_planned: apiData.end_planned,
+        })
+      }
+      const response = await api.put(url, apiData)
+      console.log('✅ Task updated successfully via PUT:', response.data)
+      
+      // Check if response contains error status
+      if (response.data.status === 'error' || response.data.error_code) {
+        const errorMessage = response.data.message || 'Failed to update task'
+        console.error('❌ Server returned error in response:', errorMessage)
+        const error = new Error(errorMessage) as Error & { response?: { data?: { message?: string; error_code?: number } } }
+        error.response = {
+          data: {
+            message: errorMessage,
+            error_code: response.data.error_code,
+          },
+        }
+        throw error
+      }
+      
+      // Validate response structure
+      if (!response.data.data || !response.data.data.task) {
+        const errorMessage = 'Invalid response format from server'
+        console.error('❌ Invalid response structure:', response.data)
+        const error = new Error(errorMessage) as Error & { response?: { data?: { message?: string } } }
+        error.response = {
+          data: {
+            message: errorMessage,
+          },
+        }
+        throw error
+      }
+      
       return response.data.data.task
     } catch (error) {
       console.error('Error updating task:', error)
@@ -379,6 +527,42 @@ export const tasksApi = {
       }
 
       throw error
+    }
+  },
+
+  // Get available workers for a task (excluding busy workers and already assigned)
+  async getAvailableWorkers(
+    taskId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<Array<{ id: number; name: string; role: string; email?: string; avatar_url?: string }>> {
+    try {
+      console.log('👥 Getting available workers for task:', taskId, 'dates:', startDate, 'to', endDate)
+      
+      const response = await api.get(`/api/v1/tasks/${taskId}/available-workers`, {
+        params: {
+          start_date: startDate,
+          end_date: endDate,
+        },
+      })
+      
+      console.log('✅ Available workers response:', response.data)
+      
+      if (response.data?.data?.workers) {
+        return response.data.data.workers.map((worker: any) => ({
+          id: worker.id || worker.user_id,
+          name: worker.full_name || `${worker.first_name || ''} ${worker.last_name || ''}`.trim() || worker.name || 'Unknown',
+          role: worker.role_name || worker.role || 'Worker',
+          email: worker.email,
+          avatar_url: worker.avatar_url,
+        }))
+      }
+      
+      return []
+    } catch (error) {
+      console.error('❌ Error getting available workers:', error)
+      // Fallback: return empty array if endpoint doesn't exist yet
+      return []
     }
   },
 }

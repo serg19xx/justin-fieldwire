@@ -58,12 +58,24 @@
 
       <!-- Content -->
       <div class="flex-1 overflow-y-auto p-6">
+        <!-- Selected count indicator -->
+        <div v-if="selectedMembers.length > 0" class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <p class="text-sm text-blue-800">
+            <strong>{{ selectedMembers.length }}</strong> member{{ selectedMembers.length > 1 ? 's' : '' }} selected
+          </p>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div
             v-for="member in filteredMembers"
             :key="member.id"
-            @click="selectMember(member)"
-            class="p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:shadow-md transition-all cursor-pointer"
+            @click="toggleMemberSelection(member)"
+            :class="[
+              'p-4 border rounded-lg hover:shadow-md transition-all cursor-pointer',
+              isMemberSelected(member.id)
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-gray-200 hover:border-blue-500'
+            ]"
           >
             <div class="flex items-start space-x-3">
               <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -72,8 +84,17 @@
                 </span>
               </div>
               <div class="flex-1 min-w-0">
-                <h3 class="font-semibold text-gray-900">{{ member.name }}</h3>
-                <p class="text-sm text-gray-600">{{ member.role }}</p>
+                <div class="flex items-center justify-between">
+                  <div>
+                    <h3 class="font-semibold text-gray-900">{{ member.name }}</h3>
+                    <p class="text-sm text-gray-600">{{ member.role }}</p>
+                  </div>
+                  <div v-if="isMemberSelected(member.id)" class="flex-shrink-0 ml-2">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                  </div>
+                </div>
                 <div class="mt-2 space-y-1 text-xs text-gray-600">
                   <div v-if="member.languages?.length" class="flex items-center space-x-1">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,12 +133,31 @@
           <p class="mt-4 text-gray-500">No team members found</p>
         </div>
       </div>
+
+      <!-- Footer with action buttons -->
+      <div class="flex items-center justify-between p-6 border-t border-gray-200 bg-gray-50">
+        <button
+          @click="closeDialog"
+          type="button"
+          class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors text-sm font-medium"
+        >
+          Cancel
+        </button>
+        <button
+          @click="saveSelectedMembers"
+          :disabled="selectedMembers.length === 0"
+          type="button"
+          class="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+        >
+          Add Selected ({{ selectedMembers.length }})
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 // Props
 interface Props {
@@ -125,7 +165,7 @@ interface Props {
   availablePeople?: Array<{ id: number; name: string; role: string }>
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   isOpen: false,
   availablePeople: () => [],
 })
@@ -133,14 +173,15 @@ withDefaults(defineProps<Props>(), {
 // Emits
 const emit = defineEmits<{
   close: []
-  add: [memberId: number]
+  add: [memberIds: number[]]
 }>()
 
 // State
 const searchQuery = ref('')
 const roleFilter = ref('')
+const selectedMembers = ref<number[]>([])
 
-// Mock data with extended information
+// Interface for team member (extended from availablePeople)
 interface TeamMember {
   id: number
   name: string
@@ -148,83 +189,23 @@ interface TeamMember {
   languages?: string[]
   certifications?: string[]
   experience?: number
-  available: boolean
+  available?: boolean
 }
 
-const teamMembers = ref<TeamMember[]>([
-  {
-    id: 1,
-    name: 'John Doe',
-    role: 'Project Manager',
-    languages: ['English', 'Spanish'],
-    certifications: ['PMP', 'OSHA 30'],
-    experience: 15,
+// Use real data from props instead of mock data
+const teamMembers = computed<TeamMember[]>(() => {
+  // Map availablePeople to TeamMember format
+  return (props.availablePeople || []).map((person) => ({
+    id: person.id,
+    name: person.name,
+    role: person.role,
+    // Optional fields - can be extended later if API provides them
+    languages: [],
+    certifications: [],
+    experience: undefined,
     available: true,
-  },
-  {
-    id: 2,
-    name: 'Jane Smith',
-    role: 'Engineer',
-    languages: ['English', 'French'],
-    certifications: ['PE', 'LEED AP'],
-    experience: 10,
-    available: false,
-  },
-  {
-    id: 3,
-    name: 'Bob Johnson',
-    role: 'Foreman',
-    languages: ['English'],
-    certifications: ['OSHA 30', 'First Aid'],
-    experience: 20,
-    available: true,
-  },
-  {
-    id: 4,
-    name: 'Ahmed Hassan',
-    role: 'Worker',
-    languages: ['Arabic', 'English'],
-    certifications: ['Welding', 'Scaffolding'],
-    experience: 8,
-    available: true,
-  },
-  {
-    id: 5,
-    name: 'Maria Garcia',
-    role: 'Operator',
-    languages: ['Spanish', 'English'],
-    certifications: ['Crane Operator', 'CDL'],
-    experience: 12,
-    available: true,
-  },
-  {
-    id: 6,
-    name: 'Chen Wei',
-    role: 'Supervisor',
-    languages: ['Chinese', 'English'],
-    certifications: ['OSHA 30', 'Quality Control'],
-    experience: 18,
-    available: false,
-  },
-  {
-    id: 7,
-    name: 'Youssef Al-Rashid',
-    role: 'Worker',
-    languages: ['Arabic', 'French'],
-    certifications: ['Concrete', 'Masonry'],
-    experience: 6,
-    available: true,
-  },
-  {
-    id: 8,
-    name: 'Sarah Thompson',
-    role: 'Engineer',
-    languages: ['English'],
-    certifications: ['PE', 'SE'],
-    experience: 9,
-    available: true,
-  },
-])
+  }))
+})
 
 // Computed
 const filteredMembers = computed(() => {
@@ -252,11 +233,38 @@ const filteredMembers = computed(() => {
 
 // Methods
 function closeDialog() {
+  selectedMembers.value = []
   emit('close')
 }
 
-function selectMember(member: TeamMember) {
-  emit('add', member.id)
+function toggleMemberSelection(member: TeamMember | { id: number; name: string; role: string }) {
+  const index = selectedMembers.value.indexOf(member.id)
+  if (index > -1) {
+    // Remove from selection
+    selectedMembers.value.splice(index, 1)
+    console.log('👥 Removed member from selection:', member.id, member.name)
+  } else {
+    // Add to selection
+    selectedMembers.value.push(member.id)
+    console.log('👥 Added member to selection:', member.id, member.name)
+  }
+  console.log('👥 Current selected members:', selectedMembers.value)
+}
+
+function isMemberSelected(memberId: number): boolean {
+  return selectedMembers.value.includes(memberId)
+}
+
+function saveSelectedMembers() {
+  if (selectedMembers.value.length > 0) {
+    console.log('👥 saveSelectedMembers called with:', selectedMembers.value)
+    console.log('👥 Emitting add event with member IDs:', [...selectedMembers.value])
+    emit('add', [...selectedMembers.value])
+    selectedMembers.value = []
+    console.log('✅ Selection cleared after emit')
+  } else {
+    console.warn('⚠️ saveSelectedMembers called but no members selected')
+  }
 }
 
 function getInitials(name: string): string {
@@ -267,5 +275,15 @@ function getInitials(name: string): string {
     .toUpperCase()
     .slice(0, 2)
 }
+
+// Reset selection when dialog opens
+watch(
+  () => props.isOpen,
+  (isOpen) => {
+    if (isOpen) {
+      selectedMembers.value = []
+    }
+  },
+)
 </script>
 

@@ -114,7 +114,17 @@ const handleTaskDuplicate = (task: unknown) => {
   emit('taskDuplicate', task)
 }
 
-const handleEditPanelOpen = (task: unknown) => {
-  emit('editPanelOpen', task)
+const handleEditPanelOpen = (isOpen: boolean, task?: unknown, mode?: 'create' | 'edit') => {
+  console.log('📡 TasksSection received editPanelOpen:', { isOpen, hasTask: !!task, mode })
+  // ProjectCalendar emits (isOpen, task, mode), but we need to pass it differently
+  // to match what ProjectDetailPrj expects
+  if (isOpen && task) {
+    console.log('📡 Forwarding editPanelOpen with task:', task)
+    emit('editPanelOpen', task)
+  } else {
+    // When closing, emit null to signal close
+    console.log('📡 Forwarding editPanelOpen with null (closing)')
+    emit('editPanelOpen', null)
+  }
 }
 </script>

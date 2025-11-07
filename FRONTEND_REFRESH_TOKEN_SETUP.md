@@ -70,12 +70,16 @@ The following changes have been implemented to support refresh tokens:
 **Problem**: Backend is configured with `Access-Control-Allow-Origin: *` but `withCredentials: true` requires specific origin.
 
 **Solutions**:
-1. **Backend Fix** (Recommended): Change CORS to allow specific origins:
+1. **Backend Fix** (Required): Change CORS to allow specific origins:
    ```python
    # Instead of: Access-Control-Allow-Origin: *
-   # Use: Access-Control-Allow-Origin: http://localhost:3000
+   # Use: Access-Control-Allow-Origin: http://localhost:5173
    # And add: Access-Control-Allow-Credentials: true
    ```
+   
+   **Important**: Frontend now runs on port 5173 (not 3000). Backend must allow:
+   - `http://localhost:5173` for development
+   - Or configure multiple allowed origins if needed
 
 2. **Frontend Workaround** (Current): 
    - `withCredentials: false` for general API requests in development

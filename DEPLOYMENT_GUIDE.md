@@ -86,7 +86,10 @@ https://fieldwire.medicalcontractor.ca/api-tester
 
 ### CORS ошибки
 - Убедитесь, что бэкенд настроен для CORS
+- **Важно**: Бэкенд должен разрешать `http://localhost:5173` (не 3000!)
+- Проверьте заголовок `Access-Control-Allow-Origin` в ответах бэкенда
 - Проверьте правильность API URL в конфигурации
+- Если видите `access-control-allow-origin: http://localhost:3000`, нужно обновить настройки CORS на бэкенде
 
 ### Проблемы с роутингом
 - Убедитесь, что .htaccess загружен на сервер
