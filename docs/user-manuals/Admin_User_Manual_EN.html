@@ -1,0 +1,982 @@
+<!doctype html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="generator" content="pandoc" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+    <title>FieldWire - Administrator User Manual</title>
+    <style>
+      html {
+        color: #1a1a1a;
+        background-color: #fdfdfd;
+      }
+      body {
+        margin: 0 auto;
+        max-width: 36em;
+        padding-left: 50px;
+        padding-right: 50px;
+        padding-top: 50px;
+        padding-bottom: 50px;
+        hyphens: auto;
+        overflow-wrap: break-word;
+        text-rendering: optimizeLegibility;
+        font-kerning: normal;
+      }
+      @media (max-width: 600px) {
+        body {
+          font-size: 0.9em;
+          padding: 12px;
+        }
+        h1 {
+          font-size: 1.8em;
+        }
+      }
+      @media print {
+        html {
+          background-color: white;
+        }
+        body {
+          background-color: transparent;
+          color: black;
+          font-size: 12pt;
+        }
+        p,
+        h2,
+        h3 {
+          orphans: 3;
+          widows: 3;
+        }
+        h2,
+        h3,
+        h4 {
+          page-break-after: avoid;
+        }
+      }
+      p {
+        margin: 1em 0;
+      }
+      a {
+        color: #1a1a1a;
+      }
+      a:visited {
+        color: #1a1a1a;
+      }
+      img {
+        max-width: 100%;
+      }
+      svg {
+        height: auto;
+        max-width: 100%;
+      }
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6 {
+        margin-top: 1.4em;
+      }
+      h5,
+      h6 {
+        font-size: 1em;
+        font-style: italic;
+      }
+      h6 {
+        font-weight: normal;
+      }
+      ol,
+      ul {
+        padding-left: 1.7em;
+        margin-top: 1em;
+      }
+      li > ol,
+      li > ul {
+        margin-top: 0;
+      }
+      blockquote {
+        margin: 1em 0 1em 1.7em;
+        padding-left: 1em;
+        border-left: 2px solid #e6e6e6;
+        color: #606060;
+      }
+      code {
+        font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+        font-size: 85%;
+        margin: 0;
+        hyphens: manual;
+      }
+      pre {
+        margin: 1em 0;
+        overflow: auto;
+      }
+      pre code {
+        padding: 0;
+        overflow: visible;
+        overflow-wrap: normal;
+      }
+      .sourceCode {
+        background-color: transparent;
+        overflow: visible;
+      }
+      hr {
+        background-color: #1a1a1a;
+        border: none;
+        height: 1px;
+        margin: 1em 0;
+      }
+      table {
+        margin: 1em 0;
+        border-collapse: collapse;
+        width: 100%;
+        overflow-x: auto;
+        display: block;
+        font-variant-numeric: lining-nums tabular-nums;
+      }
+      table caption {
+        margin-bottom: 0.75em;
+      }
+      tbody {
+        margin-top: 0.5em;
+        border-top: 1px solid #1a1a1a;
+        border-bottom: 1px solid #1a1a1a;
+      }
+      th {
+        border-top: 1px solid #1a1a1a;
+        padding: 0.25em 0.5em 0.25em 0.5em;
+      }
+      td {
+        padding: 0.125em 0.5em 0.25em 0.5em;
+      }
+      header {
+        margin-bottom: 4em;
+        text-align: center;
+      }
+      #TOC li {
+        list-style: none;
+      }
+      #TOC ul {
+        padding-left: 1.3em;
+      }
+      #TOC > ul {
+        padding-left: 0;
+      }
+      #TOC a {
+        color: #2563eb;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+      #TOC a:hover {
+        color: #1e40af;
+        text-decoration: underline;
+      }
+      #TOC a:visited {
+        color: #2563eb;
+      }
+      code {
+        white-space: pre-wrap;
+      }
+      span.smallcaps {
+        font-variant: small-caps;
+      }
+      div.columns {
+        display: flex;
+        gap: min(4vw, 1.5em);
+      }
+      div.column {
+        flex: auto;
+        overflow-x: auto;
+      }
+      div.hanging-indent {
+        margin-left: 1.5em;
+        text-indent: -1.5em;
+      }
+      /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+      ul.task-list[class] {
+        list-style: none;
+      }
+      ul.task-list li input[type='checkbox'] {
+        font-size: inherit;
+        width: 0.8em;
+        margin: 0 0.8em 0.2em -1.6em;
+        vertical-align: middle;
+      }
+      .display.math {
+        display: block;
+        text-align: center;
+        margin: 0.5rem auto;
+      }
+    </style>
+  </head>
+  <body>
+    <header id="title-block-header">
+      <h1 class="title">FieldWire - Administrator User Manual</h1>
+    </header>
+    <nav id="TOC" role="doc-toc">
+      <ul>
+        <li>
+          <a href="#fieldwire---administrator-user-manual">FieldWire - Administrator User Manual</a>
+          <ul>
+            <li><a href="#table-of-contents">Table of Contents</a></li>
+            <li>
+              <a href="#introduction">Introduction</a>
+              <ul>
+                <li><a href="#administrator-role">Administrator Role</a></li>
+              </ul>
+            </li>
+            <li>
+              <a href="#logging-in">Logging In</a>
+              <ul>
+                <li><a href="#authentication">Authentication</a></li>
+                <li><a href="#password-reset">Password Reset</a></li>
+                <li><a href="#password-change">Password Change</a></li>
+              </ul>
+            </li>
+            <li>
+              <a href="#main-menu">Main Menu</a>
+              <ul>
+                <li><a href="#available-for-administrators">Available for Administrators:</a></li>
+              </ul>
+            </li>
+            <li>
+              <a href="#dashboard">Dashboard</a>
+              <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#dashboard-elements">Dashboard Elements</a></li>
+                <li><a href="#user-information">User Information</a></li>
+              </ul>
+            </li>
+            <li>
+              <a href="#project-management">Project Management</a>
+              <ul>
+                <li><a href="#project-list">Project List</a></li>
+                <li><a href="#creating-a-new-project">Creating a New Project</a></li>
+                <li><a href="#viewing-project-admin-view">Viewing Project (Admin View)</a></li>
+                <li><a href="#editing-a-project">Editing a Project</a></li>
+                <li><a href="#deleting-a-project">Deleting a Project</a></li>
+              </ul>
+            </li>
+            <li>
+              <a href="#team-management-builders">Team Management (Builders)</a>
+              <ul>
+                <li><a href="#access-to-team-management">Access to Team Management</a></li>
+                <li><a href="#view-modes">View Modes</a></li>
+                <li><a href="#team-management-functions">Team Management Functions</a></li>
+              </ul>
+            </li>
+            <li>
+              <a href="#reports">Reports</a>
+              <ul>
+                <li><a href="#access-to-reports">Access to Reports</a></li>
+                <li><a href="#report-types">Report Types</a></li>
+                <li><a href="#exporting-reports">Exporting Reports</a></li>
+              </ul>
+            </li>
+            <li>
+              <a href="#account-settings">Account Settings</a>
+              <ul>
+                <li><a href="#access-to-settings">Access to Settings</a></li>
+                <li><a href="#settings-sections">Settings Sections</a></li>
+              </ul>
+            </li>
+            <li>
+              <a href="#administrative-settings">Administrative Settings</a>
+              <ul>
+                <li>
+                  <a href="#access-to-administrative-settings">Access to Administrative Settings</a>
+                </li>
+                <li>
+                  <a href="#administrative-settings-sections">Administrative Settings Sections</a>
+                </li>
+              </ul>
+            </li>
+            <li>
+              <a href="#working-with-projects-detailed-overview"
+                >Working with Projects (Detailed Overview)</a
+              >
+              <ul>
+                <li><a href="#project-structure">Project Structure</a></li>
+                <li><a href="#plans-section">Plans Section</a></li>
+                <li><a href="#tasks-section">Tasks Section</a></li>
+                <li><a href="#photos-section">Photos Section</a></li>
+                <li><a href="#team-section">Team Section</a></li>
+                <li><a href="#settings-section">Settings Section</a></li>
+              </ul>
+            </li>
+            <li>
+              <a href="#tips-and-recommendations">Tips and Recommendations</a>
+              <ul>
+                <li><a href="#security-1">Security</a></li>
+                <li><a href="#performance">Performance</a></li>
+                <li><a href="#best-practices">Best Practices</a></li>
+              </ul>
+            </li>
+            <li><a href="#support">Support</a></li>
+          </ul>
+        </li>
+      </ul>
+    </nav>
+    <h1 id="fieldwire---administrator-user-manual">FieldWire - Administrator User Manual</h1>
+    <h2 id="table-of-contents">Table of Contents</h2>
+    <ol type="1">
+      <li>Introduction</li>
+      <li>Logging In</li>
+      <li>Main Menu</li>
+      <li>Dashboard</li>
+      <li>Project Management</li>
+      <li>Team Management (Builders)</li>
+      <li>Reports</li>
+      <li>Account Settings</li>
+      <li>Administrative Settings</li>
+    </ol>
+    <hr />
+    <h2 id="introduction">Introduction</h2>
+    <p>
+      FieldWire is a construction project management system designed for construction project
+      support and management. This manual is intended for users with the
+      <strong>System Administrator</strong> role.
+    </p>
+    <h3 id="administrator-role">Administrator Role</h3>
+    <p>
+      The System Administrator has full access to all application features: - Management of all
+      projects in the system - Management of all users and team members - Configuration of system
+      rules and message templates - Access to all reports and analytics - Assignment of project
+      managers
+    </p>
+    <hr />
+    <h2 id="logging-in">Logging In</h2>
+    <h3 id="authentication">Authentication</h3>
+    <ol type="1">
+      <li>Open the FieldWire application in your browser</li>
+      <li>
+        On the login page, enter:
+        <ul>
+          <li><strong>Email</strong> - your email address</li>
+          <li><strong>Password</strong> - your password</li>
+        </ul>
+      </li>
+      <li>Click the <strong>“Sign In”</strong> button</li>
+    </ol>
+    <h3 id="password-reset">Password Reset</h3>
+    <p>
+      If you forgot your password: 1. On the login page, click
+      <strong>“Forgot password?”</strong> 2. Enter your email 3. Follow the instructions in the
+      email to reset your password
+    </p>
+    <h3 id="password-change">Password Change</h3>
+    <p>
+      If you have a temporary password: 1. After logging in, you will be redirected to the password
+      change page 2. Enter your current password 3. Enter a new password (must meet security
+      requirements) 4. Confirm the new password 5. Click <strong>“Change Password”</strong>
+    </p>
+    <hr />
+    <h2 id="main-menu">Main Menu</h2>
+    <p>The main menu is located at the top of the screen and contains the following items:</p>
+    <h3 id="available-for-administrators">Available for Administrators:</h3>
+    <ol type="1">
+      <li><strong>Dashboard</strong> - Main dashboard with system overview</li>
+      <li><strong>Projects</strong> - Management of all projects</li>
+      <li><strong>Builders</strong> - Team and user management</li>
+      <li><strong>Reports</strong> - View reports and analytics</li>
+      <li><strong>Account</strong> - Account settings</li>
+      <li><strong>Admin Settings</strong> - Administrative settings (administrators only)</li>
+    </ol>
+    <hr />
+    <h2 id="dashboard">Dashboard</h2>
+    <h3 id="overview">Overview</h3>
+    <p>
+      The Administrator Dashboard provides a system overview: - User statistics - Current user
+      information - Quick access to main functions
+    </p>
+    <h3 id="dashboard-elements">Dashboard Elements</h3>
+    <ul>
+      <li><strong>User Management</strong> - User management</li>
+      <li><strong>System Settings</strong> - System settings</li>
+      <li><strong>Analytics</strong> - System analytics</li>
+    </ul>
+    <h3 id="user-information">User Information</h3>
+    <p>
+      The Dashboard displays information about the current user: - <strong>Category</strong> - Role
+      category (Global) - <strong>Role</strong> - Role (admin) - <strong>Name</strong> - User name -
+      <strong>Email</strong> - Email address - <strong>ID</strong> - User identifier -
+      <strong>Status</strong> - Status (Active/Inactive) - <strong>2FA</strong> - Two-factor
+      authentication status (Enabled/Disabled)
+    </p>
+    <hr />
+    <h2 id="project-management">Project Management</h2>
+    <h3 id="project-list">Project List</h3>
+    <p>Access to the list of all projects through the <strong>Projects</strong> menu.</p>
+    <h4 id="project-list-functions">Project List Functions:</h4>
+    <ol type="1">
+      <li>
+        <strong>Project Search</strong>
+        <ul>
+          <li>Use the search field to filter projects by name</li>
+          <li>Search works in real-time</li>
+        </ul>
+      </li>
+      <li>
+        <strong>Project Filtering</strong>
+        <ul>
+          <li>By status (Active, Completed, On Hold, Draft)</li>
+          <li>By priority (High, Medium, Low)</li>
+          <li>By project manager</li>
+        </ul>
+      </li>
+      <li>
+        <strong>Project Sorting</strong>
+        <ul>
+          <li>By name (A-Z, Z-A)</li>
+          <li>By creation date</li>
+          <li>By status</li>
+          <li>By progress</li>
+        </ul>
+      </li>
+      <li>
+        <strong>Project Statistics</strong>
+        <ul>
+          <li>Total number of projects</li>
+          <li>Active projects</li>
+          <li>Completed projects</li>
+          <li>Projects on hold</li>
+        </ul>
+      </li>
+    </ol>
+    <h3 id="creating-a-new-project">Creating a New Project</h3>
+    <ol type="1">
+      <li>On the project list page, click the <strong>“New Project”</strong> button</li>
+      <li>
+        Fill in the project creation form:
+        <ul>
+          <li><strong>Project Name</strong> * (required) - Project name</li>
+          <li><strong>Address</strong> - Project address</li>
+          <li><strong>Description</strong> - Project description</li>
+          <li><strong>Priority</strong> - Priority (High, Medium, Low)</li>
+          <li><strong>Status</strong> - Status (Draft, Active, On Hold, Completed)</li>
+          <li><strong>Start Date</strong> - Project start date</li>
+          <li><strong>End Date</strong> - Project end date</li>
+          <li>
+            <strong>Project Manager</strong> - Project manager (only administrators can assign)
+          </li>
+        </ul>
+      </li>
+      <li>Click <strong>“Create Project”</strong></li>
+    </ol>
+    <h3 id="viewing-project-admin-view">Viewing Project (Admin View)</h3>
+    <p>
+      Administrators have a special project view (<code>/projects/:id/admin</code>) that provides: -
+      Project overview - Task statistics - Team information - Quick access to settings
+    </p>
+    <h3 id="editing-a-project">Editing a Project</h3>
+    <ol type="1">
+      <li>Open a project from the list</li>
+      <li>Go to the <strong>Settings</strong> section</li>
+      <li>
+        Change the necessary fields:
+        <ul>
+          <li>Project name</li>
+          <li>Address</li>
+          <li>Description</li>
+          <li>Priority</li>
+          <li>Status</li>
+          <li>Start and end dates</li>
+          <li>Project manager</li>
+        </ul>
+      </li>
+      <li>Click <strong>“Save Changes”</strong></li>
+    </ol>
+    <h3 id="deleting-a-project">Deleting a Project</h3>
+    <ol type="1">
+      <li>Open the project</li>
+      <li>Go to the <strong>Settings</strong> section</li>
+      <li>Click the <strong>“Delete Project”</strong> button</li>
+      <li>Confirm deletion</li>
+    </ol>
+    <hr />
+    <h2 id="team-management-builders">Team Management (Builders)</h2>
+    <h3 id="access-to-team-management">Access to Team Management</h3>
+    <p>The <strong>Builders</strong> menu provides access to management of all system users.</p>
+    <h3 id="view-modes">View Modes</h3>
+    <ol type="1">
+      <li><strong>Registered</strong> - Registered users</li>
+      <li><strong>Pending</strong> - Users with pending invitations</li>
+    </ol>
+    <h3 id="team-management-functions">Team Management Functions</h3>
+    <h4 id="search-and-filtering">Search and Filtering</h4>
+    <ol type="1">
+      <li>
+        <strong>Text Search</strong>
+        <ul>
+          <li>Enter name, surname, email, or job title in the search field</li>
+          <li>Search works in real-time</li>
+        </ul>
+      </li>
+      <li>
+        <strong>Filters</strong>
+        <ul>
+          <li><strong>User Type</strong> - Filter by user type (role)</li>
+          <li><strong>Status</strong> - Filter by status (Active, Inactive)</li>
+          <li>
+            <strong>Invitation Status</strong> - Filter by invitation status (Registered, Invited)
+          </li>
+        </ul>
+      </li>
+    </ol>
+    <h4 id="viewing-user-information">Viewing User Information</h4>
+    <ol type="1">
+      <li>Click on a user card</li>
+      <li>
+        A dialog opens with detailed information:
+        <ul>
+          <li>Personal information</li>
+          <li>Contact details</li>
+          <li>Role and access rights</li>
+          <li>System status</li>
+          <li>Activity history</li>
+        </ul>
+      </li>
+    </ol>
+    <h4 id="inviting-a-new-user">Inviting a New User</h4>
+    <ol type="1">
+      <li>Click the <strong>“Invite Builder”</strong> button</li>
+      <li>
+        Fill in the invitation form:
+        <ul>
+          <li><strong>Email</strong> * - User email address</li>
+          <li><strong>First Name</strong> * - First name</li>
+          <li><strong>Last Name</strong> * - Last name</li>
+          <li><strong>Role</strong> - System role</li>
+          <li><strong>Job Title</strong> - Job title</li>
+          <li><strong>Phone</strong> - Phone number</li>
+        </ul>
+      </li>
+      <li>Click <strong>“Send Invitation”</strong></li>
+    </ol>
+    <h4 id="editing-a-user">Editing a User</h4>
+    <ol type="1">
+      <li>Open the user card</li>
+      <li>Click the <strong>“Edit”</strong> button</li>
+      <li>Change the necessary fields</li>
+      <li>Click <strong>“Save Changes”</strong></li>
+    </ol>
+    <h4 id="deleting-a-user">Deleting a User</h4>
+    <ol type="1">
+      <li>Open the user card</li>
+      <li>Click the <strong>“Delete”</strong> button</li>
+      <li>Confirm deletion</li>
+    </ol>
+    <hr />
+    <h2 id="reports">Reports</h2>
+    <h3 id="access-to-reports">Access to Reports</h3>
+    <p>The <strong>Reports</strong> menu provides access to various reports and analytics.</p>
+    <h3 id="report-types">Report Types</h3>
+    <ol type="1">
+      <li><strong>Project Reports</strong> - Project reports</li>
+      <li><strong>Task Reports</strong> - Task reports</li>
+      <li><strong>Team Reports</strong> - Team reports</li>
+      <li><strong>Performance Reports</strong> - Performance reports</li>
+    </ol>
+    <h3 id="exporting-reports">Exporting Reports</h3>
+    <p>Most reports can be exported in various formats: - PDF - Excel - CSV</p>
+    <hr />
+    <h2 id="account-settings">Account Settings</h2>
+    <h3 id="access-to-settings">Access to Settings</h3>
+    <p>The <strong>Account</strong> menu provides access to your account settings.</p>
+    <h3 id="settings-sections">Settings Sections</h3>
+    <h4 id="basic-information">1. Basic Information</h4>
+    <ul>
+      <li><strong>Avatar</strong> - Upload and change avatar</li>
+      <li><strong>Full Photo</strong> - Upload full photo</li>
+      <li><strong>Gender</strong> - Gender</li>
+      <li><strong>Age/Birth Date</strong> - Age/Birth date</li>
+      <li><strong>Specialty/Job Title</strong> - Specialty/Job title</li>
+    </ul>
+    <h4 id="contact-information">2. Contact Information</h4>
+    <ul>
+      <li><strong>Email</strong> - Email address</li>
+      <li><strong>Phone</strong> - Phone number</li>
+      <li><strong>Address</strong> - Address</li>
+    </ul>
+    <h4 id="security">3. Security</h4>
+    <ul>
+      <li><strong>Change Password</strong> - Change password</li>
+      <li><strong>Two-Factor Authentication</strong> - Two-factor authentication</li>
+    </ul>
+    <h4 id="preferences">4. Preferences</h4>
+    <ul>
+      <li><strong>Language</strong> - Interface language</li>
+      <li><strong>Timezone</strong> - Timezone</li>
+      <li><strong>Notifications</strong> - Notification settings</li>
+    </ul>
+    <hr />
+    <h2 id="administrative-settings">Administrative Settings</h2>
+    <h3 id="access-to-administrative-settings">Access to Administrative Settings</h3>
+    <p>
+      The <strong>Admin Settings</strong> menu is available only for users with the
+      <strong>System Administrator</strong> role.
+    </p>
+    <h3 id="administrative-settings-sections">Administrative Settings Sections</h3>
+    <h4 id="event-rules">1. Event Rules</h4>
+    <p>
+      Event rules allow you to configure automatic actions when certain events occur in the system.
+    </p>
+    <h5 id="viewing-rules">Viewing Rules</h5>
+    <ol type="1">
+      <li>Open the <strong>Event Rules</strong> section</li>
+      <li>
+        View the list of all rules:
+        <ul>
+          <li><strong>System Rules</strong> - System rules (created by the system)</li>
+          <li><strong>Custom Rules</strong> - Custom rules (created by administrators)</li>
+        </ul>
+      </li>
+    </ol>
+    <h5 id="filtering-rules">Filtering Rules</h5>
+    <ul>
+      <li>By rule type (System/Custom)</li>
+      <li>By event type</li>
+      <li>By status (Enabled/Disabled)</li>
+      <li>By execution location</li>
+    </ul>
+    <h5 id="creating-a-new-rule">Creating a New Rule</h5>
+    <ol type="1">
+      <li>Click the <strong>“Create Rule”</strong> button</li>
+      <li>
+        Fill in the form:
+        <ul>
+          <li><strong>Event Type</strong> * - Event type</li>
+          <li><strong>Rule Name</strong> * - Rule name</li>
+          <li><strong>Description</strong> - Rule description</li>
+          <li><strong>Enabled</strong> - Enabled/Disabled</li>
+          <li><strong>Execution Location</strong> - Execution location (Frontend/Backend)</li>
+          <li><strong>Conditions</strong> - Rule trigger conditions</li>
+          <li><strong>Actions</strong> - Actions when rule is triggered</li>
+        </ul>
+      </li>
+      <li>Click <strong>“Create Rule”</strong></li>
+    </ol>
+    <h5 id="editing-a-rule">Editing a Rule</h5>
+    <ol type="1">
+      <li>Find the rule in the list</li>
+      <li>Click the <strong>“Edit”</strong> button</li>
+      <li>Change the necessary fields</li>
+      <li>Click <strong>“Update Rule”</strong></li>
+    </ol>
+    <h5 id="deleting-a-rule">Deleting a Rule</h5>
+    <p>
+      <strong>Important:</strong> Only custom rules can be deleted. System rules cannot be deleted.
+    </p>
+    <ol type="1">
+      <li>Find a custom rule in the list</li>
+      <li>Click the <strong>“Delete”</strong> button</li>
+      <li>Confirm deletion</li>
+    </ol>
+    <h4 id="message-templates">2. Message Templates</h4>
+    <p>Message templates are used for automatic notification sending.</p>
+    <h5 id="template-types">Template Types</h5>
+    <ul>
+      <li><strong>Email Templates</strong> - Email message templates</li>
+      <li><strong>SMS Templates</strong> - SMS message templates</li>
+    </ul>
+    <h5 id="viewing-templates">Viewing Templates</h5>
+    <ol type="1">
+      <li>Open the <strong>Message Templates</strong> section</li>
+      <li>Select template type (Email/SMS)</li>
+      <li>View the list of templates</li>
+    </ol>
+    <h5 id="creating-a-new-template">Creating a New Template</h5>
+    <ol type="1">
+      <li>Click the <strong>“Create Template”</strong> button</li>
+      <li>
+        Fill in the form:
+        <ul>
+          <li><strong>Template Name</strong> * - Template name</li>
+          <li><strong>Subject</strong> - Message subject (for email)</li>
+          <li><strong>Body</strong> * - Template text</li>
+          <li><strong>Variables</strong> - Available variables for substitution</li>
+        </ul>
+      </li>
+      <li>Click <strong>“Create Template”</strong></li>
+    </ol>
+    <h5 id="editing-a-template">Editing a Template</h5>
+    <ol type="1">
+      <li>Find the template in the list</li>
+      <li>Click the <strong>“Edit”</strong> button</li>
+      <li>Change the necessary fields</li>
+      <li>Click <strong>“Update Template”</strong></li>
+    </ol>
+    <h5 id="deleting-a-template">Deleting a Template</h5>
+    <ol type="1">
+      <li>Find the template in the list</li>
+      <li>Click the <strong>“Delete”</strong> button</li>
+      <li>Confirm deletion</li>
+    </ol>
+    <hr />
+    <h2 id="working-with-projects-detailed-overview">Working with Projects (Detailed Overview)</h2>
+    <h3 id="project-structure">Project Structure</h3>
+    <p>When opening a project, the administrator sees the following sections:</p>
+    <ol type="1">
+      <li><strong>Plans</strong> - Plans and drawings</li>
+      <li><strong>Tasks</strong> - Project tasks</li>
+      <li><strong>Photos</strong> - Project photos</li>
+      <li><strong>Team</strong> - Project team</li>
+      <li><strong>Settings</strong> - Project settings</li>
+    </ol>
+    <h3 id="plans-section">Plans Section</h3>
+    <h4 id="file-management">File Management</h4>
+    <ol type="1">
+      <li>
+        <strong>Uploading Files</strong>
+        <ul>
+          <li>Click the <strong>“Upload”</strong> button</li>
+          <li>Select files to upload</li>
+          <li>Select destination folder</li>
+          <li>Click <strong>“Upload”</strong></li>
+        </ul>
+      </li>
+      <li>
+        <strong>Creating Folders</strong>
+        <ul>
+          <li>Click the <strong>“New Folder”</strong> button</li>
+          <li>Enter folder name</li>
+          <li>Click <strong>“Create”</strong></li>
+        </ul>
+      </li>
+      <li>
+        <strong>Viewing Files</strong>
+        <ul>
+          <li>Icons view (Icons View)</li>
+          <li>List view (Details View)</li>
+        </ul>
+      </li>
+      <li>
+        <strong>File Operations</strong>
+        <ul>
+          <li><strong>Preview</strong> - View file</li>
+          <li><strong>Download</strong> - Download file</li>
+          <li><strong>Rename</strong> - Rename</li>
+          <li><strong>Move</strong> - Move to another folder</li>
+          <li><strong>Delete</strong> - Delete file</li>
+        </ul>
+      </li>
+    </ol>
+    <h3 id="tasks-section">Tasks Section</h3>
+    <h4 id="viewing-tasks">Viewing Tasks</h4>
+    <p>
+      Tasks are displayed in several views: - <strong>Calendar View</strong> - Calendar view -
+      <strong>Gantt View</strong> - Gantt chart - <strong>List View</strong> - Task list
+    </p>
+    <h4 id="creating-a-task">Creating a Task</h4>
+    <ol type="1">
+      <li>Click the <strong>“New Task”</strong> button or click on a date in the calendar</li>
+      <li>
+        Fill in the form:
+        <ul>
+          <li><strong>Task Name</strong> * - Task name</li>
+          <li><strong>WBS Path</strong> - Work breakdown structure path</li>
+          <li><strong>Start Date</strong> * - Start date</li>
+          <li><strong>End Date</strong> * - End date</li>
+          <li><strong>Duration</strong> - Duration (days)</li>
+          <li><strong>Status</strong> - Status (Planned, In Progress, Done, Blocked, Delayed)</li>
+          <li><strong>Progress</strong> - Completion progress (%)</li>
+          <li><strong>Task Lead</strong> - Responsible person</li>
+          <li><strong>Team Members</strong> - Team members</li>
+          <li><strong>Dependencies</strong> - Dependencies on other tasks</li>
+          <li><strong>Resources</strong> - Resources</li>
+          <li><strong>Notes</strong> - Notes</li>
+        </ul>
+      </li>
+      <li>Click <strong>“Create Task”</strong></li>
+    </ol>
+    <h4 id="creating-a-milestone">Creating a Milestone</h4>
+    <ol type="1">
+      <li>
+        Click the <strong>“New Milestone”</strong> button or select the option when creating a task
+      </li>
+      <li>
+        Fill in the form:
+        <ul>
+          <li><strong>Milestone Name</strong> * - Milestone name</li>
+          <li>
+            <strong>Milestone Type</strong> - Type (Inspection, Visit, Meeting, Review, Delivery,
+            Approval, Other)
+          </li>
+          <li><strong>Date</strong> * - Milestone date</li>
+          <li><strong>Status</strong> - Status</li>
+          <li><strong>Project Lead</strong> * - Responsible person</li>
+          <li><strong>Invited People</strong> - Invited people (external participants)</li>
+          <li><strong>Notes</strong> - Notes</li>
+        </ul>
+      </li>
+      <li>Click <strong>“Create Milestone”</strong></li>
+    </ol>
+    <h4 id="editing-a-task">Editing a Task</h4>
+    <ol type="1">
+      <li>Click on a task in the calendar or list</li>
+      <li>The editing dialog opens</li>
+      <li>Change the necessary fields</li>
+      <li>Click <strong>“Save Changes”</strong></li>
+    </ol>
+    <h4 id="editing-a-milestone">Editing a Milestone</h4>
+    <ol type="1">
+      <li>Click on a milestone in the calendar</li>
+      <li>The milestone editing dialog opens</li>
+      <li>Change the necessary fields</li>
+      <li>Click <strong>“Save Changes”</strong></li>
+    </ol>
+    <h4 id="deleting-a-taskmilestone">Deleting a Task/Milestone</h4>
+    <ol type="1">
+      <li>Open the task/milestone for editing</li>
+      <li>Click the <strong>“Delete”</strong> button</li>
+      <li>Confirm deletion</li>
+    </ol>
+    <h4 id="duplicating-a-task">Duplicating a Task</h4>
+    <ol type="1">
+      <li>Open the task for editing</li>
+      <li>Click the <strong>“Duplicate”</strong> button</li>
+      <li>The task will be copied with a new name</li>
+    </ol>
+    <h4 id="task-dependencies">Task Dependencies</h4>
+    <ol type="1">
+      <li>Open the task for editing</li>
+      <li>Go to the <strong>Dependencies</strong> section</li>
+      <li>Click <strong>“Add Dependency”</strong></li>
+      <li>Select the predecessor task</li>
+      <li>
+        Select dependency type:
+        <ul>
+          <li><strong>FS (Finish-to-Start)</strong> - Finish-to-start</li>
+          <li><strong>SS (Start-to-Start)</strong> - Start-to-start</li>
+          <li><strong>FF (Finish-to-Finish)</strong> - Finish-to-finish</li>
+          <li><strong>SF (Start-to-Finish)</strong> - Start-to-finish</li>
+        </ul>
+      </li>
+      <li>Specify lag (lag days)</li>
+      <li>Click <strong>“Add”</strong></li>
+    </ol>
+    <h4 id="assigning-team-to-task">Assigning Team to Task</h4>
+    <ol type="1">
+      <li>Open the task for editing</li>
+      <li>Go to the <strong>Team &amp; Resources</strong> section</li>
+      <li>Select <strong>Task Lead</strong> - responsible for the task</li>
+      <li>Select <strong>Team Members</strong> - team members to execute the task</li>
+      <li>Click <strong>“Save Changes”</strong></li>
+    </ol>
+    <h4 id="exporting-tasks-to-ical">Exporting Tasks to iCal</h4>
+    <ol type="1">
+      <li>Open the <strong>Tasks</strong> section</li>
+      <li>Click the <strong>“Export to iCal”</strong> button</li>
+      <li>The file will be downloaded in .ics format</li>
+    </ol>
+    <h3 id="photos-section">Photos Section</h3>
+    <h4 id="uploading-photos">Uploading Photos</h4>
+    <ol type="1">
+      <li>Click the <strong>“Upload Photo”</strong> button</li>
+      <li>Select photos</li>
+      <li>Add description (optional)</li>
+      <li>Click <strong>“Upload”</strong></li>
+    </ol>
+    <h4 id="viewing-photos">Viewing Photos</h4>
+    <ul>
+      <li>Photos are displayed as a gallery</li>
+      <li>Click on a photo to view in full size</li>
+    </ul>
+    <h3 id="team-section">Team Section</h3>
+    <h4 id="viewing-project-team">Viewing Project Team</h4>
+    <p>
+      The Team section displays a list of all project team members with information: - Name and
+      photo - Role in project - Assigned tasks - Status
+    </p>
+    <h4 id="adding-team-member">Adding Team Member</h4>
+    <ol type="1">
+      <li>Click the <strong>“Add Team Member”</strong> button</li>
+      <li>Select a user from the list of available users</li>
+      <li>Select role in project</li>
+      <li>Click <strong>“Add”</strong></li>
+    </ol>
+    <h4 id="viewing-team-member-details">Viewing Team Member Details</h4>
+    <ol type="1">
+      <li>Click on a team member card</li>
+      <li>
+        A dialog opens with detailed information:
+        <ul>
+          <li>Personal information</li>
+          <li>Role in project</li>
+          <li>Assigned tasks</li>
+          <li>Activity history</li>
+        </ul>
+      </li>
+    </ol>
+    <h4 id="deleting-team-member">Deleting Team Member</h4>
+    <ol type="1">
+      <li>Open team member details</li>
+      <li>Click the <strong>“Remove from Project”</strong> button</li>
+      <li>Confirm deletion</li>
+    </ol>
+    <h4 id="assigning-worker-to-task">Assigning Worker to Task</h4>
+    <ol type="1">
+      <li>In the Team section, find the task</li>
+      <li>Click the <strong>“Assign Worker”</strong> button</li>
+      <li>Select worker from the list</li>
+      <li>Click <strong>“Assign”</strong></li>
+    </ol>
+    <h4 id="removing-worker-from-task">Removing Worker from Task</h4>
+    <ol type="1">
+      <li>In the Team section, find the task</li>
+      <li>Find the assigned worker</li>
+      <li>Click the <strong>“Remove”</strong> button next to the worker</li>
+      <li>Confirm removal</li>
+    </ol>
+    <h3 id="settings-section">Settings Section</h3>
+    <h4 id="basic-project-settings">Basic Project Settings</h4>
+    <ul>
+      <li><strong>Project Name</strong> - Project name</li>
+      <li><strong>Address</strong> - Project address</li>
+      <li><strong>Description</strong> - Project description</li>
+      <li><strong>Priority</strong> - Priority (High, Medium, Low)</li>
+      <li><strong>Status</strong> - Status (Draft, Active, On Hold, Completed)</li>
+      <li><strong>Start Date</strong> - Project start date</li>
+      <li><strong>End Date</strong> - Project end date</li>
+      <li><strong>Project Manager</strong> - Project manager (only administrator can change)</li>
+    </ul>
+    <h4 id="saving-changes">Saving Changes</h4>
+    <ol type="1">
+      <li>Change the necessary fields</li>
+      <li>Click the <strong>“Save Changes”</strong> button</li>
+      <li>Changes will be saved</li>
+    </ol>
+    <hr />
+    <h2 id="tips-and-recommendations">Tips and Recommendations</h2>
+    <h3 id="security-1">Security</h3>
+    <ul>
+      <li>Change your password regularly</li>
+      <li>Use two-factor authentication</li>
+      <li>Do not share your credentials with others</li>
+    </ul>
+    <h3 id="performance">Performance</h3>
+    <ul>
+      <li>Use filters for quick project and task search</li>
+      <li>Export data for analysis outside the system</li>
+      <li>Regularly check and clean inactive projects</li>
+    </ul>
+    <h3 id="best-practices">Best Practices</h3>
+    <ul>
+      <li>Always fill in project description when creating</li>
+      <li>Set realistic project start and end dates</li>
+      <li>Assign responsible person for each task</li>
+      <li>Regularly update task statuses</li>
+      <li>Use milestones to track key events</li>
+    </ul>
+    <hr />
+    <h2 id="support">Support</h2>
+    <p>
+      If you have questions or issues: 1. Check this manual 2. Contact the system administrator 3.
+      Contact technical support
+    </p>
+    <hr />
+    <p>
+      <strong>Document Version:</strong> 1.0<br />
+      <strong>Last Updated:</strong> 2025
+    </p>
+  </body>
+</html>

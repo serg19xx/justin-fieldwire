@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Project_Manager_User_Manual_EN</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a {
+      color: #2563eb;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    #TOC a:hover {
+      color: #1e40af;
+      text-decoration: underline;
+    }
+    #TOC a:visited {
+      color: #2563eb;
+    }
+  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css" />
+</head>
+<body>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#fieldwire---project-manager-user-manual">FieldWire - Project
+Manager User Manual</a>
+<ul>
+<li><a href="#table-of-contents">Table of
+Contents</a></li>
+<li><a href="#introduction">Introduction</a>
+<ul>
+<li><a href="#project-manager-role">Project Manager Role</a></li>
+</ul></li>
+<li><a href="#logging-in">Logging In</a>
+<ul>
+<li><a href="#authentication">Authentication</a></li>
+<li><a href="#password-reset">Password
+Reset</a></li>
+<li><a href="#password-change">Password
+Change</a></li>
+</ul></li>
+<li><a href="#main-menu">Main Menu</a>
+<ul>
+<li><a href="#available-for-project-manager">Available for Project
+Manager:</a></li>
+</ul></li>
+<li><a href="#dashboard">Dashboard</a>
+<ul>
+<li><a href="#overview">Overview</a></li>
+<li><a href="#recent-projects">Recent
+Projects</a></li>
+</ul></li>
+<li><a href="#my-projects">My Projects</a>
+<ul>
+<li><a href="#project-list">Project List</a></li>
+<li><a href="#creating-a-new-project">Creating a New Project</a></li>
+<li><a href="#opening-a-project">Opening a
+Project</a></li>
+</ul></li>
+<li><a href="#working-with-a-project">Working with a Project</a>
+<ul>
+<li><a href="#project-structure">Project
+Structure</a></li>
+<li><a href="#plans-section">Plans
+Section</a></li>
+<li><a href="#tasks-section">Tasks
+Section</a></li>
+</ul></li>
+<li><a href="#milestone-management">Milestone Management</a>
+<ul>
+<li><a href="#creating-a-milestone">Creating a Milestone</a></li>
+<li><a href="#adding-invited-people-to-milestone">Adding Invited People to
+Milestone</a></li>
+<li><a href="#editing-a-milestone">Editing
+a Milestone</a></li>
+<li><a href="#deleting-a-milestone">Deleting a Milestone</a></li>
+<li><a href="#removing-invited-person">Removing Invited Person</a></li>
+</ul></li>
+<li><a href="#project-team-management">Project Team Management</a>
+<ul>
+<li><a href="#team-section">Team Section</a></li>
+</ul></li>
+<li><a href="#reports">Reports</a>
+<ul>
+<li><a href="#reports">Access to
+Reports</a></li>
+<li><a href="#report-types">Report Types</a></li>
+<li><a href="#reports">Exporting
+Reports</a></li>
+</ul></li>
+<li><a href="#account-settings">Account
+Settings</a>
+<ul>
+<li><a href="#access-to-settings">Access to
+Settings</a></li>
+<li><a href="#settings-sections">Settings
+Sections</a></li>
+</ul></li>
+<li><a href="#working-with-project-detailed-overview">Working with Project
+(Detailed Overview)</a>
+<ul>
+<li><a href="#settings-section">Settings
+Section</a></li>
+</ul></li>
+<li><a href="#tips-and-recommendations">Tips and Recommendations</a>
+<ul>
+<li><a href="#task-management">Task
+Management</a></li>
+<li><a href="#milestone-management">Milestone Management</a></li>
+<li><a href="#team-management">Team
+Management</a></li>
+<li><a href="#file-organization">File
+Organization</a></li>
+<li><a href="#project-timeframes">Project
+Timeframes</a></li>
+</ul></li>
+<li><a href="#frequently-asked-questions">Frequently Asked Questions</a>
+<ul>
+<li><a href="#how-to-create-a-task-with-dependency">How to create a task with
+dependency?</a></li>
+<li><a href="#how-to-add-external-participant-to-milestone">How to add
+external participant to milestone?</a></li>
+<li><a href="#how-to-export-tasks-to-calendar">How to export tasks to
+calendar?</a></li>
+<li><a href="#how-to-organize-project-files">How to organize project
+files?</a></li>
+<li><a href="#how-to-assign-team-to-task">How to assign team to task?</a></li>
+</ul></li>
+<li><a href="#support">Support</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="fieldwire---project-manager-user-manual">FieldWire - Project
+Manager User Manual</h1>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol type="1">
+<li>Introduction</li>
+<li>Logging In</li>
+<li>Main Menu</li>
+<li>Dashboard</li>
+<li>My Projects</li>
+<li>Working with a Project</li>
+<li>Task Management</li>
+<li>Milestone Management</li>
+<li>Project Team Management</li>
+<li>Reports</li>
+<li>Account Settings</li>
+</ol>
+<hr />
+<h2 id="introduction">Introduction</h2>
+<p>FieldWire is a construction project management system designed for
+construction project support and management. This manual is intended for
+users with the <strong>Project Manager</strong> role.</p>
+<h3 id="project-manager-role">Project Manager Role</h3>
+<p>The Project Manager has access to the following functions: -
+Management of assigned projects - Creating and editing tasks - Creating
+and managing milestones - Project team management - Viewing project
+reports - Uploading and managing project files</p>
+<hr />
+<h2 id="logging-in">Logging In</h2>
+<h3 id="authentication">Authentication</h3>
+<ol type="1">
+<li>Open the FieldWire application in your browser</li>
+<li>On the login page, enter:
+<ul>
+<li><strong>Email</strong> - your email address</li>
+<li><strong>Password</strong> - your password</li>
+</ul></li>
+<li>Click the <strong>“Sign In”</strong> button</li>
+</ol>
+<h3 id="password-reset">Password Reset</h3>
+<p>If you forgot your password: 1. On the login page, click
+<strong>“Forgot password?”</strong> 2. Enter your email 3. Follow the
+instructions in the email to reset your password</p>
+<h3 id="password-change">Password Change</h3>
+<p>If you have a temporary password: 1. After logging in, you will be
+redirected to the password change page 2. Enter your current password 3.
+Enter a new password (must meet security requirements) 4. Confirm the
+new password 5. Click <strong>“Change Password”</strong></p>
+<hr />
+<h2 id="main-menu">Main Menu</h2>
+<p>The main menu is located at the top of the screen and contains the
+following items:</p>
+<h3 id="available-for-project-manager">Available for Project
+Manager:</h3>
+<ol type="1">
+<li><strong>Dashboard</strong> - Main dashboard with overview of your
+projects</li>
+<li><strong>My Projects</strong> - List of your projects</li>
+<li><strong>Team</strong> - Project team management</li>
+<li><strong>Reports</strong> - View project reports</li>
+<li><strong>Account</strong> - Account settings</li>
+</ol>
+<hr />
+<h2 id="dashboard">Dashboard</h2>
+<h3 id="overview">Overview</h3>
+<p>The Project Manager Dashboard provides an overview of your projects
+and tasks: - <strong>Active Projects</strong> - Number of active
+projects - <strong>Tasks This Week</strong> - Tasks for this week -
+<strong>Team Members</strong> - Number of team members</p>
+<h3 id="recent-projects">Recent Projects</h3>
+<p>The Dashboard displays a list of recent projects with completion
+progress information.</p>
+<hr />
+<h2 id="my-projects">My Projects</h2>
+<h3 id="project-list">Project List</h3>
+<p>Access to your project list through the <strong>My Projects</strong>
+menu.</p>
+<h4 id="project-list-functions">Project List Functions:</h4>
+<ol type="1">
+<li><strong>Project Search</strong>
+<ul>
+<li>Use the search field to filter projects by name</li>
+<li>Search works in real-time</li>
+</ul></li>
+<li><strong>Project Filtering</strong>
+<ul>
+<li>By status (Active, Completed, On Hold, Draft)</li>
+<li>By priority (High, Medium, Low)</li>
+</ul></li>
+<li><strong>Project Sorting</strong>
+<ul>
+<li>By name (A-Z, Z-A)</li>
+<li>By creation date</li>
+<li>By status</li>
+<li>By progress</li>
+</ul></li>
+<li><strong>Project Statistics</strong>
+<ul>
+<li>Total number of projects</li>
+<li>Active projects</li>
+<li>Completed projects</li>
+<li>Projects on hold</li>
+</ul></li>
+</ol>
+<h3 id="creating-a-new-project">Creating a New Project</h3>
+<ol type="1">
+<li>On the project list page, click the <strong>“New Project”</strong>
+button</li>
+<li>Fill in the project creation form:
+<ul>
+<li><strong>Project Name</strong> * (required) - Project name</li>
+<li><strong>Address</strong> - Project address</li>
+<li><strong>Description</strong> - Project description</li>
+<li><strong>Priority</strong> - Priority (High, Medium, Low)</li>
+<li><strong>Status</strong> - Status (Draft, Active, On Hold,
+Completed)</li>
+<li><strong>Start Date</strong> - Project start date</li>
+<li><strong>End Date</strong> - Project end date</li>
+<li><strong>Project Manager</strong> - Automatically set to you</li>
+</ul></li>
+<li>Click <strong>“Create Project”</strong></li>
+</ol>
+<p><strong>Note:</strong> Project Manager cannot assign other project
+managers. Only administrators can do this.</p>
+<h3 id="opening-a-project">Opening a Project</h3>
+<ol type="1">
+<li>Click on a project in the list</li>
+<li>The project details page opens</li>
+</ol>
+<hr />
+<h2 id="working-with-a-project">Working with a Project</h2>
+<h3 id="project-structure">Project Structure</h3>
+<p>When opening a project, you see the following sections:</p>
+<ol type="1">
+<li><strong>Plans</strong> - Plans and drawings</li>
+<li><strong>Tasks</strong> - Project tasks</li>
+<li><strong>Photos</strong> - Project photos</li>
+<li><strong>Team</strong> - Project team</li>
+<li><strong>Settings</strong> - Project settings</li>
+</ol>
+<h3 id="plans-section">Plans Section</h3>
+<p>The Plans section is designed for managing project files: drawings,
+plans, specifications, and other documents.</p>
+<h4 id="file-management">File Management</h4>
+<ol type="1">
+<li><strong>Uploading Files</strong>
+<ul>
+<li>Click the <strong>“Upload”</strong> button or drag files to the
+upload area</li>
+<li>Select files to upload</li>
+<li>Select destination folder (or create a new one)</li>
+<li>Click <strong>“Upload”</strong></li>
+<li>Track upload progress</li>
+</ul></li>
+<li><strong>Creating Folders</strong>
+<ul>
+<li>Click the <strong>“New Folder”</strong> button</li>
+<li>Enter folder name</li>
+<li>Select parent folder (optional)</li>
+<li>Click <strong>“Create”</strong></li>
+</ul></li>
+<li><strong>Viewing Files</strong>
+<ul>
+<li><strong>Icons View</strong> - View as icons (default)</li>
+<li><strong>Details View</strong> - View as list with details</li>
+</ul></li>
+<li><strong>File Operations</strong>
+<ul>
+<li><strong>Preview</strong> - View file (double-click or Preview
+button)</li>
+<li><strong>Download</strong> - Download file</li>
+<li><strong>Rename</strong> - Rename file/folder</li>
+<li><strong>Move</strong> - Move to another folder</li>
+<li><strong>Copy</strong> - Copy file/folder</li>
+<li><strong>Cut</strong> - Cut for moving</li>
+<li><strong>Paste</strong> - Paste copied/cut items</li>
+<li><strong>Delete</strong> - Delete file/folder</li>
+</ul></li>
+<li><strong>Selecting Multiple Files</strong>
+<ul>
+<li>Use checkboxes to select multiple files</li>
+<li>Apply operations to selected files</li>
+</ul></li>
+</ol>
+<h4 id="file-organization">File Organization</h4>
+<p>It is recommended to organize files by categories: -
+<strong>Plans</strong> - Drawings and plans -
+<strong>Specifications</strong> - Specifications -
+<strong>Documents</strong> - Documents - <strong>Photos</strong> -
+Photos - <strong>Reports</strong> - Reports</p>
+<h3 id="tasks-section">Tasks Section</h3>
+<p>The Tasks section provides various views for working with project
+tasks.</p>
+<h4 id="task-views">Task Views</h4>
+<ol type="1">
+<li><strong>Calendar View</strong> - Calendar view
+<ul>
+<li>Display tasks on calendar</li>
+<li>Drag tasks to change dates</li>
+<li>Change task duration by dragging edges</li>
+</ul></li>
+<li><strong>Gantt View</strong> - Gantt chart
+<ul>
+<li>Visualize dependencies between tasks</li>
+<li>Display project timeline</li>
+<li>Manage dependencies by dragging</li>
+</ul></li>
+<li><strong>List View</strong> - Task list
+<ul>
+<li>Table view of all tasks</li>
+<li>Sorting and filtering</li>
+<li>Quick access to editing</li>
+</ul></li>
+</ol>
+<h4 id="creating-a-task">Creating a Task</h4>
+<ol type="1">
+<li><strong>Via “New Task” Button</strong>
+<ul>
+<li>Click the <strong>“New Task”</strong> button in the Tasks
+section</li>
+<li>Fill in the task creation form</li>
+</ul></li>
+<li><strong>Via Calendar</strong>
+<ul>
+<li>Click on a date in the calendar view</li>
+<li>Task creation dialog opens with pre-filled date</li>
+</ul></li>
+<li><strong>Filling Task Form:</strong>
+<ul>
+<li><strong>Task Name</strong> * - Task name (required)</li>
+<li><strong>WBS Path</strong> - Work breakdown structure path (e.g.,
+“1.1.1”)</li>
+<li><strong>Start Date</strong> * - Start date (required)</li>
+<li><strong>End Date</strong> * - End date (required)</li>
+<li><strong>Duration</strong> - Duration in days (automatically
+calculated)</li>
+<li><strong>Status</strong> - Task status:
+<ul>
+<li>Planned - Planned</li>
+<li>In Progress - In progress</li>
+<li>Done - Completed</li>
+<li>Blocked - Blocked</li>
+<li>Delayed - Delayed</li>
+</ul></li>
+<li><strong>Progress</strong> - Completion progress (0-100%)</li>
+<li><strong>Task Lead</strong> - Task responsible (select from available
+people list)</li>
+<li><strong>Team Members</strong> - Team members to execute the
+task</li>
+<li><strong>Dependencies</strong> - Dependencies on other tasks</li>
+<li><strong>Resources</strong> - Resources required for the task</li>
+<li><strong>Notes</strong> - Notes and task description</li>
+</ul></li>
+<li>Click <strong>“Create Task”</strong></li>
+</ol>
+<h4 id="editing-a-task">Editing a Task</h4>
+<ol type="1">
+<li><strong>Opening Task for Editing:</strong>
+<ul>
+<li>Click on a task in the calendar, Gantt chart, or list</li>
+<li>Task editing dialog opens</li>
+</ul></li>
+<li><strong>Task Edit Panel:</strong>
+<ul>
+<li>Full-screen panel for detailed editing</li>
+<li>All task fields available for editing</li>
+<li>Sections:
+<ul>
+<li><strong>Basic Info</strong> - Basic information</li>
+<li><strong>Dependencies</strong> - Dependencies</li>
+<li><strong>Team &amp; Resources</strong> - Team and resources</li>
+<li><strong>Notes</strong> - Notes</li>
+</ul></li>
+</ul></li>
+<li><strong>Changing Fields:</strong>
+<ul>
+<li>Change necessary fields</li>
+<li>Click <strong>“Save Changes”</strong></li>
+</ul></li>
+</ol>
+<h4 id="quick-editing-via-calendar">Quick Editing via Calendar</h4>
+<ul>
+<li><strong>Changing Date:</strong> Drag task to new date</li>
+<li><strong>Changing Duration:</strong> Drag task edge to change
+duration</li>
+<li><strong>Changing Status:</strong> Use task context menu</li>
+</ul>
+<h4 id="deleting-a-task">Deleting a Task</h4>
+<ol type="1">
+<li>Open task for editing</li>
+<li>Click the <strong>“Delete”</strong> button</li>
+<li>Confirm deletion</li>
+</ol>
+<p><strong>Warning:</strong> Deleting a task also deletes all
+dependencies associated with it.</p>
+<h4 id="duplicating-a-task">Duplicating a Task</h4>
+<ol type="1">
+<li>Open task for editing</li>
+<li>Click the <strong>“Duplicate”</strong> button</li>
+<li>Task will be copied with new name and dates</li>
+</ol>
+<h4 id="task-dependencies">Task Dependencies</h4>
+<p>Dependencies define the order of task execution.</p>
+<h5 id="adding-a-dependency">Adding a Dependency</h5>
+<ol type="1">
+<li>Open task for editing</li>
+<li>Go to the <strong>Dependencies</strong> section</li>
+<li>Click <strong>“Add Dependency”</strong></li>
+<li>Select predecessor task from the list</li>
+<li>Select dependency type:
+<ul>
+<li><strong>FS (Finish-to-Start)</strong> - Current task starts after
+predecessor finishes</li>
+<li><strong>SS (Start-to-Start)</strong> - Both tasks start
+simultaneously</li>
+<li><strong>FF (Finish-to-Finish)</strong> - Both tasks finish
+simultaneously</li>
+<li><strong>SF (Start-to-Finish)</strong> - Current task finishes when
+predecessor starts</li>
+</ul></li>
+<li>Specify lag (lag days) - number of days delay between tasks</li>
+<li>Click <strong>“Add”</strong></li>
+</ol>
+<h5 id="removing-a-dependency">Removing a Dependency</h5>
+<ol type="1">
+<li>Open task for editing</li>
+<li>Go to the <strong>Dependencies</strong> section</li>
+<li>Find dependency in the list</li>
+<li>Click the <strong>“Remove”</strong> button next to the
+dependency</li>
+</ol>
+<h5 id="dependency-validation">Dependency Validation</h5>
+<p>The system automatically checks dependencies for: - Circular
+dependencies - Violation of project time constraints - Conflicts with
+other dependencies</p>
+<p>If problems are detected, the system will show a warning and suggest
+solutions.</p>
+<h4 id="assigning-team-to-task">Assigning Team to Task</h4>
+<ol type="1">
+<li>Open task for editing</li>
+<li>Go to the <strong>Team &amp; Resources</strong> section</li>
+<li><strong>Select Task Lead:</strong>
+<ul>
+<li>Select task responsible from available people list</li>
+<li>Task Lead is automatically added to Team Members list</li>
+</ul></li>
+<li><strong>Add Team Members:</strong>
+<ul>
+<li>Click <strong>“Add Team Member”</strong></li>
+<li>Select team member from the list</li>
+<li>Repeat to add multiple team members</li>
+</ul></li>
+<li>Click <strong>“Save Changes”</strong></li>
+</ol>
+<h4 id="exporting-tasks-to-ical">Exporting Tasks to iCal</h4>
+<ol type="1">
+<li>Open the <strong>Tasks</strong> section</li>
+<li>Click the <strong>“Export to iCal”</strong> or <strong>“Export
+Calendar”</strong> button</li>
+<li>File will be downloaded in .ics format</li>
+<li>Import the file into your calendar (Google Calendar, Outlook, Apple
+Calendar, etc.)</li>
+</ol>
+<hr />
+<h2 id="milestone-management">Milestone Management</h2>
+<p>Milestones are key project events (inspections, meetings, deliveries,
+etc.).</p>
+<h3 id="creating-a-milestone">Creating a Milestone</h3>
+<ol type="1">
+<li><strong>Via “New Milestone” Button</strong>
+<ul>
+<li>Click the <strong>“New Milestone”</strong> button in the Tasks
+section</li>
+<li>Fill in the milestone creation form</li>
+</ul></li>
+<li><strong>Via Calendar</strong>
+<ul>
+<li>Click on a date in the calendar view</li>
+<li>Select milestone creation option</li>
+</ul></li>
+<li><strong>Filling Milestone Form:</strong>
+<ul>
+<li><strong>Milestone Name</strong> * - Milestone name (required)</li>
+<li><strong>Milestone Type</strong> - Milestone type:
+<ul>
+<li>🔍 Inspection - Inspection</li>
+<li>🏗️ Site Visit - Site visit</li>
+<li>👥 Meeting - Meeting</li>
+<li>📋 Review - Review</li>
+<li>📦 Delivery - Delivery</li>
+<li>✅ Approval - Approval</li>
+<li>🎯 Other - Other</li>
+</ul></li>
+<li><strong>Date</strong> * - Milestone date (required)</li>
+<li><strong>Status</strong> - Status:
+<ul>
+<li>Planned - Planned</li>
+<li>In Progress - In progress</li>
+<li>Done - Completed</li>
+<li>Blocked - Blocked</li>
+<li>Delayed - Delayed</li>
+</ul></li>
+<li><strong>Project Lead</strong> * - Responsible (required,
+automatically set to you if you are PM)</li>
+<li><strong>Invited People</strong> - Invited people (external
+participants who are not project team members)</li>
+<li><strong>Notes</strong> - Notes and description</li>
+</ul></li>
+<li>Click <strong>“Create Milestone”</strong></li>
+</ol>
+<h3 id="adding-invited-people-to-milestone">Adding Invited People to
+Milestone</h3>
+<p>Invited people are external participants who are not project team
+members but should attend the milestone.</p>
+<ol type="1">
+<li>In the milestone creation/editing form, find the <strong>Invited
+People</strong> section</li>
+<li>Click the <strong>“+ Add Invited Person”</strong> button</li>
+<li>Fill in the form:
+<ul>
+<li><strong>Name</strong> * - Name (required)</li>
+<li><strong>Email</strong> - Email address</li>
+<li><strong>Company</strong> - Company</li>
+<li><strong>Phone</strong> - Phone (format: +1 (XXX) XXX-XXXX)</li>
+<li><strong>Notes</strong> - Additional information</li>
+</ul></li>
+<li>Click <strong>“Add Person”</strong></li>
+<li>Repeat to add multiple invited people</li>
+</ol>
+<h3 id="editing-a-milestone">Editing a Milestone</h3>
+<ol type="1">
+<li>Click on a milestone in the calendar</li>
+<li>Milestone editing dialog opens</li>
+<li>Change necessary fields</li>
+<li>Click <strong>“Save Changes”</strong></li>
+</ol>
+<h3 id="deleting-a-milestone">Deleting a Milestone</h3>
+<ol type="1">
+<li>Open milestone for editing</li>
+<li>Click the <strong>“Delete”</strong> button</li>
+<li>Confirm deletion</li>
+</ol>
+<h3 id="removing-invited-person">Removing Invited Person</h3>
+<ol type="1">
+<li>Open milestone for editing</li>
+<li>In the <strong>Invited People</strong> section, find the invited
+person</li>
+<li>Click the <strong>“Remove”</strong> button (X icon)</li>
+<li>Invited person will be removed from the list</li>
+</ol>
+<hr />
+<h2 id="project-team-management">Project Team Management</h2>
+<h3 id="team-section">Team Section</h3>
+<p>The Team section displays all project team members and their task
+assignments.</p>
+<h4 id="viewing-team">Viewing Team</h4>
+<p>The Team section displays: - List of all project team members - Each
+member’s role in the project - Assigned tasks for each member - Task
+completion status</p>
+<h4 id="adding-team-member">Adding Team Member</h4>
+<ol type="1">
+<li>Click the <strong>“Add Team Member”</strong> button</li>
+<li>Add team member dialog opens</li>
+<li>Select user from available list:
+<ul>
+<li>Use search for quick search</li>
+<li>Filter by role or status</li>
+</ul></li>
+<li>Select role in project:
+<ul>
+<li><strong>Project Manager</strong> - Project manager</li>
+<li><strong>Task Lead</strong> - Task responsible</li>
+<li><strong>Member</strong> - Team member</li>
+<li><strong>Invited</strong> - Invited (for external participants)</li>
+</ul></li>
+<li>Click <strong>“Add”</strong></li>
+</ol>
+<h4 id="viewing-team-member-details">Viewing Team Member Details</h4>
+<ol type="1">
+<li>Click on a team member card</li>
+<li>Dialog opens with detailed information:
+<ul>
+<li>Personal information</li>
+<li>Contact details</li>
+<li>Role in project</li>
+<li>Assigned tasks</li>
+<li>Activity history in project</li>
+</ul></li>
+</ol>
+<h4 id="changing-team-member-role">Changing Team Member Role</h4>
+<ol type="1">
+<li>Open team member details</li>
+<li>Click the <strong>“Edit Role”</strong> button</li>
+<li>Select new role from the list</li>
+<li>Click <strong>“Save”</strong></li>
+</ol>
+<h4 id="deleting-team-member">Deleting Team Member</h4>
+<ol type="1">
+<li>Open team member details</li>
+<li>Click the <strong>“Remove from Project”</strong> button</li>
+<li>Confirm deletion</li>
+</ol>
+<p><strong>Warning:</strong> Deleting a team member does not remove them
+from assigned tasks. You must manually remove them from tasks.</p>
+<h4 id="assigning-worker-to-task">Assigning Worker to Task</h4>
+<ol type="1">
+<li>In the Team section, find the task in the team member’s task
+list</li>
+<li>Click the <strong>“Assign Worker”</strong> button next to the
+task</li>
+<li>Select worker from available list</li>
+<li>Click <strong>“Assign”</strong></li>
+</ol>
+<h4 id="removing-worker-from-task">Removing Worker from Task</h4>
+<ol type="1">
+<li>In the Team section, find the task</li>
+<li>Find the assigned worker in the list</li>
+<li>Click the <strong>“Remove”</strong> button next to the worker</li>
+<li>Confirm removal</li>
+</ol>
+<hr />
+<h2 id="reports">Reports</h2>
+<h3 id="access-to-reports">Access to Reports</h3>
+<p>The <strong>Reports</strong> menu provides access to various project
+reports.</p>
+<h3 id="report-types">Report Types</h3>
+<ol type="1">
+<li><strong>Project Reports</strong> - Project reports
+<ul>
+<li>Overall project progress</li>
+<li>Task statistics</li>
+<li>Timeline analysis</li>
+</ul></li>
+<li><strong>Task Reports</strong> - Task reports
+<ul>
+<li>Task list with filtering</li>
+<li>Tasks by status</li>
+<li>Tasks by responsible</li>
+</ul></li>
+<li><strong>Team Reports</strong> - Team reports
+<ul>
+<li>Team workload</li>
+<li>Task completion by team members</li>
+<li>Statistics by roles</li>
+</ul></li>
+</ol>
+<h3 id="exporting-reports">Exporting Reports</h3>
+<p>Most reports can be exported in various formats: - PDF - Excel -
+CSV</p>
+<hr />
+<h2 id="account-settings">Account Settings</h2>
+<h3 id="access-to-settings">Access to Settings</h3>
+<p>The <strong>Account</strong> menu provides access to your account
+settings.</p>
+<h3 id="settings-sections">Settings Sections</h3>
+<h4 id="basic-information">1. Basic Information</h4>
+<ul>
+<li><strong>Avatar</strong> - Upload and change avatar
+<ul>
+<li>Click on current avatar</li>
+<li>Select new image</li>
+<li>Crop image if necessary</li>
+<li>Click <strong>“Save”</strong></li>
+</ul></li>
+<li><strong>Full Photo</strong> - Upload full photo
+<ul>
+<li>Click <strong>“Upload Full Photo”</strong></li>
+<li>Select photo</li>
+<li>Crop if necessary</li>
+<li>Click <strong>“Save”</strong></li>
+</ul></li>
+<li><strong>Gender</strong> - Gender</li>
+<li><strong>Age/Birth Date</strong> - Age/Birth date</li>
+<li><strong>Specialty/Job Title</strong> - Specialty/Job title</li>
+</ul>
+<h4 id="contact-information">2. Contact Information</h4>
+<ul>
+<li><strong>Email</strong> - Email address</li>
+<li><strong>Phone</strong> - Phone number</li>
+<li><strong>Address</strong> - Address</li>
+</ul>
+<h4 id="security">3. Security</h4>
+<ul>
+<li><strong>Change Password</strong> - Change password
+<ol type="1">
+<li>Enter current password</li>
+<li>Enter new password</li>
+<li>Confirm new password</li>
+<li>Click <strong>“Change Password”</strong></li>
+</ol></li>
+<li><strong>Two-Factor Authentication</strong> - Two-factor
+authentication
+<ul>
+<li>Enable/disable 2FA</li>
+<li>Configure authentication methods</li>
+</ul></li>
+</ul>
+<h4 id="preferences">4. Preferences</h4>
+<ul>
+<li><strong>Language</strong> - Interface language</li>
+<li><strong>Timezone</strong> - Timezone</li>
+<li><strong>Notifications</strong> - Notification settings
+<ul>
+<li>Email notifications</li>
+<li>SMS notifications</li>
+<li>Push notifications</li>
+</ul></li>
+</ul>
+<hr />
+<h2 id="working-with-project-detailed-overview">Working with Project
+(Detailed Overview)</h2>
+<h3 id="settings-section">Settings Section</h3>
+<h4 id="basic-project-settings">Basic Project Settings</h4>
+<p>In the Settings section, you can change:</p>
+<ul>
+<li><strong>Project Name</strong> - Project name</li>
+<li><strong>Address</strong> - Project address</li>
+<li><strong>Description</strong> - Project description</li>
+<li><strong>Priority</strong> - Priority (High, Medium, Low)</li>
+<li><strong>Status</strong> - Status (Draft, Active, On Hold,
+Completed)</li>
+<li><strong>Start Date</strong> - Project start date</li>
+<li><strong>End Date</strong> - Project end date</li>
+</ul>
+<p><strong>Note:</strong> Project Manager cannot change the project
+manager. Only administrators can do this.</p>
+<h4 id="saving-changes">Saving Changes</h4>
+<ol type="1">
+<li>Change necessary fields</li>
+<li>Click the <strong>“Save Changes”</strong> button</li>
+<li>Changes will be saved</li>
+</ol>
+<h4 id="project-date-validation">Project Date Validation</h4>
+<p>The system automatically checks: - Project start date must be earlier
+than end date - Project tasks must be within project dates - If project
+boundaries are violated, the system will suggest extending project
+dates</p>
+<hr />
+<h2 id="tips-and-recommendations">Tips and Recommendations</h2>
+<h3 id="task-management">Task Management</h3>
+<ul>
+<li>Always assign a responsible person (Task Lead) for each task</li>
+<li>Use dependencies for correct task execution sequence</li>
+<li>Regularly update task statuses and progress</li>
+<li>Use notes for important task information</li>
+</ul>
+<h3 id="milestone-management-1">Milestone Management</h3>
+<ul>
+<li>Create milestones for all key project events</li>
+<li>Add invited people in advance</li>
+<li>Update milestone statuses after they occur</li>
+<li>Use notes to record milestone results</li>
+</ul>
+<h3 id="team-management">Team Management</h3>
+<ul>
+<li>Clearly define team member roles</li>
+<li>Regularly check task assignments</li>
+<li>Remove inactive team members</li>
+<li>Use the Team section to monitor team workload</li>
+</ul>
+<h3 id="file-organization-1">File Organization</h3>
+<ul>
+<li>Create folder structure to organize files</li>
+<li>Use clear names for files and folders</li>
+<li>Regularly check and delete outdated files</li>
+<li>Use Details View to view file metadata</li>
+</ul>
+<h3 id="project-timeframes">Project Timeframes</h3>
+<ul>
+<li>Always set realistic project start and end dates</li>
+<li>Regularly check task compliance with project timeframes</li>
+<li>Use system validation to check dates</li>
+<li>Extend project dates when necessary</li>
+</ul>
+<hr />
+<h2 id="frequently-asked-questions">Frequently Asked Questions</h2>
+<h3 id="how-to-create-a-task-with-dependency">How to create a task with
+dependency?</h3>
+<ol type="1">
+<li>Create the predecessor task</li>
+<li>Create the current task</li>
+<li>Open the current task for editing</li>
+<li>Go to the Dependencies section</li>
+<li>Add dependency on the predecessor task</li>
+</ol>
+<h3 id="how-to-add-external-participant-to-milestone">How to add
+external participant to milestone?</h3>
+<ol type="1">
+<li>Open milestone for editing</li>
+<li>In the Invited People section, click “+ Add Invited Person”</li>
+<li>Fill in the form with invited person information</li>
+<li>Click “Add Person”</li>
+</ol>
+<h3 id="how-to-export-tasks-to-calendar">How to export tasks to
+calendar?</h3>
+<ol type="1">
+<li>Open the project Tasks section</li>
+<li>Click the “Export to iCal” button</li>
+<li>.ics file will be downloaded</li>
+<li>Import the file into your calendar</li>
+</ol>
+<h3 id="how-to-organize-project-files">How to organize project
+files?</h3>
+<ol type="1">
+<li>Create folders by categories (Plans, Specifications, Documents,
+etc.)</li>
+<li>Upload files to corresponding folders</li>
+<li>Use clear names for files</li>
+<li>Regularly check and clean folder structure</li>
+</ol>
+<h3 id="how-to-assign-team-to-task">How to assign team to task?</h3>
+<ol type="1">
+<li>Open task for editing</li>
+<li>Go to the Team &amp; Resources section</li>
+<li>Select Task Lead from the list</li>
+<li>Add Team Members via “Add Team Member” button</li>
+<li>Click “Save Changes”</li>
+</ol>
+<hr />
+<h2 id="support">Support</h2>
+<p>If you have questions or issues: 1. Check this manual 2. Contact the
+system administrator 3. Contact technical support</p>
+<hr />
+<p><strong>Document Version:</strong> 1.0<br />
+<strong>Last Updated:</strong> 2025</p>
+</body>
+</html>

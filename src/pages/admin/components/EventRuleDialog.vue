@@ -214,7 +214,7 @@
                         Template for {{ channel.toUpperCase() }}
                       </label>
                       <select
-                        v-model="action.channel_templates![channel]"
+                        v-model="(action.channel_templates || {})[channel]"
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
                       >
                         <option :value="null">Use default template</option>
@@ -738,7 +738,18 @@ function parseLegacyActions(input: unknown): EventRuleAction[] {
     if (input.length === 0) return []
     const first = input[0] as unknown
     if (first && typeof first === 'object' && 'type' in (first as Record<string, unknown>)) {
-      return input as EventRuleAction[]
+      // Normalize actions to ensure channel_templates exists for notify actions
+      return (input as EventRuleAction[]).map(action => {
+        if (action.type === 'notify') {
+          return {
+            ...action,
+            channels: action.channels || [],
+            channel_templates: action.channel_templates || {},
+            store_for_dashboard: action.store_for_dashboard !== undefined ? action.store_for_dashboard : true,
+          }
+        }
+        return action
+      })
     }
     // Legacy strings → new objects
     const result: EventRuleAction[] = []
@@ -992,12 +1003,19 @@ watch(
       const normalizedConditions = newRule.conditions && typeof newRule.conditions === 'object'
         ? newRule.conditions
         : { strict_mode: false }
+      const parsedActions = parseLegacyActions(newRule.actions as unknown)
+      // Ensure channel_templates is initialized for all notify actions
+      parsedActions.forEach(action => {
+        if (action.type === 'notify' && !action.channel_templates) {
+          action.channel_templates = {}
+        }
+      })
       form.value = {
         event_type: newRule.event_type,
         enabled: newRule.enabled,
         severity: newRule.severity,
         priority: newRule.priority ?? null,
-        actions: parseLegacyActions(newRule.actions as unknown),
+        actions: parsedActions,
         conditions: normalizedConditions,
         execution_location: newRule.execution_location ?? null,
         comment: newRule.comment || '',
