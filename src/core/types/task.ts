@@ -22,7 +22,7 @@ export interface TaskActual {
 }
 
 // Task status type
-export type TaskStatus = 'planned' | 'in_progress' | 'done' | 'blocked' | 'delayed'
+export type TaskStatus = 'planned' | 'scheduled' | 'scheduled_accepted' | 'in_progress' | 'partially_completed' | 'delayed_due_to_issue' | 'ready_for_inspection' | 'completed'
 
 // Milestone task types
 export type MilestoneType = 'inspection' | 'visit' | 'meeting' | 'review' | 'delivery' | 'approval' | 'other'
@@ -146,10 +146,13 @@ export interface TaskFilter {
 export interface TaskStats {
   total: number
   planned: number
+  scheduled: number
+  scheduledAccepted: number
   inProgress: number
-  done: number
-  blocked: number
-  delayed: number
+  partiallyCompleted: number
+  delayedDueToIssue: number
+  readyForInspection: number
+  completed: number
   milestones: number
   avgProgress: number
 }

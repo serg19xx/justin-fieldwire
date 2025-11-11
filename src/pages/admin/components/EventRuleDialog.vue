@@ -563,7 +563,7 @@
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                     <div class="flex flex-wrap gap-2">
-                      <label v-for="status in ['in_progress', 'blocked', 'completed', 'pending']" :key="status" class="flex items-center text-gray-900 font-medium">
+                      <label v-for="status in ['planned', 'scheduled', 'scheduled_accepted', 'in_progress', 'partially_completed', 'delayed_due_to_issue', 'ready_for_inspection', 'completed']" :key="status" class="flex items-center text-gray-900 font-medium">
                         <input
                           type="checkbox"
                           :value="status"

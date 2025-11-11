@@ -132,10 +132,13 @@
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="planned">Planned</option>
+                <option value="scheduled">Scheduled</option>
+                <option value="scheduled_accepted">Scheduled Accepted</option>
                 <option value="in_progress">In Progress</option>
-                <option value="done">Completed</option>
-                <option value="blocked">Blocked</option>
-                <option value="delayed">Delayed</option>
+                <option value="partially_completed">Partially Completed</option>
+                <option value="delayed_due_to_issue">Delayed Due To Issue</option>
+                <option value="ready_for_inspection">Ready For Inspection</option>
+                <option value="completed">Completed</option>
               </select>
             </div>
 

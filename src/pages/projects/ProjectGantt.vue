@@ -4,6 +4,23 @@
     <div class="bg-white rounded-lg shadow p-3 mb-3 flex items-center justify-between">
       <div class="text-sm text-gray-700 font-medium">Gantt Chart</div>
       <div class="flex items-center gap-4">
+        <!-- Worker Filter -->
+        <div class="flex items-center space-x-2">
+          <label class="text-sm font-medium text-gray-700">Worker:</label>
+          <select
+            v-model="selectedWorkerId"
+            class="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+          >
+            <option :value="null">All Workers</option>
+            <option
+              v-for="worker in allProjectWorkers"
+              :key="worker.id"
+              :value="worker.id"
+            >
+              {{ worker.name }} ({{ worker.role }})
+            </option>
+          </select>
+        </div>
         <!-- Dependencies Toggle -->
         <button
           @click="showDependencies = !showDependencies"
@@ -485,6 +502,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import type { Task, TaskCreateUpdate, MilestoneType } from '@/core/types/task'
 import { tasksApi } from '@/core/utils/tasks-api'
 import { getMilestoneTypeIcon } from '@/core/utils/task-utils'
+import { projectApi, type ProjectTeamMember } from '@/core/utils/project-api'
 import TaskDialog from './TaskDialog.vue'
 import TaskViewDialog from './TaskViewDialog.vue'
 import MilestoneDialog from './MilestoneDialog.vue'
@@ -521,7 +539,7 @@ interface GanttTask {
   start: string // YYYY-MM-DD
   end: string // YYYY-MM-DD
   duration: number // duration in days
-  status: 'planned' | 'in_progress' | 'completed' | 'blocked' | 'delayed'
+  status: 'planned' | 'scheduled' | 'scheduled_accepted' | 'in_progress' | 'partially_completed' | 'delayed_due_to_issue' | 'ready_for_inspection' | 'completed'
   milestone?: boolean
   milestone_type?: MilestoneType
   task_type?: string
@@ -534,7 +552,8 @@ interface GanttTask {
 
 // Calculate project range based on project dates or task dates as fallback
 const projectRange = computed(() => {
-  if (!props.tasks || props.tasks.length === 0) return null
+  const tasksToUse = filteredTasks.value
+  if (!tasksToUse || tasksToUse.length === 0) return null
 
   // Use project dates if available, otherwise fall back to task dates
   let startDate: Date = new Date()
@@ -556,8 +575,8 @@ const projectRange = computed(() => {
   // Use task boundaries if no project dates or dynamic range is enabled
   if (!props.projectStartDate || !props.projectEndDate || props.dynamicRange) {
     // Fallback to task boundaries
-    const starts = props.tasks.map((t) => t.start_planned).filter((s): s is string => !!s)
-    const ends = props.tasks
+    const starts = tasksToUse.map((t) => t.start_planned).filter((s): s is string => !!s)
+    const ends = tasksToUse
       .map((t) => t.end_planned || t.start_planned)
       .filter(Boolean) as string[]
 
@@ -750,17 +769,142 @@ const days = computed<Date[]>(() => {
 // Local tasks state for drag operations
 const localTasks = ref<Task[]>([])
 
+// Worker filter state
+const selectedWorkerId = ref<number | null>(null)
+const allProjectWorkers = ref<Array<{ id: number; name: string; role: string }>>([])
+
+// Filtered tasks by worker
+const filteredTasks = computed(() => {
+  const tasksToFilter = localTasks.value.length > 0 ? localTasks.value : (props.tasks || [])
+
+  if (!selectedWorkerId.value) {
+    return tasksToFilter
+  }
+
+  return tasksToFilter.filter((task) => {
+    // Check if worker is task lead
+    if (task.task_lead_id === selectedWorkerId.value) {
+      return true
+    }
+
+    // Check if worker is in team members
+    if (task.team_members && Array.isArray(task.team_members) && selectedWorkerId.value !== null) {
+      return task.team_members.includes(selectedWorkerId.value)
+    }
+
+    return false
+  })
+})
+
+// Load all project workers including task leads for filtering
+async function loadAllProjectWorkers() {
+  if (!props.projectId) {
+    allProjectWorkers.value = []
+    return
+  }
+
+  try {
+    console.log('👥 Loading all project workers for Gantt filtering, project:', props.projectId)
+
+    // Get team members from project
+    const teamResponse = await projectApi.getTeamMembers(props.projectId)
+    const apiTeamMembers = teamResponse.data?.team_members || teamResponse.team_members || []
+
+    // Create a map to store unique workers
+    const workersMap = new Map<number, { id: number; name: string; role: string }>()
+
+    // Add team members
+    apiTeamMembers.forEach((member: ProjectTeamMember & { full_name?: string; first_name?: string; last_name?: string; role_name?: string; project_role?: string; role?: string }) => {
+      const id = member.id || member.user_id || 0
+      if (id && !workersMap.has(id)) {
+        workersMap.set(id, {
+          id,
+          name: member.full_name || `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.name || 'Unknown',
+          role: member.role_name || member.project_role || member.role_in_project || member.role || 'Worker',
+        })
+      }
+    })
+
+    // Add task leads from all tasks
+    const tasksToCheck = localTasks.value.length > 0 ? localTasks.value : (props.tasks || [])
+    tasksToCheck.forEach((task) => {
+      if (task.task_lead_id && !workersMap.has(task.task_lead_id)) {
+        const teamMember = apiTeamMembers.find((m: ProjectTeamMember) =>
+          (m.id || m.user_id) === task.task_lead_id
+        )
+
+        if (teamMember) {
+          const teamMemberWithExtras = teamMember as ProjectTeamMember & { full_name?: string; first_name?: string; last_name?: string; role_name?: string; project_role?: string }
+          workersMap.set(task.task_lead_id, {
+            id: task.task_lead_id,
+            name: teamMemberWithExtras.full_name || `${teamMemberWithExtras.first_name || ''} ${teamMemberWithExtras.last_name || ''}`.trim() || teamMember.name || 'Unknown',
+            role: teamMemberWithExtras.role_name || teamMemberWithExtras.project_role || teamMember.role_in_project || 'Task Lead',
+          })
+        } else {
+          workersMap.set(task.task_lead_id, {
+            id: task.task_lead_id,
+            name: `Worker #${task.task_lead_id}`,
+            role: 'Task Lead',
+          })
+        }
+      }
+
+      // Add team members from tasks
+      if (task.team_members && Array.isArray(task.team_members)) {
+        task.team_members.forEach((workerId: number) => {
+          if (workerId && !workersMap.has(workerId)) {
+            const teamMember = apiTeamMembers.find((m: ProjectTeamMember) =>
+              (m.id || m.user_id) === workerId
+            )
+
+            if (teamMember) {
+              const teamMemberWithExtras = teamMember as ProjectTeamMember & { full_name?: string; first_name?: string; last_name?: string; role_name?: string; project_role?: string }
+              workersMap.set(workerId, {
+                id: workerId,
+                name: teamMemberWithExtras.full_name || `${teamMemberWithExtras.first_name || ''} ${teamMemberWithExtras.last_name || ''}`.trim() || teamMember.name || 'Unknown',
+                role: teamMemberWithExtras.role_name || teamMemberWithExtras.project_role || teamMember.role_in_project || 'Team Member',
+              })
+            } else {
+              workersMap.set(workerId, {
+                id: workerId,
+                name: `Worker #${workerId}`,
+                role: 'Team Member',
+              })
+            }
+          }
+        })
+      }
+    })
+
+    allProjectWorkers.value = Array.from(workersMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+    console.log('✅ All project workers loaded for Gantt filtering:', allProjectWorkers.value.length)
+  } catch (error) {
+    console.error('❌ Error loading all project workers:', error)
+    allProjectWorkers.value = []
+  }
+}
 
 // Initialize local tasks when props change
 watch(() => props.tasks, (newTasks) => {
   if (newTasks) {
     localTasks.value = [...newTasks]
+    // Reload workers when tasks change
+    if (props.projectId) {
+      loadAllProjectWorkers()
+    }
   }
 }, { immediate: true })
 
+// Load workers on mount
+onMounted(() => {
+  if (props.projectId) {
+    loadAllProjectWorkers()
+  }
+})
+
 // Map tasks to gantt format
 const mappedTasks = computed<GanttTask[]>(() => {
-  const tasksToUse = localTasks.value.length > 0 ? localTasks.value : (props.tasks || [])
+  const tasksToUse = filteredTasks.value
   if (tasksToUse.length === 0) return []
 
   // Sort by task_order if available, otherwise by start date
@@ -929,16 +1073,24 @@ function getTaskBarStyle(task: GanttTask, day: Date): Record<string, string> {
 function barColor(task: GanttTask): string {
   // Use the same colors as the calendar legend
   switch (task.status) {
-    case 'completed':
-      return 'bg-gray-500 border border-gray-600 shadow-sm' // Done - gray
+    case 'planned':
+      return 'bg-yellow-500 border border-yellow-600 shadow-sm' // Planned - yellow
+    case 'scheduled':
+      return 'bg-indigo-500 border border-indigo-600 shadow-sm' // Scheduled - indigo
+    case 'scheduled_accepted':
+      return 'bg-purple-500 border border-purple-600 shadow-sm' // Scheduled Accepted - purple
     case 'in_progress':
-      return 'bg-green-500 border border-green-600 shadow-sm' // In Progress - green
-    case 'blocked':
-      return 'bg-red-500 border border-red-600 shadow-sm' // Blocked - red
-    case 'delayed':
-      return 'bg-yellow-500 border border-yellow-600 shadow-sm' // Delayed - yellow
+      return 'bg-blue-500 border border-blue-600 shadow-sm' // In Progress - blue
+    case 'partially_completed':
+      return 'bg-teal-500 border border-teal-600 shadow-sm' // Partially Completed - teal
+    case 'delayed_due_to_issue':
+      return 'bg-orange-500 border border-orange-600 shadow-sm' // Delayed Due To Issue - orange
+    case 'ready_for_inspection':
+      return 'bg-cyan-500 border border-cyan-600 shadow-sm' // Ready For Inspection - cyan
+    case 'completed':
+      return 'bg-green-500 border border-green-600 shadow-sm' // Completed - green
     default:
-      return 'bg-blue-500 border border-blue-600 shadow-sm' // Planned - blue
+      return 'bg-blue-500 border border-blue-600 shadow-sm' // Default - blue
   }
 }
 
@@ -1157,13 +1309,22 @@ function validateDependencies(task: GanttTask, newStart: Date, newEnd: Date): { 
 
 function mapStatus(status: Task['status'] | string): GanttTask['status'] {
   switch (status) {
+    case 'planned':
+    case 'scheduled':
+    case 'scheduled_accepted':
+    case 'in_progress':
+    case 'partially_completed':
+    case 'delayed_due_to_issue':
+    case 'ready_for_inspection':
+    case 'completed':
+      return status as GanttTask['status']
+    // Legacy status mapping for backward compatibility
     case 'done':
       return 'completed'
-    case 'in_progress':
-      return 'in_progress'
     case 'blocked':
+      return 'delayed_due_to_issue'
     case 'delayed':
-    case 'planned':
+      return 'delayed_due_to_issue'
     default:
       return 'planned'
   }

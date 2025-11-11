@@ -90,6 +90,10 @@ const searchResults = ref<Task[]>([])
 const currentSearchIndex = ref(0)
 const isSearchActive = ref(false)
 
+// Worker filter state
+const selectedWorkerId = ref<number | null>(null)
+const allProjectWorkers = ref<Array<{ id: number; name: string; role: string }>>([])
+
 function searchTasks(query: string) {
   console.log('🔍 Search function called with query:', query)
   console.log('📋 Available tasks:', tasks.value.length)
@@ -258,6 +262,27 @@ const availableTasksForDependencies = computed(() => {
   return tasks.value
 })
 
+// Filtered tasks by worker
+const filteredTasks = computed(() => {
+  if (!selectedWorkerId.value) {
+    return tasks.value
+  }
+
+  return tasks.value.filter((task) => {
+    // Check if worker is task lead
+    if (task.task_lead_id === selectedWorkerId.value) {
+      return true
+    }
+
+    // Check if worker is in team members
+    if (task.team_members && Array.isArray(task.team_members) && selectedWorkerId.value !== null) {
+      return task.team_members.includes(selectedWorkerId.value)
+    }
+
+    return false
+  })
+})
+
 // Get current date for testing
 const today = new Date()
 const currentMonth = today.getMonth() + 1
@@ -358,9 +383,11 @@ const calendarOptions = ref({
     }
   },
   events: (_info: unknown, successCallback: (events: any[]) => void) => { // eslint-disable-line @typescript-eslint/no-explicit-any
-    console.log('📅 FullCalendar requesting events, returning:', calendarEvents.value.length)
-    console.log('📅 Events data:', calendarEvents.value)
-    successCallback(JSON.parse(JSON.stringify(calendarEvents.value)))
+    // Use filteredTasks instead of calendarEvents
+    const tasksWithDates = filteredTasks.value.filter((task) => task.start_planned)
+    const events = tasksWithDates.map((task) => taskToCalendarTask(task, shouldShowDependencyIndicators.value))
+    console.log('📅 FullCalendar requesting events, returning:', events.length, 'filtered tasks')
+    successCallback(events)
   },
   datesSet: () => {
     // Apply project bounds styling when calendar dates change
@@ -784,6 +811,9 @@ async function loadTasks() {
 
     // Update calendar events
     updateCalendarEvents(events)
+
+    // Load all project workers for filtering
+    await loadAllProjectWorkers()
 
     // Apply project bounds styling after tasks are loaded
     setTimeout(() => {
@@ -1977,14 +2007,21 @@ watch(
   { deep: true },
 )
 
+// Watch filteredTasks to update calendar events
+watch(filteredTasks, () => {
+  if (viewMode.value === 'ical' && calendarRef.value) {
+    const calendarApi = calendarRef.value.getApi()
+    calendarApi.refetchEvents()
+  }
+}, { deep: true })
+
 // Watch for dependency indicators toggle changes
 watch(shouldShowDependencyIndicators, () => {
   console.log('🔄 Dependency indicators toggle changed, updating calendar events')
-  // Update calendar events with new indicator settings
-  const events = tasks.value.map((task) =>
-    taskToCalendarTask(task, shouldShowDependencyIndicators.value),
-  )
-  updateCalendarEvents(events)
+  if (viewMode.value === 'ical' && calendarRef.value) {
+    const calendarApi = calendarRef.value.getApi()
+    calendarApi.refetchEvents()
+  }
 })
 
 // Watch for selected task changes to restore selection in calendar
@@ -2054,14 +2091,20 @@ function getStatusLabel(status: TaskStatus): string {
   switch (status) {
     case 'planned':
       return 'Planned'
+    case 'scheduled':
+      return 'Scheduled'
+    case 'scheduled_accepted':
+      return 'Scheduled Accepted'
     case 'in_progress':
       return 'In Progress'
-    case 'done':
-      return 'Done'
-    case 'blocked':
-      return 'Blocked'
-    case 'delayed':
-      return 'Delayed'
+    case 'partially_completed':
+      return 'Partially Completed'
+    case 'delayed_due_to_issue':
+      return 'Delayed Due To Issue'
+    case 'ready_for_inspection':
+      return 'Ready For Inspection'
+    case 'completed':
+      return 'Completed'
     default:
       return 'Unknown'
   }
@@ -2070,15 +2113,21 @@ function getStatusLabel(status: TaskStatus): string {
 function getStatusClass(status: TaskStatus): string {
   switch (status) {
     case 'planned':
-      return 'text-blue-600'
-    case 'in_progress':
-      return 'text-green-600'
-    case 'done':
-      return 'text-gray-600'
-    case 'blocked':
-      return 'text-red-600'
-    case 'delayed':
       return 'text-yellow-600'
+    case 'scheduled':
+      return 'text-indigo-600'
+    case 'scheduled_accepted':
+      return 'text-purple-600'
+    case 'in_progress':
+      return 'text-blue-600'
+    case 'partially_completed':
+      return 'text-teal-600'
+    case 'delayed_due_to_issue':
+      return 'text-orange-600'
+    case 'ready_for_inspection':
+      return 'text-cyan-600'
+    case 'completed':
+      return 'text-green-600'
     default:
       return 'text-gray-600'
   }
@@ -2297,6 +2346,95 @@ async function loadAvailablePeople() {
   } catch (error) {
     console.error('❌ Error loading project team members:', error)
     availablePeople.value = []
+  }
+}
+
+// Load all project workers including task leads for filtering
+async function loadAllProjectWorkers() {
+  if (!props.projectId) {
+    allProjectWorkers.value = []
+    return
+  }
+
+  try {
+    console.log('👥 Loading all project workers for filtering, project:', props.projectId)
+
+    // Get team members from project
+    const teamResponse = await projectApi.getTeamMembers(props.projectId)
+    const apiTeamMembers = teamResponse.data?.team_members || teamResponse.team_members || []
+
+    // Create a map to store unique workers
+    const workersMap = new Map<number, { id: number; name: string; role: string }>()
+
+    // Add team members
+    apiTeamMembers.forEach((member: ProjectTeamMember & { full_name?: string; first_name?: string; last_name?: string; role_name?: string; project_role?: string; role?: string }) => {
+      const id = member.id || member.user_id || 0
+      if (id && !workersMap.has(id)) {
+        workersMap.set(id, {
+          id,
+          name: member.full_name || `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.name || 'Unknown',
+          role: member.role_name || member.project_role || member.role_in_project || member.role || 'Worker',
+        })
+      }
+    })
+
+    // Add task leads from all tasks
+    tasks.value.forEach((task) => {
+      if (task.task_lead_id && !workersMap.has(task.task_lead_id)) {
+        // Try to find the worker in team members
+        const teamMember = apiTeamMembers.find((m: ProjectTeamMember) =>
+          (m.id || m.user_id) === task.task_lead_id
+        )
+
+        if (teamMember) {
+          const teamMemberWithExtras = teamMember as ProjectTeamMember & { full_name?: string; first_name?: string; last_name?: string; role_name?: string; project_role?: string }
+          workersMap.set(task.task_lead_id, {
+            id: task.task_lead_id,
+            name: teamMemberWithExtras.full_name || `${teamMemberWithExtras.first_name || ''} ${teamMemberWithExtras.last_name || ''}`.trim() || teamMember.name || 'Unknown',
+            role: teamMemberWithExtras.role_name || teamMemberWithExtras.project_role || teamMember.role_in_project || 'Task Lead',
+          })
+        } else {
+          // Add with placeholder name if not found
+          workersMap.set(task.task_lead_id, {
+            id: task.task_lead_id,
+            name: `Worker #${task.task_lead_id}`,
+            role: 'Task Lead',
+          })
+        }
+      }
+
+      // Add team members from tasks
+      if (task.team_members && Array.isArray(task.team_members)) {
+        task.team_members.forEach((workerId: number) => {
+          if (workerId && !workersMap.has(workerId)) {
+            const teamMember = apiTeamMembers.find((m: ProjectTeamMember) =>
+              (m.id || m.user_id) === workerId
+            )
+
+            if (teamMember) {
+              const teamMemberWithExtras = teamMember as ProjectTeamMember & { full_name?: string; first_name?: string; last_name?: string; role_name?: string; project_role?: string }
+              workersMap.set(workerId, {
+                id: workerId,
+                name: teamMemberWithExtras.full_name || `${teamMemberWithExtras.first_name || ''} ${teamMemberWithExtras.last_name || ''}`.trim() || teamMember.name || 'Unknown',
+                role: teamMemberWithExtras.role_name || teamMemberWithExtras.project_role || teamMember.role_in_project || 'Team Member',
+              })
+            } else {
+              workersMap.set(workerId, {
+                id: workerId,
+                name: `Worker #${workerId}`,
+                role: 'Team Member',
+              })
+            }
+          }
+        })
+      }
+    })
+
+    allProjectWorkers.value = Array.from(workersMap.values()).sort((a, b) => a.name.localeCompare(b.name))
+    console.log('✅ All project workers loaded for filtering:', allProjectWorkers.value.length)
+  } catch (error) {
+    console.error('❌ Error loading all project workers:', error)
+    allProjectWorkers.value = []
   }
 }
 
@@ -2990,31 +3128,51 @@ defineExpose({
   <div class="relative flex-1 flex flex-col h-full">
     <!-- Legend Section -->
     <div class="px-4 py-1 bg-transparent text-xs text-gray-600 mb-2">
-      <div class="flex items-center justify-center space-x-6">
+      <div class="flex items-start justify-center space-x-6 flex-wrap">
         <!-- Status Legend -->
         <div
-          class="flex items-center space-x-2 text-xs border border-gray-300 rounded-md px-3 py-1 bg-gray-50"
+          class="flex items-start space-x-2 text-xs border border-gray-300 rounded-md px-3 py-1 bg-gray-50"
         >
-          <span class="text-xs font-medium text-gray-700">Tasks:</span>
-          <div class="flex items-center space-x-1">
-            <div class="w-3 h-3 rounded-full" style="background-color: #3b82f6"></div>
-            <span class="text-gray-600">Planned</span>
-          </div>
-          <div class="flex items-center space-x-1">
-            <div class="w-3 h-3 rounded-full" style="background-color: #10b981"></div>
-            <span class="text-gray-600">In Progress</span>
-          </div>
-          <div class="flex items-center space-x-1">
-            <div class="w-3 h-3 rounded-full" style="background-color: #6b7280"></div>
-            <span class="text-gray-600">Done</span>
-          </div>
-          <div class="flex items-center space-x-1">
-            <div class="w-3 h-3 rounded-full" style="background-color: #ef4444"></div>
-            <span class="text-gray-600">Blocked</span>
-          </div>
-          <div class="flex items-center space-x-1">
-            <div class="w-3 h-3 rounded-full" style="background-color: #f59e0b"></div>
-            <span class="text-gray-600">Delayed</span>
+          <span class="text-xs font-medium text-gray-700 pt-0.5">Tasks:</span>
+          <div class="flex gap-x-3 gap-y-0.5">
+            <!-- Left column -->
+            <div class="flex flex-col gap-y-0.5">
+              <div class="flex items-center space-x-1">
+                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: #3B82F6"></div>
+                <span class="text-gray-600 text-xs">Planned</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: #6366F1"></div>
+                <span class="text-gray-600 text-xs">Scheduled</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: #8B5CF6"></div>
+                <span class="text-gray-600 text-xs">Scheduled Accepted</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: #10B981"></div>
+                <span class="text-gray-600 text-xs">In Progress</span>
+              </div>
+            </div>
+            <!-- Right column -->
+            <div class="flex flex-col gap-y-0.5">
+              <div class="flex items-center space-x-1">
+                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: #14B8A6"></div>
+                <span class="text-gray-600 text-xs">Partially Completed</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: #F59E0B"></div>
+                <span class="text-gray-600 text-xs">Delayed Due To Issue</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: #06B6D4"></div>
+                <span class="text-gray-600 text-xs">Ready For Inspection</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: #6B7280"></div>
+                <span class="text-gray-600 text-xs">Completed</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -3189,7 +3347,10 @@ defineExpose({
             <span v-if="loading" class="text-sm text-gray-500">Loading tasks...</span>
             <span v-else-if="error" class="text-sm text-red-500">{{ error }}</span>
             <span v-else class="text-sm text-gray-500">
-              {{ tasks.length }} tasks
+              {{ filteredTasks.length }} tasks
+              <span v-if="selectedWorkerId" class="ml-2 text-blue-600">
+                (filtered by worker)
+              </span>
               <span v-if="selectedTask" class="ml-2 text-blue-600">
                 | Selected: {{ selectedTask.name }}
                 <span v-if="isSearchActive && searchResults.length > 1" class="ml-2 text-green-600">
@@ -3200,6 +3361,24 @@ defineExpose({
           </div>
 
           <div class="flex items-center space-x-4">
+            <!-- Worker Filter -->
+            <div class="flex items-center space-x-2">
+              <label class="text-sm font-medium text-gray-700">Worker:</label>
+              <select
+                v-model="selectedWorkerId"
+                class="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+              >
+                <option :value="null">All Workers</option>
+                <option
+                  v-for="worker in allProjectWorkers"
+                  :key="worker.id"
+                  :value="worker.id"
+                >
+                  {{ worker.name }} ({{ worker.role }})
+                </option>
+              </select>
+            </div>
+
             <!-- View Mode Toggle -->
             <div class="flex bg-gray-100 rounded-lg p-1">
               <button
@@ -3257,7 +3436,7 @@ defineExpose({
 
       <!-- Task List View -->
       <div v-else-if="viewMode === 'list'" class="p-4">
-        <div v-if="tasks.length === 0" class="text-center text-gray-500 py-8">
+        <div v-if="filteredTasks.length === 0" class="text-center text-gray-500 py-8">
           <div class="text-4xl mb-4">📋</div>
           <h3 class="text-lg font-medium mb-2">No Tasks</h3>
 
@@ -3267,7 +3446,7 @@ defineExpose({
           <div class="w-1/2 space-y-3">
             <h3 class="text-lg font-medium text-gray-900 mb-3">Tasks</h3>
             <div
-              v-for="task in tasks"
+              v-for="task in filteredTasks"
               :key="task.id"
               @click="selectTaskForDetails(task)"
               :class="[
@@ -3493,7 +3672,7 @@ defineExpose({
          <ProjectGantt
            :project-id="projectId"
            :can-edit="props.canEdit"
-           :tasks="tasks"
+           :tasks="filteredTasks"
            :project-start-date="projectInfo?.date_start || ''"
            :project-end-date="projectInfo?.date_end || ''"
            :dynamic-range="false"

@@ -228,14 +228,20 @@ export function getTaskColor(status?: TaskStatus): string {
   switch (status) {
     case 'planned':
       return '#3B82F6' // Blue
+    case 'scheduled':
+      return '#6366F1' // Indigo
+    case 'scheduled_accepted':
+      return '#8B5CF6' // Purple
     case 'in_progress':
       return '#10B981' // Green
-    case 'done':
-      return '#6B7280' // Gray
-    case 'blocked':
-      return '#EF4444' // Red
-    case 'delayed':
+    case 'partially_completed':
+      return '#14B8A6' // Teal
+    case 'delayed_due_to_issue':
       return '#F59E0B' // Orange
+    case 'ready_for_inspection':
+      return '#06B6D4' // Cyan
+    case 'completed':
+      return '#6B7280' // Gray
     default:
       return '#3B82F6' // Default blue
   }
@@ -292,14 +298,20 @@ export function getTaskStatusLabel(status: TaskStatus): string {
   switch (status) {
     case 'planned':
       return 'Planned'
+    case 'scheduled':
+      return 'Scheduled'
+    case 'scheduled_accepted':
+      return 'Scheduled Accepted'
     case 'in_progress':
       return 'In Progress'
-    case 'done':
-      return 'Done'
-    case 'blocked':
-      return 'Blocked'
-    case 'delayed':
-      return 'Delayed'
+    case 'partially_completed':
+      return 'Partially Completed'
+    case 'delayed_due_to_issue':
+      return 'Delayed Due To Issue'
+    case 'ready_for_inspection':
+      return 'Ready For Inspection'
+    case 'completed':
+      return 'Completed'
     default:
       return 'Unknown'
   }
@@ -323,7 +335,7 @@ export function getWbsPathString(wbsPath: string[]): string {
 
 // Check if task is overdue
 export function isTaskOverdue(task: Task): boolean {
-  if (!task.end_planned || task.status === 'done') return false
+  if (!task.end_planned || task.status === 'completed') return false
 
   const endDate = new Date(task.end_planned)
   const today = new Date()
@@ -334,8 +346,8 @@ export function isTaskOverdue(task: Task): boolean {
 
 // Get task priority based on status and dates
 export function getTaskPriority(task: Task): 'low' | 'medium' | 'high' | 'critical' {
-  if (task.status === 'blocked') return 'critical'
-  if (task.status === 'delayed') return 'high'
+  if (task.status === 'delayed_due_to_issue') return 'critical'
+  if (task.status === 'ready_for_inspection') return 'high'
   if (isTaskOverdue(task)) return 'critical'
 
   // Check if task is starting soon (within 3 days)
@@ -416,7 +428,7 @@ export function exportTasksToICal(tasks: Task[]): string {
         `DTEND:${endDate}`,
         `SUMMARY:${summary}`,
         `DESCRIPTION:${description}`,
-        `STATUS:${task.status === 'done' ? 'CONFIRMED' : 'TENTATIVE'}`,
+        `STATUS:${task.status === 'completed' ? 'CONFIRMED' : 'TENTATIVE'}`,
         `CATEGORIES:${taskIsMilestone ? 'MILESTONE' : 'TASK'}`,
         `PRIORITY:${getTaskPriority(task).toUpperCase()}`,
         'END:VEVENT',

@@ -309,11 +309,14 @@ function formatStatus(status: string | undefined): string {
 
 function getStatusClass(status: string | undefined): string {
   const statusClasses: Record<string, string> = {
-    planned: 'bg-gray-100 text-gray-800',
+    planned: 'bg-yellow-100 text-yellow-800',
+    scheduled: 'bg-indigo-100 text-indigo-800',
+    scheduled_accepted: 'bg-purple-100 text-purple-800',
     in_progress: 'bg-blue-100 text-blue-800',
+    partially_completed: 'bg-teal-100 text-teal-800',
+    delayed_due_to_issue: 'bg-orange-100 text-orange-800',
+    ready_for_inspection: 'bg-cyan-100 text-cyan-800',
     completed: 'bg-green-100 text-green-800',
-    on_hold: 'bg-yellow-100 text-yellow-800',
-    cancelled: 'bg-red-100 text-red-800',
   }
   return statusClasses[status || 'planned'] || 'bg-gray-100 text-gray-800'
 }

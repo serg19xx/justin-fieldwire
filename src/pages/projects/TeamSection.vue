@@ -159,10 +159,14 @@
                     class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
                     :class="{
                       'bg-blue-100 text-blue-800': task.status === 'in_progress',
-                      'bg-green-100 text-green-800': task.status === 'done',
+                      'bg-indigo-100 text-indigo-800': task.status === 'scheduled',
+                      'bg-purple-100 text-purple-800': task.status === 'scheduled_accepted',
+                      'bg-green-100 text-green-800': task.status === 'completed',
+                      'bg-teal-100 text-teal-800': task.status === 'partially_completed',
                       'bg-yellow-100 text-yellow-800': task.status === 'planned',
-                      'bg-red-100 text-red-800': task.status === 'blocked' || task.status === 'delayed',
-                      'bg-gray-100 text-gray-800': !['in_progress', 'done', 'planned', 'blocked', 'delayed'].includes(task.status),
+                      'bg-orange-100 text-orange-800': task.status === 'delayed_due_to_issue',
+                      'bg-cyan-100 text-cyan-800': task.status === 'ready_for_inspection',
+                      'bg-gray-100 text-gray-800': !['planned', 'scheduled', 'scheduled_accepted', 'in_progress', 'partially_completed', 'delayed_due_to_issue', 'ready_for_inspection', 'completed'].includes(task.status),
                     }"
                   >
                     {{ formatTaskStatus(task.status) }}
@@ -216,10 +220,14 @@
                   class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
                   :class="{
                     'bg-blue-100 text-blue-800': task.status === 'in_progress',
-                    'bg-green-100 text-green-800': task.status === 'done',
+                    'bg-indigo-100 text-indigo-800': task.status === 'scheduled',
+                    'bg-purple-100 text-purple-800': task.status === 'scheduled_accepted',
+                    'bg-green-100 text-green-800': task.status === 'completed',
+                    'bg-teal-100 text-teal-800': task.status === 'partially_completed',
                     'bg-yellow-100 text-yellow-800': task.status === 'planned',
-                    'bg-red-100 text-red-800': task.status === 'blocked' || task.status === 'delayed',
-                    'bg-gray-100 text-gray-800': !['in_progress', 'done', 'planned', 'blocked', 'delayed'].includes(task.status),
+                    'bg-orange-100 text-orange-800': task.status === 'delayed_due_to_issue',
+                    'bg-cyan-100 text-cyan-800': task.status === 'ready_for_inspection',
+                    'bg-gray-100 text-gray-800': !['planned', 'scheduled', 'scheduled_accepted', 'in_progress', 'partially_completed', 'delayed_due_to_issue', 'ready_for_inspection', 'completed'].includes(task.status),
                   }"
                 >
                   {{ formatTaskStatus(task.status) }}
@@ -619,10 +627,13 @@ const filteredTasksGrouped = computed(() => {
 function formatTaskStatus(status: string): string {
   const statusMap: Record<string, string> = {
     planned: 'Planned',
+    scheduled: 'Scheduled',
+    scheduled_accepted: 'Scheduled Accepted',
     in_progress: 'In Progress',
-    done: 'Done',
-    blocked: 'Blocked',
-    delayed: 'Delayed',
+    partially_completed: 'Partially Completed',
+    delayed_due_to_issue: 'Delayed Due To Issue',
+    ready_for_inspection: 'Ready For Inspection',
+    completed: 'Completed',
   }
   return statusMap[status] || status
 }

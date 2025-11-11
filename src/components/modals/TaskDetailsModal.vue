@@ -210,10 +210,13 @@ const statusLabel = computed(() => {
   
   switch (props.task.status) {
     case 'planned': return 'Planned'
+    case 'scheduled': return 'Scheduled'
+    case 'scheduled_accepted': return 'Scheduled Accepted'
     case 'in_progress': return 'In Progress'
-    case 'done': return 'Completed'
-    case 'blocked': return 'Blocked'
-    case 'delayed': return 'Delayed'
+    case 'partially_completed': return 'Partially Completed'
+    case 'delayed_due_to_issue': return 'Delayed Due To Issue'
+    case 'ready_for_inspection': return 'Ready For Inspection'
+    case 'completed': return 'Completed'
     default: return 'Unknown'
   }
 })
@@ -222,11 +225,14 @@ const statusBadgeClass = computed(() => {
   if (!props.task) return ''
   
   switch (props.task.status) {
-    case 'planned': return 'bg-blue-100 text-blue-800'
-    case 'in_progress': return 'bg-green-100 text-green-800'
-    case 'done': return 'bg-gray-100 text-gray-800'
-    case 'blocked': return 'bg-red-100 text-red-800'
-    case 'delayed': return 'bg-yellow-100 text-yellow-800'
+    case 'planned': return 'bg-yellow-100 text-yellow-800'
+    case 'scheduled': return 'bg-indigo-100 text-indigo-800'
+    case 'scheduled_accepted': return 'bg-purple-100 text-purple-800'
+    case 'in_progress': return 'bg-blue-100 text-blue-800'
+    case 'partially_completed': return 'bg-teal-100 text-teal-800'
+    case 'delayed_due_to_issue': return 'bg-orange-100 text-orange-800'
+    case 'ready_for_inspection': return 'bg-cyan-100 text-cyan-800'
+    case 'completed': return 'bg-green-100 text-green-800'
     default: return 'bg-gray-100 text-gray-800'
   }
 })
@@ -235,11 +241,14 @@ const statusIndicatorClass = computed(() => {
   if (!props.task) return ''
   
   switch (props.task.status) {
-    case 'planned': return 'bg-blue-500'
-    case 'in_progress': return 'bg-green-500'
-    case 'done': return 'bg-gray-500'
-    case 'blocked': return 'bg-red-500'
-    case 'delayed': return 'bg-yellow-500'
+    case 'planned': return 'bg-yellow-500'
+    case 'scheduled': return 'bg-indigo-500'
+    case 'scheduled_accepted': return 'bg-purple-500'
+    case 'in_progress': return 'bg-blue-500'
+    case 'partially_completed': return 'bg-teal-500'
+    case 'delayed_due_to_issue': return 'bg-orange-500'
+    case 'ready_for_inspection': return 'bg-cyan-500'
+    case 'completed': return 'bg-green-500'
     default: return 'bg-gray-500'
   }
 })
