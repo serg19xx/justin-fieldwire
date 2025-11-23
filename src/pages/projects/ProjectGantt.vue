@@ -4,23 +4,6 @@
     <div class="bg-white rounded-lg shadow p-3 mb-3 flex items-center justify-between">
       <div class="text-sm text-gray-700 font-medium">Gantt Chart</div>
       <div class="flex items-center gap-4">
-        <!-- Worker Filter -->
-        <div class="flex items-center space-x-2">
-          <label class="text-sm font-medium text-gray-700">Worker:</label>
-          <select
-            v-model="selectedWorkerId"
-            class="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
-          >
-            <option :value="null">All Workers</option>
-            <option
-              v-for="worker in allProjectWorkers"
-              :key="worker.id"
-              :value="worker.id"
-            >
-              {{ worker.name }} ({{ worker.role }})
-            </option>
-          </select>
-        </div>
         <!-- Dependencies Toggle -->
         <button
           @click="showDependencies = !showDependencies"
@@ -552,7 +535,8 @@ interface GanttTask {
 
 // Calculate project range based on project dates or task dates as fallback
 const projectRange = computed(() => {
-  const tasksToUse = filteredTasks.value
+  // Use tasks from props (already filtered by parent component)
+  const tasksToUse = localTasks.value.length > 0 ? localTasks.value : (props.tasks || [])
   if (!tasksToUse || tasksToUse.length === 0) return null
 
   // Use project dates if available, otherwise fall back to task dates
@@ -769,142 +753,21 @@ const days = computed<Date[]>(() => {
 // Local tasks state for drag operations
 const localTasks = ref<Task[]>([])
 
-// Worker filter state
-const selectedWorkerId = ref<number | null>(null)
-const allProjectWorkers = ref<Array<{ id: number; name: string; role: string }>>([])
-
-// Filtered tasks by worker
-const filteredTasks = computed(() => {
-  const tasksToFilter = localTasks.value.length > 0 ? localTasks.value : (props.tasks || [])
-
-  if (!selectedWorkerId.value) {
-    return tasksToFilter
-  }
-
-  return tasksToFilter.filter((task) => {
-    // Check if worker is task lead
-    if (task.task_lead_id === selectedWorkerId.value) {
-      return true
-    }
-
-    // Check if worker is in team members
-    if (task.team_members && Array.isArray(task.team_members) && selectedWorkerId.value !== null) {
-      return task.team_members.includes(selectedWorkerId.value)
-    }
-
-    return false
-  })
-})
-
-// Load all project workers including task leads for filtering
-async function loadAllProjectWorkers() {
-  if (!props.projectId) {
-    allProjectWorkers.value = []
-    return
-  }
-
-  try {
-    console.log('👥 Loading all project workers for Gantt filtering, project:', props.projectId)
-
-    // Get team members from project
-    const teamResponse = await projectApi.getTeamMembers(props.projectId)
-    const apiTeamMembers = teamResponse.data?.team_members || teamResponse.team_members || []
-
-    // Create a map to store unique workers
-    const workersMap = new Map<number, { id: number; name: string; role: string }>()
-
-    // Add team members
-    apiTeamMembers.forEach((member: ProjectTeamMember & { full_name?: string; first_name?: string; last_name?: string; role_name?: string; project_role?: string; role?: string }) => {
-      const id = member.id || member.user_id || 0
-      if (id && !workersMap.has(id)) {
-        workersMap.set(id, {
-          id,
-          name: member.full_name || `${member.first_name || ''} ${member.last_name || ''}`.trim() || member.name || 'Unknown',
-          role: member.role_name || member.project_role || member.role_in_project || member.role || 'Worker',
-        })
-      }
-    })
-
-    // Add task leads from all tasks
-    const tasksToCheck = localTasks.value.length > 0 ? localTasks.value : (props.tasks || [])
-    tasksToCheck.forEach((task) => {
-      if (task.task_lead_id && !workersMap.has(task.task_lead_id)) {
-        const teamMember = apiTeamMembers.find((m: ProjectTeamMember) =>
-          (m.id || m.user_id) === task.task_lead_id
-        )
-
-        if (teamMember) {
-          const teamMemberWithExtras = teamMember as ProjectTeamMember & { full_name?: string; first_name?: string; last_name?: string; role_name?: string; project_role?: string }
-          workersMap.set(task.task_lead_id, {
-            id: task.task_lead_id,
-            name: teamMemberWithExtras.full_name || `${teamMemberWithExtras.first_name || ''} ${teamMemberWithExtras.last_name || ''}`.trim() || teamMember.name || 'Unknown',
-            role: teamMemberWithExtras.role_name || teamMemberWithExtras.project_role || teamMember.role_in_project || 'Task Lead',
-          })
-        } else {
-          workersMap.set(task.task_lead_id, {
-            id: task.task_lead_id,
-            name: `Worker #${task.task_lead_id}`,
-            role: 'Task Lead',
-          })
-        }
-      }
-
-      // Add team members from tasks
-      if (task.team_members && Array.isArray(task.team_members)) {
-        task.team_members.forEach((workerId: number) => {
-          if (workerId && !workersMap.has(workerId)) {
-            const teamMember = apiTeamMembers.find((m: ProjectTeamMember) =>
-              (m.id || m.user_id) === workerId
-            )
-
-            if (teamMember) {
-              const teamMemberWithExtras = teamMember as ProjectTeamMember & { full_name?: string; first_name?: string; last_name?: string; role_name?: string; project_role?: string }
-              workersMap.set(workerId, {
-                id: workerId,
-                name: teamMemberWithExtras.full_name || `${teamMemberWithExtras.first_name || ''} ${teamMemberWithExtras.last_name || ''}`.trim() || teamMember.name || 'Unknown',
-                role: teamMemberWithExtras.role_name || teamMemberWithExtras.project_role || teamMember.role_in_project || 'Team Member',
-              })
-            } else {
-              workersMap.set(workerId, {
-                id: workerId,
-                name: `Worker #${workerId}`,
-                role: 'Team Member',
-              })
-            }
-          }
-        })
-      }
-    })
-
-    allProjectWorkers.value = Array.from(workersMap.values()).sort((a, b) => a.name.localeCompare(b.name))
-    console.log('✅ All project workers loaded for Gantt filtering:', allProjectWorkers.value.length)
-  } catch (error) {
-    console.error('❌ Error loading all project workers:', error)
-    allProjectWorkers.value = []
-  }
-}
+// Note: Worker filtering is handled by parent component (ProjectCalendar)
+// Tasks are already filtered when passed via props.tasks
 
 // Initialize local tasks when props change
+// Note: Worker filtering is handled by parent component (ProjectCalendar)
 watch(() => props.tasks, (newTasks) => {
   if (newTasks) {
     localTasks.value = [...newTasks]
-    // Reload workers when tasks change
-    if (props.projectId) {
-      loadAllProjectWorkers()
-    }
   }
 }, { immediate: true })
 
-// Load workers on mount
-onMounted(() => {
-  if (props.projectId) {
-    loadAllProjectWorkers()
-  }
-})
-
 // Map tasks to gantt format
 const mappedTasks = computed<GanttTask[]>(() => {
-  const tasksToUse = filteredTasks.value
+  // Use tasks from props (already filtered by parent component)
+  const tasksToUse = localTasks.value.length > 0 ? localTasks.value : (props.tasks || [])
   if (tasksToUse.length === 0) return []
 
   // Sort by task_order if available, otherwise by start date

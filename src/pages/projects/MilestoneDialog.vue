@@ -64,16 +64,38 @@
             </select>
           </div>
 
-          <!-- Milestone Date -->
+          <!-- Milestone Date and Time -->
           <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-2"> Milestone Date * </label>
-            <input
-              v-model="form.start_planned"
-              :disabled="mode === 'view'"
-              type="date"
-              required
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
-            />
+            <div class="mb-3">
+              <input
+                v-model="form.start_planned"
+                :disabled="mode === 'view'"
+                type="date"
+                required
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
+              />
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs text-gray-600 mb-1">Start Time</label>
+                <input
+                  v-model="form.start_time"
+                  :disabled="mode === 'view'"
+                  type="time"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
+                />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-600 mb-1">End Time</label>
+                <input
+                  v-model="form.end_time"
+                  :disabled="mode === 'view'"
+                  type="time"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
+                />
+              </div>
+            </div>
           </div>
 
           <!-- Status -->
@@ -473,6 +495,8 @@ const emit = defineEmits<{
 const form = ref({
   name: '',
   start_planned: '',
+  start_time: '08:00', // Default start time 08:00
+  end_time: '17:00', // Default end time 17:00
   milestone: true, // Always true for milestones
   milestone_type: 'other' as MilestoneType,
   status: 'planned' as TaskStatus,
@@ -523,6 +547,8 @@ watch(
       form.value = {
         name: '',
         start_planned: startDate,
+        start_time: '08:00', // Default start time 08:00
+        end_time: '17:00', // Default end time 17:00
         milestone: true,
         milestone_type: 'other' as MilestoneType,
         status: 'planned' as TaskStatus,
@@ -565,9 +591,22 @@ watch(
         projectLead = authStore.currentUser.id
       }
 
+      // Convert time from HH:mm:ss to HH:mm for input field
+      const formatTimeForInput = (time: string | undefined | null): string => {
+        if (!time) return '08:00' // Default if not set
+        // If time is in HH:mm:ss format, extract HH:mm
+        if (time.includes(':')) {
+          const parts = time.split(':')
+          return `${parts[0]}:${parts[1]}`
+        }
+        return time
+      }
+
       form.value = {
         name: props.task.name || '',
         start_planned: props.task.start_planned || '',
+        start_time: formatTimeForInput(props.task.start_time),
+        end_time: formatTimeForInput(props.task.end_time),
         milestone: true,
         milestone_type: props.task.milestone_type || 'other',
         status: props.task.status || 'planned',
@@ -1036,11 +1075,23 @@ function handleSubmit() {
   // Explicitly set as array to ensure it's never undefined or null
   const finalInvitedPeople = Array.isArray(invitedPeopleData) ? invitedPeopleData : []
 
+  // Convert time from HH:mm to HH:mm:ss format for API
+  const formatTimeForApi = (time: string | undefined | null): string | undefined => {
+    if (!time) return undefined
+    // If already in HH:mm:ss format, return as is
+    if (time.split(':').length === 3) return time
+    // Convert HH:mm to HH:mm:ss
+    return `${time}:00`
+  }
+
   const taskData: TaskCreateUpdate & { id?: string } = {
     ...form.value,
     project_id: props.projectId,
     // For milestones, end_planned = start_planned
     end_planned: form.value.start_planned,
+    // Convert time formats for API (HH:mm -> HH:mm:ss)
+    start_time: formatTimeForApi(form.value.start_time),
+    end_time: formatTimeForApi(form.value.end_time),
     // Milestones don't have these fields
     wbs_path: undefined,
     duration_days: 1,

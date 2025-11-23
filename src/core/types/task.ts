@@ -47,7 +47,9 @@ export interface Task {
   wbs_path?: string // WBS path as string "1.1.1"
   name: string
   start_planned: string // DATE from database
+  start_time?: string // TIME from database (HH:mm:ss format, e.g., "08:00:00")
   end_planned?: string // DATE from database
+  end_time?: string // TIME from database (HH:mm:ss format, e.g., "17:00:00")
   duration_days?: number
   milestone: MilestoneType | null | 0 | false // null/0/false = regular task, text code = milestone type
   milestone_type?: MilestoneType // Computed property for backward compatibility (same as milestone)
@@ -100,7 +102,9 @@ export interface TaskCreateUpdate {
   wbs_path?: string
   name: string
   start_planned: string
+  start_time?: string // TIME format (HH:mm:ss, e.g., "08:00:00")
   end_planned?: string
+  end_time?: string // TIME format (HH:mm:ss, e.g., "17:00:00")
   duration_days?: number
   milestone?: MilestoneType | null | 0 | false // null/0/false = regular task, text code = milestone type
   milestone_type?: MilestoneType // Computed property for backward compatibility (same as milestone)

@@ -75,6 +75,7 @@ const tasks = ref<Task[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const viewMode = ref<'ical' | 'gantt' | 'list'>('ical')
+const currentCalendarView = ref<'month' | 'week' | 'day'>('month')
 
 // Gantt version: 'old' | 'new'
 // ganttVersion removed - using only working Gantt
@@ -364,7 +365,7 @@ const calendarOptions = ref({
     right: 'dayGridMonth,timeGridWeek,timeGridDay',
   },
   eventDisplay: 'block', // Ensure events display properly
-  displayEventTime: false, // Don't show time for all-day events
+  displayEventTime: true, // Show time for timed events (will be controlled per view)
   height: 'auto',
   weekends: true,
   editable: props.canEdit,
@@ -385,11 +386,45 @@ const calendarOptions = ref({
   events: (_info: unknown, successCallback: (events: any[]) => void) => { // eslint-disable-line @typescript-eslint/no-explicit-any
     // Use filteredTasks instead of calendarEvents
     const tasksWithDates = filteredTasks.value.filter((task) => task.start_planned)
-    const events = tasksWithDates.map((task) => taskToCalendarTask(task, shouldShowDependencyIndicators.value))
-    console.log('📅 FullCalendar requesting events, returning:', events.length, 'filtered tasks')
+    // Determine view type from current calendar view
+    const viewType: 'month' | 'week' | 'day' = currentCalendarView.value
+    const events = tasksWithDates.map((task) => taskToCalendarTask(task, shouldShowDependencyIndicators.value, viewType))
+    console.log('📅 FullCalendar requesting events, returning:', events.length, 'filtered tasks for view:', viewType)
     successCallback(events)
   },
-  datesSet: () => {
+  datesSet: (info: unknown) => {
+    // Track current calendar view
+    const viewInfo = info as { view: { type: string } }
+    if (viewInfo?.view?.type) {
+      const viewType = viewInfo.view.type
+      let viewChanged = false
+      if (viewType === 'dayGridMonth') {
+        if (currentCalendarView.value !== 'month') {
+          currentCalendarView.value = 'month'
+          viewChanged = true
+        }
+        calendarOptions.value.displayEventTime = false
+      } else if (viewType === 'timeGridWeek') {
+        if (currentCalendarView.value !== 'week') {
+          currentCalendarView.value = 'week'
+          viewChanged = true
+        }
+        calendarOptions.value.displayEventTime = true
+      } else if (viewType === 'timeGridDay') {
+        if (currentCalendarView.value !== 'day') {
+          currentCalendarView.value = 'day'
+          viewChanged = true
+        }
+        calendarOptions.value.displayEventTime = true
+      }
+      console.log('📅 Calendar view changed to:', currentCalendarView.value)
+      
+      // Refresh events when view changes to update time display
+      if (viewChanged && calendarRef.value) {
+        const calendarApi = calendarRef.value.getApi()
+        calendarApi.refetchEvents()
+      }
+    }
     // Apply project bounds styling when calendar dates change
     setTimeout(() => {
       applyProjectBoundsStyling()
@@ -3047,6 +3082,20 @@ function onCalendarMounted() {
   if (calendarRef.value) {
     const calendarApi = calendarRef.value.getApi()
     console.log('📅 Calendar API available:', !!calendarApi)
+
+    // Initialize current view type
+    const currentView = calendarApi.view.type
+    if (currentView === 'dayGridMonth') {
+      currentCalendarView.value = 'month'
+      calendarOptions.value.displayEventTime = false
+    } else if (currentView === 'timeGridWeek') {
+      currentCalendarView.value = 'week'
+      calendarOptions.value.displayEventTime = true
+    } else if (currentView === 'timeGridDay') {
+      currentCalendarView.value = 'day'
+      calendarOptions.value.displayEventTime = true
+    }
+    console.log('📅 Initial calendar view:', currentCalendarView.value)
 
     // Check calendar options
     console.log('🔧 Calendar editable:', calendarApi.getOption('editable'))

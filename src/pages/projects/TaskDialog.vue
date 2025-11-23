@@ -80,32 +80,54 @@
           </div>
 
 
-          <!-- Dates Row -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2"> Start Date * </label>
-              <input
-                v-model="form.start_planned"
-                :disabled="mode === 'view'"
-                type="date"
-                required
-                :class="[
-                  'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900',
-                  hasDateValidationError('start') ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-                ]"
-              />
+          <!-- Dates and Times Row -->
+          <div class="mb-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2"> Start Date * </label>
+                <input
+                  v-model="form.start_planned"
+                  :disabled="mode === 'view'"
+                  type="date"
+                  required
+                  :class="[
+                    'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900',
+                    hasDateValidationError('start') ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                  ]"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2"> End Date </label>
+                <input
+                  v-model="form.end_planned"
+                  :disabled="mode === 'view'"
+                  type="date"
+                  :class="[
+                    'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900',
+                    hasDateValidationError('end') ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                  ]"
+                />
+              </div>
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2"> End Date </label>
-              <input
-                v-model="form.end_planned"
-                :disabled="mode === 'view'"
-                type="date"
-                :class="[
-                  'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900',
-                  hasDateValidationError('end') ? 'border-red-300 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-                ]"
-              />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs text-gray-600 mb-1">Start Time</label>
+                <input
+                  v-model="form.start_time"
+                  :disabled="mode === 'view'"
+                  type="time"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
+                />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-600 mb-1">End Time</label>
+                <input
+                  v-model="form.end_time"
+                  :disabled="mode === 'view'"
+                  type="time"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
+                />
+              </div>
             </div>
           </div>
 
@@ -511,7 +533,9 @@ const form = ref({
   name: '',
   wbs_path: '',
   start_planned: '',
+  start_time: '08:00', // Default start time 08:00
   end_planned: '',
+  end_time: '17:00', // Default end time 17:00
   duration_days: 1,
   milestone: false,
   status: 'planned' as TaskStatus,
@@ -555,7 +579,9 @@ watch(() => props.isOpen, async (isOpen) => {
       name: '',
       wbs_path: '',
       start_planned: startDate, // Use initialDate or current date
+      start_time: '08:00', // Default start time 08:00
       end_planned: '', // End date for tasks
+      end_time: '17:00', // Default end time 17:00
       duration_days: 1,
       milestone: false,
       status: 'planned' as TaskStatus,
@@ -587,11 +613,24 @@ watch(() => props.isOpen, async (isOpen) => {
     }
   } else if (isOpen && props.task) {
     // Initialize form with task data for edit/view mode
+    // Convert time from HH:mm:ss to HH:mm for input field
+    const formatTimeForInput = (time: string | undefined | null): string => {
+      if (!time) return '08:00' // Default if not set
+      // If time is in HH:mm:ss format, extract HH:mm
+      if (time.includes(':')) {
+        const parts = time.split(':')
+        return `${parts[0]}:${parts[1]}`
+      }
+      return time
+    }
+
     form.value = {
       name: props.task.name || '',
       wbs_path: props.task.wbs_path || '',
       start_planned: props.task.start_planned || '',
+      start_time: formatTimeForInput(props.task.start_time),
       end_planned: props.task.end_planned || '',
+      end_time: formatTimeForInput(props.task.end_time),
       duration_days: props.task.duration_days || 1,
       milestone: isMilestone(props.task.milestone),
       status: props.task.status || 'planned',
@@ -1024,11 +1063,24 @@ function resetForm() {
 
     console.log('🔗 Processed dependencies:', processedDependencies)
 
+    // Convert time from HH:mm:ss to HH:mm for input field
+    const formatTimeForInput = (time: string | undefined | null): string => {
+      if (!time) return '08:00' // Default if not set
+      // If time is in HH:mm:ss format, extract HH:mm
+      if (time.includes(':')) {
+        const parts = time.split(':')
+        return `${parts[0]}:${parts[1]}`
+      }
+      return time
+    }
+
     form.value = {
       name: props.task.name,
       wbs_path: props.task.wbs_path || '',
       start_planned: props.task.start_planned,
+      start_time: formatTimeForInput(props.task.start_time),
       end_planned: props.task.end_planned || '',
+      end_time: formatTimeForInput(props.task.end_time),
       duration_days: props.task.duration_days || 1,
       milestone: isMilestone(props.task.milestone),
       status: props.task.status,
@@ -1047,7 +1099,9 @@ function resetForm() {
       name: '',
       wbs_path: '',
       start_planned: new Date().toISOString().split('T')[0], // Today's date
+      start_time: '08:00', // Default start time 08:00
       end_planned: '',
+      end_time: '17:00', // Default end time 17:00
       duration_days: 1,
       milestone: false,
       status: 'planned',
@@ -1211,9 +1265,21 @@ function handleSubmit() {
 
   console.log('✅ Task validation passed, proceeding with save')
 
+  // Convert time from HH:mm to HH:mm:ss format for API
+  const formatTimeForApi = (time: string | undefined | null): string | undefined => {
+    if (!time) return undefined
+    // If already in HH:mm:ss format, return as is
+    if (time.split(':').length === 3) return time
+    // Convert HH:mm to HH:mm:ss
+    return `${time}:00`
+  }
+
   const taskData: Partial<Task> = {
     ...form.value,
     project_id: props.projectId,
+    // Convert time formats for API (HH:mm -> HH:mm:ss)
+    start_time: formatTimeForApi(form.value.start_time),
+    end_time: formatTimeForApi(form.value.end_time),
     // Convert milestone from boolean to MilestoneType | false
     milestone: form.value.milestone ? (props.task?.milestone_type || (typeof props.task?.milestone === 'string' ? props.task.milestone : 'other' as MilestoneType)) : false,
     milestone_type: form.value.milestone ? (props.task?.milestone_type || (typeof props.task?.milestone === 'string' ? props.task.milestone : 'other' as MilestoneType)) : undefined,

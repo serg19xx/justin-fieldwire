@@ -60,7 +60,7 @@
                 </div>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <!-- Start Date -->
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2"> Start Date * </label>
@@ -92,6 +92,26 @@
                     v-model.number="form.duration_days"
                     type="number"
                     min="1"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  />
+                </div>
+              </div>
+
+              <!-- Time Fields -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs text-gray-600 mb-1">Start Time</label>
+                  <input
+                    v-model="form.start_time"
+                    type="time"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-600 mb-1">End Time</label>
+                  <input
+                    v-model="form.end_time"
+                    type="time"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                   />
                 </div>
@@ -711,7 +731,9 @@ const form = ref({
   name: '',
   wbs_path: '',
   start_planned: '',
+  start_time: '08:00', // Default start time 08:00
   end_planned: '',
+  end_time: '17:00', // Default end time 17:00
   duration_days: 1,
   milestone: false as boolean | MilestoneType,
   milestone_type: undefined as MilestoneType | undefined,
@@ -1398,7 +1420,9 @@ watch(
         name: '',
         wbs_path: '',
         start_planned: '',
+        start_time: '08:00', // Default start time 08:00
         end_planned: '',
+        end_time: '17:00', // Default end time 17:00
         duration_days: 1,
         milestone: false,
         milestone_type: undefined,
@@ -1413,11 +1437,24 @@ watch(
       invitedPeople.value = []
     } else if (isOpen && props.task) {
       // Initialize form with task data for edit mode
+      // Convert time from HH:mm:ss to HH:mm for input field
+      const formatTimeForInput = (time: string | undefined | null): string => {
+        if (!time) return '08:00' // Default if not set
+        // If time is in HH:mm:ss format, extract HH:mm
+        if (time.includes(':')) {
+          const parts = time.split(':')
+          return `${parts[0]}:${parts[1]}`
+        }
+        return time
+      }
+
       form.value = {
         name: props.task.name || '',
         wbs_path: props.task.wbs_path || '',
         start_planned: props.task.start_planned || '',
+        start_time: formatTimeForInput(props.task.start_time),
         end_planned: props.task.end_planned || '',
+        end_time: formatTimeForInput(props.task.end_time),
         duration_days: props.task.duration_days || 1,
         milestone: typeof props.task.milestone === 'string' ? props.task.milestone : (props.task.milestone ? true : false),
         milestone_type: typeof props.task.milestone === 'string' ? props.task.milestone : (props.task.milestone_type || (props.task.milestone ? 'other' : undefined)),
@@ -1688,12 +1725,23 @@ function handleBasicInfoSave() {
     }
   }
 
+  // Convert time from HH:mm to HH:mm:ss format for API
+  const formatTimeForApi = (time: string | undefined | null): string | undefined => {
+    if (!time) return undefined
+    // If already in HH:mm:ss format, return as is
+    if (time.split(':').length === 3) return time
+    // Convert HH:mm to HH:mm:ss
+    return `${time}:00`
+  }
+
   // Transform dependencies to match Task type
   const taskData: TaskCreateUpdate & { id?: string } = {
     name: form.value.name,
     wbs_path: form.value.wbs_path || undefined,
     start_planned: form.value.start_planned || props.task?.start_planned || '',
+    start_time: formatTimeForApi(form.value.start_time),
     end_planned: form.value.end_planned || props.task?.end_planned || undefined,
+    end_time: formatTimeForApi(form.value.end_time),
     duration_days: form.value.duration_days,
     milestone: typeof form.value.milestone === 'string' ? form.value.milestone as MilestoneType : (form.value.milestone ? (form.value.milestone_type || 'other' as MilestoneType) : false),
     milestone_type: typeof form.value.milestone === 'string' ? form.value.milestone as MilestoneType : form.value.milestone_type,

@@ -159,6 +159,9 @@ export const tasksApi = {
       if (data.endPlanned !== undefined) apiData.end_planned = data.endPlanned
       if (data.start_planned !== undefined) apiData.start_planned = data.start_planned
       if (data.end_planned !== undefined) apiData.end_planned = data.end_planned
+      // Handle time fields
+      if (data.start_time !== undefined) apiData.start_time = data.start_time
+      if (data.end_time !== undefined) apiData.end_time = data.end_time
       // Handle milestone: store text code directly, or null/0 for regular tasks
       if (data.milestone_type !== undefined && data.milestone_type !== null) {
         apiData.milestone = data.milestone_type
@@ -338,6 +341,9 @@ export const tasksApi = {
       if (data.endPlanned !== undefined) apiData.end_planned = data.endPlanned
       if (data.start_planned !== undefined) apiData.start_planned = data.start_planned
       if (data.end_planned !== undefined) apiData.end_planned = data.end_planned
+      // Handle time fields
+      if (data.start_time !== undefined) apiData.start_time = data.start_time
+      if (data.end_time !== undefined) apiData.end_time = data.end_time
       if (data.durationDays !== undefined) apiData.duration_days = data.durationDays
       if (data.duration_days !== undefined) apiData.duration_days = data.duration_days
       // Handle milestone: store text code directly, or null/0 for regular tasks

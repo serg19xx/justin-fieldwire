@@ -44,6 +44,7 @@ export function processEndDateForDisplay(endDate: string): string {
 export function taskToCalendarTask(
   task: Task,
   showDependencyIndicators: boolean = true,
+  viewType: 'month' | 'week' | 'day' = 'month',
 ): CalendarTask {
   // Validate that task has required start date
   if (!task.start_planned) {
@@ -86,12 +87,41 @@ export function taskToCalendarTask(
     }
   }
 
+  // For month view, always use all-day events (no time)
+  // For week and day views, always use time (default 08:00-17:00 if not specified)
+  const isMonthView = viewType === 'month'
+  
+  // Format time for datetime (HH:mm:ss -> HH:mm:00 or use default)
+  const formatTimeForDateTime = (time: string | undefined | null, defaultTime: string): string => {
+    if (!time) return defaultTime
+    // If time is in HH:mm:ss format, use it; if HH:mm, add :00
+    if (time.split(':').length === 3) return time
+    return `${time}:00`
+  }
+
+  const defaultStartTime = '08:00:00'
+  const defaultEndTime = '17:00:00'
+  
+  let startDateTime: string = startDate
+  let endDateTime: string | undefined = task.end_planned ? processEndDateForDisplay(task.end_planned) : undefined
+
+  // For week and day views, always add time to datetime
+  if (!isMonthView) {
+    const startTime = formatTimeForDateTime(task.start_time, defaultStartTime)
+    startDateTime = `${startDate}T${startTime}`
+    
+    if (endDateTime) {
+      const endTime = formatTimeForDateTime(task.end_time, defaultEndTime)
+      endDateTime = `${endDateTime}T${endTime}`
+    }
+  }
+
   const calendarTask = {
     id: String(task.id),
     title: `${typeIcon} ${task.name}${progressText}${dependencyText}`,
-    start: startDate,
-    end: task.end_planned ? processEndDateForDisplay(task.end_planned) : undefined,
-    allDay: true, // All tasks are all-day events
+    start: startDateTime,
+    end: endDateTime,
+    allDay: isMonthView, // All-day only for month view
     color: getTaskColor(task.status),
     // For milestones: allow dragging but disable resizing
     editable: true, // Allow dragging
@@ -377,27 +407,37 @@ export function exportTasksToICal(tasks: Task[]): string {
 
   tasks.forEach((task) => {
     try {
-      // Normalize date format - ensure we have proper ISO dates
-      // Parse and format start date
-      const startDateObj = new Date(task.start_planned + 'T00:00:00')
+      // Normalize date format - ensure we have proper ISO dates with time
+      // Use task time if available, otherwise default to 08:00:00
+      const startTime = task.start_time || '08:00:00'
+      // Ensure time is in HH:mm:ss format
+      const startTimeFormatted = startTime.split(':').length === 2 ? `${startTime}:00` : startTime
+      
+      // Parse and format start date with time
+      const startDateObj = new Date(task.start_planned + 'T' + startTimeFormatted)
       if (isNaN(startDateObj.getTime())) {
-        console.warn('⚠️ Invalid start date for task:', task.name, task.start_planned)
+        console.warn('⚠️ Invalid start date/time for task:', task.name, task.start_planned, startTimeFormatted)
         return // Skip this task
       }
       const startDate = startDateObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
 
-      // Parse and format end date
+      // Parse and format end date with time
       let endDate: string
       if (task.end_planned) {
-        const endDateObj = new Date(task.end_planned + 'T00:00:00')
+        // Use task end time if available, otherwise default to 17:00:00
+        const endTime = task.end_time || '17:00:00'
+        // Ensure time is in HH:mm:ss format
+        const endTimeFormatted = endTime.split(':').length === 2 ? `${endTime}:00` : endTime
+        
+        const endDateObj = new Date(task.end_planned + 'T' + endTimeFormatted)
         if (isNaN(endDateObj.getTime())) {
-          console.warn('⚠️ Invalid end date for task:', task.name, task.end_planned)
+          console.warn('⚠️ Invalid end date/time for task:', task.name, task.end_planned, endTimeFormatted)
           endDate = startDate // Use start date as fallback
         } else {
           endDate = endDateObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
         }
       } else {
-        // For milestones or tasks without end date, use start date + 1 day
+        // For milestones or tasks without end date, use start date + 1 day with same time
         const endDateObj = new Date(startDateObj.getTime() + 24 * 60 * 60 * 1000)
         endDate = endDateObj.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z'
       }
