@@ -23,7 +23,6 @@ export const PROJECT_STATUSES = [
   'draft',
   'planning',
   'active',
-  'on-hold',
   'completed',
   'cancelled',
 ] as const

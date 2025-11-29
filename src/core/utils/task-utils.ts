@@ -87,41 +87,30 @@ export function taskToCalendarTask(
     }
   }
 
-  // For month view, always use all-day events (no time)
-  // For week and day views, always use time (default 08:00-17:00 if not specified)
-  const isMonthView = viewType === 'month'
+  // All tasks are displayed as all-day events in all views (month, week, day)
+  // Time (start_time, end_time) is informational only - used for calculations (work hours, payroll)
+  // but does not affect task duration or calendar display
+  // Task duration is determined only by dates (start_planned and end_planned)
   
-  // Format time for datetime (HH:mm:ss -> HH:mm:00 or use default)
-  const formatTimeForDateTime = (time: string | undefined | null, defaultTime: string): string => {
-    if (!time) return defaultTime
-    // If time is in HH:mm:ss format, use it; if HH:mm, add :00
-    if (time.split(':').length === 3) return time
-    return `${time}:00`
+  // Calculate end_planned if not provided but duration_days is available
+  let endPlannedDate = task.end_planned
+  if (!endPlannedDate && task.duration_days && task.duration_days > 0) {
+    const startDateObj = new Date(startDate + 'T00:00:00')
+    startDateObj.setDate(startDateObj.getDate() + task.duration_days - 1)
+    endPlannedDate = startDateObj.toISOString().split('T')[0]
   }
-
-  const defaultStartTime = '08:00:00'
-  const defaultEndTime = '17:00:00'
   
+  // For all-day events, use dates only (no time)
+  // FullCalendar requires exclusive end date for all-day events (add one day)
   let startDateTime: string = startDate
-  let endDateTime: string | undefined = task.end_planned ? processEndDateForDisplay(task.end_planned) : undefined
-
-  // For week and day views, always add time to datetime
-  if (!isMonthView) {
-    const startTime = formatTimeForDateTime(task.start_time, defaultStartTime)
-    startDateTime = `${startDate}T${startTime}`
-    
-    if (endDateTime) {
-      const endTime = formatTimeForDateTime(task.end_time, defaultEndTime)
-      endDateTime = `${endDateTime}T${endTime}`
-    }
-  }
+  let endDateTime: string | undefined = endPlannedDate ? processEndDateForDisplay(endPlannedDate) : undefined
 
   const calendarTask = {
     id: String(task.id),
     title: `${typeIcon} ${task.name}${progressText}${dependencyText}`,
     start: startDateTime,
     end: endDateTime,
-    allDay: isMonthView, // All-day only for month view
+    allDay: true, // All tasks are all-day events in all views
     color: getTaskColor(task.status),
     // For milestones: allow dragging but disable resizing
     editable: true, // Allow dragging

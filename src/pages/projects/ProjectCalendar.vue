@@ -409,13 +409,13 @@ const calendarOptions = ref({
           currentCalendarView.value = 'week'
           viewChanged = true
         }
-        calendarOptions.value.displayEventTime = true
+        calendarOptions.value.displayEventTime = false // All tasks are all-day, no time display
       } else if (viewType === 'timeGridDay') {
         if (currentCalendarView.value !== 'day') {
           currentCalendarView.value = 'day'
           viewChanged = true
         }
-        calendarOptions.value.displayEventTime = true
+        calendarOptions.value.displayEventTime = false // All tasks are all-day, no time display
       }
       console.log('📅 Calendar view changed to:', currentCalendarView.value)
       
@@ -830,11 +830,14 @@ async function loadTasks() {
     console.log('📋 Tasks with dates:', tasksWithDates.length, 'out of', tasks.value.length)
 
     // Convert tasks to calendar events
+    // Use current view type to properly render tasks for week/day views
+    const viewType: 'month' | 'week' | 'day' = currentCalendarView.value
     const events = tasksWithDates.map((task) => {
-      const calendarEvent = taskToCalendarTask(task, shouldShowDependencyIndicators.value)
+      const calendarEvent = taskToCalendarTask(task, shouldShowDependencyIndicators.value, viewType)
       console.log('📅 Task converted to calendar event:', {
         taskId: task.id,
         taskName: task.name,
+        viewType,
         start: calendarEvent.start,
         end: calendarEvent.end,
         hasStart: !!calendarEvent.start,
@@ -3090,10 +3093,10 @@ function onCalendarMounted() {
       calendarOptions.value.displayEventTime = false
     } else if (currentView === 'timeGridWeek') {
       currentCalendarView.value = 'week'
-      calendarOptions.value.displayEventTime = true
+      calendarOptions.value.displayEventTime = false // All tasks are all-day, no time display
     } else if (currentView === 'timeGridDay') {
       currentCalendarView.value = 'day'
-      calendarOptions.value.displayEventTime = true
+      calendarOptions.value.displayEventTime = false // All tasks are all-day, no time display
     }
     console.log('📅 Initial calendar view:', currentCalendarView.value)
 

@@ -5,7 +5,7 @@ export interface Project {
   id: number
   name: string
   client: string
-  status: 'active' | 'completed' | 'pending' | 'on-hold'
+  status: 'active' | 'completed' | 'pending' | 'planning'
   startDate: string
   endDate: string
   budget: number
@@ -71,7 +71,7 @@ export const useProjectsStore = defineStore('projects', () => {
       id: 4,
       name: 'Hospital Extension',
       client: 'City Medical Center',
-      status: 'on-hold',
+      status: 'planning',
       startDate: '2024-01-15',
       endDate: '2024-08-31',
       budget: 1800000,

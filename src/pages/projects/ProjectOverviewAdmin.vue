@@ -131,8 +131,8 @@ function getStatusDisplay(status: string) {
       return 'Completed'
     case 'pending':
       return 'Pending'
-    case 'on-hold':
-      return 'On Hold'
+    case 'planning':
+      return 'Planning'
     default:
       return status
   }

@@ -114,7 +114,7 @@
               >
                 <option value="Active">Active</option>
                 <option value="Pending">Pending</option>
-                <option value="On Hold">On Hold</option>
+                <option value="Planning">Planning</option>
                 <option value="Completed">Completed</option>
               </select>
             </div>

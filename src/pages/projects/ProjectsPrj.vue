@@ -38,7 +38,7 @@
                 <option value="active" class="text-gray-700">Active</option>
                 <option value="completed" class="text-gray-700">Completed</option>
                 <option value="pending" class="text-gray-700">Pending</option>
-                <option value="on-hold" class="text-gray-700">On Hold</option>
+                <option value="planning" class="text-gray-700">Planning</option>
               </select>
               <!-- Dropdown Arrow -->
               <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
@@ -532,8 +532,8 @@ function getStatusClass(status: string) {
       return 'bg-blue-100 text-blue-800'
     case 'pending':
       return 'bg-yellow-100 text-yellow-800'
-    case 'on-hold':
-      return 'bg-red-100 text-red-800'
+    case 'planning':
+      return 'bg-blue-100 text-blue-800'
     default:
       return 'bg-gray-100 text-gray-800'
   }
@@ -547,8 +547,8 @@ function getStatusDisplay(status: string) {
       return 'Completed'
     case 'pending':
       return 'Pending'
-    case 'on-hold':
-      return 'On Hold'
+    case 'planning':
+      return 'Planning'
     default:
       return status
   }
