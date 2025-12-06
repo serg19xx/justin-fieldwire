@@ -160,3 +160,42 @@ export interface TaskStats {
   milestones: number
   avgProgress: number
 }
+
+// Task Template interfaces
+// Relative date offset from project start (in days)
+// null means "not set, user must provide"
+export interface TaskTemplate {
+  id?: number
+  name: string
+  description?: string
+  category?: string // e.g., "Foundation", "Framing", "Finishing"
+  duration_days?: number // Duration if known
+  start_offset_days?: number | null // Days from project start (null = not set)
+  end_offset_days?: number | null // Days from project start (null = not set)
+  milestone?: MilestoneType | null
+  status?: TaskStatus
+  notes?: string
+  wbs_path?: string
+  task_order?: number // Order in template sequence
+  created_at?: string
+  updated_at?: string
+}
+
+// Template selection result for batch creation
+export interface SelectedTemplate {
+  template: TaskTemplate
+  selected: boolean
+  // Override values (user can modify before creation)
+  start_offset_days?: number | null
+  duration_days?: number | null
+  task_lead_id?: number | null
+}
+
+// Batch task creation configuration
+export interface TaskTemplateBatchConfig {
+  project_id: number
+  project_start_date: string // Base date for relative calculations
+  selected_templates: SelectedTemplate[]
+  default_task_lead_id?: number // Default foreman for all tasks
+  default_status?: TaskStatus
+}

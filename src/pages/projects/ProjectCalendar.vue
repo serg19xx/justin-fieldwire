@@ -20,6 +20,7 @@ import TaskEditPanel from '@/pages/projects/TaskEditPanel.vue'
 import MilestoneDialog from '@/pages/projects/MilestoneDialog.vue'
 import SimpleBoundsDialog from '@/pages/projects/SimpleBoundsDialog.vue'
 import DependencyValidationDialog from '@/pages/projects/DependencyValidationDialog.vue'
+import TaskTemplateDialog from '@/components/task-templates/TaskTemplateDialog.vue'
 
 // Props
 interface Props {
@@ -253,6 +254,11 @@ const milestoneDialog = ref({
   mode: 'create' as 'create' | 'edit' | 'view',
   task: null as Task | null,
   initialDate: undefined as string | undefined,
+})
+
+// Task template dialog state
+const templateDialog = ref({
+  isOpen: false,
 })
 
 // Available tasks for dependencies (exclude current task)
@@ -2574,6 +2580,24 @@ function closeTaskDialog() {
   console.log('✅ Task dialog closed successfully')
 }
 
+// Template dialog functions
+function openTemplateDialog() {
+  console.log('📋 Opening template dialog')
+  templateDialog.value.isOpen = true
+}
+
+function closeTemplateDialog() {
+  console.log('🔒 Closing template dialog')
+  templateDialog.value.isOpen = false
+}
+
+async function handleTasksCreatedFromTemplates(tasks: unknown[]) {
+  console.log('✅ Tasks created from templates:', tasks.length)
+  // Reload tasks to show newly created ones
+  await loadTasks()
+  closeTemplateDialog()
+}
+
 // TaskViewDialog functions
 function openTaskViewDialog(taskId: string) {
   console.log('🔧 Opening task view dialog for task:', taskId)
@@ -3347,6 +3371,13 @@ defineExpose({
                 🎯 Add Milestone
               </button>
               <button
+                @click="openTemplateDialog"
+                class="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors"
+                title="Create tasks from templates"
+              >
+                📋 From Templates
+              </button>
+              <button
                 v-if="selectedTask"
                 @click="editTask(selectedTask)"
                 class="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
@@ -3818,6 +3849,16 @@ defineExpose({
         :reason="dependencyDialog.reason"
         @cancel="handleDependencyCancel"
         @adjust="handleDependencyAdjust"
+      />
+
+      <!-- Task Template Dialog -->
+      <TaskTemplateDialog
+        :is-open="templateDialog.isOpen"
+        :project-id="projectId"
+        :project-start-date="projectInfo?.date_start"
+        :available-people="availablePeople"
+        @close="closeTemplateDialog"
+        @tasks-created="handleTasksCreatedFromTemplates"
       />
     </div>
   </div>

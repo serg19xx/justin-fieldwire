@@ -1,0 +1,1768 @@
+[
+  {
+    "name": "Client Business Planning Meeting 1",
+    "category": "Planning & Design",
+    "duration_days": 3,
+    "start_offset_days": 0,
+    "milestone": "meeting",
+    "status": "planned",
+    "task_order": 1
+  },
+  {
+    "name": "Client Business Planning Meeting 2",
+    "category": "Planning & Design",
+    "duration_days": 3,
+    "start_offset_days": 3,
+    "milestone": "meeting",
+    "status": "planned",
+    "task_order": 2
+  },
+  {
+    "name": "Client Business Planning Meeting 3",
+    "category": "Planning & Design",
+    "duration_days": 3,
+    "start_offset_days": 6,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 3
+  },
+  {
+    "name": "Client Business Planning Meeting 4",
+    "category": "Planning & Design",
+    "duration_days": 3,
+    "start_offset_days": 9,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 4
+  },
+  {
+    "name": "Client Business Planning Meeting 5",
+    "category": "Planning & Design",
+    "duration_days": 3,
+    "start_offset_days": 12,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 5
+  },
+  {
+    "name": "Space Review 1",
+    "category": "Planning & Design",
+    "duration_days": 3,
+    "start_offset_days": 15,
+    "milestone": "review",
+    "status": "Planned",
+    "task_order": 6
+  },
+  {
+    "name": "Space Review 2",
+    "category": "Planning & Design",
+    "duration_days": 3,
+    "start_offset_days": 18,
+    "milestone": "review",
+    "status": "Planned",
+    "task_order": 7
+  },
+  {
+    "name": "Space Review 3",
+    "category": "Planning & Design",
+    "duration_days": 3,
+    "start_offset_days": 21,
+    "milestone": "review",
+    "status": "Planned",
+    "task_order": 8
+  },
+  {
+    "name": "Space Review 4",
+    "category": "Planning & Design",
+    "duration_days": 3,
+    "start_offset_days": 24,
+    "milestone": "review",
+    "status": "Planned",
+    "task_order": 9
+  },
+  {
+    "name": "Space Review 5",
+    "category": "Planning & Design",
+    "duration_days": 3,
+    "start_offset_days": 27,
+    "milestone": "review",
+    "status": "Planned",
+    "task_order": 10
+  },
+  {
+    "name": "Business Pro-Forma 1",
+    "category": "Planning & Design",
+    "duration_days": 5,
+    "start_offset_days": 30,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 11
+  },
+  {
+    "name": "Business Pro-Forma 2",
+    "category": "Planning & Design",
+    "duration_days": 5,
+    "start_offset_days": 35,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 12
+  },
+  {
+    "name": "Business Pro-Forma 3",
+    "category": "Planning & Design",
+    "duration_days": 5,
+    "start_offset_days": 40,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 13
+  },
+  {
+    "name": "Architectural Concept Meeting",
+    "category": "Planning & Design",
+    "duration_days": 4,
+    "start_offset_days": 45,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 14
+  },
+  {
+    "name": "Architectural Client Meeting One",
+    "category": "Planning & Design",
+    "duration_days": 4,
+    "start_offset_days": 49,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 15
+  },
+  {
+    "name": "Architectural Client Meeting Two",
+    "category": "Planning & Design",
+    "duration_days": 4,
+    "start_offset_days": 53,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 16
+  },
+  {
+    "name": "Architectural Client Meeting Three",
+    "category": "Planning & Design",
+    "duration_days": 4,
+    "start_offset_days": 57,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 17
+  },
+  {
+    "name": "Design Concept Client Meeting One",
+    "category": "Planning & Design",
+    "duration_days": 4,
+    "start_offset_days": 61,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 18
+  },
+  {
+    "name": "Design Concept Client Meeting Two",
+    "category": "Planning & Design",
+    "duration_days": 4,
+    "start_offset_days": 65,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 19
+  },
+  {
+    "name": "Design Concept Client Meeting Three",
+    "category": "Planning & Design",
+    "duration_days": 4,
+    "start_offset_days": 69,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 20
+  },
+  {
+    "name": "Submission of Architectural Drawings",
+    "category": "Planning & Design",
+    "duration_days": 8,
+    "start_offset_days": 73,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 21
+  },
+  {
+    "name": "Brand Meeting With Clients",
+    "category": "Planning & Design",
+    "start_offset_days": null,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 22
+  },
+  {
+    "name": "Attain Sign & Window Decal Quote",
+    "category": "Materials & Ordering",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 23
+  },
+  {
+    "name": "Signage Installation",
+    "category": "Branding & Signage",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 24
+  },
+  {
+    "name": "Create Full Schedule Of Materials List To Order",
+    "category": "Materials & Ordering",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 25
+  },
+  {
+    "name": "Meeting with Clients On Material List",
+    "category": "Planning & Design",
+    "start_offset_days": null,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 26
+  },
+  {
+    "name": "Sign Off On Materials List",
+    "category": "Permits & Approvals",
+    "start_offset_days": null,
+    "milestone": "approval",
+    "status": "Planned",
+    "task_order": 27
+  },
+  {
+    "name": "Purchase All Materials",
+    "category": "Materials & Ordering",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 28
+  },
+  {
+    "name": "Payment of City Permit Fee’s",
+    "category": "Permits & Approvals",
+    "duration_days": 1,
+    "start_offset_days": 88,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 29
+  },
+  {
+    "name": "Approved Permit Application",
+    "category": "Permits & Approvals",
+    "duration_days": 1,
+    "start_offset_days": 89,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 30
+  },
+  {
+    "name": "Demolition Of Space",
+    "category": "Demolition & Site Prep",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 31
+  },
+  {
+    "name": "Order Construction Bin One",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 91,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 32
+  },
+  {
+    "name": "Order Construction Bin Two",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 92,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 33
+  },
+  {
+    "name": "Order Construction Bin Three",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 93,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 34
+  },
+  {
+    "name": "Order Construction Bin Four",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 94,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 35
+  },
+  {
+    "name": "Order Construction Bin Five",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 95,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 36
+  },
+  {
+    "name": "Pick Up Construction Bin",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 96,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 37
+  },
+  {
+    "name": "Pick Up Construction Bin",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 97,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 38
+  },
+  {
+    "name": "Pick Up Construction Bin",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 98,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 39
+  },
+  {
+    "name": "Pick Up Construction Bin",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 99,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 40
+  },
+  {
+    "name": "Pick Up Construction Bin",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 100,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 41
+  },
+  {
+    "name": "Order Concrete Bin",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 101,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 42
+  },
+  {
+    "name": "Pick Up Concrete Bin",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 102,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 43
+  },
+  {
+    "name": "Order Dirt Bin",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 103,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 44
+  },
+  {
+    "name": "Pick Up Dirt Bin",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 104,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 45
+  },
+  {
+    "name": "Order Storage Bin",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 105,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 46
+  },
+  {
+    "name": "Pick Up Storage Bin",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 106,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 47
+  },
+  {
+    "name": "Create The Network Plan",
+    "category": "Network & IT",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 48
+  },
+  {
+    "name": "Client To Sign Off On Network Plan",
+    "category": "Permits & Approvals",
+    "start_offset_days": null,
+    "milestone": "approval",
+    "status": "Planned",
+    "task_order": 49
+  },
+  {
+    "name": "Schedule Installation of Network Lines",
+    "category": "Network & IT",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 50
+  },
+  {
+    "name": "Install Network Lines",
+    "category": "Network & IT",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 51
+  },
+  {
+    "name": "Roofing Flashing Site Visit",
+    "category": "Roofing",
+    "start_offset_days": null,
+    "milestone": "visit",
+    "status": "Planned",
+    "task_order": 52
+  },
+  {
+    "name": "Schedule Roofing Flashing",
+    "category": "Roofing",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 53
+  },
+  {
+    "name": "Roofing Flashing",
+    "category": "Roofing",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 54
+  },
+  {
+    "name": "Schedule Initial HVAC Pre-Start Site Visit & Inspection",
+    "category": "HVAC",
+    "duration_days": 1,
+    "start_offset_days": 114,
+    "milestone": "inspection",
+    "status": "Planned",
+    "task_order": 55
+  },
+  {
+    "name": "HVAC Pre-Inspection",
+    "category": "HVAC",
+    "duration_days": 4,
+    "start_offset_days": 115,
+    "milestone": "inspection",
+    "status": "Planned",
+    "task_order": 56
+  },
+  {
+    "name": "Schedule HVAC Rough In",
+    "category": "HVAC",
+    "duration_days": 1,
+    "start_offset_days": 119,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 57
+  },
+  {
+    "name": "HVAC Rough In",
+    "category": "HVAC",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 58
+  },
+  {
+    "name": "Schedule HVAC Rough-In Inspections",
+    "category": "HVAC",
+    "duration_days": 1,
+    "start_offset_days": 121,
+    "milestone": "inspection",
+    "status": "Planned",
+    "task_order": 59
+  },
+  {
+    "name": "HVAC Rough In Inspection",
+    "category": "HVAC",
+    "duration_days": 6,
+    "start_offset_days": 122,
+    "milestone": "inspection",
+    "status": "Planned",
+    "task_order": 60
+  },
+  {
+    "name": "Schedule HVAC Finish",
+    "category": "HVAC",
+    "duration_days": 1,
+    "start_offset_days": 128,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 61
+  },
+  {
+    "name": "HAVAC Finish",
+    "category": "HVAC",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 62
+  },
+  {
+    "name": "Schedule HVAC Final Inspections",
+    "category": "HVAC",
+    "duration_days": 1,
+    "start_offset_days": 130,
+    "milestone": "inspection",
+    "status": "Planned",
+    "task_order": 63
+  },
+  {
+    "name": "HVAC Final Inspection",
+    "category": "HVAC",
+    "duration_days": 6,
+    "start_offset_days": 131,
+    "milestone": "inspection",
+    "status": "Planned",
+    "task_order": 64
+  },
+  {
+    "name": "\"Schedule Concrete Coring, Cutting & Removal\"",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 137,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 65
+  },
+  {
+    "name": "\"Concrete Coring, Cutting Site Visit\"",
+    "category": "Demolition & Site Prep",
+    "duration_days": 4,
+    "start_offset_days": 138,
+    "milestone": "visit",
+    "status": "Planned",
+    "task_order": 66
+  },
+  {
+    "name": "\"Concrete Coring, Cutting & Removal\"",
+    "category": "Demolition & Site Prep",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 67
+  },
+  {
+    "name": "Schedule Concrete Re-Fill",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 143,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 68
+  },
+  {
+    "name": "Concrete Re-Fill",
+    "category": "Demolition & Site Prep",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 69
+  },
+  {
+    "name": "Schedule Initial Plumbing Pre-Start Site Visit & Inspection",
+    "category": "Demolition & Site Prep",
+    "duration_days": 4,
+    "start_offset_days": 145,
+    "milestone": "inspection",
+    "status": "Planned",
+    "task_order": 70
+  },
+  {
+    "name": "Plumbing Marking & Cut Lines",
+    "category": "Demolition & Site Prep",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 71
+  },
+  {
+    "name": "Schedule Plumbing Underground Rough In",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 150,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 72
+  },
+  {
+    "name": "Plumbing Underground Rough In",
+    "category": "Demolition & Site Prep",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 73
+  },
+  {
+    "name": "Schedule Plumbing Underground Rough-In Inspections",
+    "category": "Demolition & Site Prep",
+    "duration_days": 6,
+    "start_offset_days": 152,
+    "milestone": "inspection",
+    "status": "Planned",
+    "task_order": 74
+  },
+  {
+    "name": "Schedule Backfill of Underground Rough-In",
+    "category": "Other",
+    "duration_days": 1,
+    "start_offset_days": 158,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 75
+  },
+  {
+    "name": "Backfill Trenches",
+    "category": "Other",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 76
+  },
+  {
+    "name": "Schedule Plumbing Above Ground Rough In",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 160,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 77
+  },
+  {
+    "name": "Plumbing Above Ground Rough In",
+    "category": "Demolition & Site Prep",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 78
+  },
+  {
+    "name": "Schedule Plumbing Above Ground Rough-In Inspections",
+    "category": "Demolition & Site Prep",
+    "duration_days": 6,
+    "start_offset_days": 162,
+    "milestone": "inspection",
+    "status": "Planned",
+    "task_order": 79
+  },
+  {
+    "name": "Schedule Final Plumbing Work Pre-Start Meeting",
+    "category": "Planning & Design",
+    "duration_days": 1,
+    "start_offset_days": 168,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 80
+  },
+  {
+    "name": "Final Plumbing Site Visit",
+    "category": "Demolition & Site Prep",
+    "duration_days": 4,
+    "start_offset_days": 169,
+    "milestone": "visit",
+    "status": "Planned",
+    "task_order": 81
+  },
+  {
+    "name": "Finish Plumbing Fixtures",
+    "category": "Demolition & Site Prep",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 82
+  },
+  {
+    "name": "Schedule Plumbing Final",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 174,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 83
+  },
+  {
+    "name": "Plumbing Final inspections",
+    "category": "Demolition & Site Prep",
+    "start_offset_days": null,
+    "milestone": "inspection",
+    "status": "Planned",
+    "task_order": 84
+  },
+  {
+    "name": "Schedule Sprinkler System Review Meeting(s)",
+    "category": "Planning & Design",
+    "duration_days": 1,
+    "start_offset_days": 176,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 85
+  },
+  {
+    "name": "Sprinkler System Review Meeting(s)",
+    "category": "Planning & Design",
+    "duration_days": 4,
+    "start_offset_days": 177,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 86
+  },
+  {
+    "name": "Get Sprinkler Quote(s)",
+    "category": "Sprinkler",
+    "duration_days": 2,
+    "start_offset_days": 181,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 87
+  },
+  {
+    "name": "Schedule Sprinkler Rough In",
+    "category": "Sprinkler",
+    "duration_days": 1,
+    "start_offset_days": 183,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 88
+  },
+  {
+    "name": "Complete Sprinkler Rough In",
+    "category": "Sprinkler",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 89
+  },
+  {
+    "name": "Schedule Sprinkler Completion Work",
+    "category": "Sprinkler",
+    "duration_days": 1,
+    "start_offset_days": 185,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 90
+  },
+  {
+    "name": "Complete Sprinkler Final",
+    "category": "Sprinkler",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 91
+  },
+  {
+    "name": "Schedule Sprinkler Inspection",
+    "category": "Sprinkler",
+    "duration_days": 6,
+    "start_offset_days": 187,
+    "milestone": "inspection",
+    "status": "Planned",
+    "task_order": 92
+  },
+  {
+    "name": "Schedule Initial Electrical Pre-Start Site Visit & Inspection",
+    "category": "Electrical",
+    "start_offset_days": null,
+    "milestone": "inspection",
+    "status": "Planned",
+    "task_order": 93
+  },
+  {
+    "name": "Schedule Review of Electrical Rough-Ins",
+    "category": "Planning & Design",
+    "start_offset_days": null,
+    "milestone": "review",
+    "status": "Planned",
+    "task_order": 94
+  },
+  {
+    "name": "Schedule Electrical Rough-Ins",
+    "category": "Electrical",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 95
+  },
+  {
+    "name": "Electrical Rough-In’s",
+    "category": "Electrical",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 96
+  },
+  {
+    "name": "Schedule Electrical Finish Post Drywall",
+    "category": "Electrical",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 97
+  },
+  {
+    "name": "Electrical Finish Post Drywall",
+    "category": "Electrical",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 98
+  },
+  {
+    "name": "Schedule Electrical Finish Post Cabinets",
+    "category": "Demolition & Site Prep",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 99
+  },
+  {
+    "name": "Electrical Finish Post Cabinets",
+    "category": "Demolition & Site Prep",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 100
+  },
+  {
+    "name": "Schedule Electrical Finish",
+    "category": "Electrical",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 101
+  },
+  {
+    "name": "Full Electrical Finish",
+    "category": "Electrical",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 102
+  },
+  {
+    "name": "Attain Electoral ESA Permit Final",
+    "category": "Permits & Approvals",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "planned",
+    "task_order": 103
+  },
+  {
+    "name": "Schedule Framing Initial Site Visit",
+    "category": "Framing & Structure",
+    "start_offset_days": null,
+    "milestone": "visit",
+    "status": "Planned",
+    "task_order": 104
+  },
+  {
+    "name": "Schedule Framing",
+    "category": "Framing & Structure",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 105
+  },
+  {
+    "name": "Framing",
+    "category": "Framing & Structure",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 106
+  },
+  {
+    "name": "Install Framing Strengthening",
+    "category": "Framing & Structure",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 107
+  },
+  {
+    "name": "Install Insulation",
+    "category": "Framing & Structure",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 108
+  },
+  {
+    "name": "Schedule Rough In Door Operators",
+    "category": "Framing & Structure",
+    "duration_days": 4,
+    "start_offset_days": 209,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 109
+  },
+  {
+    "name": "Door Operator Rough In",
+    "category": "Framing & Structure",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 110
+  },
+  {
+    "name": "Schedule Drywall",
+    "category": "Drywall",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 111
+  },
+  {
+    "name": "Drywall Install",
+    "category": "Drywall",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 112
+  },
+  {
+    "name": "Schedule Taping",
+    "category": "Drywall",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 113
+  },
+  {
+    "name": "Taping",
+    "category": "Drywall",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 114
+  },
+  {
+    "name": "Schedule Paint Scope of Work",
+    "category": "Painting",
+    "duration_days": 2,
+    "start_offset_days": 218,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 115
+  },
+  {
+    "name": "Paint Scope of Work Meeting",
+    "category": "Planning & Design",
+    "duration_days": 4,
+    "start_offset_days": 220,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 116
+  },
+  {
+    "name": "Schedule Paint Priming",
+    "category": "Painting",
+    "duration_days": 1,
+    "start_offset_days": 224,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 117
+  },
+  {
+    "name": "Schedule Paint Coat 1",
+    "category": "Painting",
+    "duration_days": 1,
+    "start_offset_days": 225,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 118
+  },
+  {
+    "name": "Schedule Paint Coat 2",
+    "category": "Painting",
+    "duration_days": 1,
+    "start_offset_days": 226,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 119
+  },
+  {
+    "name": "Schedule Paint Coat 3",
+    "category": "Painting",
+    "duration_days": 1,
+    "start_offset_days": 227,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 120
+  },
+  {
+    "name": "Schedule Paint Final",
+    "category": "Painting",
+    "duration_days": 1,
+    "start_offset_days": 228,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 121
+  },
+  {
+    "name": "Schedule Epoxy Paint Work",
+    "category": "Painting",
+    "duration_days": 1,
+    "start_offset_days": 229,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 122
+  },
+  {
+    "name": "Paint Coat 1",
+    "category": "Painting",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 123
+  },
+  {
+    "name": "Paint Coat 2",
+    "category": "Painting",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 124
+  },
+  {
+    "name": "Paint Coat 3",
+    "category": "Painting",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 125
+  },
+  {
+    "name": "Paint Final",
+    "category": "Painting",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 126
+  },
+  {
+    "name": "Epoxy Painting",
+    "category": "Painting",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 127
+  },
+  {
+    "name": "Create Preliminary Millwork Drawings",
+    "category": "Planning & Design",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 128
+  },
+  {
+    "name": "Schedule Meeting with Clients To Review Millwork Drawings",
+    "category": "Planning & Design",
+    "start_offset_days": null,
+    "milestone": "meeting",
+    "status": "Planned",
+    "task_order": 129
+  },
+  {
+    "name": "Clients Must Sign Off On Millwork Drawings",
+    "category": "Planning & Design",
+    "start_offset_days": null,
+    "milestone": "approval",
+    "status": "Planned",
+    "task_order": 130
+  },
+  {
+    "name": "Put Millwork into Production",
+    "category": "Millwork",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 131
+  },
+  {
+    "name": "Schedule Millwork Install",
+    "category": "Millwork",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 132
+  },
+  {
+    "name": "Installation of Millwork",
+    "category": "Millwork",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 133
+  },
+  {
+    "name": "Order All Doors & Hardware",
+    "category": "Doors & Hardware",
+    "duration_days": 8,
+    "start_offset_days": 241,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 134
+  },
+  {
+    "name": "Materials Site Visit Check",
+    "category": "Materials & Ordering",
+    "duration_days": 4,
+    "start_offset_days": 249,
+    "milestone": "visit",
+    "status": "Planned",
+    "task_order": 135
+  },
+  {
+    "name": "Schedule Door Frame Installation",
+    "category": "Doors & Hardware",
+    "duration_days": 2,
+    "start_offset_days": 253,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 136
+  },
+  {
+    "name": "Door Frame Installation",
+    "category": "Doors & Hardware",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "planned",
+    "task_order": 137
+  },
+  {
+    "name": "Schedule Door Installation",
+    "category": "Doors & Hardware",
+    "duration_days": 1,
+    "start_offset_days": 256,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 138
+  },
+  {
+    "name": "Door Installation",
+    "category": "Doors & Hardware",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "planned",
+    "task_order": 139
+  },
+  {
+    "name": "Schedule Door Hardware Installation",
+    "category": "Doors & Hardware",
+    "duration_days": 1,
+    "start_offset_days": 258,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 140
+  },
+  {
+    "name": "Door Hardware Installation (including Nubs)",
+    "category": "Doors & Hardware",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "planned",
+    "task_order": 141
+  },
+  {
+    "name": "Get Quote For Security Gate",
+    "category": "Doors & Hardware",
+    "duration_days": 1,
+    "start_offset_days": 260,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 142
+  },
+  {
+    "name": "Approve Security Gate Drawing",
+    "category": "Planning & Design",
+    "duration_days": 4,
+    "start_offset_days": 261,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 143
+  },
+  {
+    "name": "Schedule Security Gate On-Site Measurements",
+    "category": "Doors & Hardware",
+    "duration_days": 1,
+    "start_offset_days": 265,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 144
+  },
+  {
+    "name": "Schedule Security Gate Install",
+    "category": "Doors & Hardware",
+    "duration_days": 1,
+    "start_offset_days": 266,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 145
+  },
+  {
+    "name": "Order Ceiling Grid Materials",
+    "category": "Ceiling",
+    "duration_days": 4,
+    "start_offset_days": 267,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 146
+  },
+  {
+    "name": "Order Ceiling Tiles",
+    "category": "Ceiling",
+    "duration_days": 4,
+    "start_offset_days": 271,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 147
+  },
+  {
+    "name": "Schedule Ceiling Grid Work",
+    "category": "Ceiling",
+    "duration_days": 1,
+    "start_offset_days": 275,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 148
+  },
+  {
+    "name": "Schedule Ceiling Tile Work",
+    "category": "Ceiling",
+    "duration_days": 1,
+    "start_offset_days": 276,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 149
+  },
+  {
+    "name": "Ceiling Grid Install",
+    "category": "Ceiling",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 150
+  },
+  {
+    "name": "Ceiling Tile Install",
+    "category": "Ceiling",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 151
+  },
+  {
+    "name": "Order All Vinyl  Flooring",
+    "category": "Flooring",
+    "duration_days": 8,
+    "start_offset_days": 279,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 152
+  },
+  {
+    "name": "Order All Tile Flooring & Wall Applications",
+    "category": "Flooring",
+    "duration_days": 8,
+    "start_offset_days": 287,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 153
+  },
+  {
+    "name": "Order All Wood or Other Flooring",
+    "category": "Flooring",
+    "duration_days": 8,
+    "start_offset_days": 295,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 154
+  },
+  {
+    "name": "Order All Vinyl Glue",
+    "category": "Flooring",
+    "duration_days": 4,
+    "start_offset_days": 303,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 155
+  },
+  {
+    "name": "Order All Mortar & Trim",
+    "category": "Flooring",
+    "duration_days": 4,
+    "start_offset_days": 307,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 156
+  },
+  {
+    "name": "Order All Sub Materials & Glue",
+    "category": "Materials & Ordering",
+    "duration_days": 4,
+    "start_offset_days": 311,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 157
+  },
+  {
+    "name": "Order All Transition Pieces",
+    "category": "Flooring",
+    "duration_days": 2,
+    "start_offset_days": 315,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 158
+  },
+  {
+    "name": "Order Any Epoxy Materials",
+    "category": "Painting",
+    "duration_days": 2,
+    "start_offset_days": 317,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 159
+  },
+  {
+    "name": "Flooring On Site Visit Tile",
+    "category": "Flooring",
+    "duration_days": 4,
+    "start_offset_days": 319,
+    "milestone": "visit",
+    "status": "Planned",
+    "task_order": 160
+  },
+  {
+    "name": "Flooring On Site Visit Vinyl",
+    "category": "Flooring",
+    "duration_days": 4,
+    "start_offset_days": 323,
+    "milestone": "visit",
+    "status": "Planned",
+    "task_order": 161
+  },
+  {
+    "name": "Schedule All Vinyl Flooring",
+    "category": "Flooring",
+    "duration_days": 4,
+    "start_offset_days": 327,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 162
+  },
+  {
+    "name": "Schedule All Tile Flooring",
+    "category": "Flooring",
+    "duration_days": 4,
+    "start_offset_days": 331,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 163
+  },
+  {
+    "name": "Schedule All Wood or Other Flooring",
+    "category": "Flooring",
+    "duration_days": 2,
+    "start_offset_days": 335,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 164
+  },
+  {
+    "name": "Schedule All Vinyl Glue",
+    "category": "Flooring",
+    "duration_days": 2,
+    "start_offset_days": 337,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 165
+  },
+  {
+    "name": "Schedule All Mortar & Trim",
+    "category": "Flooring",
+    "duration_days": 2,
+    "start_offset_days": 339,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 166
+  },
+  {
+    "name": "Schedule All Sub Materials & Glue",
+    "category": "Materials & Ordering",
+    "duration_days": 2,
+    "start_offset_days": 341,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 167
+  },
+  {
+    "name": "Schedule All Transition Piece Work",
+    "category": "Flooring",
+    "duration_days": 2,
+    "start_offset_days": 343,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 168
+  },
+  {
+    "name": "Schedule Floor Prep Work",
+    "category": "Other",
+    "duration_days": 2,
+    "start_offset_days": 345,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 169
+  },
+  {
+    "name": "Schedule Epoxy Floor Work",
+    "category": "Painting",
+    "duration_days": 2,
+    "start_offset_days": 347,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 170
+  },
+  {
+    "name": "Floor & Wall Tiling Install",
+    "category": "Other",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 171
+  },
+  {
+    "name": "Vinyl Flooring Install",
+    "category": "Flooring",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 172
+  },
+  {
+    "name": "Wood or Other Flooring Install",
+    "category": "Flooring",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 173
+  },
+  {
+    "name": "Epoxy Floor Install",
+    "category": "Painting",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 174
+  },
+  {
+    "name": "Floor Prep Work",
+    "category": "Other",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 175
+  },
+  {
+    "name": "Order Barrier Free Equipment",
+    "category": "Fixtures & Equipment",
+    "duration_days": 1,
+    "start_offset_days": 354,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 176
+  },
+  {
+    "name": "Order Bathroom Fixtures",
+    "category": "Fixtures & Equipment",
+    "duration_days": 2,
+    "start_offset_days": 355,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 177
+  },
+  {
+    "name": "Order Plumbing Fixtures",
+    "category": "Demolition & Site Prep",
+    "duration_days": 2,
+    "start_offset_days": 357,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 178
+  },
+  {
+    "name": "Schedule Barrier Free Equipment Install",
+    "category": "Fixtures & Equipment",
+    "duration_days": 1,
+    "start_offset_days": 359,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 179
+  },
+  {
+    "name": "Barrie Free Equipment Install",
+    "category": "Fixtures & Equipment",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 180
+  },
+  {
+    "name": "Schedule Bathroom (non-plumbing) Fixtures Install",
+    "category": "Demolition & Site Prep",
+    "duration_days": 1,
+    "start_offset_days": 361,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 181
+  },
+  {
+    "name": "Bathroom (non-plumbing) Fixtures Install",
+    "category": "Demolition & Site Prep",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "planned",
+    "task_order": 182
+  },
+  {
+    "name": "Schedule Trim Work",
+    "category": "Finishing",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 183
+  },
+  {
+    "name": "Trim Work Install",
+    "category": "Finishing",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 184
+  },
+  {
+    "name": "Order Door Numbers",
+    "category": "Doors & Hardware",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 185
+  },
+  {
+    "name": "Schedule Install of Door Numbers",
+    "category": "Doors & Hardware",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 186
+  },
+  {
+    "name": "Installation of Door Numbers",
+    "category": "Doors & Hardware",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 187
+  },
+  {
+    "name": "Order Wallpaper",
+    "category": "Finishing",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 188
+  },
+  {
+    "name": "Schedule Install of Wallpaper",
+    "category": "Finishing",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 189
+  },
+  {
+    "name": "Installation of Wallpaper",
+    "category": "Finishing",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 190
+  },
+  {
+    "name": "Schedule Site Visit For Stone Work",
+    "category": "Finishing",
+    "start_offset_days": null,
+    "milestone": "visit",
+    "status": "Planned",
+    "task_order": 191
+  },
+  {
+    "name": "Installation of Stonework",
+    "category": "Finishing",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 192
+  },
+  {
+    "name": "Order Blinds",
+    "category": "Finishing",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 193
+  },
+  {
+    "name": "Schedule Installation of Blinds",
+    "category": "Finishing",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 194
+  },
+  {
+    "name": "Installation of Blinds",
+    "category": "Finishing",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 195
+  },
+  {
+    "name": "Order Baseboard Materials",
+    "category": "Finishing",
+    "duration_days": 4,
+    "start_offset_days": 376,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 196
+  },
+  {
+    "name": "Schedule Baseboard Installation",
+    "category": "Finishing",
+    "duration_days": 1,
+    "start_offset_days": 380,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 197
+  },
+  {
+    "name": "Install Baseboard(s)",
+    "category": "Finishing",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 198
+  },
+  {
+    "name": "Order Trim Material",
+    "category": "Finishing",
+    "duration_days": 4,
+    "start_offset_days": 382,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 199
+  },
+  {
+    "name": "Schedule Trim Work",
+    "category": "Finishing",
+    "duration_days": 1,
+    "start_offset_days": 386,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 200
+  },
+  {
+    "name": "Install Trim",
+    "category": "Finishing",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 201
+  },
+  {
+    "name": "Schedule Finish Door Operators",
+    "category": "Framing & Structure",
+    "duration_days": 1,
+    "start_offset_days": 388,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 202
+  },
+  {
+    "name": "Door Operator Finish Completion",
+    "category": "Framing & Structure",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "planned",
+    "task_order": 203
+  },
+  {
+    "name": "Install Door Closer(s)",
+    "category": "Doors & Hardware",
+    "start_offset_days": null,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 204
+  },
+  {
+    "name": "Commercial Clean Full Space One",
+    "category": "Cleaning",
+    "duration_days": 4,
+    "start_offset_days": 391,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 205
+  },
+  {
+    "name": "Commercial Clean Full Space Final",
+    "category": "Cleaning",
+    "duration_days": 4,
+    "start_offset_days": 395,
+    "milestone": null,
+    "status": "Planned",
+    "task_order": 206
+  }
+]
