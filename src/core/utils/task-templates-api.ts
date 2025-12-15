@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { TaskTemplate, TaskCreateUpdate } from '@/core/types/task'
+import type { TaskTemplate, TaskCreateUpdate, TaskStatus } from '@/core/types/task'
 import { getMockTaskTemplates } from '@/core/mock-data/task-templates-loader'
 
 // For now, templates are stored locally (can be extended to use API)
@@ -190,6 +190,41 @@ export const taskTemplatesApi = {
   },
 }
 
+// Valid API task statuses
+type ApiTaskStatus = 'planned' | 'in_progress' | 'done' | 'blocked' | 'delayed'
+
+/**
+ * Normalize task status to valid API status
+ * API accepts: planned, in_progress, done, blocked, delayed
+ */
+function normalizeTaskStatus(status: string | undefined | null): ApiTaskStatus {
+  if (!status) return 'planned'
+
+  const normalized = status.toLowerCase().trim()
+
+  // Direct matches
+  if (['planned', 'in_progress', 'done', 'blocked', 'delayed'].includes(normalized)) {
+    return normalized as ApiTaskStatus
+  }
+
+  // Map old/alternative statuses to valid API statuses
+  const statusMap: Record<string, ApiTaskStatus> = {
+    'scheduled': 'planned',
+    'scheduled_accepted': 'planned',
+    'in progress': 'in_progress',
+    'in-progress': 'in_progress',
+    'partially_completed': 'in_progress',
+    'partially completed': 'in_progress',
+    'ready_for_inspection': 'in_progress',
+    'ready for inspection': 'in_progress',
+    'completed': 'done',
+    'delayed_due_to_issue': 'delayed',
+    'delayed due to issue': 'delayed',
+  }
+
+  return statusMap[normalized] || 'planned'
+}
+
 // Helper function to convert template to task creation data
 export function templateToTaskData(
   template: TaskTemplate,
@@ -225,6 +260,10 @@ export function templateToTaskData(
     endPlanned = endDate.toISOString().split('T')[0]
   }
 
+  // Normalize status to valid API status
+  const rawStatus = overrides?.status || template.status || 'planned'
+  const normalizedStatus = normalizeTaskStatus(rawStatus)
+
   const taskData: TaskCreateUpdate = {
     project_id: projectId,
     name: template.name,
@@ -232,7 +271,7 @@ export function templateToTaskData(
     end_planned: endPlanned,
     duration_days: duration,
     milestone: template.milestone || null,
-    status: (overrides?.status as any) || template.status || 'planned',
+    status: normalizedStatus as TaskStatus,
     progress_pct: 0,
     notes: template.notes,
     wbs_path: template.wbs_path,
