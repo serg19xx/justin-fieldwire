@@ -42,9 +42,25 @@
               v-model="projectStartDate"
               type="date"
               required
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              :class="[
+                'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 text-gray-900',
+                !projectStartDate
+                  ? 'border-red-500 focus:ring-red-500 bg-red-50'
+                  : 'border-gray-300 focus:ring-blue-500'
+              ]"
             />
-            <p class="mt-1 text-xs text-gray-500">
+            <p v-if="!projectStartDate" class="mt-1 text-xs text-red-600 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              This field is required
+            </p>
+            <p v-else class="mt-1 text-xs text-gray-500">
               All task dates will be calculated relative to this date
             </p>
           </div>
@@ -85,7 +101,12 @@
             <div
               v-for="(selectedTemplate, index) in taskConfigs"
               :key="selectedTemplate.template.id"
-              class="p-4 border border-gray-200 rounded-lg hover:border-gray-300 transition-colors"
+              :class="[
+                'p-4 border rounded-lg transition-colors',
+                hasTaskErrors(selectedTemplate, index)
+                  ? 'border-red-300 bg-red-50/30 hover:border-red-400'
+                  : 'border-gray-200 hover:border-gray-300'
+              ]"
             >
               <div class="flex items-start justify-between gap-4">
                 <div class="flex-1">
@@ -125,12 +146,31 @@
                               ? String(selectedTemplate.template.start_offset_days)
                               : 'Enter days from start'
                           "
-                          class="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                          :class="[
+                            'flex-1 px-2 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 text-gray-900',
+                            hasStartOffsetError(selectedTemplate, index)
+                              ? 'border-red-500 focus:ring-red-500 bg-red-50'
+                              : 'border-gray-300 focus:ring-blue-500'
+                          ]"
                         />
                         <span class="text-xs text-gray-500 whitespace-nowrap">days</span>
                       </div>
                       <p v-if="calculatedStartDate(selectedTemplate)" class="text-xs text-gray-500 mt-1">
                         → {{ formatDate(calculatedStartDate(selectedTemplate)!) }}
+                      </p>
+                      <p
+                        v-if="hasStartOffsetError(selectedTemplate, index)"
+                        class="text-xs text-red-600 mt-1 flex items-center gap-1"
+                      >
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        This field is required
                       </p>
                     </div>
 
@@ -150,12 +190,31 @@
                               ? String(selectedTemplate.template.duration_days)
                               : 'Enter duration'
                           "
-                          class="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                          :class="[
+                            'flex-1 px-2 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 text-gray-900',
+                            hasDurationError(selectedTemplate, index)
+                              ? 'border-red-500 focus:ring-red-500 bg-red-50'
+                              : 'border-gray-300 focus:ring-blue-500'
+                          ]"
                         />
                         <span class="text-xs text-gray-500 whitespace-nowrap">days</span>
                       </div>
                       <p v-if="calculatedEndDate(selectedTemplate)" class="text-xs text-gray-500 mt-1">
                         → {{ formatDate(calculatedEndDate(selectedTemplate)!) }}
+                      </p>
+                      <p
+                        v-if="hasDurationError(selectedTemplate, index)"
+                        class="text-xs text-red-600 mt-1 flex items-center gap-1"
+                      >
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        This field is required
                       </p>
                     </div>
 
@@ -196,28 +255,53 @@
       </div>
 
       <!-- Footer -->
-      <div class="flex items-center justify-between p-4 sm:p-6 border-t border-gray-200 flex-shrink-0 bg-gray-50">
-        <div class="text-sm text-gray-600">
-          <span v-if="validationErrors.length > 0" class="text-red-600">
-            {{ validationErrors.length }} error{{ validationErrors.length !== 1 ? 's' : '' }} to fix
-          </span>
-          <span v-else class="text-green-600">Ready to create {{ selectedTemplates.length }} tasks</span>
+      <div class="border-t border-gray-200 flex-shrink-0 bg-gray-50">
+        <!-- Validation Errors Section -->
+        <div v-if="validationErrors.length > 0" class="px-4 sm:px-6 pt-4 pb-2 border-b border-red-200 bg-red-50">
+          <div class="flex items-center gap-2 mb-2">
+            <svg class="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span class="text-sm font-semibold text-red-800">
+              {{ validationErrors.length }} error{{ validationErrors.length !== 1 ? 's' : '' }} to fix:
+            </span>
+          </div>
+          <ul class="list-disc list-inside space-y-1 text-sm text-red-700 ml-7">
+            <li v-for="(error, index) in validationErrors" :key="index">
+              {{ error }}
+            </li>
+          </ul>
         </div>
-        <div class="flex gap-3">
-          <button
-            @click="closeDialog"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            Cancel
-          </button>
-          <button
-            @click="handleCreateTasks"
-            :disabled="isCreating || validationErrors.length > 0 || !projectStartDate"
-            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            <span v-if="isCreating">Creating...</span>
-            <span v-else>Create {{ selectedTemplates.length }} Tasks</span>
-          </button>
+
+        <!-- Footer Actions -->
+        <div class="flex items-center justify-between p-4 sm:p-6">
+          <div class="text-sm text-gray-600">
+            <span v-if="validationErrors.length > 0" class="text-red-600">
+              Please fix the errors above
+            </span>
+            <span v-else class="text-green-600">Ready to create {{ selectedTemplates.length }} tasks</span>
+          </div>
+          <div class="flex gap-3">
+            <button
+              @click="closeDialog"
+              class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Cancel
+            </button>
+            <button
+              @click="handleCreateTasks"
+              :disabled="isCreating || validationErrors.length > 0 || !projectStartDate"
+              class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              <span v-if="isCreating">Creating...</span>
+              <span v-else>Create {{ selectedTemplates.length }} Tasks</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -307,6 +391,19 @@ const validationErrors = computed(() => {
 
   return errors
 })
+
+// Helper functions to check if specific fields have errors
+function hasStartOffsetError(config: SelectedTemplate, index: number): boolean {
+  return config.start_offset_days === null && config.template.start_offset_days === null
+}
+
+function hasDurationError(config: SelectedTemplate, index: number): boolean {
+  return !config.duration_days && !config.template.duration_days
+}
+
+function hasTaskErrors(config: SelectedTemplate, index: number): boolean {
+  return hasStartOffsetError(config, index) || hasDurationError(config, index)
+}
 
 // Calculate dates
 function calculatedStartDate(config: SelectedTemplate): string | null {
