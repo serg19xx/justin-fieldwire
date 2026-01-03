@@ -2127,7 +2127,7 @@ watch(
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col ml-64">
+    <div class="flex-1 flex flex-col ml-64 overflow-x-clip max-w-full min-w-0">
       <!-- Content Header -->
       <div class="bg-white shadow-sm border-b border-gray-200 px-6 py-2 fixed top-12 left-64 right-0 z-40" style="margin-top: 0; padding-top: 0.5rem; padding-bottom: 0.5rem;">
         <div class="flex items-center justify-between">
@@ -2452,7 +2452,7 @@ watch(
         <!-- Content based on active section -->
         <div
           v-else-if="project"
-          class="flex-1 flex flex-col min-w-0"
+          class="flex-1 flex flex-col min-w-0 overflow-x-clip max-w-full"
         >
           <!-- Plans Section -->
           <PlansSection

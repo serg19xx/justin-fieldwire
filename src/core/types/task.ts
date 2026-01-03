@@ -144,6 +144,12 @@ export interface TaskFilter {
   // Sorting options
   sortBy?: 'start_date' | 'end_date' | 'name' | 'created_at' | 'task_order' | 'original'
   sortOrder?: 'asc' | 'desc'
+  // Extended filter fields
+  workerId?: number | null // Filter by specific worker (task lead or team member)
+  startDate?: string // Filter by start date (tasks starting on or after this date)
+  endDate?: string // Filter by end date (tasks ending on or before this date)
+  taskType?: 'task' | 'milestone' | 'all' // Filter by task type
+  category?: string | null // Filter by category
 }
 
 // Task statistics interface

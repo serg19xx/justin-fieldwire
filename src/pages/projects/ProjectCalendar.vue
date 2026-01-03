@@ -21,6 +21,9 @@ import MilestoneDialog from '@/pages/projects/MilestoneDialog.vue'
 import SimpleBoundsDialog from '@/pages/projects/SimpleBoundsDialog.vue'
 import DependencyValidationDialog from '@/pages/projects/DependencyValidationDialog.vue'
 import TaskTemplateDialog from '@/components/task-templates/TaskTemplateDialog.vue'
+import TaskFilterDialog from '@/components/tasks/TaskFilterDialog.vue'
+import TaskListSidebar from '@/components/tasks/TaskListSidebar.vue'
+import { useTaskFilters } from '@/composables/useTaskFilters'
 
 // Props
 interface Props {
@@ -92,9 +95,30 @@ const searchResults = ref<Task[]>([])
 const currentSearchIndex = ref(0)
 const isSearchActive = ref(false)
 
-// Worker filter state
+// Worker filter state (kept for backward compatibility)
 const selectedWorkerId = ref<number | null>(null)
 const allProjectWorkers = ref<Array<{ id: number; name: string; role: string }>>([])
+
+// Enhanced task filtering using composable
+const { filterState, filteredTasks: enhancedFilteredTasks, clearFilters, activeFiltersCount } = useTaskFilters(tasks)
+
+// Sync worker filter with new filter state (backward compatibility)
+watch(selectedWorkerId, (newValue) => {
+  if (filterState.value.workerId !== newValue) {
+    filterState.value.workerId = newValue
+  }
+}, { immediate: true })
+
+watch(() => filterState.value.workerId, (newValue) => {
+  if (selectedWorkerId.value !== newValue) {
+    selectedWorkerId.value = newValue
+  }
+})
+
+// Handle filter state updates from TaskFilterPanel
+function updateFilterState(newState: typeof filterState.value) {
+  filterState.value = { ...newState }
+}
 
 function searchTasks(query: string) {
   console.log('🔍 Search function called with query:', query)
@@ -261,6 +285,71 @@ const templateDialog = ref({
   isOpen: false,
 })
 
+// Task filter dialog state
+const filterDialog = ref({
+  isOpen: false,
+})
+
+// Tooltip state
+const tooltipState = ref<{
+  type: 'task' | 'milestone' | 'info' | 'templates' | null
+  visible: boolean
+  x: number
+  y: number
+}>({
+  type: null,
+  visible: false,
+  x: 0,
+  y: 0,
+})
+
+const addTaskButtonRef = ref<HTMLElement | null>(null)
+const addMilestoneButtonRef = ref<HTMLElement | null>(null)
+const infoButtonRef = ref<HTMLElement | null>(null)
+const fromTemplatesButtonRef = ref<HTMLElement | null>(null)
+
+function updateTooltipPosition(type: 'task' | 'milestone' | 'info' | 'templates', event: MouseEvent) {
+  const button = event.currentTarget as HTMLElement
+  const rect = button.getBoundingClientRect()
+
+  if (type === 'milestone') {
+    // For milestone, store right position for right-aligned tooltip
+    tooltipState.value = {
+      type,
+      visible: true,
+      x: window.innerWidth - rect.right, // Distance from right edge
+      y: rect.top,
+    }
+  } else if (type === 'info') {
+    tooltipState.value = {
+      type,
+      visible: true,
+      x: rect.left + rect.width / 2, // Center of button
+      y: rect.top,
+    }
+  } else if (type === 'templates') {
+    tooltipState.value = {
+      type,
+      visible: true,
+      x: rect.left, // Left edge of button
+      y: rect.top,
+    }
+  } else {
+    tooltipState.value = {
+      type,
+      visible: true,
+      x: rect.left, // Left edge of button
+      y: rect.top,
+    }
+  }
+}
+
+function hideTooltip(type: 'task' | 'milestone' | 'info' | 'templates') {
+  if (tooltipState.value.type === type) {
+    tooltipState.value.visible = false
+  }
+}
+
 // Available tasks for dependencies (exclude current task)
 const availableTasksForDependencies = computed(() => {
   if (taskDialog.value.task) {
@@ -269,26 +358,8 @@ const availableTasksForDependencies = computed(() => {
   return tasks.value
 })
 
-// Filtered tasks by worker
-const filteredTasks = computed(() => {
-  if (!selectedWorkerId.value) {
-    return tasks.value
-  }
-
-  return tasks.value.filter((task) => {
-    // Check if worker is task lead
-    if (task.task_lead_id === selectedWorkerId.value) {
-      return true
-    }
-
-    // Check if worker is in team members
-    if (task.team_members && Array.isArray(task.team_members) && selectedWorkerId.value !== null) {
-      return task.team_members.includes(selectedWorkerId.value)
-    }
-
-    return false
-  })
-})
+// Use enhanced filtered tasks from composable
+const filteredTasks = enhancedFilteredTasks
 
 // Get current date for testing
 const today = new Date()
@@ -424,7 +495,7 @@ const calendarOptions = ref({
         calendarOptions.value.displayEventTime = false // All tasks are all-day, no time display
       }
       console.log('📅 Calendar view changed to:', currentCalendarView.value)
-      
+
       // Refresh events when view changes to update time display
       if (viewChanged && calendarRef.value) {
         const calendarApi = calendarRef.value.getApi()
@@ -3201,7 +3272,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="relative flex-1 flex flex-col h-full">
+  <div class="relative flex-1 flex flex-col h-full overflow-x-clip max-w-full">
     <!-- Legend Section -->
     <div class="px-4 py-1 bg-transparent text-xs text-gray-600 mb-2">
       <div class="flex items-start justify-center space-x-6 flex-wrap">
@@ -3328,7 +3399,7 @@ defineExpose({
       </div>
     </div>
 
-    <div class="bg-white rounded-lg">
+    <div class="bg-white rounded-lg overflow-x-clip max-w-full">
       <!-- Tasks Info -->
       <div v-if="error" class="bg-red-50 border-b border-red-200 px-4 py-2">
         <div class="flex items-center">
@@ -3356,27 +3427,53 @@ defineExpose({
           <div class="flex items-center space-x-4">
             <!-- Add Task/Milestone Buttons -->
             <div v-if="canEdit" class="flex items-center space-x-2">
-              <button
-                @click="openTaskDialog('create', undefined, undefined)"
-                class="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
-                title="Add new task"
-              >
-                ➕ Add Task
-              </button>
-              <button
-                @click="openMilestoneDialog('create', undefined, undefined)"
-                class="px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded-md hover:bg-purple-700 transition-colors"
-                title="Add new milestone"
-              >
-                🎯 Add Milestone
-              </button>
-              <button
-                @click="openTemplateDialog"
-                class="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors"
-                title="Create tasks from templates"
-              >
-                📋 From Templates
-              </button>
+              <div class="relative group">
+                <button
+                  ref="addTaskButtonRef"
+                  @mouseenter="updateTooltipPosition('task', $event)"
+                  @mouseleave="hideTooltip('task')"
+                  @click="openTaskDialog('create', undefined, undefined)"
+                  class="px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  ➕ Add Task
+                </button>
+              </div>
+              <div class="relative group">
+                <button
+                  ref="addMilestoneButtonRef"
+                  @mouseenter="updateTooltipPosition('milestone', $event)"
+                  @mouseleave="hideTooltip('milestone')"
+                  @click="openMilestoneDialog('create', undefined, undefined)"
+                  class="px-3 py-1.5 bg-purple-600 text-white text-xs font-medium rounded-md hover:bg-purple-700 transition-colors"
+                >
+                  🎯 Add Milestone
+                </button>
+              </div>
+              <!-- Info button with help text -->
+              <div class="relative group">
+                <button
+                  ref="infoButtonRef"
+                  @mouseenter="updateTooltipPosition('info', $event)"
+                  @mouseleave="hideTooltip('info')"
+                  type="button"
+                  class="px-2 py-1.5 text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                </button>
+              </div>
+              <div class="relative group">
+                <button
+                  ref="fromTemplatesButtonRef"
+                  @mouseenter="updateTooltipPosition('templates', $event)"
+                  @mouseleave="hideTooltip('templates')"
+                  @click="openTemplateDialog"
+                  class="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 transition-colors"
+                >
+                  📋 From Templates
+                </button>
+              </div>
               <button
                 v-if="selectedTask"
                 @click="editTask(selectedTask)"
@@ -3444,23 +3541,33 @@ defineExpose({
           </div>
 
           <div class="flex items-center space-x-4">
-            <!-- Worker Filter -->
-            <div class="flex items-center space-x-2">
-              <label class="text-sm font-medium text-gray-700">Worker:</label>
-              <select
-                v-model="selectedWorkerId"
-                class="px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+            <!-- Filter Button -->
+            <button
+              @click="filterDialog.isOpen = true"
+              :class="[
+                'px-3 py-1.5 text-sm font-medium rounded-md transition-colors flex items-center gap-2',
+                activeFiltersCount > 0
+                  ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300',
+              ]"
+              :title="activeFiltersCount > 0 ? `${activeFiltersCount} filter(s) active` : 'Filter tasks'"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                />
+              </svg>
+              Filter
+              <span
+                v-if="activeFiltersCount > 0"
+                class="ml-1 px-1.5 py-0.5 text-xs bg-blue-600 text-white rounded-full"
               >
-                <option :value="null">All Workers</option>
-                <option
-                  v-for="worker in allProjectWorkers"
-                  :key="worker.id"
-                  :value="worker.id"
-                >
-                  {{ worker.name }} ({{ worker.role }})
-                </option>
-              </select>
-            </div>
+                {{ activeFiltersCount }}
+              </span>
+            </button>
 
             <!-- View Mode Toggle -->
             <div class="flex bg-gray-100 rounded-lg p-1">
@@ -3505,115 +3612,53 @@ defineExpose({
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Calendar View -->
-      <div v-if="viewMode === 'ical'" class="p-4 bg-white">
-        <FullCalendar
-          ref="calendarRef"
-          :options="calendarOptions"
-          class="min-h-[600px]"
-          @mounted="onCalendarMounted"
-        />
-      </div>
-
-      <!-- Task List View -->
-      <div v-else-if="viewMode === 'list'" class="p-4">
-        <div v-if="filteredTasks.length === 0" class="text-center text-gray-500 py-8">
-          <div class="text-4xl mb-4">📋</div>
-          <h3 class="text-lg font-medium mb-2">No Tasks</h3>
-
+        <!-- Calendar View -->
+        <div v-if="viewMode === 'ical'" class="flex h-[calc(100vh-300px)] min-h-[600px] overflow-x-clip max-w-full">
+        <!-- Task List Sidebar -->
+        <div class="w-80 flex-shrink-0 flex flex-col border-r border-gray-200 sticky left-0 z-20 bg-white">
+          <TaskListSidebar
+            :filtered-tasks="filteredTasks"
+            :selected-task-id="selectedTask?.id"
+            :active-filters-count="activeFiltersCount"
+            @task-selected="selectTaskForDetails"
+          />
         </div>
-        <div v-else class="flex gap-6">
-          <!-- Left: Task List (50%) -->
-          <div class="w-1/2 space-y-3">
-            <h3 class="text-lg font-medium text-gray-900 mb-3">Tasks</h3>
-            <div
-              v-for="task in filteredTasks"
-              :key="task.id"
-              @click="selectTaskForDetails(task)"
-              :class="[
-                'bg-white border border-gray-200 rounded-lg p-3 cursor-pointer transition-all relative',
-                selectedTask?.id === task.id
-                  ? 'border-l-4 border-l-blue-500 bg-blue-50 shadow-md'
-                  : 'hover:shadow-md hover:border-gray-300',
-              ]"
-            >
-              <!-- Actions (Top Right) -->
-              <div class="absolute top-2 right-2 flex items-center space-x-1">
-                <button
-                  v-if="props.canEdit"
-                  @click.stop="editTask(task)"
-                  class="p-1 text-gray-400 hover:text-blue-600 transition-colors"
-                  title="Edit task"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    ></path>
-                  </svg>
-                </button>
-                <button
-                  v-if="props.canEdit"
-                  @click.stop="deleteTask(task)"
-                  class="p-1 text-gray-400 hover:text-red-600 transition-colors"
-                  title="Delete task"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    ></path>
-                  </svg>
-                </button>
-              </div>
+        <!-- Calendar -->
+        <div class="flex-1 p-4 bg-white overflow-auto min-w-0 max-w-full">
+          <FullCalendar
+            ref="calendarRef"
+            :options="calendarOptions"
+            class="min-h-[600px]"
+            @mounted="onCalendarMounted"
+          />
+        </div>
+        </div>
 
-              <!-- Task Header -->
-              <div class="flex items-center space-x-3 mb-3 pr-16">
-                <div
-                  class="w-3 h-3 rounded-full"
-                  :style="{ backgroundColor: getTaskColor(task.status) }"
-                ></div>
-                <!-- Task/Milestone Icon -->
-                <span v-if="task.milestone" class="text-lg">🎯</span>
-                <span v-else class="text-lg">📝</span>
-                <h4 class="font-medium text-gray-900 flex-1">{{ task.name }}</h4>
-              </div>
-
-              <!-- Essential Info Only -->
-              <div class="space-y-2 text-sm text-gray-600">
-                <div class="flex items-center justify-between">
-                  <span><span class="font-medium">WBS:</span> {{ task.wbs_path || 'N/A' }}</span>
-                  <span :class="getStatusClass(task.status)">{{
-                    getStatusLabel(task.status)
-                  }}</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span
-                    ><span class="font-medium">Start:</span>
-                    {{ formatDate(task.start_planned) }}</span
-                  >
-                  <span v-if="task.end_planned"
-                    ><span class="font-medium">End:</span> {{ formatDate(task.end_planned) }}</span
-                  >
-                </div>
-              </div>
-            </div>
+        <!-- Task List View -->
+        <div v-else-if="viewMode === 'list'" class="flex h-[calc(100vh-300px)] min-h-[600px] overflow-x-clip max-w-full">
+        <!-- Task List Sidebar -->
+        <div class="w-80 flex-shrink-0 flex flex-col border-r border-gray-200 sticky left-0 z-20 bg-white">
+          <TaskListSidebar
+            :filtered-tasks="filteredTasks"
+            :selected-task-id="selectedTask?.id"
+            :active-filters-count="activeFiltersCount"
+            @task-selected="selectTaskForDetails"
+          />
+        </div>
+        <!-- Task Detail View -->
+        <div class="flex-1 p-4 overflow-auto bg-gray-50 min-w-0 max-w-full">
+          <div v-if="filteredTasks.length === 0" class="text-center text-gray-500 py-8">
+            <div class="text-4xl mb-4">📋</div>
+            <h3 class="text-lg font-medium mb-2">No Tasks</h3>
+            <p class="text-sm text-gray-400">Try adjusting your filters</p>
           </div>
-
-          <!-- Right: Task Details (50%) -->
-          <div class="w-1/2">
-            <div v-if="!selectedTask" class="text-center text-gray-500 py-8">
-              <div class="text-4xl mb-4">👈</div>
-              <h3 class="text-lg font-medium mb-2">Select a Task</h3>
-              <p class="text-sm">Click on a task from the left to view details</p>
-            </div>
-            <div v-else class="bg-white border border-gray-200 rounded-lg p-6">
+          <div v-else-if="!selectedTask" class="text-center text-gray-500 py-8">
+            <div class="text-4xl mb-4">👈</div>
+            <h3 class="text-lg font-medium mb-2">Select a task to view details</h3>
+            <p class="text-sm text-gray-400">Choose a task from the list on the left</p>
+          </div>
+          <div v-else class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
               <!-- Task Header -->
               <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center space-x-3">
@@ -3747,10 +3792,9 @@ defineExpose({
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Gantt View -->
-      <div v-else-if="viewMode === 'gantt'" class="p-4 overflow-hidden" style="max-width: 100%; width: 100%;">
+        <!-- Gantt View -->
+        <div v-else-if="viewMode === 'gantt'" class="p-4 overflow-hidden" style="max-width: 100%; width: 100%;">
          <!-- Gantt Chart -->
          <ProjectGantt
            :project-id="projectId"
@@ -3765,6 +3809,7 @@ defineExpose({
            @task-order-updated="handleTaskOrderUpdated"
            @task-selected="handleTaskSelected"
          />
+        </div>
       </div>
 
       <!-- Task Dialog -->
@@ -3860,8 +3905,114 @@ defineExpose({
         @close="closeTemplateDialog"
         @tasks-created="handleTasksCreatedFromTemplates"
       />
+
+      <!-- Task Filter Dialog -->
+      <TaskFilterDialog
+        :is-open="filterDialog.isOpen"
+        :filter-state="filterState"
+        :available-workers="allProjectWorkers"
+        :clear-filters="clearFilters"
+        :active-filters-count="activeFiltersCount"
+        @close="filterDialog.isOpen = false"
+        @update:filter-state="updateFilterState"
+        @apply-filters="filterDialog.isOpen = false"
+      />
     </div>
   </div>
+
+  <!-- Tooltips using Teleport to render at document root -->
+  <Teleport to="body">
+    <!-- Task tooltip -->
+    <div
+      v-if="tooltipState.visible && tooltipState.type === 'task'"
+      class="hidden sm:block fixed w-72 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl pointer-events-none transition-opacity"
+      :style="{
+        left: `${tooltipState.x}px`,
+        top: `${tooltipState.y - 10}px`,
+        transform: 'translateY(-100%)',
+        zIndex: 99999,
+      }"
+    >
+      <div class="font-semibold mb-2 text-sm">➕ Add Task</div>
+      <div class="text-gray-300 mb-2">Create a work item with duration, resources, and dependencies.</div>
+      <div class="text-gray-400 text-xs border-t border-gray-700 pt-2 mt-2">
+        <div class="font-medium mb-1">Use for:</div>
+        <div>• Regular construction work (pouring concrete, framing)</div>
+        <div>• Activities that take time and resources</div>
+        <div>• Tasks with dependencies on other tasks</div>
+      </div>
+      <div class="absolute top-full left-4 border-4 border-transparent border-t-gray-900"></div>
+    </div>
+
+    <!-- Milestone tooltip -->
+    <div
+      v-if="tooltipState.visible && tooltipState.type === 'milestone'"
+      class="hidden sm:block fixed w-72 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl pointer-events-none transition-opacity"
+      :style="{
+        right: `${tooltipState.x}px`,
+        top: `${tooltipState.y - 10}px`,
+        transform: 'translateY(-100%)',
+        zIndex: 99999,
+      }"
+    >
+      <div class="font-semibold mb-2 text-sm">🎯 Add Milestone</div>
+      <div class="text-gray-300 mb-2">Create a key event or checkpoint that marks an important project moment.</div>
+      <div class="text-gray-400 text-xs border-t border-gray-700 pt-2 mt-2">
+        <div class="font-medium mb-1">Use for:</div>
+        <div>• Inspections, meetings, reviews</div>
+        <div>• Deliveries, approvals</div>
+        <div>• Events with invited people</div>
+      </div>
+      <div class="absolute top-full right-4 border-4 border-transparent border-t-gray-900"></div>
+    </div>
+
+    <!-- Info tooltip -->
+    <div
+      v-if="tooltipState.visible && tooltipState.type === 'info'"
+      class="hidden sm:block fixed w-80 p-4 bg-blue-50 border border-blue-200 text-gray-800 text-xs rounded-lg shadow-xl pointer-events-none transition-opacity"
+      :style="{
+        left: `${tooltipState.x}px`,
+        top: `${tooltipState.y - 10}px`,
+        transform: 'translate(-50%, -100%)',
+        zIndex: 99999,
+      }"
+    >
+      <div class="font-semibold mb-3 text-sm text-blue-900">What's the difference?</div>
+      <div class="space-y-3">
+        <div>
+          <div class="font-medium text-blue-800 mb-1">➕ Task</div>
+          <div class="text-gray-700">Work item with duration, resources, and dependencies. Example: "Pour concrete foundation" (5 days, requires excavator and concrete mixer).</div>
+        </div>
+        <div>
+          <div class="font-medium text-purple-800 mb-1">🎯 Milestone</div>
+          <div class="text-gray-700">Key event or checkpoint. Example: "Foundation inspection" (single day, inspector invited).</div>
+        </div>
+      </div>
+      <div class="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-blue-200"></div>
+    </div>
+
+    <!-- From Templates tooltip -->
+    <div
+      v-if="tooltipState.visible && tooltipState.type === 'templates'"
+      class="hidden sm:block fixed w-72 p-3 bg-gray-900 text-white text-xs rounded-lg shadow-xl pointer-events-none transition-opacity"
+      :style="{
+        left: `${tooltipState.x}px`,
+        top: `${tooltipState.y - 10}px`,
+        transform: 'translateY(-100%)',
+        zIndex: 99999,
+      }"
+    >
+      <div class="font-semibold mb-2 text-sm">📋 From Templates</div>
+      <div class="text-gray-300 mb-2">Create multiple tasks at once using pre-defined templates.</div>
+      <div class="text-gray-400 text-xs border-t border-gray-700 pt-2 mt-2">
+        <div class="font-medium mb-1">Use for:</div>
+        <div>• Creating multiple similar tasks quickly</div>
+        <div>• Using standard task sequences</div>
+        <div>• Batch task creation with templates</div>
+      </div>
+      <div class="absolute top-full left-4 border-4 border-transparent border-t-gray-900"></div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -4050,5 +4201,41 @@ defineExpose({
 :deep(.fc-event) {
   display: block !important;
   visibility: visible !important;
+}
+
+/* Prevent horizontal overflow - restrict all calendar elements */
+:deep(.fc) {
+  max-width: 100% !important;
+  overflow-x: clip !important;
+}
+
+:deep(.fc-view-harness) {
+  max-width: 100% !important;
+  overflow-x: clip !important;
+}
+
+:deep(.fc-scroller) {
+  max-width: 100% !important;
+  overflow-x: clip !important;
+}
+
+:deep(.fc-scroller-liquid-absolute) {
+  max-width: 100% !important;
+}
+
+:deep(.fc-daygrid-body) {
+  max-width: 100% !important;
+}
+
+:deep(.fc-col-header) {
+  max-width: 100% !important;
+}
+
+/* Ensure sidebar stays in place */
+.task-list-sidebar-container {
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  background: white;
 }
 </style>

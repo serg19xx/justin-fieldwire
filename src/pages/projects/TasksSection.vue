@@ -1,5 +1,5 @@
 <template>
-  <div class="tasks-section flex-1 flex flex-col">
+  <div class="tasks-section flex-1 flex flex-col overflow-x-clip max-w-full min-w-0">
 
 
     <!-- Calendar View -->
