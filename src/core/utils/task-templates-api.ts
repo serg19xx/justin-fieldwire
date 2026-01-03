@@ -1,5 +1,6 @@
 import { api } from './api'
 import type { TaskTemplate, TaskCreateUpdate, TaskStatus } from '@/core/types/task'
+import { isMilestone } from '@/core/types/task'
 import { getMockTaskTemplates } from '@/core/mock-data/task-templates-loader'
 
 // For now, templates are stored locally (can be extended to use API)
@@ -238,7 +239,13 @@ export function templateToTaskData(
   },
 ): TaskCreateUpdate {
   const startOffset = overrides?.start_offset_days ?? template.start_offset_days
-  const duration = overrides?.duration_days ?? template.duration_days
+  
+  // Check if this is a milestone first
+  const isTemplateMilestone = isMilestone(template.milestone)
+  
+  // For milestones, ignore duration from template and overrides (always 1 day)
+  // For regular tasks, use duration from overrides or template
+  const duration = isTemplateMilestone ? 1 : (overrides?.duration_days ?? template.duration_days)
 
   // Calculate start date
   let startPlanned = projectStartDate
@@ -250,14 +257,29 @@ export function templateToTaskData(
 
   // Calculate end date
   let endPlanned: string | undefined
-  if (duration && duration > 0) {
-    const endDate = new Date(startPlanned)
-    endDate.setDate(endDate.getDate() + duration - 1) // -1 because start day counts as day 1
-    endPlanned = endDate.toISOString().split('T')[0]
-  } else if (template.end_offset_days !== null && template.end_offset_days !== undefined) {
-    const endDate = new Date(projectStartDate)
-    endDate.setDate(endDate.getDate() + template.end_offset_days)
-    endPlanned = endDate.toISOString().split('T')[0]
+  let finalDuration: number | undefined
+
+  if (isTemplateMilestone) {
+    // Milestones are always single-day tasks: end date equals start date
+    endPlanned = startPlanned
+    finalDuration = 1
+  } else {
+    // Regular tasks: calculate end date based on duration
+    if (duration && duration > 0) {
+      const endDate = new Date(startPlanned)
+      endDate.setDate(endDate.getDate() + duration - 1) // -1 because start day counts as day 1
+      endPlanned = endDate.toISOString().split('T')[0]
+      finalDuration = duration
+    } else if (template.end_offset_days !== null && template.end_offset_days !== undefined) {
+      const endDate = new Date(projectStartDate)
+      endDate.setDate(endDate.getDate() + template.end_offset_days)
+      endPlanned = endDate.toISOString().split('T')[0]
+      // Calculate duration from dates
+      const start = new Date(startPlanned)
+      const end = new Date(endPlanned)
+      const diffTime = Math.abs(end.getTime() - start.getTime())
+      finalDuration = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
+    }
   }
 
   // Normalize status to valid API status
@@ -269,7 +291,7 @@ export function templateToTaskData(
     name: template.name,
     start_planned: startPlanned,
     end_planned: endPlanned,
-    duration_days: duration,
+    duration_days: finalDuration,
     milestone: template.milestone || null,
     status: normalizedStatus as TaskStatus,
     progress_pct: 0,
