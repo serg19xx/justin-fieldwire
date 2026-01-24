@@ -124,7 +124,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label for="status" class="block text-sm font-medium text-gray-700 mb-2">
-                Status
+                Task Status
               </label>
               <select
                 id="status"

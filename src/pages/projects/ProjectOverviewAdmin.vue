@@ -12,8 +12,14 @@
         <div class="space-y-2 text-sm text-gray-700">
           <div><span class="text-gray-500">Name:</span> {{ project?.prj_name }}</div>
           <div><span class="text-gray-500">Address:</span> {{ project?.address }}</div>
-          <div><span class="text-gray-500">Status:</span> {{ getStatusDisplay(project?.status || '') }}</div>
+          <div><span class="text-gray-500">Project Status:</span> {{ getStatusDisplay(project?.status || '') }}</div>
           <div><span class="text-gray-500">Priority:</span> {{ project?.priority }}</div>
+          <div><span class="text-gray-500">Purchase or Lease:</span> {{ project?.purchase_or_lease || 'Purchase' }}</div>
+          <div v-if="project?.notes" class="break-words"><span class="text-gray-500">Notes:</span> {{ project.notes }}</div>
+          <div v-if="project?.client_type">
+            <span class="text-gray-500">Client:</span> {{ project.client_type }}
+            <span v-if="project.client_data?.name"> - {{ project.client_data.name }}</span>
+          </div>
           <div><span class="text-gray-500">Dates:</span> {{ formatDate(project?.date_start) }} - {{ formatDate(project?.date_end) }}</div>
           <div><span class="text-gray-500">Manager:</span> {{ project?.manager_name || 'Unassigned' }}</div>
           <div><span class="text-gray-500">Created by:</span> {{ project?.created_by_name || 'Unknown' }}</div>

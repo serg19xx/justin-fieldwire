@@ -160,7 +160,7 @@
 
           <!-- Status Row -->
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Status </label>
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Task Status </label>
             <select
               v-model="form.status"
               :disabled="mode === 'view'"

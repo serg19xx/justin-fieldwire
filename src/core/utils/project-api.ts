@@ -1,4 +1,5 @@
 import { api } from './api'
+import type { ProjectPurchaseLeaseType } from './constants'
 
 // Types
 export interface ProjectTeamMember {
@@ -29,6 +30,8 @@ export interface InvitedPersonData {
   avatar?: string
 }
 
+export type ClientTableType = 'pharma' | 'physician' | 'pharmacist' | 'medical_clinic'
+
 export interface Project {
   id: number
   prj_name: string
@@ -38,6 +41,12 @@ export interface Project {
   date_start: string
   date_end: string
   status: string
+  purchase_or_lease?: ProjectPurchaseLeaseType
+  notes?: string | null
+  client_id?: number | null
+  client_type?: string | null
+  client_table?: ClientTableType | null
+  client_data?: Record<string, unknown> | null // JSON field for additional client information
   prj_manager?: number
   manager_name?: string
   created_by?: number

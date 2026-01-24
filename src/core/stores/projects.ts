@@ -6,6 +6,8 @@ export interface Project {
   name: string
   client: string
   status: 'active' | 'completed' | 'pending' | 'planning'
+  purchase_or_lease?: 'Purchase' | 'Lease'
+  notes?: string | null
   startDate: string
   endDate: string
   budget: number

@@ -107,7 +107,7 @@
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2"> Status </label>
+              <label class="block text-sm font-medium text-gray-700 mb-2"> Project Status </label>
               <select
                 v-model="form.status"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -118,6 +118,18 @@
                 <option value="Completed">Completed</option>
               </select>
             </div>
+          </div>
+
+          <!-- Purchase or Lease -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Purchase or Lease </label>
+            <select
+              v-model="form.purchase_or_lease"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Purchase">Purchase</option>
+              <option value="Lease">Lease</option>
+            </select>
           </div>
 
           <!-- Project Manager -->
@@ -154,7 +166,7 @@
           </div>
 
           <!-- Description -->
-          <div class="mb-6">
+          <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-2"> Description </label>
             <textarea
               v-model="form.description"
@@ -162,6 +174,51 @@
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter project description (optional)"
             ></textarea>
+          </div>
+
+          <!-- Notes -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Notes </label>
+            <textarea
+              v-model="form.notes"
+              rows="3"
+              maxlength="1000"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter project notes (optional, max 1000 characters)"
+            ></textarea>
+            <p class="mt-1 text-xs text-gray-500">
+              {{ form.notes.length }}/1000 characters
+            </p>
+          </div>
+
+          <!-- Client -->
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Client </label>
+            <div class="flex items-center space-x-2">
+              <input
+                :value="clientDisplayName"
+                type="text"
+                readonly
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-pointer"
+                placeholder="Click to select client"
+                @click="showClientSelector = true"
+              />
+              <button
+                type="button"
+                @click="showClientSelector = true"
+                class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
+              >
+                Select
+              </button>
+              <button
+                v-if="form.client_id"
+                type="button"
+                @click="clearClient"
+                class="px-4 py-2 border border-red-300 rounded-md text-red-700 hover:bg-red-50 transition-colors text-sm font-medium"
+              >
+                Clear
+              </button>
+            </div>
           </div>
 
           <!-- Actions -->
@@ -184,14 +241,26 @@
         </form>
       </div>
     </div>
+
+    <!-- Client Selector Dialog -->
+    <ClientSelectorDialog
+      :is-open="showClientSelector"
+      :selected-client-id="form.client_id"
+      :selected-client-table="form.client_table"
+      @close="showClientSelector = false"
+      @select="handleClientSelect"
+      @clear="handleClientClear"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { projectApi, type Project } from '@/core/utils/project-api'
+import { projectApi, type Project, type ClientTableType } from '@/core/utils/project-api'
 import { hrResourcesApi, type WorkerUser } from '@/core/utils/hr-api'
 import { useAuthStore } from '@/core/stores/auth'
+import ClientSelectorDialog from '@/components/ClientSelectorDialog.vue'
+import { clientsApi, type Client } from '@/core/utils/clients-api'
 
 // Props
 interface Props {
@@ -219,14 +288,33 @@ const form = ref({
   date_end: '',
   priority: 'Medium',
   status: 'Active',
+  purchase_or_lease: 'Purchase',
+  notes: '',
+  client_id: null as number | null,
+  client_type: null as string | null,
+  client_table: null as ClientTableType | null,
+  client_data: null as Record<string, unknown> | null,
   prj_manager: '',
   description: '',
 })
+
+// Client selector state
+const showClientSelector = ref(false)
+const selectedClient = ref<Client | null>(null)
 
 // State
 const isSubmitting = ref(false)
 const availableManagers = ref<Array<{ id: number; name: string; email: string }>>([])
 const validationErrors = ref<Record<string, string>>({})
+
+// Client display name
+const clientDisplayName = computed(() => {
+  if (selectedClient.value) {
+    const clientType = clientsApi.getClientTypeLabel(form.value.client_table || null)
+    return `${selectedClient.value.name} (${clientType})`
+  }
+  return ''
+})
 
 // Access control
 const canAssignManager = computed(() => {
@@ -344,9 +432,16 @@ watch(
         date_end: nextMonthStr,
         priority: 'Medium',
         status: 'Active',
+        purchase_or_lease: 'Purchase',
+        notes: '',
+        client_id: null,
+        client_type: null,
+        client_table: null,
+        client_data: null,
         prj_manager: shouldAutoAssign ? String(authStore.currentUser?.id || '') : '', // Auto-assign for project managers or non-admins
         description: '',
       }
+      selectedClient.value = null
 
       console.log('🔍 Form initialized with prj_manager:', form.value.prj_manager)
 
@@ -426,6 +521,33 @@ function closeDialog() {
   emit('close')
 }
 
+function handleClientSelect(client: Client, clientTable: ClientTableType, clientType: string) {
+  form.value.client_id = client.id
+  form.value.client_table = clientTable
+  form.value.client_type = clientType
+  form.value.client_data = {
+    name: client.name,
+    address: client.address,
+    phone: client.phone,
+    email: client.email,
+    ...client, // Include all client data
+  }
+  selectedClient.value = client
+  showClientSelector.value = false
+}
+
+function clearClient() {
+  form.value.client_id = null
+  form.value.client_table = null
+  form.value.client_type = null
+  form.value.client_data = null
+  selectedClient.value = null
+}
+
+function handleClientClear() {
+  clearClient()
+}
+
 async function handleSubmit() {
   if (isSubmitting.value) return
 
@@ -452,6 +574,12 @@ async function handleSubmit() {
       date_end: form.value.date_end,
       priority: form.value.priority,
       status: form.value.status,
+      purchase_or_lease: form.value.purchase_or_lease,
+      notes: form.value.notes || null,
+      client_id: form.value.client_id,
+      client_type: form.value.client_type,
+      client_table: form.value.client_table,
+      client_data: form.value.client_data,
       prj_manager: form.value.prj_manager ? Number(form.value.prj_manager) : null,
       created_by: authStore.currentUser?.id || null, // ID текущего активного пользователя
       description: form.value.description || null,

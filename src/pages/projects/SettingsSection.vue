@@ -41,6 +41,55 @@
           ></textarea>
         </div>
 
+        <!-- Project Notes -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2"> Notes </label>
+          <textarea
+            v-model="settingsForm.notes"
+            :disabled="!canEdit"
+            rows="3"
+            maxlength="1000"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
+            placeholder="Enter project notes (optional, max 1000 characters)"
+          ></textarea>
+          <p v-if="canEdit" class="mt-1 text-xs text-gray-500">
+            {{ settingsForm.notes.length }}/1000 characters
+          </p>
+        </div>
+
+        <!-- Client -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2"> Client </label>
+          <div class="flex items-center space-x-2">
+            <input
+              :value="clientDisplayName"
+              type="text"
+              readonly
+              :disabled="!canEdit"
+              class="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 disabled:opacity-50"
+              :class="canEdit ? 'cursor-pointer' : ''"
+              placeholder="Click to select client"
+              @click="canEdit && (showClientSelector = true)"
+            />
+            <button
+              v-if="canEdit"
+              type="button"
+              @click="showClientSelector = true"
+              class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
+            >
+              Select
+            </button>
+            <button
+              v-if="canEdit && settingsForm.client_id"
+              type="button"
+              @click="clearClient"
+              class="px-4 py-2 border border-red-300 rounded-md text-red-700 hover:bg-red-50 transition-colors text-sm font-medium"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+
         <!-- Priority and Status -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <!-- Priority -->
@@ -59,7 +108,7 @@
 
           <!-- Status -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Status </label>
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Project Status </label>
             <select
               v-model="settingsForm.status"
               :disabled="!canEdit"
@@ -72,6 +121,19 @@
               <option value="cancelled">Cancelled</option>
             </select>
           </div>
+        </div>
+
+        <!-- Purchase or Lease -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2"> Purchase or Lease </label>
+          <select
+            v-model="settingsForm.purchase_or_lease"
+            :disabled="!canEdit"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+          >
+            <option value="Purchase">Purchase</option>
+            <option value="Lease">Lease</option>
+          </select>
         </div>
 
         <!-- Dates -->
@@ -139,11 +201,24 @@
         </div>
       </form>
     </div>
+
+    <!-- Client Selector Dialog -->
+    <ClientSelectorDialog
+      :is-open="showClientSelector"
+      :selected-client-id="settingsForm.client_id"
+      :selected-client-table="settingsForm.client_table"
+      @close="showClientSelector = false"
+      @select="handleClientSelect"
+      @clear="handleClientClear"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, watch, onMounted, computed } from 'vue'
+import ClientSelectorDialog from '@/components/ClientSelectorDialog.vue'
+import { clientsApi, type Client } from '@/core/utils/clients-api'
+import type { ClientTableType } from '@/core/utils/project-api'
 
 defineOptions({
   name: 'SettingsSection',
@@ -158,6 +233,12 @@ interface ProjectData {
   endDate: string
   priority: string
   status: string
+  purchase_or_lease?: string
+  notes?: string | null
+  client_id?: number | null
+  client_type?: string | null
+  client_table?: ClientTableType | null
+  client_data?: Record<string, unknown> | null
 }
 
 interface Props {
@@ -177,6 +258,8 @@ const emit = defineEmits<{
 
 // State
 const isSaving = ref(false)
+const showClientSelector = ref(false)
+const selectedClient = ref<Client | null>(null)
 
 // Settings form
 const settingsForm = reactive({
@@ -185,8 +268,23 @@ const settingsForm = reactive({
   description: '',
   priority: 'medium',
   status: 'draft',
+  purchase_or_lease: 'Purchase',
+  notes: '',
+  client_id: null as number | null,
+  client_type: null as string | null,
+  client_table: null as ClientTableType | null,
+  client_data: null as Record<string, unknown> | null,
   startDate: '',
   endDate: '',
+})
+
+// Client display name
+const clientDisplayName = computed(() => {
+  if (selectedClient.value) {
+    const clientType = clientsApi.getClientTypeLabel(settingsForm.client_table || null)
+    return `${selectedClient.value.name} (${clientType})`
+  }
+  return ''
 })
 
 // Initialize form with project data
@@ -221,8 +319,21 @@ function initializeForm() {
     settingsForm.description = String(project.description || '')
     settingsForm.priority = String(project.priority || 'medium')
     settingsForm.status = String(project.status || 'draft')
+    settingsForm.purchase_or_lease = String(project.purchase_or_lease || 'Purchase')
+    settingsForm.notes = String(project.notes || '')
+    settingsForm.client_id = project.client_id || null
+    settingsForm.client_type = project.client_type || null
+    settingsForm.client_table = project.client_table || null
+    settingsForm.client_data = project.client_data || null
     settingsForm.startDate = String(project.startDate || '')
     settingsForm.endDate = String(project.endDate || '')
+
+    // Load client data if client_id is present
+    if (project.client_id && project.client_table) {
+      loadClientData(project.client_table, project.client_id)
+    } else {
+      selectedClient.value = null
+    }
 
     console.log('📝 Form after initialization:', settingsForm)
   } else {
@@ -248,6 +359,43 @@ onMounted(() => {
 })
 
 // Methods
+async function loadClientData(clientTable: ClientTableType, clientId: number) {
+  try {
+    const client = await clientsApi.getById(clientTable, clientId)
+    selectedClient.value = client
+  } catch (error) {
+    console.error('Error loading client data:', error)
+    selectedClient.value = null
+  }
+}
+
+function handleClientSelect(client: Client, clientTable: ClientTableType, clientType: string) {
+  settingsForm.client_id = client.id
+  settingsForm.client_table = clientTable
+  settingsForm.client_type = clientType
+  settingsForm.client_data = {
+    name: client.name,
+    address: client.address,
+    phone: client.phone,
+    email: client.email,
+    ...client, // Include all client data
+  }
+  selectedClient.value = client
+  showClientSelector.value = false
+}
+
+function clearClient() {
+  settingsForm.client_id = null
+  settingsForm.client_table = null
+  settingsForm.client_type = null
+  settingsForm.client_data = null
+  selectedClient.value = null
+}
+
+function handleClientClear() {
+  clearClient()
+}
+
 const handleSubmit = () => {
   console.log('🔧 SettingsSection handleSubmit called')
   if (isSaving.value) {

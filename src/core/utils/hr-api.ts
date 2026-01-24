@@ -50,6 +50,8 @@ export interface Project {
   date_end: string
   priority: string
   status: string
+  purchase_or_lease?: string
+  notes?: string | null
   prj_manager: number
   manager: {
     id: number

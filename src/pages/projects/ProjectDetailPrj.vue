@@ -218,6 +218,12 @@ interface Project {
   startDate: string
   endDate: string
   status: string
+  purchase_or_lease?: string
+  notes?: string | null
+  client_id?: number | null
+  client_type?: string | null
+  client_table?: string | null
+  client_data?: Record<string, unknown> | null
   projectManager?: number
   description?: string
   createdAt: string
@@ -260,6 +266,12 @@ async function loadProjects() {
       startDate: apiProject.date_start,
       endDate: apiProject.date_end,
       status: apiProject.status,
+      purchase_or_lease: apiProject.purchase_or_lease,
+      notes: apiProject.notes,
+      client_id: apiProject.client_id,
+      client_type: apiProject.client_type,
+      client_table: apiProject.client_table,
+      client_data: apiProject.client_data,
       projectManager: apiProject.prj_manager || undefined,
       description: apiProject.description || '',
       createdAt: apiProject.created_at,
@@ -302,6 +314,12 @@ async function loadProject() {
       startDate: apiResponse.date_start,
       endDate: apiResponse.date_end,
       status: apiResponse.status,
+      purchase_or_lease: apiResponse.purchase_or_lease,
+      notes: apiResponse.notes,
+      client_id: apiResponse.client_id,
+      client_type: apiResponse.client_type,
+      client_table: apiResponse.client_table,
+      client_data: apiResponse.client_data,
       projectManager: apiResponse.prj_manager || undefined,
       description: apiResponse.description || '',
       createdAt: apiResponse.created_at,
@@ -380,6 +398,10 @@ function loadSettingsForm() {
       description: project.value.description || '',
       priority: project.value.priority || 'low',
       status: project.value.status || 'draft',
+      client_id: project.value.client_id || null,
+      client_type: project.value.client_type || null,
+      client_table: project.value.client_table || null,
+      client_data: project.value.client_data || null,
       startDate: project.value.startDate || '',
       endDate: project.value.endDate || '',
     }
@@ -403,6 +425,12 @@ async function saveSettings() {
       description: formData?.description?.trim() || '',
       priority: formData?.priority || 'low',
       status: formData?.status || 'draft',
+      purchase_or_lease: formData?.purchase_or_lease || 'Purchase',
+      notes: formData?.notes?.trim() || null,
+      client_id: formData?.client_id || null,
+      client_type: formData?.client_type || null,
+      client_table: formData?.client_table || null,
+      client_data: formData?.client_data || null,
       date_start: formData?.startDate || '',
       date_end: formData?.endDate || '',
     }
@@ -418,8 +446,11 @@ async function saveSettings() {
       project.value.description = updateData.description
       project.value.priority = updateData.priority
       project.value.status = updateData.status
+      project.value.purchase_or_lease = updateData.purchase_or_lease
+      project.value.notes = updateData.notes
       project.value.startDate = updateData.date_start
       project.value.endDate = updateData.date_end
+      // Note: client fields would need to be added to Project interface if needed
     }
 
     // Update project in dropdown list
@@ -1990,6 +2021,21 @@ watch(
               >
                 {{ project.status }}
               </span>
+              <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                {{ project.purchase_or_lease || 'Purchase' }}
+              </span>
+            </div>
+            <div v-if="project.notes" class="mt-3 text-sm text-gray-600 bg-gray-50 rounded-md p-3 break-words">
+              <span class="font-medium text-gray-700">Notes:</span>
+              <div class="mt-1 whitespace-pre-wrap">{{ project.notes }}</div>
+            </div>
+            <div v-if="project.client_type" class="mt-3 text-sm text-gray-600 bg-blue-50 rounded-md p-3">
+              <span class="font-medium text-gray-700">Client:</span>
+              <div class="mt-1">
+                <div>{{ project.client_type }}</div>
+                <div v-if="project.client_data?.name" class="text-gray-500">{{ project.client_data.name }}</div>
+                <div v-if="project.client_data?.address" class="text-gray-500 text-xs mt-1">{{ project.client_data.address }}</div>
+              </div>
             </div>
           </div>
         </div>

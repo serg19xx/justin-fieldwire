@@ -28,3 +28,8 @@ export const PROJECT_STATUSES = [
 ] as const
 
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number]
+
+// Project purchase/lease types
+export const PROJECT_PURCHASE_LEASE_TYPES = ['Purchase', 'Lease'] as const
+
+export type ProjectPurchaseLeaseType = (typeof PROJECT_PURCHASE_LEASE_TYPES)[number]

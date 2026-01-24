@@ -29,7 +29,7 @@
 
     <!-- Status Filter -->
     <div>
-      <label class="block text-xs font-medium text-gray-700 mb-2">Status</label>
+      <label class="block text-xs font-medium text-gray-700 mb-2">Task Status</label>
       <div class="space-y-1 max-h-32 overflow-y-auto">
         <label
           v-for="status in availableStatuses"

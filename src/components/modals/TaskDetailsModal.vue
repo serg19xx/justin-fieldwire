@@ -108,7 +108,7 @@
             <div class="space-y-6">
               <!-- Status -->
               <div>
-                <h4 class="text-sm font-medium text-gray-700 mb-2">Status</h4>
+                <h4 class="text-sm font-medium text-gray-700 mb-2">Task Status</h4>
                 <div class="flex items-center space-x-2">
                   <div :class="statusIndicatorClass" class="w-3 h-3 rounded-full"></div>
                   <span class="text-sm font-medium">{{ statusLabel }}</span>
