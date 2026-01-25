@@ -308,15 +308,28 @@ async function confirmSelection() {
     // Load full client data before emitting
     try {
       isLoading.value = true
+      console.log('🔄 Loading full client data for:', {
+        clientTable: selectedClientType.value,
+        clientId: selectedClient.value.id,
+      })
+      
       const fullClientData = await clientsApi.getById(selectedClientType.value, selectedClient.value.id)
+      
+      console.log('✅ Full client data loaded:', fullClientData)
+      console.log('📤 Emitting client select event:', {
+        client: fullClientData,
+        clientTable: selectedClientType.value,
+        clientType: clientType,
+      })
       
       // Emit with full client data
       emit('select', fullClientData, selectedClientType.value, clientType)
       closeDialog()
     } catch (err) {
-      console.error('Error loading full client data:', err)
+      console.error('❌ Error loading full client data:', err)
       error.value = 'Failed to load client details. Please try again.'
       // Still emit with basic client data if full load fails
+      console.log('⚠️ Using basic client data as fallback:', selectedClient.value)
       emit('select', selectedClient.value, selectedClientType.value, clientType)
       closeDialog()
     } finally {
@@ -346,17 +359,47 @@ watch(
   () => props.isOpen,
   async (isOpen) => {
     if (isOpen && props.selectedClientId && props.selectedClientTable) {
+      // Validate client_table before attempting to load
+      const validClientTables: ClientTableType[] = ['pharma', 'physician', 'pharmacist', 'medical_clinic']
+      
+      if (!validClientTables.includes(props.selectedClientTable)) {
+        console.warn('⚠️ Invalid or unsupported client_table:', props.selectedClientTable)
+        console.warn('💡 Supported types:', validClientTables)
+        console.warn('💡 Client data will not be loaded, but client_id and client_type are preserved')
+        
+        // Don't set invalid type, but don't show error either
+        selectedClientType.value = null
+        selectedClient.value = null
+        error.value = null
+        isLoading.value = false
+        return
+      }
+      
       selectedClientType.value = props.selectedClientTable
       try {
         isLoading.value = true
+        console.log('🔄 Loading full client data for:', {
+          clientTable: props.selectedClientTable,
+          clientId: props.selectedClientId,
+        })
+        
         const client = await clientsApi.getById(props.selectedClientTable, props.selectedClientId)
         selectedClient.value = client
         searchQuery.value = client.name || ''
         // Load clients list to show selected client
         await loadClients(1)
       } catch (err) {
-        console.error('Error loading client:', err)
-        error.value = 'Failed to load client information.'
+        console.error('❌ Error loading client:', err)
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load client information.'
+        console.error('💡 Error details:', errorMessage)
+        
+        // Don't show error if it's just an invalid table type
+        if (errorMessage.includes('Invalid client table type')) {
+          console.warn('⚠️ Skipping client data load due to invalid table type')
+          error.value = null
+        } else {
+          error.value = 'Failed to load client information.'
+        }
       } finally {
         isLoading.value = false
       }

@@ -240,6 +240,7 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="project in displayedProjects" :key="project.id" class="hover:bg-gray-50">
+                <!-- PROJECT Column -->
                 <td class="px-4 py-4 whitespace-nowrap w-48">
                   <div>
                     <div class="text-sm font-medium text-gray-900">{{ project.prj_name }}</div>
@@ -248,12 +249,36 @@
                     </div>
                   </div>
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 w-64">
-                  {{ project.address }}
-                </td>
+                <!-- CLIENT Column -->
                 <td class="px-4 py-4 text-sm text-gray-900 w-64">
-                  <div class="max-w-xs truncate" :title="(project as any).description || ''">
-                    {{ (project as any).description || '-' }}
+                  <template v-if="(project as any).client_name">
+                    <div class="max-w-xs truncate font-medium">
+                      {{ (project as any).client_name }}
+                    </div>
+                  </template>
+                  <template v-else-if="(project as ApiProject).client_data && typeof (project as ApiProject).client_data === 'object' && (project as ApiProject).client_data !== null && ((project as ApiProject).client_data as Record<string, unknown>).name">
+                    <div class="max-w-xs truncate font-medium">
+                      {{ ((project as ApiProject).client_data as Record<string, unknown>).name }}
+                    </div>
+                  </template>
+                  <template v-else-if="(project as ApiProject).client_type">
+                    <div class="max-w-xs truncate font-medium">
+                      {{ (project as ApiProject).client_type }}
+                    </div>
+                  </template>
+                  <template v-else-if="(project as ApiProject).client_id">
+                    <div class="max-w-xs truncate text-xs text-gray-500">
+                      ID: {{ (project as ApiProject).client_id }}
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="text-gray-400">-</div>
+                  </template>
+                </td>
+                <!-- DESCRIPTION Column -->
+                <td class="px-4 py-4 text-sm text-gray-900 w-64">
+                  <div class="max-w-xs truncate" :title="(project as ApiProject).description || ''">
+                    {{ (project as ApiProject).description || '-' }}
                   </div>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap w-32">
@@ -491,7 +516,6 @@ const filteredProjects = computed(() => {
 
   // Apply sorting (placeholder - logic to be implemented later)
   if (sortBy.value) {
-    console.log('Sort by:', sortBy.value)
     // TODO: Implement sorting logic when needed
   }
 
@@ -582,16 +606,13 @@ function parseSort(sortValue: string): { sort_by?: string; sort_order?: 'asc' | 
 
 async function loadProjects() {
   loading.value = true
+  // Prepare filters based on user role (defined outside try-catch for error handling)
+  const filters: Record<string, unknown> = {}
+  
   try {
-    console.log('🚀 Loading projects from API...')
-
-    // Prepare filters based on user role
-    const filters: Record<string, unknown> = {}
-
     // Project managers can only see their own projects
     if (authStore.currentUser?.role_code === 'project_manager') {
       filters.prj_manager = authStore.currentUser.id
-      console.log('🔒 Project Manager: filtering by manager ID:', authStore.currentUser.id)
     } else if (authStore.currentUser?.role_code === 'admin') {
       // Administrators: server-side pagination, filtering, sorting
       if (searchQuery.value) filters.search = searchQuery.value
@@ -605,9 +626,48 @@ async function loadProjects() {
     const limit = useServerPaging.value ? itemsPerPage.value : 100
 
     const response = await projectApi.getAll(page, limit, filters)
-    console.log('📦 API response:', response)
     // Expecting { projects, pagination? }
-    projects.value = response.projects || response.data || []
+    const rawProjects = response.projects || response.data || []
+    
+    // Map and parse projects, especially client_data JSON field
+    projects.value = rawProjects.map((apiProject: ApiProject) => {
+      let parsedClientData = apiProject.client_data
+      
+      // Parse client_data if it's a string
+      if (typeof apiProject.client_data === 'string' && (apiProject.client_data as string).trim()) {
+        try {
+          parsedClientData = JSON.parse(apiProject.client_data)
+        } catch (e) {
+          console.warn('⚠️ Failed to parse client_data for project', apiProject.id, ':', e)
+          parsedClientData = null
+        }
+      }
+      
+      // Try to extract client_name from various possible locations
+      let clientName: string | null = null
+      
+      // First, check if client_name is directly in the API response
+      const apiProjectAny = apiProject as unknown as Record<string, unknown>
+      if (apiProjectAny.client_name && typeof apiProjectAny.client_name === 'string') {
+        clientName = apiProjectAny.client_name
+      }
+      // If not, try to get it from client_data.name
+      else if (parsedClientData && typeof parsedClientData === 'object' && parsedClientData !== null) {
+        const clientData = parsedClientData as Record<string, unknown>
+        if (clientData.name && typeof clientData.name === 'string') {
+          clientName = clientData.name
+        }
+      }
+      
+      // Create mapped project with explicit client_name
+      const mappedProject = {
+        ...apiProject,
+        client_data: parsedClientData,
+        client_name: clientName, // Explicitly set client_name
+      } as ApiProject & { client_name?: string | null }
+      
+      return mappedProject
+    })
 
     // Capture server pagination if provided
     const p = (response.pagination || response.meta || null) as
@@ -615,9 +675,22 @@ async function loadProjects() {
       | null
     serverTotalItems.value = typeof response.total === 'number' ? response.total : p?.total ?? null
     serverTotalPages.value = typeof response.last_page === 'number' ? response.last_page : p?.last_page ?? null
-    console.log('✅ Projects loaded:', projects.value.length)
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('❌ Error loading projects:', error)
+    const axiosError = error as { response?: { status?: number; data?: { message?: string }; statusText?: string } }
+    if (axiosError.response) {
+      console.error('📊 Error details:', {
+        status: axiosError.response.status,
+        statusText: axiosError.response.statusText,
+        message: axiosError.response.data?.message,
+        url: '/api/v1/projects',
+        filters: filters,
+      })
+      if (axiosError.response.status === 500) {
+        console.error('⚠️ Server error (500). This might be due to missing fields in the database or backend issues.')
+        console.error('💡 Check backend logs for more details.')
+      }
+    }
     projects.value = []
     serverTotalItems.value = null
     serverTotalPages.value = null
@@ -635,17 +708,16 @@ function viewProject(projectId: number) {
 
 function editProject(projectId: number) {
   // TODO: Implement edit functionality
-  console.log('Edit project:', projectId)
+  void projectId // Suppress unused parameter warning
 }
 
 function createProject() {
-  console.log('Create new project')
   showCreateDialog.value = true
 }
 
 function handleProjectCreated(project: ApiProject) {
-  console.log('✅ Project created:', project)
   // Reload projects to show the new one
+  void project // Suppress unused parameter warning
   loadProjects()
   showCreateDialog.value = false
 }

@@ -237,8 +237,9 @@ interface ProjectData {
   notes?: string | null
   client_id?: number | null
   client_type?: string | null
-  client_table?: ClientTableType | null
+  client_table?: string | null // Can be string from API, will be cast to ClientTableType
   client_data?: Record<string, unknown> | null
+  client_name?: string | null // Client name from server
 }
 
 interface Props {
@@ -274,45 +275,41 @@ const settingsForm = reactive({
   client_type: null as string | null,
   client_table: null as ClientTableType | null,
   client_data: null as Record<string, unknown> | null,
+  client_name: null as string | null,
   startDate: '',
   endDate: '',
 })
 
 // Client display name
 const clientDisplayName = computed(() => {
+  // First try to use selectedClient if available
   if (selectedClient.value) {
     const clientType = clientsApi.getClientTypeLabel(settingsForm.client_table || null)
     return `${selectedClient.value.name} (${clientType})`
   }
+  
+  // Use client_name from server if available (primary)
+  if (settingsForm.client_name) {
+    return settingsForm.client_name
+  }
+  
+  // Fallback: use data from client_data if available
+  if (settingsForm.client_id && settingsForm.client_type) {
+    const clientName = settingsForm.client_data && typeof settingsForm.client_data === 'object' && settingsForm.client_data.name
+      ? settingsForm.client_data.name
+      : `Client ID: ${settingsForm.client_id}`
+    return `${clientName} (${settingsForm.client_type})`
+  }
+  
   return ''
 })
 
 // Initialize form with project data
 function initializeForm() {
-  console.log('🔧 initializeForm called, props.project:', props.project)
   if (props.project) {
     // Handle both ref and direct value
     const project =
       (props.project as { value: ProjectData })?.value || (props.project as ProjectData)
-    console.log('🔧 Project data:', project)
-    console.log('🔧 Project keys:', Object.keys(project))
-    console.log('🔧 Project fields:', {
-      name: project.name,
-      address: project.address,
-      startDate: project.startDate,
-      endDate: project.endDate,
-      priority: project.priority,
-      status: project.status,
-    })
-
-    // Check each field individually
-    console.log('🔍 Field checks:')
-    console.log('  name:', project.name, '->', String(project.name || ''))
-    console.log('  address:', project.address, '->', String(project.address || ''))
-    console.log('  startDate:', project.startDate, '->', String(project.startDate || ''))
-    console.log('  endDate:', project.endDate, '->', String(project.endDate || ''))
-    console.log('  priority:', project.priority, '->', String(project.priority || 'medium'))
-    console.log('  status:', project.status, '->', String(project.status || 'draft'))
 
     settingsForm.name = String(project.name || '')
     settingsForm.address = String(project.address || '')
@@ -325,19 +322,21 @@ function initializeForm() {
     settingsForm.client_type = project.client_type || null
     settingsForm.client_table = project.client_table || null
     settingsForm.client_data = project.client_data || null
+    settingsForm.client_name = (project as any).client_name || null
     settingsForm.startDate = String(project.startDate || '')
     settingsForm.endDate = String(project.endDate || '')
 
-    // Load client data if client_id is present
+    // Load client data if client_id is present and client_table is valid
     if (project.client_id && project.client_table) {
-      loadClientData(project.client_table, project.client_id)
+      const validClientTables: ClientTableType[] = ['pharma', 'physician', 'pharmacist', 'medical_clinic']
+      if (validClientTables.includes(project.client_table as ClientTableType)) {
+        loadClientData(project.client_table as ClientTableType, project.client_id)
+      } else {
+        selectedClient.value = null
+      }
     } else {
       selectedClient.value = null
     }
-
-    console.log('📝 Form after initialization:', settingsForm)
-  } else {
-    console.log('⚠️ No project data available')
   }
 }
 
@@ -346,7 +345,6 @@ watch(
   () => props.project,
   (newProject) => {
     if (newProject) {
-      console.log('🔄 Project changed, reinitializing form')
       initializeForm()
     }
   },
@@ -359,24 +357,49 @@ onMounted(() => {
 })
 
 // Methods
-async function loadClientData(clientTable: ClientTableType, clientId: number) {
+async function loadClientData(clientTable: ClientTableType | string | null, clientId: number) {
+  // Check if clientTable is a valid ClientTableType
+  const validClientTables: ClientTableType[] = ['pharma', 'physician', 'pharmacist', 'medical_clinic']
+  
+  if (!clientTable || !validClientTables.includes(clientTable as ClientTableType)) {
+    console.warn('⚠️ Invalid or unsupported client_table:', clientTable)
+    console.warn('💡 Supported types:', validClientTables)
+    selectedClient.value = null
+    return
+  }
+
   try {
-    const client = await clientsApi.getById(clientTable, clientId)
+    const client = await clientsApi.getById(clientTable as ClientTableType, clientId)
     selectedClient.value = client
+    console.log('✅ Client data loaded successfully:', client)
   } catch (error) {
-    console.error('Error loading client data:', error)
+    console.error('❌ Error loading client data:', error)
+    const axiosError = error as { response?: { status?: number; data?: { message?: string } } }
+    if (axiosError.response?.status === 400) {
+      console.error('💡 400 Bad Request - client_table might be invalid or not supported by backend')
+      console.error('💡 client_table value:', clientTable)
+    }
     selectedClient.value = null
   }
 }
 
 function handleClientSelect(client: Client, clientTable: ClientTableType, clientType: string) {
+  if (!client || !client.id) {
+    return
+  }
+  
   settingsForm.client_id = client.id
   settingsForm.client_table = clientTable
   settingsForm.client_type = clientType
   
   // Store client data as JSON in client_data field
-  // Structure: { id, name, data: {...} }
-  settingsForm.client_data = client.data
+  if (client.data && typeof client.data === 'object') {
+    settingsForm.client_data = client.data
+  } else {
+    // Fallback: create data object from client fields (excluding id and name)
+    const { id, name, data, ...rest } = client
+    settingsForm.client_data = Object.keys(rest).length > 0 ? rest : {}
+  }
   
   selectedClient.value = client
   showClientSelector.value = false
@@ -395,14 +418,13 @@ function handleClientClear() {
 }
 
 const handleSubmit = () => {
-  console.log('🔧 SettingsSection handleSubmit called')
   if (isSaving.value) {
-    console.log('⚠️ Already saving, preventing double submission')
     return // Prevent double submission
   }
+  
   isSaving.value = true
-  console.log('📤 Emitting saveSettings')
   emit('saveSettings')
+  
   // Reset saving state after a short delay
   setTimeout(() => {
     isSaving.value = false

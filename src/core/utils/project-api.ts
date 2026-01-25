@@ -47,6 +47,7 @@ export interface Project {
   client_type?: string | null
   client_table?: ClientTableType | null
   client_data?: Record<string, unknown> | null // JSON field for additional client information
+  client_name?: string | null // Client name from server
   prj_manager?: number
   manager_name?: string
   created_by?: number
@@ -70,7 +71,16 @@ export const projectApi = {
   },
 
   async update(id: number, data: Record<string, unknown>) {
-    const response = await api.put(`/api/v1/projects/${id}`, data)
+    // Ensure all client fields are explicitly included in the request
+    const requestData = {
+      ...data,
+      client_id: data.client_id !== undefined ? data.client_id : null,
+      client_type: data.client_type !== undefined ? data.client_type : null,
+      client_table: data.client_table !== undefined ? data.client_table : null,
+      client_data: data.client_data !== undefined ? data.client_data : null,
+    }
+
+    const response = await api.put(`/api/v1/projects/${id}`, requestData)
     return response.data
   },
 

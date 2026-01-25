@@ -65,6 +65,12 @@ export const clientsApi = {
    * @param clientId - The client ID
    */
   async getById(clientTable: ClientTableType, clientId: number): Promise<Client> {
+    // Validate clientTable
+    const validTables: ClientTableType[] = ['pharma', 'physician', 'pharmacist', 'medical_clinic']
+    if (!validTables.includes(clientTable)) {
+      throw new Error(`Invalid client table type: ${clientTable}. Supported types: ${validTables.join(', ')}`)
+    }
+    
     const response = await api.get(`/api/v1/clients/${clientTable}/${clientId}`)
     return response.data.data.client
   },

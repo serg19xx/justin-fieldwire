@@ -6,6 +6,7 @@ import {
   projectApi,
   type Project as ApiProject,
   type ProjectTeamMember,
+  type ClientTableType,
 } from '@/core/utils/project-api'
 
 // API response interfaces
@@ -65,12 +66,30 @@ const calendarRef = ref()
 const activeSection = ref<'plans' | 'tasks' | 'photos' | 'team' | 'settings'>('plans')
 
 // Settings form state
-const settingsForm = ref({
+const settingsForm = ref<{
+  name: string
+  address: string
+  description: string
+  priority: string
+  status: string
+  client_id?: number | null
+  client_type?: string | null
+  client_table?: ClientTableType | null
+  client_data?: Record<string, unknown> | null
+  client_name?: string | null // Client name from server
+  startDate: string
+  endDate: string
+}>({
   name: '',
   address: '',
   description: '',
   priority: 'low',
   status: 'draft',
+  client_id: null,
+  client_type: null,
+  client_table: null,
+  client_data: null,
+  client_name: null,
   startDate: '',
   endDate: '',
 })
@@ -205,8 +224,8 @@ const selectedEvent = ref<{
 const showEventModal = ref(false)
 
 // Debug: watch activeSection changes
-watch(activeSection, (newSection) => {
-  console.log('📱 Active section changed to:', newSection)
+watch(activeSection, () => {
+  // Section changed
 })
 
 // Project interface (mapped from API)
@@ -224,6 +243,7 @@ interface Project {
   client_type?: string | null
   client_table?: string | null
   client_data?: Record<string, unknown> | null
+  client_name?: string | null // Client name from server
   projectManager?: number
   description?: string
   createdAt: string
@@ -234,29 +254,9 @@ interface Project {
 // Load all projects for the dropdown
 async function loadProjects() {
   try {
-    console.log('🚀 Loading projects for dropdown...')
-    console.log('👤 Current user:', authStore.currentUser)
-
     const filters: Record<string, unknown> = {}
 
-    // If user is Project Manager, filter by their ID
-    // Temporarily disabled to test API
-    // if (authStore.currentUser?.user_type === 'Project Manager') {
-    //   filters.prj_manager = authStore.currentUser.id
-    //   console.log('🔍 Filtering by PM ID:', authStore.currentUser.id)
-    // } else {
-    //   console.log('👑 System Administrator - loading all projects')
-    // }
-
-    console.log('🔧 Testing without filters first')
-
-    console.log('📋 Filters:', filters)
-
-    console.log('📤 Request params:', { page: 1, limit: 100, filters })
-
     const response = await projectApi.getAll(1, 100, filters)
-
-    console.log('📦 Projects API response:', response)
 
     projects.value = response.projects.map((apiProject: ApiProject) => ({
       id: apiProject.id,
@@ -271,7 +271,10 @@ async function loadProjects() {
       client_id: apiProject.client_id,
       client_type: apiProject.client_type,
       client_table: apiProject.client_table,
-      client_data: apiProject.client_data,
+      client_name: apiProject.client_name,
+      client_data: typeof apiProject.client_data === 'string' 
+        ? JSON.parse(apiProject.client_data) 
+        : apiProject.client_data,
       projectManager: apiProject.prj_manager || undefined,
       description: apiProject.description || '',
       createdAt: apiProject.created_at,
@@ -286,7 +289,6 @@ async function loadProjects() {
 
 async function loadProject() {
   const projectId = route.params.id as string
-  console.log('🎯 Loading project with ID:', projectId)
 
   if (!projectId) {
     error.value = 'Project ID not found'
@@ -297,13 +299,7 @@ async function loadProject() {
   error.value = null
 
   try {
-    console.log('📡 Calling projectApi.getById...')
     const apiResponse = await projectApi.getById(parseInt(projectId))
-    console.log('📦 Raw API response:', apiResponse)
-    console.log('🔍 API response structure:', {
-      hasId: 'id' in apiResponse,
-      keys: Object.keys(apiResponse),
-    })
 
     // Map API data to frontend format
     project.value = {
@@ -319,7 +315,10 @@ async function loadProject() {
       client_id: apiResponse.client_id,
       client_type: apiResponse.client_type,
       client_table: apiResponse.client_table,
-      client_data: apiResponse.client_data,
+      client_name: apiResponse.client_name,
+      client_data: typeof apiResponse.client_data === 'string' 
+        ? JSON.parse(apiResponse.client_data) 
+        : apiResponse.client_data,
       projectManager: apiResponse.prj_manager || undefined,
       description: apiResponse.description || '',
       createdAt: apiResponse.created_at,
@@ -337,12 +336,6 @@ async function loadProject() {
 
 // Navigation functions
 function setActiveSection(section: 'plans' | 'tasks' | 'photos' | 'team' | 'settings') {
-  console.log('🔄 Switching to section:', section)
-  console.log('🔍 Current project state:', {
-    hasProject: !!project.value,
-    projectId: project.value?.id,
-    projectName: project.value?.name,
-  })
   activeSection.value = section
 
   // Load settings form when switching to settings
@@ -363,10 +356,8 @@ async function loadProjectTasks() {
 
   loadingTasks.value = true
   try {
-    console.log('📋 Loading tasks for Team Section, project:', project.value.id)
     const response = await tasksApi.getAll(project.value.id)
     projectTasks.value = response.tasks || []
-    console.log('✅ Tasks loaded for Team Section:', projectTasks.value.length)
   } catch (error) {
     console.error('❌ Error loading tasks for Team Section:', error)
     projectTasks.value = []
@@ -400,8 +391,9 @@ function loadSettingsForm() {
       status: project.value.status || 'draft',
       client_id: project.value.client_id || null,
       client_type: project.value.client_type || null,
-      client_table: project.value.client_table || null,
+      client_table: (project.value.client_table as ClientTableType | null) || null,
       client_data: project.value.client_data || null,
+      client_name: project.value.client_name || null,
       startDate: project.value.startDate || '',
       endDate: project.value.endDate || '',
     }
@@ -410,8 +402,15 @@ function loadSettingsForm() {
 
 async function saveSettings() {
   console.log('🔧 ProjectDetailPrj saveSettings called')
-  if (!project.value) return
+  console.log('🔧 This function is triggered by @save-settings event from SettingsSection')
+  console.log('🔧 Project ID:', project.value?.id)
+  
+  if (!project.value) {
+    console.error('❌ Cannot save: project.value is null')
+    return
+  }
 
+  console.log('✅ Project found, proceeding with save...')
   isSavingSettings.value = true
 
   try {
@@ -427,38 +426,151 @@ async function saveSettings() {
       status: formData?.status || 'draft',
       purchase_or_lease: formData?.purchase_or_lease || 'Purchase',
       notes: formData?.notes?.trim() || null,
-      client_id: formData?.client_id || null,
-      client_type: formData?.client_type || null,
-      client_table: formData?.client_table || null,
-      client_data: formData?.client_data || null,
+      // Client fields - ensure all are included even if null
+      client_id: formData?.client_id !== undefined ? formData.client_id : null,
+      client_type: formData?.client_type !== undefined ? formData.client_type : null,
+      client_table: formData?.client_table !== undefined ? formData.client_table : null,
+      client_data: formData?.client_data !== undefined ? formData.client_data : null,
       date_start: formData?.startDate || '',
       date_end: formData?.endDate || '',
     }
 
     console.log('🔧 Update data:', updateData)
+    console.log('🔍 Client fields in update data:', {
+      client_id: updateData.client_id,
+      client_type: updateData.client_type,
+      client_table: updateData.client_table,
+      client_data: updateData.client_data,
+      client_data_type: typeof updateData.client_data,
+      client_data_is_object: updateData.client_data && typeof updateData.client_data === 'object',
+      client_data_stringified: updateData.client_data ? JSON.stringify(updateData.client_data) : null,
+    })
 
-    await projectApi.update(project.value.id, updateData)
-
-    // Update local project data without API call
-    if (project.value) {
-      project.value.name = updateData.prj_name
-      project.value.address = updateData.address
-      project.value.description = updateData.description
-      project.value.priority = updateData.priority
-      project.value.status = updateData.status
-      project.value.purchase_or_lease = updateData.purchase_or_lease
-      project.value.notes = updateData.notes
-      project.value.startDate = updateData.date_start
-      project.value.endDate = updateData.date_end
-      // Note: client fields would need to be added to Project interface if needed
+    console.log('📤 About to call projectApi.update with:')
+    console.log('   - Project ID:', project.value.id)
+    console.log('   - Update data keys:', Object.keys(updateData))
+    console.log('   - Client fields:', {
+      client_id: updateData.client_id,
+      client_type: updateData.client_type,
+      client_table: updateData.client_table,
+      client_data: updateData.client_data,
+    })
+    
+    const response = await projectApi.update(project.value.id, updateData)
+    console.log('✅ Project updated successfully:', response)
+    console.log('✅ API call completed: PUT /api/v1/projects/' + project.value.id)
+    
+    // Verify that client fields were saved in the response
+    if (response?.data?.project) {
+      const savedProject = response.data.project
+      console.log('✅ Client fields saved on server:', {
+        client_id: savedProject.client_id,
+        client_type: savedProject.client_type,
+        client_table: savedProject.client_table,
+        client_data: savedProject.client_data,
+      })
     }
 
-    // Update project in dropdown list
+    // Reload project from API to get the latest data from server
+    try {
+      const updatedProject = await projectApi.getById(project.value.id)
+      console.log('🔄 Reloaded project from API:', updatedProject)
+      
+      // Map API response to local project format
+      project.value = {
+        id: updatedProject.id,
+        name: updatedProject.prj_name,
+        address: updatedProject.address,
+        priority: updatedProject.priority,
+        startDate: updatedProject.date_start,
+        endDate: updatedProject.date_end,
+        status: updatedProject.status,
+        purchase_or_lease: updatedProject.purchase_or_lease,
+        notes: updatedProject.notes,
+        client_id: updatedProject.client_id !== undefined ? updatedProject.client_id : null,
+        client_type: updatedProject.client_type !== undefined ? updatedProject.client_type : null,
+        client_table: updatedProject.client_table !== undefined ? updatedProject.client_table : null,
+        client_data: updatedProject.client_data !== undefined
+          ? (typeof updatedProject.client_data === 'string' 
+              ? (() => {
+                  try {
+                    return JSON.parse(updatedProject.client_data)
+                  } catch {
+                    return updatedProject.client_data
+                  }
+                })()
+              : updatedProject.client_data)
+          : null,
+        projectManager: updatedProject.prj_manager || undefined,
+        description: updatedProject.description || '',
+        createdAt: updatedProject.created_at,
+        updatedAt: updatedProject.updated_at,
+      }
+      
+      console.log('🔄 Local project data updated from API:', {
+        client_id: project.value.client_id,
+        client_type: project.value.client_type,
+        client_table: project.value.client_table,
+        client_data: project.value.client_data,
+      })
+      
+      // Reload settings form with updated data
+      loadSettingsForm()
+      
+      // Reload projects list to update dropdown
+      await loadProjects()
+    } catch (reloadError) {
+      console.warn('⚠️ Failed to reload project from API, using local update:', reloadError)
+      // Fallback: update local project data without API call
+      if (project.value) {
+        project.value.name = updateData.prj_name
+        project.value.address = updateData.address
+        project.value.description = updateData.description
+        project.value.priority = updateData.priority
+        project.value.status = updateData.status
+        project.value.purchase_or_lease = updateData.purchase_or_lease
+        project.value.notes = updateData.notes
+        // Update all client fields
+        project.value.client_id = updateData.client_id !== undefined ? updateData.client_id : null
+        project.value.client_type = updateData.client_type !== undefined ? updateData.client_type : null
+        project.value.client_table = updateData.client_table !== undefined ? updateData.client_table : null
+        project.value.client_data = updateData.client_data !== undefined ? updateData.client_data : null
+        project.value.startDate = updateData.date_start
+        project.value.endDate = updateData.date_end
+      }
+      
+      // Still try to reload projects list
+      try {
+        await loadProjects()
+      } catch (projectsError) {
+        console.warn('⚠️ Failed to reload projects list:', projectsError)
+      }
+    }
+
+    // Update project in dropdown list (fallback if API reload didn't work)
     const projectIndex = projects.value.findIndex(p => p.id === project.value?.id)
     if (projectIndex !== -1) {
       projects.value[projectIndex].name = updateData.prj_name
       projects.value[projectIndex].address = updateData.address
+      projects.value[projectIndex].description = updateData.description || ''
+      projects.value[projectIndex].priority = updateData.priority
+      projects.value[projectIndex].status = updateData.status
+      projects.value[projectIndex].purchase_or_lease = updateData.purchase_or_lease
+      projects.value[projectIndex].notes = updateData.notes
+      // Update all client fields
+      projects.value[projectIndex].client_id = updateData.client_id !== undefined ? updateData.client_id : null
+      projects.value[projectIndex].client_type = updateData.client_type !== undefined ? updateData.client_type : null
+      projects.value[projectIndex].client_table = updateData.client_table !== undefined ? updateData.client_table : null
+      projects.value[projectIndex].client_data = updateData.client_data !== undefined ? updateData.client_data : null
+      projects.value[projectIndex].startDate = updateData.date_start
+      projects.value[projectIndex].endDate = updateData.date_end
       console.log('🔄 Updated project in dropdown list:', projects.value[projectIndex])
+      console.log('🔍 Client fields in dropdown list:', {
+        client_id: projects.value[projectIndex].client_id,
+        client_type: projects.value[projectIndex].client_type,
+        client_table: projects.value[projectIndex].client_table,
+        client_data: projects.value[projectIndex].client_data,
+      })
     }
 
     alert('Project settings saved successfully!')

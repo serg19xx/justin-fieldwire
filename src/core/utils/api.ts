@@ -37,6 +37,16 @@ api.interceptors.response.use(
       })
     }
 
+    // Handle 500 Internal Server Error
+    if (error.response?.status === 500) {
+      console.error('🔥 500 Internal Server Error')
+      console.error('📋 Request URL:', error.config?.url)
+      console.error('📋 Request Method:', error.config?.method)
+      console.error('📋 Request Params:', error.config?.params)
+      console.error('📋 Response Data:', error.response?.data)
+      console.error('💡 This is a server-side error. Check backend logs for details.')
+    }
+
     return Promise.reject(error)
   },
 )

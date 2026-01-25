@@ -309,10 +309,20 @@ const validationErrors = ref<Record<string, string>>({})
 
 // Client display name
 const clientDisplayName = computed(() => {
+  // First try to use selectedClient if available
   if (selectedClient.value) {
     const clientType = clientsApi.getClientTypeLabel(form.value.client_table || null)
     return `${selectedClient.value.name} (${clientType})`
   }
+  
+  // Fallback: use data from client_data if available
+  if (form.value.client_id && form.value.client_type) {
+    const clientName = form.value.client_data && typeof form.value.client_data === 'object' && form.value.client_data.name
+      ? form.value.client_data.name
+      : `Client ID: ${form.value.client_id}`
+    return `${clientName} (${form.value.client_type})`
+  }
+  
   return ''
 })
 
@@ -522,13 +532,35 @@ function closeDialog() {
 }
 
 function handleClientSelect(client: Client, clientTable: ClientTableType, clientType: string) {
+  console.log('🔵 Client selected:', { client, clientTable, clientType })
+  
+  if (!client || !client.id) {
+    console.error('❌ Invalid client data received:', client)
+    return
+  }
+  
   form.value.client_id = client.id
   form.value.client_table = clientTable
   form.value.client_type = clientType
   
   // Store client data as JSON in client_data field
   // Structure: { id, name, data: {...} }
-  form.value.client_data = client.data
+  // If data is not provided, create empty object or use client object without id and name
+  if (client.data && typeof client.data === 'object') {
+    form.value.client_data = client.data
+  } else {
+    // Fallback: create data object from client fields (excluding id and name)
+    const { id, name, data, ...rest } = client
+    form.value.client_data = Object.keys(rest).length > 0 ? rest : {}
+    console.warn('⚠️ client.data is missing, using fallback:', form.value.client_data)
+  }
+  
+  console.log('📝 Form updated with client data:', {
+    client_id: form.value.client_id,
+    client_table: form.value.client_table,
+    client_type: form.value.client_type,
+    client_data: form.value.client_data,
+  })
   
   selectedClient.value = client
   showClientSelector.value = false
@@ -574,16 +606,23 @@ async function handleSubmit() {
       status: form.value.status,
       purchase_or_lease: form.value.purchase_or_lease,
       notes: form.value.notes || null,
-      client_id: form.value.client_id,
-      client_type: form.value.client_type,
-      client_table: form.value.client_table,
-      client_data: form.value.client_data,
+      client_id: form.value.client_id || null,
+      client_type: form.value.client_type || null,
+      client_table: form.value.client_table || null,
+      client_data: form.value.client_data || null,
       prj_manager: form.value.prj_manager ? Number(form.value.prj_manager) : null,
       created_by: authStore.currentUser?.id || null, // ID текущего активного пользователя
       description: form.value.description || null,
     }
 
     console.log('📤 API payload:', apiData)
+    console.log('🔍 Client fields in payload:', {
+      client_id: apiData.client_id,
+      client_type: apiData.client_type,
+      client_table: apiData.client_table,
+      client_data: apiData.client_data,
+      client_data_type: typeof apiData.client_data,
+    })
     console.log('🔍 prj_manager value:', {
       original: form.value.prj_manager,
       converted: apiData.prj_manager,
