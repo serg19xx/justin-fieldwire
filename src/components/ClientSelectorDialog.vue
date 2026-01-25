@@ -88,22 +88,63 @@
 
           <!-- Clients List -->
           <div v-else-if="clients.length > 0" class="border border-gray-200 rounded-md max-h-96 overflow-y-auto">
-            <div
-              v-for="client in clients"
-              :key="client.id"
-              @click="selectClient(client)"
-              :class="[
-                'px-4 py-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors',
-                selectedClient?.id === client.id ? 'bg-blue-50 border-blue-200' : ''
-              ]"
-            >
-              <div class="font-medium text-gray-900">{{ client.name }}</div>
-              <div v-if="client.address" class="text-sm text-gray-500 mt-1">{{ client.address }}</div>
-              <div v-if="client.phone || client.email" class="text-xs text-gray-400 mt-1">
-                <span v-if="client.phone">{{ client.phone }}</span>
-                <span v-if="client.phone && client.email"> • </span>
-                <span v-if="client.email">{{ client.email }}</span>
-              </div>
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50 sticky top-0">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                    ID
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Name
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr
+                  v-for="client in clients"
+                  :key="client.id"
+                  @click="selectClient(client)"
+                  :class="[
+                    'cursor-pointer hover:bg-gray-50 transition-colors',
+                    selectedClient?.id === client.id ? 'bg-blue-50' : ''
+                  ]"
+                >
+                  <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {{ client.id }}
+                  </td>
+                  <td class="px-4 py-3 text-sm text-gray-900">
+                    {{ client.name }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination -->
+          <div v-if="clients.length > 0 && totalPages > 1" class="flex items-center justify-between border-t border-gray-200 pt-4">
+            <div class="text-sm text-gray-700">
+              Showing {{ (currentPage - 1) * pageLimit + 1 }} to {{ Math.min(currentPage * pageLimit, total) }} of {{ total }} results
+            </div>
+            <div class="flex items-center space-x-2">
+              <button
+                type="button"
+                @click="loadPage(currentPage - 1)"
+                :disabled="currentPage === 1 || isLoading"
+                class="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+              <span class="text-sm text-gray-700">
+                Page {{ currentPage }} of {{ totalPages }}
+              </span>
+              <button
+                type="button"
+                @click="loadPage(currentPage + 1)"
+                :disabled="currentPage === totalPages || isLoading"
+                class="px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
             </div>
           </div>
 
@@ -188,33 +229,65 @@ const clients = ref<Client[]>([])
 const searchQuery = ref('')
 const isLoading = ref(false)
 const error = ref<string | null>(null)
+const currentPage = ref(1)
+const pageLimit = ref(20) // Items per page
+const total = ref(0)
+const totalPages = ref(0)
 
-// Search function with debounce
-const debouncedSearch = debounce(async (query: string, clientType: ClientTableType) => {
-  if (!clientType) return
+// Load clients function
+async function loadClients(page: number = 1) {
+  if (!selectedClientType.value) return
 
   isLoading.value = true
   error.value = null
 
   try {
-    const response = await clientsApi.search(clientType, query, 1, 50)
+    const response = await clientsApi.search(
+      selectedClientType.value,
+      searchQuery.value,
+      page,
+      pageLimit.value,
+    )
     clients.value = response.clients
+    total.value = response.total
+    totalPages.value = response.total_pages || Math.ceil(response.total / pageLimit.value)
+    currentPage.value = response.page
   } catch (err) {
-    console.error('Error searching clients:', err)
+    console.error('Error loading clients:', err)
     error.value = 'Failed to load clients. Please try again.'
     clients.value = []
+    total.value = 0
+    totalPages.value = 0
   } finally {
     isLoading.value = false
   }
+}
+
+// Search function with debounce
+const debouncedSearch = debounce(async (query: string) => {
+  currentPage.value = 1 // Reset to first page on new search
+  await loadClients(1)
 }, 300)
 
+// Load page function
+async function loadPage(page: number) {
+  if (page < 1 || page > totalPages.value) return
+  await loadClients(page)
+}
+
 // Methods
-function selectClientType(type: ClientTableType) {
+async function selectClientType(type: ClientTableType) {
   selectedClientType.value = type
   selectedClient.value = null
   clients.value = []
   searchQuery.value = ''
   error.value = null
+  currentPage.value = 1
+  total.value = 0
+  totalPages.value = 0
+  
+  // Load first page of clients when type is selected
+  await loadClients(1)
 }
 
 function selectClient(client: Client) {
@@ -223,17 +296,32 @@ function selectClient(client: Client) {
 
 function handleSearch() {
   if (selectedClientType.value) {
-    debouncedSearch(searchQuery.value, selectedClientType.value)
+    debouncedSearch(searchQuery.value)
   }
 }
 
-function confirmSelection() {
+async function confirmSelection() {
   if (selectedClient.value && selectedClientType.value) {
     const clientTypeConfig = CLIENT_TYPES.find((t) => t.value === selectedClientType.value)
     const clientType = clientTypeConfig?.label || selectedClientType.value
 
-    emit('select', selectedClient.value, selectedClientType.value, clientType)
-    closeDialog()
+    // Load full client data before emitting
+    try {
+      isLoading.value = true
+      const fullClientData = await clientsApi.getById(selectedClientType.value, selectedClient.value.id)
+      
+      // Emit with full client data
+      emit('select', fullClientData, selectedClientType.value, clientType)
+      closeDialog()
+    } catch (err) {
+      console.error('Error loading full client data:', err)
+      error.value = 'Failed to load client details. Please try again.'
+      // Still emit with basic client data if full load fails
+      emit('select', selectedClient.value, selectedClientType.value, clientType)
+      closeDialog()
+    } finally {
+      isLoading.value = false
+    }
   }
 }
 
@@ -243,6 +331,9 @@ function clearSelection() {
   clients.value = []
   searchQuery.value = ''
   error.value = null
+  currentPage.value = 1
+  total.value = 0
+  totalPages.value = 0
   emit('clear')
 }
 
@@ -261,6 +352,8 @@ watch(
         const client = await clientsApi.getById(props.selectedClientTable, props.selectedClientId)
         selectedClient.value = client
         searchQuery.value = client.name || ''
+        // Load clients list to show selected client
+        await loadClients(1)
       } catch (err) {
         console.error('Error loading client:', err)
         error.value = 'Failed to load client information.'
@@ -274,6 +367,9 @@ watch(
       clients.value = []
       searchQuery.value = ''
       error.value = null
+      currentPage.value = 1
+      total.value = 0
+      totalPages.value = 0
     }
   },
 )

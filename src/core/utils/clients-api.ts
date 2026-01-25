@@ -4,14 +4,11 @@ import type { ClientTableType } from './project-api'
 // Re-export for convenience
 export type { ClientTableType } from './project-api'
 
-// Client interface - common fields that all client types might have
+// Client interface - structured as { id, name, data: {...} }
 export interface Client {
   id: number
   name: string
-  address?: string
-  phone?: string
-  email?: string
-  [key: string]: unknown // Allow additional fields from different tables
+  data: Record<string, unknown> // JSON data with all other fields from the table
 }
 
 // Client search response
@@ -20,6 +17,7 @@ export interface ClientsResponse {
   total: number
   page: number
   limit: number
+  total_pages: number
 }
 
 // Client type configuration

@@ -16,9 +16,14 @@
           <div><span class="text-gray-500">Priority:</span> {{ project?.priority }}</div>
           <div><span class="text-gray-500">Purchase or Lease:</span> {{ project?.purchase_or_lease || 'Purchase' }}</div>
           <div v-if="project?.notes" class="break-words"><span class="text-gray-500">Notes:</span> {{ project.notes }}</div>
-          <div v-if="project?.client_type">
+          <div v-if="project?.client_type" class="break-words">
             <span class="text-gray-500">Client:</span> {{ project.client_type }}
-            <span v-if="project.client_data?.name"> - {{ project.client_data.name }}</span>
+            <span v-if="project.client_data && typeof project.client_data === 'object' && project.client_data.name">
+              - {{ project.client_data.name }}
+            </span>
+            <div v-if="project.client_data && typeof project.client_data === 'object' && project.client_data.address" class="text-xs text-gray-400 mt-1 ml-5">
+              {{ project.client_data.address }}
+            </div>
           </div>
           <div><span class="text-gray-500">Dates:</span> {{ formatDate(project?.date_start) }} - {{ formatDate(project?.date_end) }}</div>
           <div><span class="text-gray-500">Manager:</span> {{ project?.manager_name || 'Unassigned' }}</div>

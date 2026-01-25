@@ -525,13 +525,11 @@ function handleClientSelect(client: Client, clientTable: ClientTableType, client
   form.value.client_id = client.id
   form.value.client_table = clientTable
   form.value.client_type = clientType
-  form.value.client_data = {
-    name: client.name,
-    address: client.address,
-    phone: client.phone,
-    email: client.email,
-    ...client, // Include all client data
-  }
+  
+  // Store client data as JSON in client_data field
+  // Structure: { id, name, data: {...} }
+  form.value.client_data = client.data
+  
   selectedClient.value = client
   showClientSelector.value = false
 }

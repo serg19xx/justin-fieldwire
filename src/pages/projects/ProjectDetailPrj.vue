@@ -2033,8 +2033,15 @@ watch(
               <span class="font-medium text-gray-700">Client:</span>
               <div class="mt-1">
                 <div>{{ project.client_type }}</div>
-                <div v-if="project.client_data?.name" class="text-gray-500">{{ project.client_data.name }}</div>
-                <div v-if="project.client_data?.address" class="text-gray-500 text-xs mt-1">{{ project.client_data.address }}</div>
+                <div v-if="project.client_data && typeof project.client_data === 'object'">
+                  <div v-if="project.client_data.name" class="text-gray-500 font-medium">{{ project.client_data.name }}</div>
+                  <div v-if="project.client_data.address" class="text-gray-500 text-xs mt-1">{{ project.client_data.address }}</div>
+                  <div v-if="project.client_data.phone || project.client_data.email" class="text-gray-400 text-xs mt-1">
+                    <span v-if="project.client_data.phone">{{ project.client_data.phone }}</span>
+                    <span v-if="project.client_data.phone && project.client_data.email"> • </span>
+                    <span v-if="project.client_data.email">{{ project.client_data.email }}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
