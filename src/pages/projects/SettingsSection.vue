@@ -59,15 +59,18 @@
 
         <!-- Client -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2"> Client </label>
+          <label class="block text-sm font-medium text-gray-700 mb-2"> Client <span class="text-red-500">*</span> </label>
           <div class="flex items-center space-x-2">
             <input
               :value="clientDisplayName"
               type="text"
               readonly
               :disabled="!canEdit"
-              class="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 disabled:opacity-50"
-              :class="canEdit ? 'cursor-pointer' : ''"
+              class="flex-1 px-3 py-2 border rounded-md bg-gray-50 text-gray-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              :class="[
+                canEdit ? 'cursor-pointer' : '',
+                clientValidationError ? 'border-red-500' : 'border-gray-300'
+              ]"
               placeholder="Click to select client"
               @click="canEdit && (showClientSelector = true)"
             />
@@ -88,6 +91,9 @@
               Clear
             </button>
           </div>
+          <p v-if="clientValidationError" class="mt-1 text-sm text-red-600">
+            {{ clientValidationError }}
+          </p>
         </div>
 
         <!-- Priority and Status -->
@@ -261,6 +267,7 @@ const emit = defineEmits<{
 const isSaving = ref(false)
 const showClientSelector = ref(false)
 const selectedClient = ref<Client | null>(null)
+const clientValidationError = ref('')
 
 // Settings form
 const settingsForm = reactive({
@@ -325,6 +332,7 @@ function initializeForm() {
     settingsForm.client_name = (project as any).client_name || null
     settingsForm.startDate = String(project.startDate || '')
     settingsForm.endDate = String(project.endDate || '')
+    clientValidationError.value = ''
 
     // Load client data if client_id is present and client_table is valid
     if (project.client_id && project.client_table) {
@@ -403,6 +411,7 @@ function handleClientSelect(client: Client, clientTable: ClientTableType, client
   
   selectedClient.value = client
   showClientSelector.value = false
+  clientValidationError.value = ''
 }
 
 function clearClient() {
@@ -411,6 +420,7 @@ function clearClient() {
   settingsForm.client_type = null
   settingsForm.client_data = null
   selectedClient.value = null
+  clientValidationError.value = ''
 }
 
 function handleClientClear() {
@@ -421,7 +431,14 @@ const handleSubmit = () => {
   if (isSaving.value) {
     return // Prevent double submission
   }
-  
+
+  // Client is required
+  if (!settingsForm.client_id) {
+    clientValidationError.value = 'Client is required'
+    return
+  }
+  clientValidationError.value = ''
+
   isSaving.value = true
   emit('saveSettings')
   
