@@ -375,6 +375,7 @@ const calendarEvents = ref<unknown[]>([])
 // Apply project bounds styling to calendar days
 function applyProjectBoundsStyling() {
   if (!projectInfo.value || !calendarRef.value) return
+  if (!projectInfo.value.date_start || !projectInfo.value.date_end) return // No bounds when dates are null
 
   const projectStart = new Date(projectInfo.value.date_start + 'T00:00:00')
   const projectEnd = new Date(projectInfo.value.date_end + 'T00:00:00')
@@ -693,7 +694,7 @@ const calendarOptions = ref({
       console.log('🔍 Checking project bounds for date:', dateStr)
       console.log('📋 Project info available:', !!projectInfo.value)
 
-      if (projectInfo.value) {
+      if (projectInfo.value?.date_start && projectInfo.value?.date_end) {
         const clickedDate = new Date(dateStr)
         const projectStart = new Date(projectInfo.value.date_start)
         const projectEnd = new Date(projectInfo.value.date_end)
@@ -1004,9 +1005,9 @@ async function loadProjectInfo() {
 
 // Функция проверки начала задачи на выход за границы проекта
 function checkStartBounds(startDate: string): boolean {
-  if (!projectInfo.value) {
-    console.log('⚠️ No project info available for start bounds check')
-    return true // Если нет информации о проекте, считаем что все в порядке
+  if (!projectInfo.value?.date_start) {
+    console.log('⚠️ No project info or date_start for start bounds check')
+    return true
   }
 
   const projectStart = projectInfo.value.date_start
@@ -1023,9 +1024,9 @@ function checkStartBounds(startDate: string): boolean {
 
 // Функция проверки конца задачи на выход за границы проекта
 function checkEndBounds(endDate: string): boolean {
-  if (!projectInfo.value) {
-    console.log('⚠️ No project info available for end bounds check')
-    return true // Если нет информации о проекте, считаем что все в порядке
+  if (!projectInfo.value?.date_end) {
+    console.log('⚠️ No project info or date_end for end bounds check')
+    return true
   }
 
   const projectEnd = projectInfo.value.date_end
@@ -1246,8 +1247,8 @@ async function handleEventDrop(info: unknown) {
           isOpen: true,
           taskStart: taskData.startPlanned,
           taskEnd: taskData.endPlanned,
-          projectStart: projectInfo.value!.date_start,
-          projectEnd: projectInfo.value!.date_end,
+          projectStart: projectInfo.value!.date_start ?? '',
+          projectEnd: projectInfo.value!.date_end ?? '',
           adjustedStart: boundsCheck.clampedStart,
           adjustedEnd: boundsCheck.clampedEnd,
           reason: boundsCheck.reason,
@@ -1750,8 +1751,8 @@ async function handleEventResize(info: unknown) {
           isOpen: true,
           taskStart: taskData.startPlanned,
           taskEnd: taskData.endPlanned,
-          projectStart: projectInfo.value.date_start,
-          projectEnd: projectInfo.value.date_end,
+          projectStart: projectInfo.value.date_start ?? '',
+          projectEnd: projectInfo.value.date_end ?? '',
           adjustedStart: boundsCheck.clampedStart,
           adjustedEnd: boundsCheck.clampedEnd,
           reason: boundsCheck.reason,
@@ -2666,6 +2667,9 @@ async function handleTasksCreatedFromTemplates(tasks: unknown[]) {
   console.log('✅ Tasks created from templates:', tasks.length)
   // Reload tasks to show newly created ones
   await loadTasks()
+  if (tasks.length > 0) {
+    emit('taskUpdate', tasks[0] as Task)
+  }
   closeTemplateDialog()
 }
 
@@ -2779,11 +2783,11 @@ function handleProjectUpdated(updatedProject: Project) {
   }, 100)
 }
 
-function handleTaskUpdate(updatedTask: Task) {
+function handleTaskUpdate(updatedTask: Task | null) {
   console.log('📅 Task updated from Gantt, emitting to parent:', updatedTask)
 
-  // Emit to parent component to update the original data
-  emit('taskUpdate', updatedTask)
+  // Emit to parent component to update project dates and refresh
+  emit('taskUpdate', updatedTask ?? ({} as Task))
 }
 
 // New Gantt event handlers
@@ -2957,6 +2961,8 @@ async function handleTaskSave(taskData: (Partial<TaskCreateUpdate> | Partial<Tas
       // Reload tasks from API to get fresh data
       await loadTasks()
 
+      emit('taskUpdate', newTask)
+
       // Reapply project bounds styling after task creation
       setTimeout(() => {
         applyProjectBoundsStyling()
@@ -3080,6 +3086,8 @@ async function handleTaskSave(taskData: (Partial<TaskCreateUpdate> | Partial<Tas
       // Reload tasks from API to get fresh data
       await loadTasks()
 
+      emit('taskUpdate', updatedTask)
+
       // Reapply project bounds styling after task update
       setTimeout(() => {
         applyProjectBoundsStyling()
@@ -3119,6 +3127,8 @@ async function handleTaskDelete(taskId: string) {
     // Reload tasks
     await loadTasks()
 
+    emit('taskUpdate', { id: taskId } as Task)
+
     // Clear selection if deleted task was selected
     if (selectedTask.value?.id === taskId) {
       selectedTask.value = null
@@ -3156,11 +3166,13 @@ async function handleTaskDuplicate(task: Task) {
           : undefined,
     }
 
-    await tasksApi.create(props.projectId, duplicateData)
+    const duplicatedTask = await tasksApi.create(props.projectId, duplicateData)
     console.log('✅ Task duplicated successfully')
 
     // Reload tasks
     await loadTasks()
+
+    emit('taskUpdate', duplicatedTask)
 
     // Close dialog
     closeTaskDialog()
@@ -3805,6 +3817,9 @@ defineExpose({
            :dynamic-range="false"
            :selected-task-from-parent="selectedTask"
            @task-update="handleTaskUpdate"
+           @task-created="(t: Task) => handleTaskUpdate(t)"
+           @task-updated="(t: Task) => handleTaskUpdate(t)"
+           @task-deleted="() => handleTaskUpdate(null)"
            @sort-changed="handleSortChanged"
            @task-order-updated="handleTaskOrderUpdated"
            @task-selected="handleTaskSelected"
@@ -3900,7 +3915,7 @@ defineExpose({
       <TaskTemplateDialog
         :is-open="templateDialog.isOpen"
         :project-id="projectId"
-        :project-start-date="projectInfo?.date_start"
+        :project-start-date="projectInfo?.date_start ?? undefined"
         :available-people="availablePeople"
         @close="closeTemplateDialog"
         @tasks-created="handleTasksCreatedFromTemplates"
@@ -4189,6 +4204,13 @@ defineExpose({
 
 :deep(.fc-event.fc-event-resizable:hover) {
   border: 2px solid #007bff !important;
+}
+
+/* Milestone events - distinct diamond-style marker (border + icon in title) */
+:deep(.fc-daygrid-event.fc-event-milestone) {
+  border-left: 4px solid #d97706 !important;
+  border-radius: 0 4px 4px 0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
 }
 
 /* Prevent events from disappearing during drag */

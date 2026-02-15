@@ -142,30 +142,7 @@
           </select>
         </div>
 
-        <!-- Dates -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- Start Date -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Start Date </label>
-            <input
-              v-model="settingsForm.startDate"
-              type="date"
-              :disabled="!canEdit"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-            />
-          </div>
-
-          <!-- End Date -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2"> End Date </label>
-            <input
-              v-model="settingsForm.endDate"
-              type="date"
-              :disabled="!canEdit"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-            />
-          </div>
-        </div>
+        <!-- Project dates are auto-calculated from tasks -->
 
         <!-- Action Buttons -->
         <div
@@ -235,8 +212,8 @@ interface ProjectData {
   name: string
   address: string
   description?: string
-  startDate: string
-  endDate: string
+  startDate?: string | null
+  endDate?: string | null
   priority: string
   status: string
   purchase_or_lease?: string
@@ -283,8 +260,6 @@ const settingsForm = reactive({
   client_table: null as ClientTableType | null,
   client_data: null as Record<string, unknown> | null,
   client_name: null as string | null,
-  startDate: '',
-  endDate: '',
 })
 
 // Client display name
@@ -330,8 +305,6 @@ function initializeForm() {
     settingsForm.client_table = project.client_table || null
     settingsForm.client_data = project.client_data || null
     settingsForm.client_name = (project as any).client_name || null
-    settingsForm.startDate = String(project.startDate || '')
-    settingsForm.endDate = String(project.endDate || '')
     clientValidationError.value = ''
 
     // Load client data if client_id is present and client_table is valid

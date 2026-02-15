@@ -38,8 +38,8 @@ export interface Project {
   address: string
   description?: string
   priority: string
-  date_start: string
-  date_end: string
+  date_start?: string | null
+  date_end?: string | null
   status: string
   purchase_or_lease?: ProjectPurchaseLeaseType
   notes?: string | null

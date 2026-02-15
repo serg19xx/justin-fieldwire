@@ -2,6 +2,27 @@ import { api } from './api'
 import type { Task, TaskCreateUpdate, TaskFilter, TaskStats } from '@/core/types/task'
 import { isMilestone, type MilestoneType } from '@/core/types/task'
 
+// Backend accepts only: planned, in_progress, done, blocked, delayed
+const BACKEND_STATUSES = ['planned', 'in_progress', 'done', 'blocked', 'delayed'] as const
+type BackendStatus = (typeof BACKEND_STATUSES)[number]
+
+function mapStatusToBackend(status: string | undefined): BackendStatus {
+  if (!status) return 'planned'
+  const normalized = status.toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_')
+  if (BACKEND_STATUSES.includes(normalized as BackendStatus)) {
+    return normalized as BackendStatus
+  }
+  const mapping: Record<string, BackendStatus> = {
+    scheduled: 'planned',
+    scheduled_accepted: 'planned',
+    partially_completed: 'done',
+    ready_for_inspection: 'done',
+    completed: 'done',
+    delayed_due_to_issue: 'delayed',
+  }
+  return mapping[normalized] ?? 'planned'
+}
+
 // API response interfaces
 interface TasksResponse {
   tasks: Task[]
@@ -178,7 +199,8 @@ export const tasksApi = {
         // No milestone specified, set to null for regular task
         apiData.milestone = null
       }
-      if (data.status !== undefined) apiData.status = data.status
+      if (data.status !== undefined) apiData.status = mapStatusToBackend(String(data.status))
+      else apiData.status = 'planned'
       if (data.progress_pct !== undefined) apiData.progress_pct = data.progress_pct
 
       // Optional fields - include if they exist
@@ -362,7 +384,7 @@ export const tasksApi = {
         // No milestone specified, set to null for regular task
         apiData.milestone = null
       }
-      if (data.status !== undefined) apiData.status = data.status
+      if (data.status !== undefined) apiData.status = mapStatusToBackend(String(data.status))
       if (data.progress_pct !== undefined) apiData.progress_pct = data.progress_pct
       if (data.notes !== undefined) apiData.notes = data.notes
       // Use task_lead_id from data if provided and valid (not null, 0, or empty string)
@@ -498,7 +520,7 @@ export const tasksApi = {
   async updateStatus(projectId: number, taskId: string, status: string): Promise<Task> {
     try {
       const response = await api.patch(`/api/v1/projects/${projectId}/tasks/${taskId}/status`, {
-        status,
+        status: mapStatusToBackend(status),
       })
       return response.data.data.task
     } catch (error) {

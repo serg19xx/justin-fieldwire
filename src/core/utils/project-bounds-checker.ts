@@ -34,6 +34,16 @@ export function checkProjectBounds(
     }
   }
 
+  // When project dates are null, tasks define bounds - no clamping
+  if (!projectInfo.date_start || !projectInfo.date_end) {
+    return {
+      isWithinBounds: true,
+      clampedStart: taskData.startPlanned,
+      clampedEnd: taskData.endPlanned,
+      reason: '',
+    }
+  }
+
   // Parse dates as local dates to avoid timezone issues
   const taskStart = new Date(taskData.startPlanned + 'T00:00:00')
   const taskEnd = new Date(taskData.endPlanned + 'T00:00:00')

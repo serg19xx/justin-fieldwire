@@ -43,6 +43,7 @@ import TeamMemberDetailsDialog from './TeamMemberDetailsDialog.vue'
 import {
   exportTasksToICal as exportTasksToICalUtil,
   downloadFile as downloadFileUtil,
+  MILESTONE_ICON,
 } from '@/core/utils/task-utils'
 import { filesApi, type FileUpload, type Folder } from '@/core/utils/files-api'
 
@@ -431,8 +432,9 @@ async function saveSettings() {
       client_type: formData?.client_type !== undefined ? formData.client_type : null,
       client_table: formData?.client_table !== undefined ? formData.client_table : null,
       client_data: formData?.client_data !== undefined ? formData.client_data : null,
-      date_start: formData?.startDate || '',
-      date_end: formData?.endDate || '',
+      // Project dates are auto-calculated from tasks - preserve current values
+      date_start: project.value.startDate || null,
+      date_end: project.value.endDate || null,
     }
 
     console.log('🔧 Update data:', updateData)
@@ -535,8 +537,8 @@ async function saveSettings() {
         project.value.client_type = updateData.client_type !== undefined ? updateData.client_type : null
         project.value.client_table = updateData.client_table !== undefined ? updateData.client_table : null
         project.value.client_data = updateData.client_data !== undefined ? updateData.client_data : null
-        project.value.startDate = updateData.date_start
-        project.value.endDate = updateData.date_end
+        project.value.startDate = updateData.date_start ?? ''
+        project.value.endDate = updateData.date_end ?? ''
       }
       
       // Still try to reload projects list
@@ -562,8 +564,8 @@ async function saveSettings() {
       projects.value[projectIndex].client_type = updateData.client_type !== undefined ? updateData.client_type : null
       projects.value[projectIndex].client_table = updateData.client_table !== undefined ? updateData.client_table : null
       projects.value[projectIndex].client_data = updateData.client_data !== undefined ? updateData.client_data : null
-      projects.value[projectIndex].startDate = updateData.date_start
-      projects.value[projectIndex].endDate = updateData.date_end
+      projects.value[projectIndex].startDate = updateData.date_start ?? ''
+      projects.value[projectIndex].endDate = updateData.date_end ?? ''
       console.log('🔄 Updated project in dropdown list:', projects.value[projectIndex])
       console.log('🔍 Client fields in dropdown list:', {
         client_id: projects.value[projectIndex].client_id,
@@ -1929,8 +1931,13 @@ async function removeTeamMember(member: ProjectTeamMember) {
 }
 
 // Handle task updates from calendar
-function handleTaskUpdate(task: unknown) {
+async function handleTaskUpdate(task: unknown) {
   console.log('📝 Task updated:', task)
+
+  // Backend auto-updates project dates from tasks - reload to get fresh dates
+  if (project.value?.id) {
+    await loadProject()
+  }
 
   // Update the selected task in the calendar if it's the same task
   if (tasksSectionRef.value?.calendarRef?.value) {
@@ -1942,9 +1949,13 @@ function handleTaskUpdate(task: unknown) {
 }
 
 // Handle task duplication from calendar
-function handleTaskDuplicate(task: unknown) {
+async function handleTaskDuplicate(task: unknown) {
   console.log('📋 Task duplicated:', task)
-  // TODO: Show notification or update UI
+
+  // Backend auto-updates project dates - reload to get fresh dates
+  if (project.value?.id) {
+    await loadProject()
+  }
 }
 
 // Handle edit panel open/close
@@ -2540,7 +2551,7 @@ watch(
                 class="px-3 py-2 cursor-pointer text-sm border-b border-gray-100 last:border-b-0 hover:bg-gray-50"
               >
                 <div class="flex items-center space-x-2">
-                  <span class="text-xs">{{ task.milestone ? '🎯' : '📋' }}</span>
+                  <span class="text-xs">{{ task.milestone ? MILESTONE_ICON : '📋' }}</span>
                   <div class="flex-1 min-w-0">
                     <div class="font-medium truncate">{{ task.name }}</div>
                     <div v-if="task.wbs_path" class="text-xs text-gray-500 truncate">

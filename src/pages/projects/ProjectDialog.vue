@@ -60,37 +60,7 @@
             </p>
           </div>
 
-          <!-- Date Range -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2"> Start Date <span class="text-red-500">*</span> </label>
-              <input
-                v-model="form.date_start"
-                type="date"
-                :class="[
-                  'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
-                  validationErrors.date_start ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300'
-                ]"
-              />
-              <p v-if="validationErrors.date_start" class="mt-1 text-sm text-red-600">
-                {{ validationErrors.date_start }}
-              </p>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2"> End Date <span class="text-red-500">*</span> </label>
-              <input
-                v-model="form.date_end"
-                type="date"
-                :class="[
-                  'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
-                  validationErrors.date_end ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300'
-                ]"
-              />
-              <p v-if="validationErrors.date_end" class="mt-1 text-sm text-red-600">
-                {{ validationErrors.date_end }}
-              </p>
-            </div>
-          </div>
+          <!-- Project dates are auto-calculated from tasks -->
 
           <!-- Priority and Status -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -290,8 +260,6 @@ const authStore = useAuthStore()
 const form = ref({
   prj_name: '',
   address: '',
-  date_start: '',
-  date_end: '',
   priority: 'Medium',
   status: 'Active',
   purchase_or_lease: 'Purchase',
@@ -379,14 +347,6 @@ function validateForm() {
     errors.address = 'Address is required'
   }
 
-  if (!form.value.date_start) {
-    errors.date_start = 'Start date is required'
-  }
-
-  if (!form.value.date_end) {
-    errors.date_end = 'End date is required'
-  }
-
   // Admin must select a project manager
   if (canAssignManager.value && !form.value.prj_manager) {
     errors.prj_manager = 'Project Manager is required for administrators'
@@ -395,15 +355,6 @@ function validateForm() {
   // Client is required
   if (!form.value.client_id) {
     errors.client = 'Client is required'
-  }
-
-  // Date validation
-  if (form.value.date_start && form.value.date_end) {
-    const startDate = new Date(form.value.date_start)
-    const endDate = new Date(form.value.date_end)
-    if (startDate >= endDate) {
-      errors.date_end = 'End date must be after start date'
-    }
   }
 
   validationErrors.value = errors
@@ -420,11 +371,6 @@ watch(
   (isOpen) => {
     if (isOpen) {
       // Reset form
-      const today = new Date().toISOString().split('T')[0]
-      const nextMonth = new Date()
-      nextMonth.setMonth(nextMonth.getMonth() + 1)
-      const nextMonthStr = nextMonth.toISOString().split('T')[0]
-
       // Form initialization complete
 
       // Debug current user info
@@ -449,8 +395,6 @@ watch(
       form.value = {
         prj_name: '',
         address: '',
-        date_start: today,
-        date_end: nextMonthStr,
         priority: 'Medium',
         status: 'Active',
         purchase_or_lease: 'Purchase',
@@ -607,12 +551,12 @@ async function handleSubmit() {
       isProjectManager: isProjectManager.value,
     })
 
-    // Prepare API data
+    // Prepare API data - project dates are auto-calculated from tasks
     const apiData = {
       prj_name: form.value.prj_name,
       address: form.value.address,
-      date_start: form.value.date_start,
-      date_end: form.value.date_end,
+      date_start: null,
+      date_end: null,
       priority: form.value.priority,
       status: form.value.status,
       purchase_or_lease: form.value.purchase_or_lease,

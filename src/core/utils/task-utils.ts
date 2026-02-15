@@ -70,7 +70,7 @@ export function taskToCalendarTask(
       ? task.milestone
       : task.milestone_type
     : undefined
-  const typeIcon = taskIsMilestone ? getMilestoneTypeIcon(milestoneType) : '📝'
+  const typeIcon = taskIsMilestone ? MILESTONE_ICON : '📝'
 
   // Validate date format - ensure start date is in YYYY-MM-DD format
   let startDate = task.start_planned
@@ -116,8 +116,8 @@ export function taskToCalendarTask(
     editable: true, // Allow dragging
     startEditable: true, // Allow moving start date
     durationEditable: !isMilestone(task.milestone), // Disable resizing for milestones
-    // Add data attributes for selection
-    classNames: [`task-${task.id}`],
+    // Add data attributes for selection; milestone class for distinct styling
+    classNames: [`task-${task.id}`, ...(taskIsMilestone ? ['fc-event-milestone'] : [])],
     extendedProps: {
       wbsPath: parseWbsPath(task.wbs_path), // Convert to array for display
       status: task.status,
@@ -268,7 +268,10 @@ export function getTaskColor(status?: TaskStatus): string {
 
 // Progress is shown in task title, colors remain standard by status
 
-// Get milestone type icon
+// Diamond symbol for milestones - distinct from task bars, used across Gantt, lists, calendar
+export const MILESTONE_ICON = '◆'
+
+// Get milestone type icon (for milestone type - inspection, meeting, etc.)
 export function getMilestoneTypeIcon(milestoneType?: MilestoneType): string {
   switch (milestoneType) {
     case 'inspection':

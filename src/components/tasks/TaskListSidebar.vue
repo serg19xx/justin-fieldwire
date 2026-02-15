@@ -36,7 +36,7 @@
             <div class="flex-1 min-w-0">
               <!-- Task Name -->
               <div class="flex items-center gap-2 mb-1">
-                <span v-if="isMilestone(task.milestone)" class="text-xs">🎯</span>
+                <span v-if="isMilestone(task.milestone)" class="text-xs text-amber-600 font-bold">{{ MILESTONE_ICON }}</span>
                 <span class="text-sm font-medium text-gray-900 truncate">{{ task.name }}</span>
               </div>
 
@@ -72,6 +72,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { isMilestone } from '@/core/types/task'
+import { MILESTONE_ICON } from '@/core/utils/task-utils'
 import type { Task, TaskStatus } from '@/core/types/task'
 
 interface Props {

@@ -42,6 +42,27 @@
       </div>
     </div>
 
+    <!-- Select All / Deselect All -->
+    <div
+      v-if="filteredTemplates.length > 0"
+      class="flex items-center gap-2 mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg"
+    >
+      <input
+        :id="`select-all-${uid}`"
+        type="checkbox"
+        :checked="allFilteredSelected"
+        :indeterminate.prop="someButNotAllSelected"
+        @change="toggleSelectAll"
+        class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+      />
+      <label :for="`select-all-${uid}`" class="text-sm font-medium text-gray-700 cursor-pointer select-none">
+        {{ allFilteredSelected ? 'Deselect all' : 'Select all' }}
+      </label>
+      <span class="text-xs text-gray-500 ml-auto">
+        {{ selectedInFilteredCount }}/{{ filteredTemplates.length }} selected
+      </span>
+    </div>
+
     <!-- Templates List -->
     <div class="space-y-2 max-h-96 overflow-y-auto">
       <div
@@ -108,6 +129,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+
+const uid = `tts-${Math.random().toString(36).slice(2, 9)}`
 import { taskTemplatesApi } from '@/core/utils/task-templates-api'
 import { initializeDefaultTemplates } from '@/core/utils/task-templates-init'
 import type { TaskTemplate } from '@/core/types/task'
@@ -163,6 +186,42 @@ const filteredTemplates = computed(() => {
     return a.name.localeCompare(b.name)
   })
 })
+
+const selectedInFilteredCount = computed(() => {
+  return filteredTemplates.value.filter((t) => props.selectedTemplateIds.includes(t.id!)).length
+})
+
+const allFilteredSelected = computed(() => {
+  const filtered = filteredTemplates.value
+  if (filtered.length === 0) return false
+  return filtered.every((t) => props.selectedTemplateIds.includes(t.id!))
+})
+
+const someButNotAllSelected = computed(() => {
+  const count = selectedInFilteredCount.value
+  const total = filteredTemplates.value.length
+  return total > 0 && count > 0 && count < total
+})
+
+function toggleSelectAll() {
+  const filtered = filteredTemplates.value
+  const filteredIds = filtered.map((t) => t.id!).filter(Boolean)
+
+  if (allFilteredSelected.value) {
+    // Deselect all: keep only IDs that are not in filtered list
+    const currentIds = [...props.selectedTemplateIds]
+    const newIds = currentIds.filter((id) => !filteredIds.includes(id))
+    emit('update:selectedTemplateIds', newIds)
+    emit('selection-changed', templates.value.filter((t) => newIds.includes(t.id!)))
+  } else {
+    // Select all: add all filtered IDs
+    const currentIds = new Set(props.selectedTemplateIds)
+    filteredIds.forEach((id) => currentIds.add(id))
+    const newIds = Array.from(currentIds)
+    emit('update:selectedTemplateIds', newIds)
+    emit('selection-changed', templates.value.filter((t) => newIds.includes(t.id!)))
+  }
+}
 
 function isSelected(templateId?: number): boolean {
   if (!templateId) return false

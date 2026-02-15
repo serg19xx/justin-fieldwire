@@ -180,7 +180,8 @@
               'drag-over': dragOverTask?.id === task.id
             }"
             :draggable="!sortByStartDate"
-            @click="console.log('🎯 List item clicked:', task.title); handleTaskListClick(task)"
+            @click="handleTaskListClick(task)"
+            @dblclick.stop="handleTaskDoubleClick(task)"
             @contextmenu="handleTaskListContextMenu(task, $event)"
             @dragstart="handleTaskListDragStart(task, $event)"
             @dragover="handleTaskListDragOver(task, $event)"
@@ -207,12 +208,15 @@
                   </span>
 
                   <!-- Task Title -->
-                <span class="truncate">{{ task.title }}</span>
+                <span class="truncate">
+                  <span v-if="task.milestone" class="text-amber-600 font-bold mr-1">{{ MILESTONE_ICON }}</span>
+                  {{ task.title }}
+                </span>
                 </div>
 
                 <!-- Duration Badge -->
                 <span class="ml-2 text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded flex-shrink-0">
-                  {{ task.duration }}d
+                  {{ task.milestone ? MILESTONE_ICON : `${task.duration}d` }}
                 </span>
               </div>
             </div>
@@ -248,38 +252,41 @@
               :key="idx"
               class="gantt-day-cell"
             >
-              <!-- Task Bar - only show on the first day of the task -->
+              <!-- Milestone: diamond shape; Task: bar -->
               <div
                 v-if="isTaskStartDay(day, task)"
                 :class="[
+                  task.milestone ? 'gantt-milestone-diamond-wrapper' : '',
+                  task.milestone ? 'gantt-milestone-diamond task-bar' : 'task-bar',
+                  'rounded h-6 absolute top-1/2 flex items-center justify-center text-white text-xs font-medium select-none cursor-pointer',
                   barColor(task),
-                  'cursor-pointer',
                   selectedTask?.id === task.id
-                    ? 'ring-2 ring-blue-500 ring-opacity-100 shadow-lg z-20'
+                    ? (task.milestone ? 'gantt-milestone-selected z-20' : 'ring-2 ring-blue-500 ring-opacity-100 shadow-lg z-20')
                     : '',
                   isDragging && dragStartTask?.id === task.id ? 'opacity-70' : '',
                   testDependencyLine.visible && testDependencyLine.from.taskId === task.id ? 'ring-2 ring-green-600 bg-green-200 border-2 border-green-600' : '',
                   testDependencyLine.visible && testDependencyLine.to.taskId === task.id ? 'ring-2 ring-orange-600 bg-orange-200 border-2 border-orange-600' : '',
                 ]"
-                class="task-bar absolute top-1/2 rounded h-6 flex items-center px-1 text-white text-xs font-medium select-none"
                 :data-task-id="task.id"
                 :style="{
                   ...getTaskBarStyle(task, day),
-                  transform: isDragging && dragStartTask?.id === task.id
-                    ? `translateY(-50%) translateX(${dragOffset}px)`
-                      : 'translateY(-50%)',
+                  transform: [
+                    'translateY(-50%)',
+                    task.milestone ? 'rotate(45deg)' : '',
+                    isDragging && dragStartTask?.id === task.id ? `translateX(${dragOffset}px)` : '',
+                  ].filter(Boolean).join(' '),
                 }"
                 @click.stop="handleTaskClick(task)"
+                @dblclick.stop="handleTaskDoubleClick(task)"
                 @mousedown="handleTaskMouseDown(task, $event)"
                 :title="
                   task.milestone
-                    ? `${task.title} - Click to edit, drag to move`
-                    : `${task.title} (${task.duration}d) - Click to edit, drag to move, resize handles to change duration`
+                    ? `${task.title} - Milestone - Double-click to edit, drag to move`
+                    : `${task.title} (${task.duration}d) - Double-click to edit, drag to move, resize handles to change duration`
                 "
               >
-                <span class="truncate flex items-center">
-                  <span v-if="task.milestone" class="text-sm mr-1">{{ getMilestoneTypeIcon(task.milestone_type) }}</span>
-                  <span v-else class="text-sm mr-1">📝</span>
+                <span v-if="!task.milestone" class="truncate flex items-center w-full px-1">
+                  <span class="text-sm mr-1">📝</span>
                   {{ task.title }}
                   <!-- Dependency indicators -->
                   <span v-if="task.dependencies && task.dependencies.length > 0" class="ml-1 text-xs bg-white bg-opacity-20 px-1 rounded">
@@ -484,7 +491,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import type { Task, TaskCreateUpdate, MilestoneType } from '@/core/types/task'
 import { tasksApi } from '@/core/utils/tasks-api'
-import { getMilestoneTypeIcon } from '@/core/utils/task-utils'
+import { MILESTONE_ICON } from '@/core/utils/task-utils'
 import { projectApi, type ProjectTeamMember } from '@/core/utils/project-api'
 import TaskDialog from './TaskDialog.vue'
 import TaskViewDialog from './TaskViewDialog.vue'
@@ -908,7 +915,6 @@ function isWeekend(day: Date): boolean {
 
 // Get task bar style for a specific day
 function getTaskBarStyle(task: GanttTask, day: Date): Record<string, string> {
-  // const dayStr = formatDate(day) // Removed unused variable
   const startStr = task.start
   const dayStr = formatDate(day)
 
@@ -917,20 +923,25 @@ function getTaskBarStyle(task: GanttTask, day: Date): Record<string, string> {
     return { display: 'none' }
   }
 
-  // Use existing duration field - much simpler!
+  // Milestone: diamond shape - rotated square
+  if (task.milestone) {
+    return {
+      width: '20px',
+      height: '20px',
+      left: '6px',
+      minWidth: '20px',
+    }
+  }
+
+  // Task bar: width based on duration
   const daysDiff = task.duration
-
-  // Calculate width: Ndays * 33px + (Ndays-1)*1px for borders - Ndays px - 2px margin
   const width = daysDiff * 33 + (daysDiff - 1) * 1 - daysDiff - 2
-  const minWidth = 29 // minimum width for very short tasks (milestones need more margin)
+  const minWidth = 29
 
-
-  const style = {
+  return {
     width: `${Math.max(width, minWidth)}px`,
     left: '1px',
   }
-
-  return style
 }
 
 function barColor(task: GanttTask): string {
@@ -1237,6 +1248,14 @@ function addDays(date: Date, daysToAdd: number): Date {
 }
 
 // Interactive handlers
+function handleTaskDoubleClick(task: GanttTask) {
+  if (task.milestone) {
+    openMilestoneDialog('edit', task.id)
+  } else {
+    openTaskDialog('edit', task.id)
+  }
+}
+
 function handleTaskClick(task: GanttTask) {
   console.log('🎯 handleTaskClick called (FROM GRID - NO SCROLL):', task.title)
   console.log('🎯 Current scroll position before:', rightPanelRef.value?.scrollLeft)
@@ -1315,6 +1334,27 @@ function closeTaskViewDialog() {
 function closeMilestoneDialog() {
   milestoneDialog.value.isOpen = false
   milestoneDialog.value.task = null
+}
+
+function openMilestoneDialog(mode: 'create' | 'edit' | 'view', taskId?: string | number | null, initialDate?: string) {
+  if (taskId) {
+    const task = props.tasks?.find(t => String(t.id) === String(taskId))
+    if (task) {
+      milestoneDialog.value = {
+        isOpen: true,
+        mode,
+        task,
+        initialDate: undefined,
+      }
+    }
+  } else {
+    milestoneDialog.value = {
+      isOpen: true,
+      mode: 'create',
+      task: null,
+      initialDate,
+    }
+  }
 }
 
 // Task management handlers
@@ -1413,7 +1453,11 @@ function closeContextMenu() {
 
 function handleContextMenuEdit() {
   if (contextMenu.value.task) {
-    openTaskDialog('edit', String(contextMenu.value.task.id))
+    if (contextMenu.value.task.milestone) {
+      openMilestoneDialog('edit', contextMenu.value.task.id)
+    } else {
+      openTaskDialog('edit', String(contextMenu.value.task.id))
+    }
   }
   closeContextMenu()
 }
@@ -3495,6 +3539,20 @@ onUnmounted(() => {
   position: relative;
   z-index: 10; /* Above dependency arrows */
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Milestone: diamond shape (rotated square) - distinct from task bars */
+.gantt-milestone-diamond {
+  min-width: 20px;
+  min-height: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Selected milestone - blue outline for clear visibility */
+.gantt-milestone-diamond.gantt-milestone-selected {
+  outline: 2px solid rgb(59 130 246);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 1px white, 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 /* Hide grid lines inside task bars */
