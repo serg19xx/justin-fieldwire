@@ -96,37 +96,56 @@
           </p>
         </div>
 
-        <!-- Priority and Status -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- Priority -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Priority </label>
-            <select
-              v-model="settingsForm.priority"
+        <!-- Secondary Client -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2"> Secondary Client <span class="text-gray-400 font-normal">(optional)</span> </label>
+          <div class="flex items-center space-x-2">
+            <input
+              :value="client2DisplayName"
+              type="text"
+              readonly
               :disabled="!canEdit"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+              class="flex-1 px-3 py-2 border rounded-md bg-gray-50 text-gray-700 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300"
+              :class="canEdit ? 'cursor-pointer' : ''"
+              placeholder="Click to select secondary client (optional)"
+              @click="canEdit && (showClient2Selector = true)"
+            />
+            <button
+              v-if="canEdit"
+              type="button"
+              @click="showClient2Selector = true"
+              class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
             >
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
+              Select
+            </button>
+            <button
+              v-if="canEdit && settingsForm.client2_id"
+              type="button"
+              @click="clearClient2"
+              class="px-4 py-2 border border-red-300 rounded-md text-red-700 hover:bg-red-50 transition-colors text-sm font-medium"
+            >
+              Clear
+            </button>
           </div>
+        </div>
 
-          <!-- Status -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Project Status </label>
+        <!-- Project Status -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2"> Project Status </label>
             <select
               v-model="settingsForm.status"
               :disabled="!canEdit"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
             >
-              <option value="draft">Draft</option>
-              <option value="planning">Planning</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="Initial Contact Lead">Initial Contact Lead</option>
+              <option value="Dead Lead">Dead Lead</option>
+              <option value="Waiting On Direction">Waiting On Direction</option>
+              <option value="Actively Looking For A Location">Actively Looking For A Location</option>
+              <option value="Securing Location">Securing Location</option>
+              <option value="Project Secured">Project Secured</option>
+              <option value="Construction">Construction</option>
+              <option value="Completed Project">Completed Project</option>
             </select>
-          </div>
         </div>
 
         <!-- Purchase or Lease -->
@@ -194,6 +213,15 @@
       @select="handleClientSelect"
       @clear="handleClientClear"
     />
+    <!-- Secondary Client Selector Dialog -->
+    <ClientSelectorDialog
+      :is-open="showClient2Selector"
+      :selected-client-id="settingsForm.client2_id"
+      :selected-client-table="settingsForm.client2_table"
+      @close="showClient2Selector = false"
+      @select="handleClient2Select"
+      @clear="handleClient2Clear"
+    />
   </div>
 </template>
 
@@ -214,15 +242,19 @@ interface ProjectData {
   description?: string
   startDate?: string | null
   endDate?: string | null
-  priority: string
   status: string
   purchase_or_lease?: string
   notes?: string | null
   client_id?: number | null
   client_type?: string | null
-  client_table?: string | null // Can be string from API, will be cast to ClientTableType
+  client_table?: string | null
   client_data?: Record<string, unknown> | null
-  client_name?: string | null // Client name from server
+  client_name?: string | null
+  client2_id?: number | null
+  client2_type?: string | null
+  client2_table?: string | null
+  client2_data?: Record<string, unknown> | null
+  client2_name?: string | null
 }
 
 interface Props {
@@ -244,6 +276,8 @@ const emit = defineEmits<{
 const isSaving = ref(false)
 const showClientSelector = ref(false)
 const selectedClient = ref<Client | null>(null)
+const showClient2Selector = ref(false)
+const selectedClient2 = ref<Client | null>(null)
 const clientValidationError = ref('')
 
 // Settings form
@@ -251,7 +285,6 @@ const settingsForm = reactive({
   name: '',
   address: '',
   description: '',
-  priority: 'medium',
   status: 'draft',
   purchase_or_lease: 'Purchase',
   notes: '',
@@ -260,6 +293,11 @@ const settingsForm = reactive({
   client_table: null as ClientTableType | null,
   client_data: null as Record<string, unknown> | null,
   client_name: null as string | null,
+  client2_id: null as number | null,
+  client2_type: null as string | null,
+  client2_table: null as ClientTableType | null,
+  client2_data: null as Record<string, unknown> | null,
+  client2_name: null as string | null,
 })
 
 // Client display name
@@ -286,6 +324,19 @@ const clientDisplayName = computed(() => {
   return ''
 })
 
+// Secondary client display name
+const client2DisplayName = computed(() => {
+  if (settingsForm.client2_name) return settingsForm.client2_name
+  if (settingsForm.client2_id && settingsForm.client2_type) {
+    const name =
+      settingsForm.client2_data && typeof settingsForm.client2_data === 'object' && settingsForm.client2_data.name
+        ? settingsForm.client2_data.name
+        : `Client ID: ${settingsForm.client2_id}`
+    return `${name} (${settingsForm.client2_type})`
+  }
+  return ''
+})
+
 // Initialize form with project data
 function initializeForm() {
   if (props.project) {
@@ -296,7 +347,6 @@ function initializeForm() {
     settingsForm.name = String(project.name || '')
     settingsForm.address = String(project.address || '')
     settingsForm.description = String(project.description || '')
-    settingsForm.priority = String(project.priority || 'medium')
     settingsForm.status = String(project.status || 'draft')
     settingsForm.purchase_or_lease = String(project.purchase_or_lease || 'Purchase')
     settingsForm.notes = String(project.notes || '')
@@ -305,18 +355,23 @@ function initializeForm() {
     settingsForm.client_table = project.client_table || null
     settingsForm.client_data = project.client_data || null
     settingsForm.client_name = (project as any).client_name || null
+    settingsForm.client2_id = project.client2_id ?? null
+    settingsForm.client2_type = project.client2_type ?? null
+    settingsForm.client2_table = project.client2_table ?? null
+    settingsForm.client2_data = project.client2_data ?? null
+    settingsForm.client2_name = (project as any).client2_name ?? null
     clientValidationError.value = ''
 
-    // Load client data if client_id is present and client_table is valid
-    if (project.client_id && project.client_table) {
-      const validClientTables: ClientTableType[] = ['pharma', 'physician', 'pharmacist', 'medical_clinic']
-      if (validClientTables.includes(project.client_table as ClientTableType)) {
-        loadClientData(project.client_table as ClientTableType, project.client_id)
-      } else {
-        selectedClient.value = null
-      }
+    const validClientTables: ClientTableType[] = ['pharma', 'physician', 'pharmacist', 'medical_clinic']
+    if (project.client_id && project.client_table && validClientTables.includes(project.client_table as ClientTableType)) {
+      loadClientData(project.client_table as ClientTableType, project.client_id)
     } else {
       selectedClient.value = null
+    }
+    if (project.client2_id && project.client2_table && validClientTables.includes(project.client2_table as ClientTableType)) {
+      loadClient2Data(project.client2_table as ClientTableType, project.client2_id)
+    } else {
+      selectedClient2.value = null
     }
   }
 }
@@ -398,6 +453,46 @@ function clearClient() {
 
 function handleClientClear() {
   clearClient()
+}
+
+async function loadClient2Data(clientTable: ClientTableType | string | null, clientId: number) {
+  const validClientTables: ClientTableType[] = ['pharma', 'physician', 'pharmacist', 'medical_clinic']
+  if (!clientTable || !validClientTables.includes(clientTable as ClientTableType)) {
+    selectedClient2.value = null
+    return
+  }
+  try {
+    const client = await clientsApi.getById(clientTable as ClientTableType, clientId)
+    selectedClient2.value = client
+  } catch {
+    selectedClient2.value = null
+  }
+}
+
+function handleClient2Select(client: Client, clientTable: ClientTableType, clientType: string) {
+  if (!client?.id) return
+  settingsForm.client2_id = client.id
+  settingsForm.client2_table = clientTable
+  settingsForm.client2_type = clientType
+  settingsForm.client2_data =
+    client.data && typeof client.data === 'object' ? client.data : (() => {
+      const { id, name, data, ...rest } = client
+      return Object.keys(rest).length > 0 ? rest : {}
+    })()
+  selectedClient2.value = client
+  showClient2Selector.value = false
+}
+
+function clearClient2() {
+  settingsForm.client2_id = null
+  settingsForm.client2_type = null
+  settingsForm.client2_table = null
+  settingsForm.client2_data = null
+  selectedClient2.value = null
+}
+
+function handleClient2Clear() {
+  clearClient2()
 }
 
 const handleSubmit = () => {

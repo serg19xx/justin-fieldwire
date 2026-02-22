@@ -37,7 +37,7 @@ export interface Project {
   prj_name: string
   address: string
   description?: string
-  priority: string
+  priority?: string
   date_start?: string | null
   date_end?: string | null
   status: string
@@ -48,6 +48,11 @@ export interface Project {
   client_table?: ClientTableType | null
   client_data?: Record<string, unknown> | null // JSON field for additional client information
   client_name?: string | null // Client name from server
+  client2_id?: number | null
+  client2_type?: string | null
+  client2_table?: ClientTableType | null
+  client2_data?: Record<string, unknown> | null
+  client2_name?: string | null // Secondary client name from server
   prj_manager?: number
   manager_name?: string
   created_by?: number
@@ -71,13 +76,17 @@ export const projectApi = {
   },
 
   async update(id: number, data: Record<string, unknown>) {
-    // Ensure all client fields are explicitly included in the request
+    // Ensure all client and client2 fields are explicitly included in the request
     const requestData = {
       ...data,
       client_id: data.client_id !== undefined ? data.client_id : null,
       client_type: data.client_type !== undefined ? data.client_type : null,
       client_table: data.client_table !== undefined ? data.client_table : null,
       client_data: data.client_data !== undefined ? data.client_data : null,
+      client2_id: data.client2_id !== undefined ? data.client2_id : null,
+      client2_type: data.client2_type !== undefined ? data.client2_type : null,
+      client2_table: data.client2_table !== undefined ? data.client2_table : null,
+      client2_data: data.client2_data !== undefined ? data.client2_data : null,
     }
 
     const response = await api.put(`/api/v1/projects/${id}`, requestData)

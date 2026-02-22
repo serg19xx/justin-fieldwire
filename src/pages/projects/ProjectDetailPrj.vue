@@ -71,26 +71,34 @@ const settingsForm = ref<{
   name: string
   address: string
   description: string
-  priority: string
   status: string
   client_id?: number | null
   client_type?: string | null
   client_table?: ClientTableType | null
   client_data?: Record<string, unknown> | null
-  client_name?: string | null // Client name from server
+  client_name?: string | null
+  client2_id?: number | null
+  client2_type?: string | null
+  client2_table?: ClientTableType | null
+  client2_data?: Record<string, unknown> | null
+  client2_name?: string | null
   startDate: string
   endDate: string
 }>({
   name: '',
   address: '',
   description: '',
-  priority: 'low',
   status: 'draft',
   client_id: null,
   client_type: null,
   client_table: null,
   client_data: null,
   client_name: null,
+  client2_id: null,
+  client2_type: null,
+  client2_table: null,
+  client2_data: null,
+  client2_name: null,
   startDate: '',
   endDate: '',
 })
@@ -234,7 +242,6 @@ interface Project {
   id: number
   name: string
   address: string
-  priority: string
   startDate: string
   endDate: string
   status: string
@@ -244,7 +251,12 @@ interface Project {
   client_type?: string | null
   client_table?: string | null
   client_data?: Record<string, unknown> | null
-  client_name?: string | null // Client name from server
+  client_name?: string | null
+  client2_id?: number | null
+  client2_type?: string | null
+  client2_table?: string | null
+  client2_data?: Record<string, unknown> | null
+  client2_name?: string | null
   projectManager?: number
   description?: string
   createdAt: string
@@ -263,7 +275,6 @@ async function loadProjects() {
       id: apiProject.id,
       name: apiProject.prj_name,
       address: apiProject.address,
-      priority: apiProject.priority,
       startDate: apiProject.date_start,
       endDate: apiProject.date_end,
       status: apiProject.status,
@@ -273,9 +284,16 @@ async function loadProjects() {
       client_type: apiProject.client_type,
       client_table: apiProject.client_table,
       client_name: apiProject.client_name,
-      client_data: typeof apiProject.client_data === 'string' 
-        ? JSON.parse(apiProject.client_data) 
+      client_data: typeof apiProject.client_data === 'string'
+        ? JSON.parse(apiProject.client_data)
         : apiProject.client_data,
+      client2_id: apiProject.client2_id,
+      client2_type: apiProject.client2_type,
+      client2_table: apiProject.client2_table,
+      client2_name: apiProject.client2_name,
+      client2_data: typeof (apiProject as ApiProject & { client2_data?: unknown }).client2_data === 'string'
+        ? JSON.parse((apiProject as ApiProject & { client2_data: string }).client2_data)
+        : (apiProject as ApiProject & { client2_data?: Record<string, unknown> | null }).client2_data,
       projectManager: apiProject.prj_manager || undefined,
       description: apiProject.description || '',
       createdAt: apiProject.created_at,
@@ -307,7 +325,6 @@ async function loadProject() {
       id: apiResponse.id,
       name: apiResponse.prj_name,
       address: apiResponse.address,
-      priority: apiResponse.priority,
       startDate: apiResponse.date_start,
       endDate: apiResponse.date_end,
       status: apiResponse.status,
@@ -317,9 +334,16 @@ async function loadProject() {
       client_type: apiResponse.client_type,
       client_table: apiResponse.client_table,
       client_name: apiResponse.client_name,
-      client_data: typeof apiResponse.client_data === 'string' 
-        ? JSON.parse(apiResponse.client_data) 
+      client_data: typeof apiResponse.client_data === 'string'
+        ? JSON.parse(apiResponse.client_data)
         : apiResponse.client_data,
+      client2_id: apiResponse.client2_id,
+      client2_type: apiResponse.client2_type,
+      client2_table: apiResponse.client2_table,
+      client2_name: apiResponse.client2_name,
+      client2_data: typeof (apiResponse as { client2_data?: unknown }).client2_data === 'string'
+        ? JSON.parse((apiResponse as { client2_data: string }).client2_data)
+        : (apiResponse as { client2_data?: Record<string, unknown> | null }).client2_data,
       projectManager: apiResponse.prj_manager || undefined,
       description: apiResponse.description || '',
       createdAt: apiResponse.created_at,
@@ -388,13 +412,17 @@ function loadSettingsForm() {
       name: project.value.name || '',
       address: project.value.address || '',
       description: project.value.description || '',
-      priority: project.value.priority || 'low',
       status: project.value.status || 'draft',
       client_id: project.value.client_id || null,
       client_type: project.value.client_type || null,
       client_table: (project.value.client_table as ClientTableType | null) || null,
       client_data: project.value.client_data || null,
       client_name: project.value.client_name || null,
+      client2_id: project.value.client2_id ?? null,
+      client2_type: project.value.client2_type ?? null,
+      client2_table: (project.value.client2_table as ClientTableType | null) ?? null,
+      client2_data: project.value.client2_data ?? null,
+      client2_name: project.value.client2_name ?? null,
       startDate: project.value.startDate || '',
       endDate: project.value.endDate || '',
     }
@@ -423,16 +451,18 @@ async function saveSettings() {
       prj_name: formData?.name?.trim() || '',
       address: formData?.address?.trim() || '',
       description: formData?.description?.trim() || '',
-      priority: formData?.priority || 'low',
       status: formData?.status || 'draft',
+      priority: (project.value as { priority?: string }).priority ?? 'Medium',
       purchase_or_lease: formData?.purchase_or_lease || 'Purchase',
       notes: formData?.notes?.trim() || null,
-      // Client fields - ensure all are included even if null
       client_id: formData?.client_id !== undefined ? formData.client_id : null,
       client_type: formData?.client_type !== undefined ? formData.client_type : null,
       client_table: formData?.client_table !== undefined ? formData.client_table : null,
       client_data: formData?.client_data !== undefined ? formData.client_data : null,
-      // Project dates are auto-calculated from tasks - preserve current values
+      client2_id: formData?.client2_id !== undefined ? formData.client2_id : null,
+      client2_type: formData?.client2_type !== undefined ? formData.client2_type : null,
+      client2_table: formData?.client2_table !== undefined ? formData.client2_table : null,
+      client2_data: formData?.client2_data !== undefined ? formData.client2_data : null,
       date_start: project.value.startDate || null,
       date_end: project.value.endDate || null,
     }
@@ -479,11 +509,21 @@ async function saveSettings() {
       console.log('🔄 Reloaded project from API:', updatedProject)
       
       // Map API response to local project format
+      const parseClientData = (v: unknown): Record<string, unknown> | null => {
+        if (v === undefined || v === null) return null
+        if (typeof v === 'string') {
+          try {
+            return JSON.parse(v) as Record<string, unknown>
+          } catch {
+            return null
+          }
+        }
+        return (v as Record<string, unknown>) || null
+      }
       project.value = {
         id: updatedProject.id,
         name: updatedProject.prj_name,
         address: updatedProject.address,
-        priority: updatedProject.priority,
         startDate: updatedProject.date_start,
         endDate: updatedProject.date_end,
         status: updatedProject.status,
@@ -492,17 +532,13 @@ async function saveSettings() {
         client_id: updatedProject.client_id !== undefined ? updatedProject.client_id : null,
         client_type: updatedProject.client_type !== undefined ? updatedProject.client_type : null,
         client_table: updatedProject.client_table !== undefined ? updatedProject.client_table : null,
-        client_data: updatedProject.client_data !== undefined
-          ? (typeof updatedProject.client_data === 'string' 
-              ? (() => {
-                  try {
-                    return JSON.parse(updatedProject.client_data)
-                  } catch {
-                    return updatedProject.client_data
-                  }
-                })()
-              : updatedProject.client_data)
-          : null,
+        client_name: (updatedProject as { client_name?: string | null }).client_name ?? null,
+        client_data: parseClientData(updatedProject.client_data),
+        client2_id: (updatedProject as { client2_id?: number | null }).client2_id ?? null,
+        client2_type: (updatedProject as { client2_type?: string | null }).client2_type ?? null,
+        client2_table: (updatedProject as { client2_table?: string | null }).client2_table ?? null,
+        client2_name: (updatedProject as { client2_name?: string | null }).client2_name ?? null,
+        client2_data: parseClientData((updatedProject as { client2_data?: unknown }).client2_data),
         projectManager: updatedProject.prj_manager || undefined,
         description: updatedProject.description || '',
         createdAt: updatedProject.created_at,
@@ -528,7 +564,6 @@ async function saveSettings() {
         project.value.name = updateData.prj_name
         project.value.address = updateData.address
         project.value.description = updateData.description
-        project.value.priority = updateData.priority
         project.value.status = updateData.status
         project.value.purchase_or_lease = updateData.purchase_or_lease
         project.value.notes = updateData.notes
@@ -537,6 +572,10 @@ async function saveSettings() {
         project.value.client_type = updateData.client_type !== undefined ? updateData.client_type : null
         project.value.client_table = updateData.client_table !== undefined ? updateData.client_table : null
         project.value.client_data = updateData.client_data !== undefined ? updateData.client_data : null
+        project.value.client2_id = updateData.client2_id !== undefined ? updateData.client2_id : null
+        project.value.client2_type = updateData.client2_type !== undefined ? updateData.client2_type : null
+        project.value.client2_table = updateData.client2_table !== undefined ? updateData.client2_table : null
+        project.value.client2_data = updateData.client2_data !== undefined ? updateData.client2_data : null
         project.value.startDate = updateData.date_start ?? ''
         project.value.endDate = updateData.date_end ?? ''
       }
@@ -555,7 +594,6 @@ async function saveSettings() {
       projects.value[projectIndex].name = updateData.prj_name
       projects.value[projectIndex].address = updateData.address
       projects.value[projectIndex].description = updateData.description || ''
-      projects.value[projectIndex].priority = updateData.priority
       projects.value[projectIndex].status = updateData.status
       projects.value[projectIndex].purchase_or_lease = updateData.purchase_or_lease
       projects.value[projectIndex].notes = updateData.notes
@@ -564,15 +602,13 @@ async function saveSettings() {
       projects.value[projectIndex].client_type = updateData.client_type !== undefined ? updateData.client_type : null
       projects.value[projectIndex].client_table = updateData.client_table !== undefined ? updateData.client_table : null
       projects.value[projectIndex].client_data = updateData.client_data !== undefined ? updateData.client_data : null
+      projects.value[projectIndex].client2_id = updateData.client2_id !== undefined ? updateData.client2_id : null
+      projects.value[projectIndex].client2_type = updateData.client2_type !== undefined ? updateData.client2_type : null
+      projects.value[projectIndex].client2_table = updateData.client2_table !== undefined ? updateData.client2_table : null
+      projects.value[projectIndex].client2_data = updateData.client2_data !== undefined ? updateData.client2_data : null
       projects.value[projectIndex].startDate = updateData.date_start ?? ''
       projects.value[projectIndex].endDate = updateData.date_end ?? ''
       console.log('🔄 Updated project in dropdown list:', projects.value[projectIndex])
-      console.log('🔍 Client fields in dropdown list:', {
-        client_id: projects.value[projectIndex].client_id,
-        client_type: projects.value[projectIndex].client_type,
-        client_table: projects.value[projectIndex].client_table,
-        client_data: projects.value[projectIndex].client_data,
-      })
     }
 
     alert('Project settings saved successfully!')
@@ -2025,37 +2061,27 @@ function handleDuplicateFromHeader() {
 }
 
 // Helper functions
-function getPriorityColor(priority?: string) {
-  if (!priority) return 'bg-gray-100 text-gray-800'
-
-  switch (priority.toLowerCase()) {
-    case 'urgent':
-      return 'bg-red-100 text-red-800'
-    case 'high':
-      return 'bg-orange-100 text-orange-800'
-    case 'medium':
-      return 'bg-yellow-100 text-yellow-800'
-    case 'low':
-      return 'bg-green-100 text-green-800'
-    default:
-      return 'bg-gray-100 text-gray-800'
-  }
-}
-
 function getStatusColor(status?: string) {
   if (!status) return 'bg-gray-100 text-gray-800'
 
-  switch (status.toLowerCase()) {
-    case 'active':
-      return 'bg-green-100 text-green-800'
-    case 'planning':
-      return 'bg-blue-100 text-blue-800'
-    case 'draft':
-      return 'bg-gray-100 text-gray-800'
-    case 'completed':
-      return 'bg-purple-100 text-purple-800'
-    case 'cancelled':
+  const s = status.toLowerCase()
+  switch (s) {
+    case 'initial contact lead':
+      return 'bg-slate-100 text-slate-800'
+    case 'dead lead':
       return 'bg-red-100 text-red-800'
+    case 'waiting on direction':
+      return 'bg-amber-100 text-amber-800'
+    case 'actively looking for a location':
+      return 'bg-blue-100 text-blue-800'
+    case 'securing location':
+      return 'bg-cyan-100 text-cyan-800'
+    case 'project secured':
+      return 'bg-emerald-100 text-emerald-800'
+    case 'construction':
+      return 'bg-green-100 text-green-800'
+    case 'completed project':
+      return 'bg-purple-100 text-purple-800'
     default:
       return 'bg-gray-100 text-gray-800'
   }
@@ -2132,12 +2158,6 @@ watch(
               {{ project.address }}
             </p>
             <div class="flex items-center space-x-2 mt-2">
-              <span
-                :class="getPriorityColor(project.priority)"
-                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-              >
-                {{ project.priority }}
-              </span>
               <span
                 :class="getStatusColor(project.status)"
                 class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"

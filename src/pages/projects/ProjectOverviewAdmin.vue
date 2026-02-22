@@ -13,7 +13,6 @@
           <div><span class="text-gray-500">Name:</span> {{ project?.prj_name }}</div>
           <div><span class="text-gray-500">Address:</span> {{ project?.address }}</div>
           <div><span class="text-gray-500">Project Status:</span> {{ getStatusDisplay(project?.status || '') }}</div>
-          <div><span class="text-gray-500">Priority:</span> {{ project?.priority }}</div>
           <div><span class="text-gray-500">Purchase or Lease:</span> {{ project?.purchase_or_lease || 'Purchase' }}</div>
           <div v-if="project?.notes" class="break-words"><span class="text-gray-500">Notes:</span> {{ project.notes }}</div>
           <div v-if="project?.client_name || project?.client_type" class="break-words">
@@ -192,7 +191,6 @@ onMounted(async () => {
       id,
       prj_name: 'Sample Project',
       address: '123 Demo Street',
-      priority: 'Medium',
       date_start: new Date().toISOString().slice(0, 10),
       date_end: new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString().slice(0, 10),
       status: 'active',

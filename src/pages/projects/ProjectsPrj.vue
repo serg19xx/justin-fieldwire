@@ -35,29 +35,14 @@
                 class="px-2 py-1 pr-6 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-700 appearance-none cursor-pointer"
               >
                 <option value="" class="text-gray-500">All Statuses</option>
-                <option value="active" class="text-gray-700">Active</option>
-                <option value="completed" class="text-gray-700">Completed</option>
-                <option value="pending" class="text-gray-700">Pending</option>
-                <option value="planning" class="text-gray-700">Planning</option>
-              </select>
-              <!-- Dropdown Arrow -->
-              <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-              </div>
-            </div>
-
-            <!-- Priority Filter -->
-            <div class="relative">
-              <select
-                v-model="priorityFilter"
-                class="px-2 py-1 pr-6 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-700 appearance-none cursor-pointer"
-              >
-                <option value="" class="text-gray-500">All Priorities</option>
-                <option value="low" class="text-gray-700">Low</option>
-                <option value="medium" class="text-gray-700">Medium</option>
-                <option value="high" class="text-gray-700">High</option>
+                <option value="Initial Contact Lead" class="text-gray-700">Initial Contact Lead</option>
+                <option value="Dead Lead" class="text-gray-700">Dead Lead</option>
+                <option value="Waiting On Direction" class="text-gray-700">Waiting On Direction</option>
+                <option value="Actively Looking For A Location" class="text-gray-700">Actively Looking For A Location</option>
+                <option value="Securing Location" class="text-gray-700">Securing Location</option>
+                <option value="Project Secured" class="text-gray-700">Project Secured</option>
+                <option value="Construction" class="text-gray-700">Construction</option>
+                <option value="Completed Project" class="text-gray-700">Completed Project</option>
               </select>
               <!-- Dropdown Arrow -->
               <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
@@ -82,10 +67,6 @@
                 <option value="status-desc" class="text-gray-700">↓ Status (Z-A)</option>
                 <option value="progress-asc" class="text-gray-700">↑ Progress (0-100%)</option>
                 <option value="progress-desc" class="text-gray-700">↓ Progress (100-0%)</option>
-                <option value="priority-asc" class="text-gray-700">↑ Priority (Low-High)</option>
-                <option value="priority-desc" class="text-gray-700">↓ Priority (High-Low)</option>
-                <option value="manager-asc" class="text-gray-700">↑ Manager (A-Z)</option>
-                <option value="manager-desc" class="text-gray-700">↓ Manager (Z-A)</option>
               </select>
               <!-- Dropdown Arrow -->
               <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
@@ -197,9 +178,14 @@
                   Project
                 </th>
                 <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64"
+                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48"
                 >
                   Client
+                </th>
+                <th
+                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40"
+                >
+                  Secondary Client
                 </th>
                 <th
                   class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64"
@@ -217,19 +203,9 @@
                   Progress
                 </th>
                 <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32"
-                >
-                  Priority
-                </th>
-                <th
                   class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48"
                 >
-                  Manager
-                </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48"
-                >
-                  Created By
+                  Address
                 </th>
                 <th
                   class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32"
@@ -245,40 +221,85 @@
                   <div>
                     <div class="text-sm font-medium text-gray-900">{{ project.prj_name }}</div>
                     <div class="text-sm text-gray-500">
-                      {{ formatDate(project.date_start) }} - {{ formatDate(project.date_end) }}
+                      {{ project.date_start ? formatDate(project.date_start) : '—' }} - {{ project.date_end ? formatDate(project.date_end) : '—' }}
                     </div>
                   </div>
                 </td>
-                <!-- CLIENT Column -->
-                <td class="px-4 py-4 text-sm text-gray-900 w-64">
-                  <template v-if="(project as any).client_name">
-                    <div class="max-w-xs truncate font-medium">
-                      {{ (project as any).client_name }}
-                    </div>
-                  </template>
-                  <template v-else-if="(project as ApiProject).client_data && typeof (project as ApiProject).client_data === 'object' && (project as ApiProject).client_data !== null && ((project as ApiProject).client_data as Record<string, unknown>).name">
-                    <div class="max-w-xs truncate font-medium">
-                      {{ ((project as ApiProject).client_data as Record<string, unknown>).name }}
-                    </div>
+                <!-- CLIENT Column (clickable for contact details) -->
+                <td class="px-4 py-4 text-sm w-48">
+                  <template v-if="(project as any).client_name || ((project as ApiProject).client_data as Record<string, unknown>)?.name">
+                    <button
+                      type="button"
+                      @click="openClientContact(project)"
+                      class="text-left max-w-xs truncate font-medium text-blue-600 hover:text-blue-800 hover:underline focus:outline-none"
+                    >
+                      {{ (project as any).client_name || ((project as ApiProject).client_data as Record<string, unknown>)?.name as string }}
+                    </button>
                   </template>
                   <template v-else-if="(project as ApiProject).client_type">
-                    <div class="max-w-xs truncate font-medium">
+                    <button
+                      v-if="(project as ApiProject).client_id"
+                      type="button"
+                      @click="openClientContact(project)"
+                      class="text-left max-w-xs truncate font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                    >
                       {{ (project as ApiProject).client_type }}
-                    </div>
+                    </button>
+                    <span v-else class="text-gray-500">{{ (project as ApiProject).client_type }}</span>
                   </template>
                   <template v-else-if="(project as ApiProject).client_id">
-                    <div class="max-w-xs truncate text-xs text-gray-500">
+                    <button
+                      type="button"
+                      @click="openClientContact(project)"
+                      class="text-left text-xs text-blue-600 hover:underline"
+                    >
                       ID: {{ (project as ApiProject).client_id }}
-                    </div>
+                    </button>
                   </template>
                   <template v-else>
-                    <div class="text-gray-400">-</div>
+                    <span class="text-gray-400">-</span>
+                  </template>
+                </td>
+                <!-- SECONDARY CLIENT Column -->
+                <td class="px-4 py-4 text-sm w-40">
+                  <template v-if="(project as any).client2_name || ((project as any).client2_data as Record<string, unknown>)?.name">
+                    <button
+                      type="button"
+                      @click="openClient2Contact(project)"
+                      class="text-left max-w-xs truncate font-medium text-blue-600 hover:text-blue-800 hover:underline focus:outline-none"
+                    >
+                      {{ (project as any).client2_name || ((project as any).client2_data as Record<string, unknown>)?.name as string || '—' }}
+                    </button>
+                  </template>
+                  <template v-else-if="(project as any).client2_id">
+                    <button
+                      type="button"
+                      @click="openClient2Contact(project)"
+                      class="text-left text-xs text-blue-600 hover:underline"
+                    >
+                      ID: {{ (project as any).client2_id }}
+                    </button>
+                  </template>
+                  <template v-else>
+                    <span class="text-gray-400">—</span>
                   </template>
                 </td>
                 <!-- DESCRIPTION Column -->
                 <td class="px-4 py-4 text-sm text-gray-900 w-64">
-                  <div class="max-w-xs truncate" :title="(project as ApiProject).description || ''">
-                    {{ (project as ApiProject).description || '-' }}
+                  <div class="flex items-center gap-1">
+                    <span class="max-w-xs truncate flex-1" :title="(project as ApiProject).description || ''">
+                      {{ (project as ApiProject).description || '-' }}
+                    </span>
+                    <button
+                      type="button"
+                      @click="openNotesPopup(project)"
+                      class="flex-shrink-0 p-1 text-gray-500 hover:text-blue-600 rounded"
+                      title="Notes"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
                   </div>
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap w-32">
@@ -300,17 +321,9 @@
                     <span class="text-sm text-gray-900">0%</span>
                   </div>
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 w-32">
-                  {{ project.priority }}
-                </td>
-                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 w-48">
-                  {{ (project as any).manager_name || 'Unassigned' }}
-                </td>
-                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900 w-48">
-                  <div>
-                    <div class="font-medium">{{ (project as any).created_by_name || 'Unknown' }}</div>
-                    <div class="text-xs text-gray-500">ID: {{ project.created_by || 'N/A' }}</div>
-                  </div>
+                <!-- ADDRESS Column -->
+                <td class="px-4 py-4 text-sm text-gray-900 w-48 max-w-xs truncate" :title="project.address || ''">
+                  {{ project.address || '—' }}
                 </td>
                 <td class="px-4 py-4 whitespace-nowrap text-sm font-medium w-32">
                   <div class="flex space-x-2">
@@ -449,6 +462,81 @@
         @close="showCreateDialog = false"
         @created="handleProjectCreated"
       />
+
+      <!-- Client Contact Details Modal -->
+      <div
+        v-if="clientContactModal.isOpen"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        @click.self="clientContactModal.isOpen = false"
+      >
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Client Contact Details</h3>
+            <button
+              type="button"
+              @click="clientContactModal.isOpen = false"
+              class="text-gray-400 hover:text-gray-600"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div v-if="!clientContactModal.clientData && !clientContactModal.clientName" class="text-gray-500">No client data.</div>
+          <div v-else class="space-y-3 text-sm">
+            <p v-if="clientContactModal.clientName"><span class="font-medium text-gray-700">Name:</span> {{ clientContactModal.clientName }}</p>
+            <template v-if="clientContactModal.clientData && typeof clientContactModal.clientData === 'object'">
+              <p v-for="(val, key) in clientContactModal.clientData" :key="String(key)" v-show="val != null && val !== '' && key !== 'name'">
+                <span class="font-medium text-gray-700">{{ formatClientDataKey(key) }}:</span> {{ formatClientDataValue(val) }}
+              </p>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <!-- Notes Popup (editable) -->
+      <div
+        v-if="notesModal.isOpen"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        @click.self="notesModal.isOpen = false"
+      >
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Project Notes</h3>
+            <button
+              type="button"
+              @click="notesModal.isOpen = false"
+              class="text-gray-400 hover:text-gray-600"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <textarea
+            v-model="notesModal.text"
+            rows="6"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            placeholder="Add notes..."
+          />
+          <div class="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              @click="notesModal.isOpen = false"
+              class="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              @click="saveNotes"
+              class="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 </template>
 
@@ -476,9 +564,19 @@ const projects = ref<ApiProject[]>([])
 const loading = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref('')
-const priorityFilter = ref('')
 const sortBy = ref('')
 const showCreateDialog = ref(false)
+
+const clientContactModal = ref({
+  isOpen: false,
+  clientData: null as Record<string, unknown> | null,
+  clientName: '',
+})
+const notesModal = ref({
+  isOpen: false,
+  projectId: null as number | null,
+  text: '',
+})
 // Removed managers ref - now using prj_manager_name from API
 
 // Pagination
@@ -507,11 +605,6 @@ const filteredProjects = computed(() => {
   // Filter by status
   if (statusFilter.value) {
     filtered = filtered.filter((project) => project.status === statusFilter.value)
-  }
-
-  // Filter by priority
-  if (priorityFilter.value) {
-    filtered = filtered.filter((project) => (project.priority || '').toLowerCase() === priorityFilter.value)
   }
 
   // Apply sorting (placeholder - logic to be implemented later)
@@ -549,33 +642,32 @@ const displayedProjects = computed(() => {
 
 // Methods
 function getStatusClass(status: string) {
-  switch (status) {
-    case 'active':
+  if (!status) return 'bg-gray-100 text-gray-800'
+  const s = status.toLowerCase()
+  switch (s) {
+    case 'initial contact lead':
+      return 'bg-slate-100 text-slate-800'
+    case 'dead lead':
+      return 'bg-red-100 text-red-800'
+    case 'waiting on direction':
+      return 'bg-amber-100 text-amber-800'
+    case 'actively looking for a location':
+      return 'bg-blue-100 text-blue-800'
+    case 'securing location':
+      return 'bg-cyan-100 text-cyan-800'
+    case 'project secured':
+      return 'bg-emerald-100 text-emerald-800'
+    case 'construction':
       return 'bg-green-100 text-green-800'
-    case 'completed':
-      return 'bg-blue-100 text-blue-800'
-    case 'pending':
-      return 'bg-yellow-100 text-yellow-800'
-    case 'planning':
-      return 'bg-blue-100 text-blue-800'
+    case 'completed project':
+      return 'bg-purple-100 text-purple-800'
     default:
       return 'bg-gray-100 text-gray-800'
   }
 }
 
 function getStatusDisplay(status: string) {
-  switch (status) {
-    case 'active':
-      return 'Active'
-    case 'completed':
-      return 'Completed'
-    case 'pending':
-      return 'Pending'
-    case 'planning':
-      return 'Planning'
-    default:
-      return status
-  }
+  return status || '—'
 }
 
 function formatDate(dateString: string) {
@@ -596,8 +688,6 @@ function parseSort(sortValue: string): { sort_by?: string; sort_order?: 'asc' | 
     client: 'address',
     status: 'status',
     progress: 'progress',
-    priority: 'priority',
-    manager: 'manager_name',
   }
   const sort_by = sortByMap[field] || field
   const sort_order = order === 'desc' ? 'desc' : 'asc'
@@ -617,7 +707,6 @@ async function loadProjects() {
       // Administrators: server-side pagination, filtering, sorting
       if (searchQuery.value) filters.search = searchQuery.value
       if (statusFilter.value) filters.status = statusFilter.value
-      if (priorityFilter.value) filters.priority = priorityFilter.value
       const sortParams = parseSort(sortBy.value)
       Object.assign(filters, sortParams)
     }
@@ -659,13 +748,32 @@ async function loadProjects() {
         }
       }
       
-      // Create mapped project with explicit client_name
+      // Parse client2_data if string
+      let parsedClient2Data: Record<string, unknown> | null = null
+      const rawClient2 = apiProjectAny.client2_data
+      if (typeof rawClient2 === 'string' && (rawClient2 as string).trim()) {
+        try {
+          parsedClient2Data = JSON.parse(rawClient2 as string) as Record<string, unknown>
+        } catch {
+          parsedClient2Data = null
+        }
+      } else if (rawClient2 && typeof rawClient2 === 'object') {
+        parsedClient2Data = rawClient2 as Record<string, unknown>
+      }
+      const client2Name =
+        (apiProjectAny.client2_name && typeof apiProjectAny.client2_name === 'string'
+          ? apiProjectAny.client2_name
+          : null) ||
+        (parsedClient2Data?.name && typeof parsedClient2Data.name === 'string' ? parsedClient2Data.name : null)
+
       const mappedProject = {
         ...apiProject,
         client_data: parsedClientData,
-        client_name: clientName, // Explicitly set client_name
-      } as ApiProject & { client_name?: string | null }
-      
+        client_name: clientName,
+        client2_data: parsedClient2Data,
+        client2_name: client2Name,
+      } as ApiProject & { client_name?: string | null; client2_data?: Record<string, unknown> | null; client2_name?: string | null }
+
       return mappedProject
     })
 
@@ -739,6 +847,80 @@ function canEditProject(project: ApiProject): boolean {
   return false
 }
 
+function formatClientDataKey(key: string): string {
+  const labels: Record<string, string> = {
+    name: 'Name',
+    email: 'Email',
+    phone: 'Phone',
+    company: 'Company',
+    address: 'Address',
+    first_name: 'First Name',
+    last_name: 'Last Name',
+  }
+  return labels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function formatClientDataValue(val: unknown): string {
+  if (val == null) return '—'
+  if (typeof val === 'object') return JSON.stringify(val)
+  return String(val)
+}
+
+function openClientContact(project: ApiProject) {
+  let data: Record<string, unknown> | null = null
+  if (project.client_data && typeof project.client_data === 'object' && project.client_data !== null) {
+    data = project.client_data as Record<string, unknown>
+  } else if (typeof project.client_data === 'string' && (project.client_data as string).trim()) {
+    try {
+      data = JSON.parse(project.client_data as string) as Record<string, unknown>
+    } catch {
+      data = null
+    }
+  }
+  const name = (data?.name as string) || (project as ApiProject & { client_name?: string })?.client_name || ''
+  clientContactModal.value.clientData = data
+  clientContactModal.value.clientName = typeof name === 'string' ? name : ''
+  clientContactModal.value.isOpen = true
+}
+
+function openClient2Contact(project: ApiProject & { client2_data?: Record<string, unknown> | null; client2_name?: string | null }) {
+  let data: Record<string, unknown> | null = null
+  if (project.client2_data && typeof project.client2_data === 'object' && project.client2_data !== null) {
+    data = project.client2_data
+  } else if (typeof (project as unknown as Record<string, unknown>).client2_data === 'string') {
+    try {
+      data = JSON.parse((project as unknown as { client2_data: string }).client2_data) as Record<string, unknown>
+    } catch {
+      data = null
+    }
+  }
+  const name = (data?.name as string) || project.client2_name || ''
+  clientContactModal.value.clientData = data
+  clientContactModal.value.clientName = typeof name === 'string' ? name : ''
+  clientContactModal.value.isOpen = true
+}
+
+function openNotesPopup(project: ApiProject) {
+  notesModal.value.projectId = project.id
+  notesModal.value.text = project.notes || ''
+  notesModal.value.isOpen = true
+}
+
+async function saveNotes() {
+  const id = notesModal.value.projectId
+  if (id == null) return
+  try {
+    await projectApi.update(id, { notes: notesModal.value.text || null })
+    const idx = projects.value.findIndex((p) => p.id === id)
+    if (idx !== -1) {
+      (projects.value[idx] as ApiProject & { notes?: string | null }).notes = notesModal.value.text || null
+    }
+    notesModal.value.isOpen = false
+  } catch (err) {
+    console.error('Failed to save notes:', err)
+  }
+}
+
 // Pagination functions
 function goToPage(page: number) {
   if (page >= 1 && page <= totalPages.value) {
@@ -772,7 +954,7 @@ watch([currentPage, itemsPerPage], () => {
 
 // Debounce search
 let searchTimeout: number | undefined
-watch([searchQuery, statusFilter, priorityFilter, sortBy], () => {
+watch([searchQuery, statusFilter, sortBy], () => {
   if (useServerPaging.value) {
     window.clearTimeout(searchTimeout)
     searchTimeout = window.setTimeout(() => {

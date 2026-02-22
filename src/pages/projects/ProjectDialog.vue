@@ -62,32 +62,22 @@
 
           <!-- Project dates are auto-calculated from tasks -->
 
-          <!-- Priority and Status -->
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2"> Priority </label>
-              <select
-                v-model="form.priority"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-                <option value="Critical">Critical</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2"> Project Status </label>
+          <!-- Project Status -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Project Status </label>
               <select
                 v-model="form.status"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="Active">Active</option>
-                <option value="Pending">Pending</option>
-                <option value="Planning">Planning</option>
-                <option value="Completed">Completed</option>
+                <option value="Initial Contact Lead">Initial Contact Lead</option>
+                <option value="Dead Lead">Dead Lead</option>
+                <option value="Waiting On Direction">Waiting On Direction</option>
+                <option value="Actively Looking For A Location">Actively Looking For A Location</option>
+                <option value="Securing Location">Securing Location</option>
+                <option value="Project Secured">Project Secured</option>
+                <option value="Construction">Construction</option>
+                <option value="Completed Project">Completed Project</option>
               </select>
-            </div>
           </div>
 
           <!-- Purchase or Lease -->
@@ -197,6 +187,36 @@
             </p>
           </div>
 
+          <!-- Secondary Client -->
+          <div class="mb-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Secondary Client <span class="text-gray-400 font-normal">(optional)</span> </label>
+            <div class="flex items-center space-x-2">
+              <input
+                :value="client2DisplayName"
+                type="text"
+                readonly
+                class="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Click to select secondary client (optional)"
+                @click="showClient2Selector = true"
+              />
+              <button
+                type="button"
+                @click="showClient2Selector = true"
+                class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
+              >
+                Select
+              </button>
+              <button
+                v-if="form.client2_id"
+                type="button"
+                @click="clearClient2"
+                class="px-4 py-2 border border-red-300 rounded-md text-red-700 hover:bg-red-50 transition-colors text-sm font-medium"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+
           <!-- Actions -->
           <div class="flex items-center justify-end space-x-3">
             <button
@@ -226,6 +246,15 @@
       @close="showClientSelector = false"
       @select="handleClientSelect"
       @clear="handleClientClear"
+    />
+    <!-- Secondary Client Selector Dialog -->
+    <ClientSelectorDialog
+      :is-open="showClient2Selector"
+      :selected-client-id="form.client2_id"
+      :selected-client-table="form.client2_table"
+      @close="showClient2Selector = false"
+      @select="handleClient2Select"
+      @clear="handleClient2Clear"
     />
   </div>
 </template>
@@ -260,14 +289,17 @@ const authStore = useAuthStore()
 const form = ref({
   prj_name: '',
   address: '',
-  priority: 'Medium',
-  status: 'Active',
+  status: 'Initial Contact Lead',
   purchase_or_lease: 'Purchase',
   notes: '',
   client_id: null as number | null,
   client_type: null as string | null,
   client_table: null as ClientTableType | null,
   client_data: null as Record<string, unknown> | null,
+  client2_id: null as number | null,
+  client2_type: null as string | null,
+  client2_table: null as ClientTableType | null,
+  client2_data: null as Record<string, unknown> | null,
   prj_manager: '',
   description: '',
 })
@@ -275,6 +307,8 @@ const form = ref({
 // Client selector state
 const showClientSelector = ref(false)
 const selectedClient = ref<Client | null>(null)
+const showClient2Selector = ref(false)
+const selectedClient2 = ref<Client | null>(null)
 
 // State
 const isSubmitting = ref(false)
@@ -297,6 +331,21 @@ const clientDisplayName = computed(() => {
     return `${clientName} (${form.value.client_type})`
   }
   
+  return ''
+})
+
+// Secondary client display name
+const client2DisplayName = computed(() => {
+  if (selectedClient2.value) {
+    const clientType = clientsApi.getClientTypeLabel(form.value.client2_table || null)
+    return `${selectedClient2.value.name} (${clientType})`
+  }
+  if (form.value.client2_id && form.value.client2_type) {
+    const clientName = form.value.client2_data && typeof form.value.client2_data === 'object' && form.value.client2_data.name
+      ? form.value.client2_data.name
+      : `Client ID: ${form.value.client2_id}`
+    return `${clientName} (${form.value.client2_type})`
+  }
   return ''
 })
 
@@ -395,18 +444,22 @@ watch(
       form.value = {
         prj_name: '',
         address: '',
-        priority: 'Medium',
-        status: 'Active',
+        status: 'Initial Contact Lead',
         purchase_or_lease: 'Purchase',
         notes: '',
         client_id: null,
         client_type: null,
         client_table: null,
         client_data: null,
-        prj_manager: shouldAutoAssign ? String(authStore.currentUser?.id || '') : '', // Auto-assign for project managers or non-admins
+        client2_id: null,
+        client2_type: null,
+        client2_table: null,
+        client2_data: null,
+        prj_manager: shouldAutoAssign ? String(authStore.currentUser?.id || '') : '',
         description: '',
       }
       selectedClient.value = null
+      selectedClient2.value = null
 
       console.log('🔍 Form initialized with prj_manager:', form.value.prj_manager)
 
@@ -533,6 +586,34 @@ function handleClientClear() {
   clearClient()
 }
 
+function handleClient2Select(client: Client, clientTable: ClientTableType, clientType: string) {
+  if (!client?.id) return
+  form.value.client2_id = client.id
+  form.value.client2_table = clientTable
+  form.value.client2_type = clientType
+  form.value.client2_data =
+    client.data && typeof client.data === 'object'
+      ? client.data
+      : (() => {
+          const { id, name, data, ...rest } = client
+          return Object.keys(rest).length > 0 ? rest : {}
+        })()
+  selectedClient2.value = client
+  showClient2Selector.value = false
+}
+
+function clearClient2() {
+  form.value.client2_id = null
+  form.value.client2_type = null
+  form.value.client2_table = null
+  form.value.client2_data = null
+  selectedClient2.value = null
+}
+
+function handleClient2Clear() {
+  clearClient2()
+}
+
 async function handleSubmit() {
   if (isSubmitting.value) return
 
@@ -557,7 +638,7 @@ async function handleSubmit() {
       address: form.value.address,
       date_start: null,
       date_end: null,
-      priority: form.value.priority,
+      priority: 'Medium',
       status: form.value.status,
       purchase_or_lease: form.value.purchase_or_lease,
       notes: form.value.notes || null,
@@ -565,8 +646,12 @@ async function handleSubmit() {
       client_type: form.value.client_type || null,
       client_table: form.value.client_table || null,
       client_data: form.value.client_data || null,
+      client2_id: form.value.client2_id || null,
+      client2_type: form.value.client2_type || null,
+      client2_table: form.value.client2_table || null,
+      client2_data: form.value.client2_data || null,
       prj_manager: form.value.prj_manager ? Number(form.value.prj_manager) : null,
-      created_by: authStore.currentUser?.id || null, // ID текущего активного пользователя
+      created_by: authStore.currentUser?.id || null,
       description: form.value.description || null,
     }
 
