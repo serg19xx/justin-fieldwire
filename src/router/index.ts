@@ -91,6 +91,20 @@ const router = createRouter({
       },
     },
     {
+      path: '/task-templates',
+      beforeEnter: (to, from, next) => {
+        const authStore = useAuthStore()
+        const roleCode = authStore.currentUser?.role_code
+        const allowed = roleCode === 'project_manager' || roleCode === 'admin'
+        if (!allowed) {
+          next('/dashboard')
+          return
+        }
+        next()
+      },
+      component: () => import('../pages/task-templates/TaskTemplatesManage.vue'),
+    },
+    {
       path: '/account',
       component: () => {
         const authStore = useAuthStore()

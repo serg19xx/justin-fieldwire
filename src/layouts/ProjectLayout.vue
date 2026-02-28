@@ -47,6 +47,15 @@
           >
             Reports
           </RouterLink>
+          <!-- Task Templates - visible only for Project Managers (and Admin later) -->
+          <RouterLink
+            v-if="authStore.currentUser?.role_code === 'project_manager'"
+            to="/task-templates"
+            class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
+            :class="{ 'bg-green-700 text-white': $route.path === '/task-templates' }"
+          >
+            Task Templates
+          </RouterLink>
           <!-- Admin Settings - Only visible for System Administrators -->
           <RouterLink
             v-if="authStore.currentUser?.job_title === 'System Administrator'"
@@ -136,6 +145,15 @@
             class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
           >
             Reports
+          </RouterLink>
+          <!-- Task Templates - visible only for Project Managers -->
+          <RouterLink
+            v-if="authStore.currentUser?.role_code === 'project_manager'"
+            to="/task-templates"
+            @click="closeMobileMenu"
+            class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
+          >
+            Task Templates
           </RouterLink>
           <!-- Admin Settings - Only visible for System Administrators -->
           <RouterLink
