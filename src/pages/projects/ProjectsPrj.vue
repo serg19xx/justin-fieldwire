@@ -168,48 +168,35 @@
 
       <!-- Projects Table -->
       <div v-if="!loading" class="bg-white shadow rounded-lg overflow-hidden" style="margin-bottom: 0; margin-top: 0;">
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
+        <div class="w-full overflow-hidden">
+          <table class="w-full table-fixed divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48"
-                >
+                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[11%] min-w-0">
                   Project
                 </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48"
-                >
+                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[11%] min-w-0">
                   Client
                 </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40"
-                >
-                  Secondary Client
+                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[9%] min-w-0">
+                  Sec. Client
                 </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-64"
-                >
+                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[14%] min-w-0">
                   Description
                 </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32"
-                >
-                  Project Status
+                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[14%] min-w-0">
+                  Note
                 </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32"
-                >
+                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[10%] min-w-0">
+                  Status
+                </th>
+                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[8%] min-w-0">
                   Progress
                 </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-48"
-                >
+                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[11%] min-w-0">
                   Address
                 </th>
-                <th
-                  class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-32"
-                >
+                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[8%] min-w-0">
                   Actions
                 </th>
               </tr>
@@ -217,21 +204,21 @@
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="project in displayedProjects" :key="project.id" class="hover:bg-gray-50">
                 <!-- PROJECT Column -->
-                <td class="px-4 py-4 whitespace-nowrap w-48">
-                  <div>
-                    <div class="text-sm font-medium text-gray-900">{{ project.prj_name }}</div>
-                    <div class="text-sm text-gray-500">
+                <td class="px-2 py-4 text-sm min-w-0 overflow-hidden">
+                  <div class="truncate" :title="project.prj_name">
+                    <div class="font-medium text-gray-900 truncate">{{ project.prj_name }}</div>
+                    <div class="text-gray-500 text-xs truncate">
                       {{ project.date_start ? formatDate(project.date_start) : '—' }} - {{ project.date_end ? formatDate(project.date_end) : '—' }}
                     </div>
                   </div>
                 </td>
                 <!-- CLIENT Column (clickable for contact details) -->
-                <td class="px-4 py-4 text-sm w-48">
+                <td class="px-2 py-4 text-sm min-w-0 overflow-hidden">
                   <template v-if="(project as any).client_name || ((project as ApiProject).client_data as Record<string, unknown>)?.name">
                     <button
                       type="button"
                       @click="openClientContact(project)"
-                      class="text-left max-w-xs truncate font-medium text-blue-600 hover:text-blue-800 hover:underline focus:outline-none"
+                      class="text-left truncate block max-w-full font-medium text-blue-600 hover:text-blue-800 hover:underline focus:outline-none"
                     >
                       {{ (project as any).client_name || ((project as ApiProject).client_data as Record<string, unknown>)?.name as string }}
                     </button>
@@ -241,7 +228,7 @@
                       v-if="(project as ApiProject).client_id"
                       type="button"
                       @click="openClientContact(project)"
-                      class="text-left max-w-xs truncate font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                      class="text-left truncate block max-w-full font-medium text-blue-600 hover:text-blue-800 hover:underline"
                     >
                       {{ (project as ApiProject).client_type }}
                     </button>
@@ -261,12 +248,12 @@
                   </template>
                 </td>
                 <!-- SECONDARY CLIENT Column -->
-                <td class="px-4 py-4 text-sm w-40">
+                <td class="px-2 py-4 text-sm min-w-0 overflow-hidden">
                   <template v-if="(project as any).client2_name || ((project as any).client2_data as Record<string, unknown>)?.name">
                     <button
                       type="button"
                       @click="openClient2Contact(project)"
-                      class="text-left max-w-xs truncate font-medium text-blue-600 hover:text-blue-800 hover:underline focus:outline-none"
+                      class="text-left truncate block max-w-full font-medium text-blue-600 hover:text-blue-800 hover:underline focus:outline-none"
                     >
                       {{ (project as any).client2_name || ((project as any).client2_data as Record<string, unknown>)?.name as string || '—' }}
                     </button>
@@ -285,34 +272,55 @@
                   </template>
                 </td>
                 <!-- DESCRIPTION Column -->
-                <td class="px-4 py-4 text-sm text-gray-900 w-64">
-                  <div class="flex items-center gap-1">
-                    <span class="max-w-xs truncate flex-1" :title="(project as ApiProject).description || ''">
-                      {{ (project as ApiProject).description || '-' }}
+                <td class="px-2 py-4 text-sm text-gray-900 min-w-0 overflow-hidden">
+                  <div class="flex items-center gap-1 min-w-0">
+                    <span class="truncate min-w-0 flex-1" :title="(project as ApiProject).description || ''">
+                      {{ (project as ApiProject).description || '—' }}
                     </span>
                     <button
                       type="button"
-                      @click="openNotesPopup(project)"
-                      class="flex-shrink-0 p-1 text-gray-500 hover:text-blue-600 rounded"
-                      title="Notes"
+                      @click="openDescriptionDetail(project)"
+                      class="flex-shrink-0 p-1 text-green-600 hover:text-green-700 rounded hover:bg-green-50"
+                      title="View Description"
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                       </svg>
                     </button>
                   </div>
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap w-32">
+                <!-- NOTE Column (from notes table), same presentation as Description -->
+                <td class="px-2 py-4 text-sm text-gray-900 min-w-0 overflow-hidden">
+                  <div class="flex items-center gap-1 min-w-0">
+                    <span class="truncate min-w-0 flex-1" :title="getProjectNote(project) || ''">
+                      {{ getProjectNote(project) || '—' }}
+                    </span>
+                    <button
+                      type="button"
+                      @click="openNoteDetail(project)"
+                      class="flex-shrink-0 p-1 text-green-600 hover:text-green-700 rounded hover:bg-green-50"
+                      title="View Note"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+                <td class="px-2 py-4 whitespace-nowrap text-xs min-w-0 overflow-hidden">
                   <span
                     :class="getStatusClass(project.status)"
-                    class="px-2 py-1 text-xs font-medium rounded-full"
+                    class="px-2 py-1 font-medium rounded-full inline-block truncate max-w-full"
+                    :title="getStatusDisplay(project.status)"
                   >
                     {{ getStatusDisplay(project.status) }}
                   </span>
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap w-32">
-                  <div class="flex items-center">
-                    <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                <td class="px-2 py-4 whitespace-nowrap min-w-0 overflow-hidden">
+                  <div class="flex items-center min-w-0">
+                    <div class="w-10 flex-shrink-0 bg-gray-200 rounded-full h-2 mr-1.5">
                       <div
                         class="bg-blue-500 h-2 rounded-full transition-all duration-300"
                         style="width: 0%"
@@ -322,32 +330,45 @@
                   </div>
                 </td>
                 <!-- ADDRESS Column -->
-                <td class="px-4 py-4 text-sm text-gray-900 w-48 max-w-xs truncate" :title="project.address || ''">
+                <td class="px-2 py-4 text-sm text-gray-900 min-w-0 overflow-hidden truncate" :title="project.address || ''">
                   {{ project.address || '—' }}
                 </td>
-                <td class="px-4 py-4 whitespace-nowrap text-sm font-medium w-32">
-                  <div class="flex space-x-2">
-                    <button
-                      @click="viewProject(project.id)"
-                      class="text-blue-600 hover:text-blue-900"
-                    >
-                      Details
-                    </button>
-                    <!-- Only show edit button if user has edit permissions -->
+                <td class="px-2 py-4 whitespace-nowrap text-sm font-medium min-w-0 overflow-hidden">
+                  <div class="flex items-center gap-0.5">
                     <button
                       v-if="canEditProject(project)"
+                      type="button"
                       @click="editProject(project.id)"
-                      class="text-gray-600 hover:text-gray-900"
+                      class="p-1.5 text-blue-600 hover:text-blue-700 rounded hover:bg-blue-50"
+                      title="Edit"
                     >
-                      Edit
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
                     </button>
-                    <!-- Show read-only indicator for administrators viewing other projects -->
-                    <span
-                      v-else-if="authStore.currentUser?.role_code === 'admin'"
-                      class="text-gray-400 text-xs"
+                    <button
+                      v-if="canEditProject(project)"
+                      type="button"
+                      @click="confirmDeleteProject(project)"
+                      class="p-1.5 text-red-600 hover:text-red-700 rounded hover:bg-red-50"
+                      title="Delete"
                     >
-                      Read-only
-                    </span>
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                    <button
+                      v-else
+                      type="button"
+                      @click="viewProject(project.id)"
+                      class="p-1.5 text-green-600 hover:text-green-700 rounded hover:bg-green-50"
+                      title="Details"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -494,18 +515,18 @@
         </div>
       </div>
 
-      <!-- Notes Popup (editable) -->
+      <!-- Description detail modal (read-only) -->
       <div
-        v-if="notesModal.isOpen"
+        v-if="descriptionDetailModal.isOpen"
         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-        @click.self="notesModal.isOpen = false"
+        @click.self="descriptionDetailModal.isOpen = false"
       >
         <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col p-6">
           <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold text-gray-900">Project Notes</h3>
+            <h3 class="text-lg font-semibold text-gray-900">Description</h3>
             <button
               type="button"
-              @click="notesModal.isOpen = false"
+              @click="descriptionDetailModal.isOpen = false"
               class="text-gray-400 hover:text-gray-600"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -513,26 +534,54 @@
               </svg>
             </button>
           </div>
-          <textarea
-            v-model="notesModal.text"
-            rows="6"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            placeholder="Add notes..."
-          />
-          <div class="mt-4 flex justify-end gap-2">
+          <div class="overflow-y-auto flex-1 min-h-0">
+            <div class="text-sm text-gray-900 bg-gray-50 rounded-md p-3 whitespace-pre-wrap break-words border border-gray-200">
+              {{ descriptionDetailModal.text || '—' }}
+            </div>
+          </div>
+          <div class="mt-4 flex justify-end">
             <button
               type="button"
-              @click="notesModal.isOpen = false"
+              @click="descriptionDetailModal.isOpen = false"
               class="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
             >
-              Cancel
+              Close
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Note detail modal (read-only) -->
+      <div
+        v-if="noteDetailModal.isOpen"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        @click.self="noteDetailModal.isOpen = false"
+      >
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Note</h3>
             <button
               type="button"
-              @click="saveNotes"
-              class="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+              @click="noteDetailModal.isOpen = false"
+              class="text-gray-400 hover:text-gray-600"
             >
-              Save
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="overflow-y-auto flex-1 min-h-0">
+            <div class="text-sm text-gray-900 bg-gray-50 rounded-md p-3 whitespace-pre-wrap break-words border border-gray-200">
+              {{ noteDetailModal.text || '—' }}
+            </div>
+          </div>
+          <div class="mt-4 flex justify-end">
+            <button
+              type="button"
+              @click="noteDetailModal.isOpen = false"
+              class="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Close
             </button>
           </div>
         </div>
@@ -572,9 +621,12 @@ const clientContactModal = ref({
   clientData: null as Record<string, unknown> | null,
   clientName: '',
 })
-const notesModal = ref({
+const descriptionDetailModal = ref({
   isOpen: false,
-  projectId: null as number | null,
+  text: '',
+})
+const noteDetailModal = ref({
+  isOpen: false,
   text: '',
 })
 // Removed managers ref - now using prj_manager_name from API
@@ -815,8 +867,18 @@ function viewProject(projectId: number) {
 }
 
 function editProject(projectId: number) {
-  // TODO: Implement edit functionality
-  void projectId // Suppress unused parameter warning
+  viewProject(projectId)
+}
+
+async function confirmDeleteProject(project: ApiProject) {
+  if (!confirm(`Delete project "${project.prj_name}"? This cannot be undone.`)) return
+  try {
+    await projectApi.delete(project.id)
+    await loadProjects()
+  } catch (err) {
+    console.error('Failed to delete project:', err)
+    alert('Failed to delete project. Please try again.')
+  }
 }
 
 function createProject() {
@@ -900,25 +962,21 @@ function openClient2Contact(project: ApiProject & { client2_data?: Record<string
   clientContactModal.value.isOpen = true
 }
 
-function openNotesPopup(project: ApiProject) {
-  notesModal.value.projectId = project.id
-  notesModal.value.text = project.notes || ''
-  notesModal.value.isOpen = true
+function openDescriptionDetail(project: ApiProject) {
+  descriptionDetailModal.value.text = project.description ?? ''
+  descriptionDetailModal.value.isOpen = true
 }
 
-async function saveNotes() {
-  const id = notesModal.value.projectId
-  if (id == null) return
-  try {
-    await projectApi.update(id, { notes: notesModal.value.text || null })
-    const idx = projects.value.findIndex((p) => p.id === id)
-    if (idx !== -1) {
-      (projects.value[idx] as ApiProject & { notes?: string | null }).notes = notesModal.value.text || null
-    }
-    notesModal.value.isOpen = false
-  } catch (err) {
-    console.error('Failed to save notes:', err)
-  }
+function openNoteDetail(project: ApiProject) {
+  const p = project as ApiProject & { note?: string | null }
+  noteDetailModal.value.text = p.note ?? p.notes ?? ''
+  noteDetailModal.value.isOpen = true
+}
+
+/** Note from notes table; fallback to project.notes if API does not return note */
+function getProjectNote(project: ApiProject): string {
+  const p = project as ApiProject & { note?: string | null }
+  return p.note ?? p.notes ?? ''
 }
 
 // Pagination functions

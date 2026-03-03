@@ -20,6 +20,35 @@ html, body {
   padding: 0;
 }
 
+/*
+ * Form controls: always white background and dark text.
+ * Prevents input/select/textarea from blending with background in dark mode or dialogs.
+ * Applied globally so all forms stay readable everywhere.
+ */
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #6b7280 !important;
+}
+
+select option {
+  background-color: #ffffff;
+  color: #111827;
+}
+
+input:disabled:not([type="checkbox"]):not([type="radio"]),
+select:disabled,
+textarea:disabled {
+  background-color: #f3f4f6 !important;
+  color: #6b7280 !important;
+}
+
 a,
 .green {
   text-decoration: none;

@@ -106,6 +106,8 @@ async update(id: number, data: Record<string, unknown>) {
 {
   "prj_name": "...",
   "address": "...",
+  "area": 5000,
+  "level": "Full Service",
   "client_id": 27566,
   "client_type": "Pharmacies",
   "client_table": "pharma",

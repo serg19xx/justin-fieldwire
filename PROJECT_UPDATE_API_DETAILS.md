@@ -29,6 +29,8 @@ Authorization: Bearer {token}
   "status": "Active",
   "purchase_or_lease": "Purchase",
   "notes": "Project notes text",
+  "area": 5000,
+  "level": "Full Service",
   "client_id": 27566,
   "client_type": "Pharmacies",
   "client_table": "pharma",
@@ -108,6 +110,8 @@ Content-Type: application/json
   "status": "Active",
   "purchase_or_lease": "Purchase",
   "notes": "Renovation project",
+  "area": 3000,
+  "level": "Medical Nice",
   "client_id": 27566,
   "client_type": "Pharmacies",
   "client_table": "pharma",
@@ -133,6 +137,8 @@ Content-Type: application/json
   "status": "Active",
   "purchase_or_lease": "Purchase",
   "notes": "Renovation project",
+  "area": null,
+  "level": null,
   "client_id": null,
   "client_type": null,
   "client_table": null,
@@ -152,14 +158,18 @@ Content-Type: application/json
 
 2. **Сохраняются ли поля в таблицу `fw_projects`?**
    - Проверьте SQL UPDATE запрос
-   - Убедитесь, что все поля включены в UPDATE
+   - Убедитесь, что все поля включены в UPDATE (в т.ч. `area`, `level`)
 
-3. **Правильно ли обрабатывается JSON поле `client_data`?**
+3. **Принимаются ли и возвращаются ли поля `area` и `level`?**
+   - `area` (integer, optional, nullable) — например площадь в кв. футах
+   - `level` (string, optional, nullable) — одно из: `Bacics`, `Full Service`, `Medical Nice`, `High End`, `Extravagant`
+
+4. **Правильно ли обрабатывается JSON поле `client_data`?**
    - Если используется MySQL/MariaDB, используйте тип JSON или TEXT
    - При сохранении JSON объекта используйте правильную функцию (JSON_OBJECT, JSON_EXTRACT)
 
-4. **Возвращаются ли обновленные поля в ответе?**
-   - После обновления проект должен вернуться с обновленными полями клиента
+5. **Возвращаются ли обновленные поля в ответе?**
+   - После обновления проект должен вернуться с обновленными полями клиента, а также `area` и `level`
 
 ## Логирование на фронтенде
 

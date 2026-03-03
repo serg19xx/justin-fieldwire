@@ -72,6 +72,10 @@ const settingsForm = ref<{
   address: string
   description: string
   status: string
+  notes?: string | null
+  purchase_or_lease?: string
+  area?: number | null
+  level?: string | null
   client_id?: number | null
   client_type?: string | null
   client_table?: ClientTableType | null
@@ -89,6 +93,10 @@ const settingsForm = ref<{
   address: '',
   description: '',
   status: 'draft',
+  notes: null,
+  purchase_or_lease: 'Purchase',
+  area: null,
+  level: null,
   client_id: null,
   client_type: null,
   client_table: null,
@@ -247,6 +255,8 @@ interface Project {
   status: string
   purchase_or_lease?: string
   notes?: string | null
+  area?: number | null
+  level?: string | null
   client_id?: number | null
   client_type?: string | null
   client_table?: string | null
@@ -280,6 +290,8 @@ async function loadProjects() {
       status: apiProject.status,
       purchase_or_lease: apiProject.purchase_or_lease,
       notes: apiProject.notes,
+      area: (apiProject as ApiProject & { area?: number | null }).area ?? null,
+      level: (apiProject as ApiProject & { level?: string | null }).level ?? null,
       client_id: apiProject.client_id,
       client_type: apiProject.client_type,
       client_table: apiProject.client_table,
@@ -330,6 +342,8 @@ async function loadProject() {
       status: apiResponse.status,
       purchase_or_lease: apiResponse.purchase_or_lease,
       notes: apiResponse.notes,
+      area: (apiResponse as { area?: number | null }).area ?? null,
+      level: (apiResponse as { level?: string | null }).level ?? null,
       client_id: apiResponse.client_id,
       client_type: apiResponse.client_type,
       client_table: apiResponse.client_table,
@@ -413,6 +427,10 @@ function loadSettingsForm() {
       address: project.value.address || '',
       description: project.value.description || '',
       status: project.value.status || 'draft',
+      notes: project.value.notes ?? null,
+      purchase_or_lease: (project.value as { purchase_or_lease?: string }).purchase_or_lease || 'Purchase',
+      area: (project.value as { area?: number | null }).area ?? null,
+      level: (project.value as { level?: string | null }).level ?? null,
       client_id: project.value.client_id || null,
       client_type: project.value.client_type || null,
       client_table: (project.value.client_table as ClientTableType | null) || null,
@@ -455,6 +473,8 @@ async function saveSettings() {
       priority: (project.value as { priority?: string }).priority ?? 'Medium',
       purchase_or_lease: formData?.purchase_or_lease || 'Purchase',
       notes: formData?.notes?.trim() || null,
+      area: formData?.area !== undefined ? formData.area : null,
+      level: formData?.level || null,
       client_id: formData?.client_id !== undefined ? formData.client_id : null,
       client_type: formData?.client_type !== undefined ? formData.client_type : null,
       client_table: formData?.client_table !== undefined ? formData.client_table : null,
@@ -529,6 +549,8 @@ async function saveSettings() {
         status: updatedProject.status,
         purchase_or_lease: updatedProject.purchase_or_lease,
         notes: updatedProject.notes,
+        area: (updatedProject as { area?: number | null }).area ?? null,
+        level: (updatedProject as { level?: string | null }).level ?? null,
         client_id: updatedProject.client_id !== undefined ? updatedProject.client_id : null,
         client_type: updatedProject.client_type !== undefined ? updatedProject.client_type : null,
         client_table: updatedProject.client_table !== undefined ? updatedProject.client_table : null,
@@ -567,6 +589,8 @@ async function saveSettings() {
         project.value.status = updateData.status
         project.value.purchase_or_lease = updateData.purchase_or_lease
         project.value.notes = updateData.notes
+        project.value.area = updateData.area !== undefined ? updateData.area : null
+        project.value.level = updateData.level ?? null
         // Update all client fields
         project.value.client_id = updateData.client_id !== undefined ? updateData.client_id : null
         project.value.client_type = updateData.client_type !== undefined ? updateData.client_type : null
@@ -597,6 +621,8 @@ async function saveSettings() {
       projects.value[projectIndex].status = updateData.status
       projects.value[projectIndex].purchase_or_lease = updateData.purchase_or_lease
       projects.value[projectIndex].notes = updateData.notes
+      projects.value[projectIndex].area = updateData.area !== undefined ? updateData.area : null
+      projects.value[projectIndex].level = updateData.level ?? null
       // Update all client fields
       projects.value[projectIndex].client_id = updateData.client_id !== undefined ? updateData.client_id : null
       projects.value[projectIndex].client_type = updateData.client_type !== undefined ? updateData.client_type : null

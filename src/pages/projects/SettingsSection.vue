@@ -161,6 +161,37 @@
           </select>
         </div>
 
+        <!-- Area -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2"> Area </label>
+          <input
+            v-model.number="settingsForm.area"
+            type="number"
+            min="0"
+            step="1"
+            :disabled="!canEdit"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            placeholder="e.g. square feet"
+          />
+        </div>
+
+        <!-- Level -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2"> Level </label>
+          <select
+            v-model="settingsForm.level"
+            :disabled="!canEdit"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+          >
+            <option value="">— Select level —</option>
+            <option value="Bacics">Bacics</option>
+            <option value="Full Service">Full Service</option>
+            <option value="Medical Nice">Medical Nice</option>
+            <option value="High End">High End</option>
+            <option value="Extravagant">Extravagant</option>
+          </select>
+        </div>
+
         <!-- Project dates are auto-calculated from tasks -->
 
         <!-- Action Buttons -->
@@ -245,6 +276,8 @@ interface ProjectData {
   status: string
   purchase_or_lease?: string
   notes?: string | null
+  area?: number | null
+  level?: string | null
   client_id?: number | null
   client_type?: string | null
   client_table?: string | null
@@ -288,6 +321,8 @@ const settingsForm = reactive({
   status: 'draft',
   purchase_or_lease: 'Purchase',
   notes: '',
+  area: null as number | null,
+  level: '' as string,
   client_id: null as number | null,
   client_type: null as string | null,
   client_table: null as ClientTableType | null,
@@ -350,6 +385,8 @@ function initializeForm() {
     settingsForm.status = String(project.status || 'draft')
     settingsForm.purchase_or_lease = String(project.purchase_or_lease || 'Purchase')
     settingsForm.notes = String(project.notes || '')
+    settingsForm.area = project.area ?? null
+    settingsForm.level = project.level ?? ''
     settingsForm.client_id = project.client_id || null
     settingsForm.client_type = project.client_type || null
     settingsForm.client_table = project.client_table || null

@@ -142,6 +142,8 @@ $projects = DB::table('fw_projects')
         "status": "Active",
         "purchase_or_lease": "Purchase",
         "notes": null,
+        "area": 5000,
+        "level": "Full Service",
         "client_id": null,
         "client_type": null,
         "client_table": null,

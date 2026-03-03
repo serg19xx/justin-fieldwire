@@ -92,6 +92,35 @@
             </select>
           </div>
 
+          <!-- Area -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Area </label>
+            <input
+              v-model.number="form.area"
+              type="number"
+              min="0"
+              step="1"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g. square feet"
+            />
+          </div>
+
+          <!-- Level -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Level </label>
+            <select
+              v-model="form.level"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">— Select level —</option>
+              <option value="Bacics">Bacics</option>
+              <option value="Full Service">Full Service</option>
+              <option value="Medical Nice">Medical Nice</option>
+              <option value="High End">High End</option>
+              <option value="Extravagant">Extravagant</option>
+            </select>
+          </div>
+
           <!-- Project Manager -->
           <div v-if="canAssignManager" class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -302,6 +331,8 @@ const form = ref({
   client2_data: null as Record<string, unknown> | null,
   prj_manager: '',
   description: '',
+  area: null as number | null,
+  level: null as string | null,
 })
 
 // Client selector state
@@ -457,6 +488,8 @@ watch(
         client2_data: null,
         prj_manager: shouldAutoAssign ? String(authStore.currentUser?.id || '') : '',
         description: '',
+        area: null,
+        level: null,
       }
       selectedClient.value = null
       selectedClient2.value = null
@@ -653,6 +686,8 @@ async function handleSubmit() {
       prj_manager: form.value.prj_manager ? Number(form.value.prj_manager) : null,
       created_by: authStore.currentUser?.id || null,
       description: form.value.description || null,
+      area: form.value.area ?? null,
+      level: form.value.level || null,
     }
 
     console.log('📤 API payload:', apiData)

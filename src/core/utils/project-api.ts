@@ -32,6 +32,9 @@ export interface InvitedPersonData {
 
 export type ClientTableType = 'pharma' | 'physician' | 'pharmacist' | 'medical_clinic'
 
+/** Project level enum (DB: level) */
+export type ProjectLevel = 'Bacics' | 'Full Service' | 'Medical Nice' | 'High End' | 'Extravagant'
+
 export interface Project {
   id: number
   prj_name: string
@@ -43,6 +46,12 @@ export interface Project {
   status: string
   purchase_or_lease?: ProjectPurchaseLeaseType
   notes?: string | null
+  /** Note from notes table (fw_notes.note), if API returns it */
+  note?: string | null
+  /** Area (e.g. sq ft); mediumint unsigned */
+  area?: number | null
+  /** Project level enum */
+  level?: ProjectLevel | null
   client_id?: number | null
   client_type?: string | null
   client_table?: ClientTableType | null

@@ -341,6 +341,8 @@ Use the API Tester at `/api-tester` to test endpoints:
 - `search` (string, optional): Search by project name or address
 - `prj_manager` (integer, optional): Filter by project manager ID (0 for unassigned)
 
+**Response:** Each project object in `data.projects` should include `area` (number, optional, nullable) and `level` (string, optional, nullable; one of: `Bacics`, `Full Service`, `Medical Nice`, `High End`, `Extravagant`) when the backend returns them.
+
 **Examples:**
 - `GET /api/v1/projects` - All projects
 - `GET /api/v1/projects?prj_manager=47` - Projects of manager 47
@@ -363,6 +365,8 @@ Use the API Tester at `/api-tester` to test endpoints:
         "date_end": "2025-12-31",
         "priority": "High",
         "status": "Active",
+        "area": 5000,
+        "level": "Full Service",
         "prj_managger": 1,
         "created_at": "2025-09-07T15:02:58.805Z",
         "updated_at": "2025-09-07T15:02:58.805Z"
@@ -390,6 +394,8 @@ Use the API Tester at `/api-tester` to test endpoints:
   "date_end": "2025-12-31",
   "priority": "High",
   "status": "Active",
+  "area": 5000,
+  "level": "Full Service",
   "prj_manager": 1
 }
 ```
@@ -409,6 +415,8 @@ Use the API Tester at `/api-tester` to test endpoints:
       "date_end": "2025-12-31",
       "priority": "High",
       "status": "Active",
+      "area": 5000,
+      "level": "Full Service",
       "prj_managger": 1,
       "created_at": "2025-09-07T15:02:58.805Z",
       "updated_at": "2025-09-07T15:02:58.805Z"
@@ -435,6 +443,8 @@ Use the API Tester at `/api-tester` to test endpoints:
 ### GET /api/v1/projects/{id}
 **Get project by ID**
 
+**Response:** The project object must include `area` and `level` when the backend returns them (same types as in GET /api/v1/projects).
+
 **Response:**
 ```json
 {
@@ -450,6 +460,8 @@ Use the API Tester at `/api-tester` to test endpoints:
       "date_end": "2025-12-31",
       "priority": "High",
       "status": "Active",
+      "area": 5000,
+      "level": "Full Service",
       "prj_managger": 1,
       "created_at": "2025-09-07T15:02:58.805Z",
       "updated_at": "2025-09-07T15:02:58.805Z"
@@ -461,11 +473,24 @@ Use the API Tester at `/api-tester` to test endpoints:
 ### PUT /api/v1/projects/{id}
 **Update project**
 
-**Request:**
+**Request:** (all fields optional; only include fields to update)
+- `prj_name` (string)
+- `address` (string)
+- `date_start`, `date_end` (string, nullable)
+- `priority`, `status` (string)
+- `purchase_or_lease` (string, e.g. "Purchase", "Lease")
+- `notes` (string, nullable)
+- `area` (integer, optional, nullable) — e.g. square feet
+- `level` (string, optional, nullable) — one of: `Bacics`, `Full Service`, `Medical Nice`, `High End`, `Extravagant`
+- `prj_manager` (integer, nullable)
+- `client_id`, `client_type`, `client_table`, `client_data`, `client2_*` (optional)
+
 ```json
 {
   "prj_name": "Updated Project Name",
-  "status": "Completed"
+  "status": "Completed",
+  "area": 6000,
+  "level": "High End"
 }
 ```
 
