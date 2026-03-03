@@ -33,7 +33,7 @@ export interface InvitedPersonData {
 export type ClientTableType = 'pharma' | 'physician' | 'pharmacist' | 'medical_clinic'
 
 /** Project level enum (DB: level) */
-export type ProjectLevel = 'Bacics' | 'Full Service' | 'Medical Nice' | 'High End' | 'Extravagant'
+export type ProjectLevel = 'Basics' | 'Full Service' | 'Medical Nice' | 'High End' | 'Extravagant'
 
 export interface Project {
   id: number

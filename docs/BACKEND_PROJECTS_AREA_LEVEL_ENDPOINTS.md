@@ -9,9 +9,7 @@
 Таблица проектов (например `fw_projects`) уже содержит колонки:
 
 - **`area`** — `mediumint(8) unsigned DEFAULT NULL` (площадь, например кв. футы)
-- **`level`** — `enum('Bacics','Full Service','Medical Nice','High End','Extravagant') DEFAULT NULL`
-
-*(Значение в БД — именно `Bacics`, не "Basic`.)*
+- **`level`** — `enum('Basics','Full Service','Medical Nice','High End','Extravagant') DEFAULT NULL`
 
 ---
 
@@ -27,7 +25,7 @@
 
 - В каждом элементе массива `data.projects` добавить в ответ поля:
   - **`area`** — number | null (integer, nullable)
-  - **`level`** — string | null, одно из: `Bacics`, `Full Service`, `Medical Nice`, `High End`, `Extravagant`
+  - **`level`** — string | null, одно из: `Basics`, `Full Service`, `Medical Nice`, `High End`, `Extravagant`
 
 **Пример элемента в `data.projects`:**
 ```json
@@ -71,7 +69,7 @@
 
 - **Request body:** принимать опциональные поля:
   - **`area`** — integer, optional, nullable
-  - **`level`** — string, optional, nullable; одно из: `Bacics`, `Full Service`, `Medical Nice`, `High End`, `Extravagant`
+  - **`level`** — string, optional, nullable; одно из: `Basics`, `Full Service`, `Medical Nice`, `High End`, `Extravagant`
 - **Response:** в `data.project` возвращать созданный проект **с полями `area` и `level`** (как в п. 2).
 - **SQL INSERT:** добавлять колонки `area`, `level` в INSERT и подставлять значения из тела запроса (или NULL).
 
@@ -137,7 +135,7 @@
 ## 5. Валидация
 
 - **`area`**: если передано — неотрицательное целое число (0 допустим); иначе хранить/возвращать `null`.
-- **`level`**: если передано — строка из enum: `Bacics`, `Full Service`, `Medical Nice`, `High End`, `Extravagant`; иначе хранить/возвращать `null`. При неверном значении — 400 с сообщением об ошибке (опционально).
+- **`level`**: если передано — строка из enum: `Basics`, `Full Service`, `Medical Nice`, `High End`, `Extravagant`; иначе хранить/возвращать `null`. При неверном значении — 400 с сообщением об ошибке (опционально).
 
 ---
 

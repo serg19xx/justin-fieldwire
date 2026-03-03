@@ -162,7 +162,7 @@ Content-Type: application/json
 
 3. **Принимаются ли и возвращаются ли поля `area` и `level`?**
    - `area` (integer, optional, nullable) — например площадь в кв. футах
-   - `level` (string, optional, nullable) — одно из: `Bacics`, `Full Service`, `Medical Nice`, `High End`, `Extravagant`
+   - `level` (string, optional, nullable) — одно из: `Basics`, `Full Service`, `Medical Nice`, `High End`, `Extravagant`
 
 4. **Правильно ли обрабатывается JSON поле `client_data`?**
    - Если используется MySQL/MariaDB, используйте тип JSON или TEXT

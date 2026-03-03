@@ -341,7 +341,7 @@ Use the API Tester at `/api-tester` to test endpoints:
 - `search` (string, optional): Search by project name or address
 - `prj_manager` (integer, optional): Filter by project manager ID (0 for unassigned)
 
-**Response:** Each project object in `data.projects` should include `area` (number, optional, nullable) and `level` (string, optional, nullable; one of: `Bacics`, `Full Service`, `Medical Nice`, `High End`, `Extravagant`) when the backend returns them.
+**Response:** Each project object in `data.projects` should include `area` (number, optional, nullable) and `level` (string, optional, nullable; one of: `Basics`, `Full Service`, `Medical Nice`, `High End`, `Extravagant`) when the backend returns them.
 
 **Examples:**
 - `GET /api/v1/projects` - All projects
@@ -481,7 +481,7 @@ Use the API Tester at `/api-tester` to test endpoints:
 - `purchase_or_lease` (string, e.g. "Purchase", "Lease")
 - `notes` (string, nullable)
 - `area` (integer, optional, nullable) — e.g. square feet
-- `level` (string, optional, nullable) — one of: `Bacics`, `Full Service`, `Medical Nice`, `High End`, `Extravagant`
+- `level` (string, optional, nullable) — one of: `Basics`, `Full Service`, `Medical Nice`, `High End`, `Extravagant`
 - `prj_manager` (integer, nullable)
 - `client_id`, `client_type`, `client_table`, `client_data`, `client2_*` (optional)
 

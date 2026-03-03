@@ -184,7 +184,7 @@
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
           >
             <option value="">— Select level —</option>
-            <option value="Bacics">Bacics</option>
+            <option value="Basics">Basics</option>
             <option value="Full Service">Full Service</option>
             <option value="Medical Nice">Medical Nice</option>
             <option value="High End">High End</option>
