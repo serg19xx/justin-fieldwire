@@ -70,13 +70,22 @@ const router = createRouter({
       path: '/tasks',
       component: () => {
         const authStore = useAuthStore()
-        const roleCode = authStore.currentUser?.role_code
-
-        console.log('🔍 Router tasks debug:', { roleCode })
-
-        // Redirect to projects for now since tasks are handled within projects
+        const roleCategory = authStore.currentUser?.role_category
+        // Task role (Worker, Foreman, Contractor): mobile project list
+        if (roleCategory === 'task') {
+          return import('../pages/task-role/TaskProjects.vue')
+        }
+        // Project/global: legacy projects list
         return import('../pages/projects/ProjectsPrj.vue')
       },
+    },
+    {
+      path: '/tasks/project/:id',
+      component: () => import('../pages/task-role/TaskProjectDetail.vue'),
+    },
+    {
+      path: '/tasks/project/:projectId/task/:taskId',
+      component: () => import('../pages/task-role/TaskTaskDetail.vue'),
     },
     {
       path: '/reports',

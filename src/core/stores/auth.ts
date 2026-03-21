@@ -136,6 +136,7 @@ export const useAuthStore = defineStore('auth', () => {
         job_title: user.job_title,
         role_category: user.role_category,
         role_code: user.role_code,
+        role_name: user.role_name,
         two_factor_enabled: user.two_factor_enabled,
         twoFactorEnabled: user.two_factor_enabled, // Add compatibility field
         status: isUserActive(user.status),
@@ -228,30 +229,31 @@ export const useAuthStore = defineStore('auth', () => {
         console.log('⚠️ Token NOT saved - waiting for 2FA verification')
         return { success: true, requires2FA: true, user: frontendUser }
       } else {
-        // Обычный логин - сохраняем токен и устанавливаем authenticated
+        // Normal login: set user from login response first (correct role_category for layout)
         currentUser.value = frontendUser
         isAuthenticated.value = true
         localStorage.setItem('user', JSON.stringify(frontendUser))
         console.log('✅ Login successful for user:', frontendUser.email)
-        console.log('🖼️ Avatar URL after login:', frontendUser.avatar_url)
 
-        // Load full profile data if avatar is missing
-        if (!frontendUser.avatar_url) {
-          try {
-            console.log('🖼️ Loading full profile data for missing avatar after login...')
-            const profileResult = await getProfile()
-            if (profileResult.success && profileResult.user) {
-              // Update current user with full profile data
-              currentUser.value = { ...currentUser.value, ...profileResult.user }
-              localStorage.setItem('user', JSON.stringify(currentUser.value))
-              console.log(
-                '✅ Full profile loaded after login, avatar URL:',
-                currentUser.value.avatar_url,
-              )
+        // Merge profile (avatar, etc.) but keep role fields from login so layout stays correct
+        try {
+          const profileResult = await getProfile()
+          if (profileResult.success && profileResult.user) {
+            const profileUser = profileResult.user
+            currentUser.value = {
+              ...currentUser.value,
+              ...profileUser,
+              role_category: frontendUser.role_category,
+              role_code: frontendUser.role_code,
+              role_id: frontendUser.role_id,
+              role_name: frontendUser.role_name,
+              permissions: getPermissionsForRole(frontendUser.role_code),
             }
-          } catch (error) {
-            console.warn('⚠️ Failed to load full profile after login:', error)
+            localStorage.setItem('user', JSON.stringify(currentUser.value))
+            console.log('✅ Profile merged, role_category kept from login:', currentUser.value.role_category)
           }
+        } catch (error) {
+          console.warn('⚠️ Failed to load profile after login:', error)
         }
 
         // Initialize session manager after successful login
@@ -277,7 +279,7 @@ export const useAuthStore = defineStore('auth', () => {
         // Start session monitoring
         startSessionManager()
 
-        return { success: true, user: frontendUser }
+        return { success: true, user: currentUser.value }
       }
     } catch (error: unknown) {
       console.error('❌ Login error:', error)
@@ -371,8 +373,10 @@ export const useAuthStore = defineStore('auth', () => {
           id: user.id,
           email: user.email,
           name: user.name,
+          role_id: user.role_id,
           role_category: user.role_category,
           role_code: user.role_code,
+          role_name: user.role_name,
           two_factor_enabled: user.two_factor_enabled,
           status: isUserActive(user.status),
           last_login: user.last_login,
@@ -610,6 +614,7 @@ export const useAuthStore = defineStore('auth', () => {
           role_id: backendUser.role_id,
           role_category: backendUser.role_category,
           role_code: backendUser.role_code,
+          role_name: backendUser.role_name,
           two_factor_enabled: isTwoFactorEnabled(backendUser.two_factor_enabled),
           twoFactorEnabled: isTwoFactorEnabled(backendUser.two_factor_enabled), // Add compatibility field
           status: isUserActive(backendUser.status),

@@ -19,6 +19,16 @@ const ROLE_CODE_MAP: Record<string, string> = {
 }
 
 /**
+ * Role id to display name (fw_glob_roles.id -> name) when API returns only role_id
+ */
+const ROLE_ID_TO_NAME: Record<number, string> = {
+  1: 'Administrator',
+  2: 'Project Manager',
+  12: 'Foreman',
+  13: 'Worker',
+}
+
+/**
  * Format role_code to readable name using predefined mapping
  * Falls back to formatted code if mapping not found
  */
@@ -40,49 +50,56 @@ export function formatRoleCode(roleCode: string | undefined | null): string {
 /**
  * Get display role from various API response formats
  * Priority:
- * 1. formatRoleCode(role_code) - use role_code with predefined mapping (preferred)
- * 2. role.code -> formatRoleCode (from role object)
- * 3. role_name (readable name from API - fallback if role_code not available)
+ * 1. role_name (from API / fw_glob_roles.name - preferred for correct display)
+ * 2. formatRoleCode(role_code)
+ * 3. role.code -> formatRoleCode (from role object)
  * 4. role.name (from role object)
- * 5. project_role (role in project context)
- * 6. role as string (if it's already a readable name)
- * 7. 'Worker' (default fallback)
- * 
+ * 5. role_id -> ROLE_ID_TO_NAME (when API returns only role_id)
+ * 6. project_role (role in project context)
+ * 7. role as string
+ * 8. 'Worker' (default fallback)
+ *
  * @param data - Object containing role information from API
  * @returns Formatted role name for display
  */
 export function getDisplayRole(data: {
+  role_id?: number | null
   role_name?: string | null
   role_code?: string | null
   project_role?: string | null
   role?: string | { name?: string; code?: string } | null
 }): string {
-  // Priority 1: format role_code to readable name using predefined mapping (preferred)
+  // Priority 1: role_name from API (matches fw_glob_roles.name - e.g. Foreman, Worker)
+  if (data.role_name) {
+    return data.role_name
+  }
+
+  // Priority 2: format role_code to readable name using predefined mapping
   if (data.role_code) {
     return formatRoleCode(data.role_code)
   }
   
-  // Priority 2: role.code -> formatRoleCode (from role object)
+  // Priority 3: role.code -> formatRoleCode (from role object)
   if (data.role && typeof data.role === 'object' && data.role.code) {
     return formatRoleCode(data.role.code)
-  }
-  
-  // Priority 3: role_name (direct readable name - fallback if role_code not available)
-  if (data.role_name) {
-    return data.role_name
   }
   
   // Priority 4: role.name (from role object)
   if (data.role && typeof data.role === 'object' && data.role.name) {
     return data.role.name
   }
+
+  // Priority 5: role_id fallback when API returns only id (e.g. 12 -> Foreman)
+  if (data.role_id != null && ROLE_ID_TO_NAME[data.role_id]) {
+    return ROLE_ID_TO_NAME[data.role_id]
+  }
   
-  // Priority 5: project_role (role in project context)
+  // Priority 6: project_role (role in project context)
   if (data.project_role) {
     return data.project_role
   }
   
-  // Priority 6: role as string (if it's already a readable name)
+  // Priority 7: role as string (if it's already a readable name)
   if (data.role && typeof data.role === 'string') {
     return data.role
   }

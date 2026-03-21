@@ -7,8 +7,14 @@
       <div class="flex justify-between items-center h-12 px-4">
         <!-- Left side -->
         <div class="flex items-center space-x-3">
-          <RouterLink to="/" class="hover:opacity-80">
+          <RouterLink to="/" class="hover:opacity-80 flex items-center gap-2">
             <h1 class="text-lg font-semibold text-gray-900">FieldWire</h1>
+            <span
+              v-if="displayRole"
+              class="inline text-xs font-medium text-gray-500 border-l border-gray-300 pl-2"
+            >
+              {{ displayRole }}
+            </span>
           </RouterLink>
         </div>
 
@@ -91,13 +97,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
+import { getDisplayRole } from '@/core/utils/role-utils'
 import TopBarAvatar from '@/components/TopBarAvatar.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+
+const displayRole = computed(() => {
+  const u = authStore.currentUser
+  if (!u) return ''
+  const role = getDisplayRole({
+    role_id: u.role_id,
+    role_code: u.role_code,
+    role_name: u.role_name,
+  })
+  return role || u.job_title || ''
+})
 
 const isUserMenuOpen = ref(false)
 

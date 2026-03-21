@@ -12,8 +12,14 @@
           >
             {{ isMobileMenuOpen ? '✕' : '☰' }}
           </button>
-          <RouterLink to="/" class="hover:opacity-80">
+          <RouterLink to="/" class="hover:opacity-80 flex items-center gap-2">
             <h1 class="text-lg font-semibold text-white hidden lg:block">FieldWire</h1>
+            <span
+              v-if="displayRole"
+              class="hidden lg:inline text-xs font-medium text-green-100 border-l border-green-400 pl-2 ml-1"
+            >
+              {{ displayRole }}
+            </span>
           </RouterLink>
         </div>
 
@@ -176,13 +182,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
+import { getDisplayRole } from '@/core/utils/role-utils'
 import TopBarAvatar from '@/components/TopBarAvatar.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+
+const displayRole = computed(() => {
+  const u = authStore.currentUser
+  if (!u) return ''
+  const role = getDisplayRole({
+    role_id: u.role_id,
+    role_code: u.role_code,
+    role_name: u.role_name,
+  })
+  return role || u.job_title || ''
+})
 
 const isMobileMenuOpen = ref(false)
 const isUserMenuOpen = ref(false)

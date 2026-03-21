@@ -1165,26 +1165,15 @@ function validateTaskData(): boolean {
     return false
   }
 
-  // Check if project has bounds set
+  // Project bounds are optional now. If dates are missing, skip bounds checks.
   if (!projectInfo.value.date_start || !projectInfo.value.date_end) {
-    console.warn('⚠️ Project bounds not set, blocking task creation')
-    console.log('🔍 Project bounds details:', {
-      date_start: projectInfo.value.date_start,
-      date_end: projectInfo.value.date_end,
-      hasStart: !!projectInfo.value.date_start,
-      hasEnd: !!projectInfo.value.date_end
-    })
-
-    const errorMessage = projectInfo.value.date_start || projectInfo.value.date_end
-      ? 'Project timeline is incomplete. Please set both start and end dates in project settings.'
-      : 'Project timeline is not set. Please set project start and end dates in project settings.'
-
-    validationResult.value = {
-      isValid: false,
-      errors: [errorMessage],
-      warnings: []
+    console.log('ℹ️ Project bounds are not set; skipping bounds validation for task')
+    projectBoundsExtension.value = {
+      needsExtension: false,
+      suggestedStart: '',
+      suggestedEnd: '',
+      reason: '',
     }
-    return false
   }
 
   const taskData = {
@@ -1203,8 +1192,8 @@ function validateTaskData(): boolean {
   }
 
   const projectBounds = {
-    startDate: projectInfo.value.date_start,
-    endDate: projectInfo.value.date_end,
+    startDate: projectInfo.value.date_start ?? '',
+    endDate: projectInfo.value.date_end ?? '',
   }
 
   console.log('🔍 Project bounds for validation:', projectBounds)
