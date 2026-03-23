@@ -208,18 +208,54 @@
           <div class="bg-gray-50 rounded-md p-4 space-y-2">
             <div
               v-for="memberId in task.team_members"
-              :key="memberId"
-              class="flex items-center space-x-3 py-2 px-3 bg-white rounded border border-gray-200"
+              :key="rosterKey(memberId)"
+              class="flex items-center gap-3 py-2 px-3 bg-white rounded border border-gray-200"
             >
-              <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                <span class="text-sm font-medium text-blue-600">
+              <div class="relative w-9 h-9 shrink-0">
+                <img
+                  v-if="getMemberAvatarUrl(memberId) && !avatarFailed[rosterKey(memberId)]"
+                  :src="getMemberAvatarUrl(memberId)!"
+                  :alt="getTeamMemberName(memberId)"
+                  class="w-9 h-9 rounded-full object-cover border border-gray-100"
+                  @error="markAvatarFailed(memberId)"
+                />
+                <div
+                  v-else
+                  class="w-9 h-9 rounded-full flex items-center justify-center bg-blue-100 text-sm font-medium text-blue-600"
+                >
                   {{ getTeamMemberInitials(memberId) }}
-                </span>
+                </div>
               </div>
-              <span class="text-sm text-gray-900">
-                {{ getTeamMemberName(memberId) }}
-              </span>
+              <div class="min-w-0 flex-1 space-y-0.5">
+                <p class="text-sm font-medium text-gray-900 truncate">
+                  {{ getTeamMemberName(memberId) }}
+                </p>
+                <p v-if="getTeamMemberSubtitle(memberId)" class="text-xs text-gray-500 truncate">
+                  {{ getTeamMemberSubtitle(memberId) }}
+                </p>
+                <p v-if="getMemberContactEmail(memberId)" class="text-xs text-gray-600 truncate">
+                  <span class="text-gray-400">Email</span>
+                  <a
+                    :href="`mailto:${getMemberContactEmail(memberId)}`"
+                    class="ml-1 text-blue-600 hover:underline"
+                    @click.stop
+                  >
+                    {{ getMemberContactEmail(memberId) }}
+                  </a>
+                </p>
+                <p v-if="getMemberContactPhone(memberId)" class="text-xs text-gray-600 truncate">
+                  <span class="text-gray-400">Mobile</span>
+                  <a
+                    :href="phoneTelHref(getMemberContactPhone(memberId))"
+                    class="ml-1 text-blue-600 hover:underline"
+                    @click.stop
+                  >
+                    {{ getMemberContactPhone(memberId) }}
+                  </a>
+                </p>
+              </div>
             </div>
+            <p v-if="rosterLoading" class="text-xs text-gray-500 px-3">Loading team details…</p>
           </div>
         </div>
       </div>
@@ -240,14 +276,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { Task } from '@/core/types/task'
+import { projectApi, type ProjectTeamMember } from '@/core/utils/project-api'
+import { mapApiProjectTeamRowsToRoster } from '@/core/utils/map-api-project-team-response'
+import { getDisplayRole } from '@/core/utils/role-utils'
 
 // Props
 interface Props {
   isOpen: boolean
   task: Task | null
   availableTasks?: Task[]
+  /** Optional roster from parent; dialog also fetches by project when opened */
+  projectTeamMembers?: ProjectTeamMember[]
   canEdit?: boolean
 }
 
@@ -255,6 +296,7 @@ const props = withDefaults(defineProps<Props>(), {
   isOpen: false,
   task: null,
   availableTasks: () => [],
+  projectTeamMembers: () => [],
   canEdit: true,
 })
 
@@ -262,6 +304,53 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   close: []
 }>()
+
+const fetchedRoster = ref<ProjectTeamMember[]>([])
+const rosterLoading = ref(false)
+
+/** Per-assignee avatar load failure */
+const avatarFailed = ref<Record<number, boolean>>({})
+
+/** Parent prop + API fetch, deduped by membership row id */
+const rosterList = computed(() => {
+  const map = new Map<number, ProjectTeamMember>()
+  for (const m of props.projectTeamMembers || []) {
+    map.set(m.id, m)
+  }
+  for (const m of fetchedRoster.value) {
+    if (!map.has(m.id)) map.set(m.id, m)
+  }
+  return Array.from(map.values())
+})
+
+watch(
+  () => props.isOpen,
+  (open) => {
+    if (!open) {
+      fetchedRoster.value = []
+      avatarFailed.value = {}
+      rosterLoading.value = false
+    }
+  },
+)
+
+watch(
+  () => [props.isOpen, props.task?.project_id] as const,
+  async ([open, projectId]) => {
+    if (!open || !projectId) return
+    rosterLoading.value = true
+    try {
+      const response = await projectApi.getTeamMembers(projectId)
+      fetchedRoster.value = mapApiProjectTeamRowsToRoster(response)
+    } catch (e) {
+      console.warn('TaskViewDialog: failed to load project team', e)
+      fetchedRoster.value = []
+    } finally {
+      rosterLoading.value = false
+    }
+  },
+  { flush: 'post' },
+)
 
 // Computed
 const dependenciesCount = computed(() => {
@@ -280,6 +369,11 @@ const projectLead = computed<{ id: number; name: string } | null>(() => {
   // TODO: Fetch project lead from task data or API
   return null
 })
+
+function rosterKey(memberId: unknown): number {
+  const n = Number(memberId)
+  return Number.isFinite(n) ? n : 0
+}
 
 // Methods
 function closeDialog() {
@@ -340,18 +434,88 @@ function getDependencyTaskName(
   return task?.name || `Task #${taskId}`
 }
 
-function getTeamMemberName(memberId: number): string {
-  // TODO: Fetch team member name from API or props
-  return `Team Member #${memberId}`
+function resolveProjectTeamMember(memberId: unknown): ProjectTeamMember | undefined {
+  const idNum = rosterKey(memberId)
+  if (idNum <= 0) return undefined
+  const list = rosterList.value
+  return (
+    list.find((m) => m.id === idNum) ||
+    list.find((m) => m.user_id != null && m.user_id === idNum) ||
+    list.find((m) => String(m.id) === String(memberId)) ||
+    list.find((m) => m.user_id != null && String(m.user_id) === String(memberId))
+  )
 }
 
-function getTeamMemberInitials(memberId: number): string {
-  const name = getTeamMemberName(memberId)
-  return name
-    .split(' ')
-    .map((word) => word.charAt(0))
-    .join('')
-    .toUpperCase()
-    .slice(0, 2)
+function getTeamMemberName(memberId: unknown): string {
+  const m = resolveProjectTeamMember(memberId)
+  if (m?.name?.trim()) return m.name.trim()
+  if (m?.invited_people?.name?.trim()) return m.invited_people.name.trim()
+  if (m?.email) return m.email
+  const n = rosterKey(memberId)
+  return n > 0 ? `Member #${n}` : 'Unknown'
+}
+
+function getTeamMemberSubtitle(memberId: unknown): string {
+  const m = resolveProjectTeamMember(memberId)
+  if (!m) return ''
+
+  const roleLabel = getDisplayRole({
+    role_name: m.user_type || null,
+    project_role: m.role_in_project || null,
+  })
+  const job = m.job_title?.trim()
+
+  if (job && roleLabel && job.toLowerCase() !== roleLabel.toLowerCase()) {
+    return `${roleLabel} · ${job}`
+  }
+  return job || roleLabel || ''
+}
+
+function getMemberContactEmail(memberId: unknown): string {
+  const m = resolveProjectTeamMember(memberId)
+  return (m?.email || m?.invited_people?.email || '').trim()
+}
+
+function getMemberContactPhone(memberId: unknown): string {
+  const m = resolveProjectTeamMember(memberId)
+  return (m?.phone || m?.invited_people?.phone || '').trim()
+}
+
+function phoneTelHref(phone: string): string {
+  const cleaned = phone.replace(/[^\d+]/g, '')
+  if (!cleaned) return '#'
+  return `tel:${cleaned}`
+}
+
+function getMemberAvatarUrl(memberId: unknown): string | null {
+  const m = resolveProjectTeamMember(memberId)
+  const fromInvited = m?.invited_people?.avatar?.trim()
+  if (fromInvited) return fromInvited
+  const full = m?.full_img_url?.trim()
+  if (full) return full
+  const av = m?.avatar_url?.trim()
+  if (av) return av
+  return null
+}
+
+function markAvatarFailed(memberId: unknown) {
+  const k = rosterKey(memberId)
+  if (k <= 0) return
+  avatarFailed.value = { ...avatarFailed.value, [k]: true }
+}
+
+function getTeamMemberInitials(memberId: unknown): string {
+  const m = resolveProjectTeamMember(memberId)
+  const source = m?.name?.trim() || m?.invited_people?.name?.trim()
+  if (source) {
+    const parts = source.split(/\s+/).filter(Boolean)
+    if (parts.length >= 2) {
+      return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+    }
+    return source.slice(0, 2).toUpperCase()
+  }
+  const n = rosterKey(memberId)
+  const idStr = String(Math.abs(n))
+  return idStr.length <= 2 ? idStr : idStr.slice(-2)
 }
 </script>

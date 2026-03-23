@@ -92,6 +92,10 @@ import { useAuthStore } from '@/core/stores/auth'
 import { getDisplayRole } from '@/core/utils/role-utils'
 import { projectApi } from '@/core/utils/project-api'
 import type { Project } from '@/core/utils/project-api'
+import {
+  getProjectListQueryFiltersForUser,
+  parseProjectsFromListResponse,
+} from '@/core/utils/project-list-for-user'
 
 const authStore = useAuthStore()
 
@@ -124,8 +128,9 @@ const displayProjects = computed(() => projects.value.slice(0, 3))
 
 onMounted(async () => {
   try {
-    const data = await projectApi.getAll(1, 50, {})
-    projects.value = data?.projects ?? []
+    const filters = getProjectListQueryFiltersForUser(authStore.currentUser)
+    const data = await projectApi.getAll(1, 50, filters)
+    projects.value = parseProjectsFromListResponse(data)
   } catch {
     projects.value = []
   } finally {

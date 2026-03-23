@@ -23,6 +23,13 @@ function mapStatusToBackend(status: string | undefined): BackendStatus {
   return mapping[normalized] ?? 'planned'
 }
 
+function normalizeTeamMemberIds(raw: unknown): number[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((x) => Number(x))
+    .filter((n): n is number => Number.isFinite(n) && n > 0)
+}
+
 // API response interfaces
 interface TasksResponse {
   tasks: Task[]
@@ -81,6 +88,9 @@ export const tasksApi = {
       if (filters?.sortOrder) {
         params.append('sort_order', filters.sortOrder)
       }
+      if (filters?.workerId != null && filters.workerId > 0) {
+        params.append('user_id', String(filters.workerId))
+      }
 
       const url = params.toString()
         ? `/api/v1/projects/${projectId}/tasks?${params.toString()}`
@@ -119,8 +129,9 @@ export const tasksApi = {
           task_lead_id:
             task.task_lead_id ||
             (Array.isArray(task.assignees) && task.assignees.length > 0 ? task.assignees[0] : null),
-          team_members:
+          team_members: normalizeTeamMemberIds(
             task.team_members || (Array.isArray(task.assignees) ? task.assignees.slice(1) : []),
+          ),
           assignees: Array.isArray(task.assignees) ? task.assignees : [], // Keep for backward compatibility
           resources: task.resources || [],
           dependencies: task.dependencies || [],

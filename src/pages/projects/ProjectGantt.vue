@@ -421,6 +421,7 @@
       :is-open="taskViewDialog.isOpen"
       :task="taskViewDialog.task"
       :available-tasks="props.tasks || []"
+      :project-team-members="props.projectTeamMembers"
       :can-edit="canEdit"
       @close="closeTaskViewDialog"
     />
@@ -493,6 +494,7 @@ import type { Task, TaskCreateUpdate, MilestoneType } from '@/core/types/task'
 import { tasksApi } from '@/core/utils/tasks-api'
 import { MILESTONE_ICON } from '@/core/utils/task-utils'
 import { projectApi, type ProjectTeamMember } from '@/core/utils/project-api'
+import { computeExtendedProjectDates } from '@/core/utils/project-bounds-checker'
 import TaskDialog from './TaskDialog.vue'
 import TaskViewDialog from './TaskViewDialog.vue'
 import MilestoneDialog from './MilestoneDialog.vue'
@@ -507,6 +509,7 @@ interface Props {
   projectEndDate?: string
   dynamicRange?: boolean // If true, range updates based on task positions
   selectedTaskFromParent?: Task | null // Task selected in parent component
+  projectTeamMembers?: ProjectTeamMember[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -517,6 +520,7 @@ const props = withDefaults(defineProps<Props>(), {
   projectEndDate: undefined,
   dynamicRange: false,
   selectedTaskFromParent: null,
+  projectTeamMembers: () => [],
 })
 
 // const emit = defineEmits<{
@@ -732,6 +736,7 @@ const emit = defineEmits<{
   'task-updated': [task: Task]
   'task-deleted': [taskId: string]
   'task-selected': [task: Task | null]
+  'project-bounds-updated': []
 }>()
 
 const days = computed<Date[]>(() => {
@@ -3225,6 +3230,22 @@ const saveTaskChanges = async (taskId: string, newStart: string, newEnd: string)
   }
 
   try {
+    if (props.projectStartDate && props.projectEndDate) {
+      const { date_start, date_end } = computeExtendedProjectDates(
+        { date_start: props.projectStartDate, date_end: props.projectEndDate },
+        newStart,
+        newEnd,
+      )
+      if (
+        date_start !== props.projectStartDate.slice(0, 10) ||
+        date_end !== props.projectEndDate.slice(0, 10)
+      ) {
+        await projectApi.update(props.projectId, { date_start, date_end })
+        emit('project-bounds-updated')
+        console.log('✅ Gantt: project bounds extended to fit task:', { date_start, date_end })
+      }
+    }
+
     const updatePayload = {
       start_planned: newStart,
       end_planned: newEnd,

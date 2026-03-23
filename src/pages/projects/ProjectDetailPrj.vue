@@ -23,6 +23,8 @@ interface ApiTeamMember {
   job_title: string
   status: string
   phone: string
+  cell_phone?: string
+  mobile?: string
   first_name: string
   last_name: string
   role_code: string
@@ -72,6 +74,7 @@ const settingsForm = ref<{
   address: string
   description: string
   status: string
+  sys_status?: string | null
   notes?: string | null
   purchase_or_lease?: string
   area?: number | null
@@ -93,6 +96,7 @@ const settingsForm = ref<{
   address: '',
   description: '',
   status: 'draft',
+  sys_status: null,
   notes: null,
   purchase_or_lease: 'Purchase',
   area: null,
@@ -253,6 +257,7 @@ interface Project {
   startDate: string
   endDate: string
   status: string
+  sys_status?: string | null
   purchase_or_lease?: string
   notes?: string | null
   area?: number | null
@@ -288,6 +293,7 @@ async function loadProjects() {
       startDate: apiProject.date_start,
       endDate: apiProject.date_end,
       status: apiProject.status,
+      sys_status: apiProject.sys_status ?? null,
       purchase_or_lease: apiProject.purchase_or_lease,
       notes: apiProject.notes,
       area: (apiProject as ApiProject & { area?: number | null }).area ?? null,
@@ -340,6 +346,7 @@ async function loadProject() {
       startDate: apiResponse.date_start,
       endDate: apiResponse.date_end,
       status: apiResponse.status,
+      sys_status: apiResponse.sys_status ?? null,
       purchase_or_lease: apiResponse.purchase_or_lease,
       notes: apiResponse.notes,
       area: (apiResponse as { area?: number | null }).area ?? null,
@@ -387,6 +394,11 @@ function setActiveSection(section: 'plans' | 'tasks' | 'photos' | 'team' | 'sett
     loadTeamMembers()
     loadProjectTasks()
   }
+
+  // Load roster for task dialogs (assignee names, roles, avatars)
+  if (section === 'tasks' && project.value) {
+    loadTeamMembers()
+  }
 }
 
 // Load project tasks for Team Section
@@ -427,6 +439,7 @@ function loadSettingsForm() {
       address: project.value.address || '',
       description: project.value.description || '',
       status: project.value.status || 'draft',
+      sys_status: project.value.sys_status ?? null,
       notes: project.value.notes ?? null,
       purchase_or_lease: (project.value as { purchase_or_lease?: string }).purchase_or_lease || 'Purchase',
       area: (project.value as { area?: number | null }).area ?? null,
@@ -470,6 +483,7 @@ async function saveSettings() {
       address: formData?.address?.trim() || '',
       description: formData?.description?.trim() || '',
       status: formData?.status || 'draft',
+      sys_status: formData?.sys_status ?? null,
       priority: (project.value as { priority?: string }).priority ?? 'Medium',
       purchase_or_lease: formData?.purchase_or_lease || 'Purchase',
       notes: formData?.notes?.trim() || null,
@@ -547,6 +561,7 @@ async function saveSettings() {
         startDate: updatedProject.date_start,
         endDate: updatedProject.date_end,
         status: updatedProject.status,
+        sys_status: updatedProject.sys_status ?? null,
         purchase_or_lease: updatedProject.purchase_or_lease,
         notes: updatedProject.notes,
         area: (updatedProject as { area?: number | null }).area ?? null,
@@ -587,6 +602,8 @@ async function saveSettings() {
         project.value.address = updateData.address
         project.value.description = updateData.description
         project.value.status = updateData.status
+        project.value.sys_status =
+          updateData.sys_status !== undefined ? updateData.sys_status : project.value.sys_status
         project.value.purchase_or_lease = updateData.purchase_or_lease
         project.value.notes = updateData.notes
         project.value.area = updateData.area !== undefined ? updateData.area : null
@@ -619,6 +636,8 @@ async function saveSettings() {
       projects.value[projectIndex].address = updateData.address
       projects.value[projectIndex].description = updateData.description || ''
       projects.value[projectIndex].status = updateData.status
+      projects.value[projectIndex].sys_status =
+        updateData.sys_status !== undefined ? updateData.sys_status : projects.value[projectIndex].sys_status
       projects.value[projectIndex].purchase_or_lease = updateData.purchase_or_lease
       projects.value[projectIndex].notes = updateData.notes
       projects.value[projectIndex].area = updateData.area !== undefined ? updateData.area : null
@@ -716,7 +735,7 @@ async function loadTeamMembers() {
           user_type: member.role_name,
           job_title: member.job_title,
           status: member.status,
-          phone: member.phone,
+          phone: member.phone || member.cell_phone || member.mobile,
           first_name: member.first_name,
           last_name: member.last_name,
           role_code: member.role_code,
@@ -741,7 +760,7 @@ async function loadTeamMembers() {
             user_type: member.role_name,
             job_title: member.job_title,
             status: member.status,
-            phone: member.phone,
+            phone: member.phone || member.cell_phone || member.mobile,
             first_name: member.first_name,
             last_name: member.last_name,
             role_code: member.role_code,
@@ -762,9 +781,12 @@ async function loadTeamMembers() {
       added_by: member.added_by,
       name: member.name,
       email: member.email,
+      phone: member.phone,
       user_type: member.user_type,
       job_title: member.job_title,
       status: member.status ? Number(member.status) : undefined,
+      avatar_url: member.avatar_url,
+      full_img_url: member.full_img_url,
     }))
 
     console.log('✅ Team members loaded from API (before deduplication):', apiTeamMembers.length)
@@ -2695,6 +2717,7 @@ watch(
             v-else-if="activeSection === 'tasks'"
             ref="tasksSectionRef"
             :project="project"
+            :project-team-members="teamMembers"
               :can-edit="canEditProject"
               @event-click="handleEventClick"
               @date-click="handleDateClick"

@@ -1,5 +1,8 @@
 # API Requirements for Invited People (Milestone Guests)
 
+**Справочник по полю `role_in_project` (значения, смысл, отличие от `fw_glob_roles`):**  
+[`ROLE_IN_PROJECT_FIELD_REFERENCE.md`](./ROLE_IN_PROJECT_FIELD_REFERENCE.md)
+
 ## Overview
 
 **ВАЖНО: Разница между задачами и milestone**

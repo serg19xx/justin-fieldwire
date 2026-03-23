@@ -12,6 +12,8 @@ export interface ProjectTeamMember {
   added_by?: number
   name?: string // From user or invited_data
   email?: string // From user or invited_data
+  /** Mobile / cell phone from user profile or invited_data */
+  phone?: string
   user_type?: string
   job_title?: string
   status?: number
@@ -44,6 +46,8 @@ export interface Project {
   date_start?: string | null
   date_end?: string | null
   status: string
+  /** System lifecycle: draft | active | closing | suspended | done (see project-sys-status.ts) */
+  sys_status?: string | null
   purchase_or_lease?: ProjectPurchaseLeaseType
   notes?: string | null
   /** Note from notes table (fw_notes.note), if API returns it */

@@ -10,7 +10,7 @@ import { taskToCalendarTask, getTaskColor, processEndDateForDisplay } from '@/co
 import { useAuthStore } from '@/core/stores/auth'
 import { tasksApi } from '@/core/utils/tasks-api'
 import { projectApi, type Project, type ProjectTeamMember } from '@/core/utils/project-api'
-import { checkProjectBounds } from '@/core/utils/project-bounds-checker'
+import { checkProjectBounds, computeExtendedProjectDates } from '@/core/utils/project-bounds-checker'
 import { checkDependencyConstraints } from '@/core/utils/dependency-validator'
 import TaskDialog from '@/pages/projects/TaskDialog.vue'
 import TaskViewDialog from '@/pages/projects/TaskViewDialog.vue'
@@ -29,10 +29,13 @@ import { useTaskFilters } from '@/composables/useTaskFilters'
 interface Props {
   projectId: number
   canEdit?: boolean
+  /** Project roster for task view dialog (assignee display) */
+  projectTeamMembers?: ProjectTeamMember[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   canEdit: false,
+  projectTeamMembers: () => [],
 })
 
 // Debug props
@@ -1001,6 +1004,23 @@ async function loadProjectInfo() {
   }
 }
 
+/** Expand project date_start/date_end on the server so the task range fits (adaptive bounds). */
+async function ensureProjectBoundsCoverTask(taskStart: string, taskEnd: string) {
+  const p = projectInfo.value
+  if (!p?.date_start || !p?.date_end || !props.projectId) return
+
+  const { date_start, date_end } = computeExtendedProjectDates(p, taskStart, taskEnd)
+  if (date_start === p.date_start && date_end === p.date_end) return
+
+  try {
+    await projectApi.update(props.projectId, { date_start, date_end })
+    await loadProjectInfo()
+    console.log('✅ Project bounds extended to fit task:', { date_start, date_end })
+  } catch (err) {
+    console.error('❌ Failed to extend project bounds:', err)
+  }
+}
+
 // ===== ФУНКЦИИ ПРОВЕРКИ ГРАНИЦ ПРОЕКТА =====
 
 // Функция проверки начала задачи на выход за границы проекта
@@ -1239,7 +1259,18 @@ async function handleEventDrop(info: unknown) {
         project_id: props.projectId,
       }
 
-      // First check project bounds
+      // Adaptive project bounds: extend project dates on the server when the task is outside
+      if (projectInfo.value?.date_start && projectInfo.value?.date_end) {
+        const prelim = checkProjectBounds(taskData as TaskCreateUpdate, projectInfo.value)
+        if (!prelim.isWithinBounds) {
+          await ensureProjectBoundsCoverTask(
+            String(taskData.startPlanned),
+            String(taskData.endPlanned),
+          )
+        }
+      }
+
+      // First check project bounds (after possible extension)
       const boundsCheck = checkProjectBounds(taskData as TaskCreateUpdate, projectInfo.value!)
       if (!boundsCheck.isWithinBounds) {
         // Show simple bounds dialog
@@ -1740,7 +1771,17 @@ async function handleEventResize(info: unknown) {
 
     // Check task dates against project bounds
     if (projectInfo.value) {
-      // First check project bounds
+      if (projectInfo.value.date_start && projectInfo.value.date_end) {
+        const prelimResize = checkProjectBounds(taskData as TaskCreateUpdate, projectInfo.value)
+        if (!prelimResize.isWithinBounds) {
+          await ensureProjectBoundsCoverTask(
+            String(taskData.startPlanned),
+            String(taskData.endPlanned),
+          )
+        }
+      }
+
+      // First check project bounds (after possible extension)
       const boundsCheck = checkProjectBounds(taskData as TaskCreateUpdate, projectInfo.value)
 
       if (!boundsCheck.isWithinBounds) {
@@ -3816,6 +3857,8 @@ defineExpose({
            :project-end-date="projectInfo?.date_end || ''"
            :dynamic-range="false"
            :selected-task-from-parent="selectedTask"
+           :project-team-members="props.projectTeamMembers"
+           @project-bounds-updated="loadProjectInfo"
            @task-update="handleTaskUpdate"
            @task-created="(t: Task) => handleTaskUpdate(t)"
            @task-updated="(t: Task) => handleTaskUpdate(t)"
@@ -3849,6 +3892,7 @@ defineExpose({
         :is-open="taskViewDialog.isOpen"
         :task="taskViewDialog.task"
         :available-tasks="tasks"
+        :project-team-members="props.projectTeamMembers"
         :can-edit="canEdit"
         @close="closeTaskViewDialog"
       />

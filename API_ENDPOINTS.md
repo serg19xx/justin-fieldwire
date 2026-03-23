@@ -340,12 +340,14 @@ Use the API Tester at `/api-tester` to test endpoints:
 - `priority` (string, optional): Filter by project priority
 - `search` (string, optional): Search by project name or address
 - `prj_manager` (integer, optional): Filter by project manager ID (0 for unassigned)
+- `user_id` (integer, optional): **Workers / foremen / contractors** — return only projects where this user is on the project team (`fw_prj_team_members`) and/or has task assignments. The SPA sends this for `role_category=task` and roles `worker`, `foreman`, `contractor`.
 
 **Response:** Each project object in `data.projects` should include `area` (number, optional, nullable) and `level` (string, optional, nullable; one of: `Basics`, `Full Service`, `Medical Nice`, `High End`, `Extravagant`) when the backend returns them.
 
 **Examples:**
 - `GET /api/v1/projects` - All projects
 - `GET /api/v1/projects?prj_manager=47` - Projects of manager 47
+- `GET /api/v1/projects?user_id=12` - Projects relevant to user 12 (team membership / assignments)
 - `GET /api/v1/projects?prj_manager=0` - Unassigned projects
 - `GET /api/v1/projects?prj_manager=47&status=Active` - Combined filtering
 
@@ -519,6 +521,7 @@ Use the API Tester at `/api-tester` to test endpoints:
 - `wbs_path[]` (string[], optional): Filter by WBS path elements
 - `date_start` (string, optional): Filter tasks starting from this date (ISO format)
 - `date_end` (string, optional): Filter tasks ending before this date (ISO format)
+- `user_id` (integer, optional): Return tasks where this user is task lead, in `team_members`, or in `assignees` (worker/foreman mobile UI sends this).
 
 **Response:**
 ```json

@@ -8,6 +8,7 @@
       ref="calendarRef"
       :project-id="(project as any).id"
       :can-edit="canEdit"
+      :project-team-members="projectTeamMembers"
       @event-click="handleEventClick"
       @date-click="handleDateClick"
       @event-drop="handleEventDrop"
@@ -55,6 +56,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import type { ProjectTeamMember } from '@/core/utils/project-api'
 import ProjectCalendar from './ProjectCalendar.vue'
 
 defineOptions({
@@ -65,12 +67,16 @@ defineOptions({
 interface Props {
   project?: unknown
   canEdit?: boolean
+  /** Project roster for resolving task assignee IDs (names, roles, avatars) */
+  projectTeamMembers?: ProjectTeamMember[]
 }
 
 // Refs
 const calendarRef = ref()
 
-defineProps<Props>()
+withDefaults(defineProps<Props>(), {
+  projectTeamMembers: () => [],
+})
 
 // View state
 const activeView = ref<'calendar' | 'list' | 'gantt'>('calendar')

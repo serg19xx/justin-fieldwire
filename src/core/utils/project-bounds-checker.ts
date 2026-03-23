@@ -1,6 +1,26 @@
 import type { TaskCreateUpdate } from '@/core/types/task'
 import type { Project } from '@/core/utils/project-api'
 
+/**
+ * Expand project date_start / date_end so they fully contain the task range.
+ * Used when tasks are dragged outside current project bounds (calendar / Gantt).
+ */
+export function computeExtendedProjectDates(
+  project: Pick<Project, 'date_start' | 'date_end'>,
+  taskStart: string,
+  taskEnd: string,
+): { date_start: string; date_end: string } {
+  const ts = taskStart.slice(0, 10)
+  const te = taskEnd.slice(0, 10)
+  const ps = project.date_start?.slice(0, 10)
+  const pe = project.date_end?.slice(0, 10)
+
+  const newStart = ps ? (ts < ps ? ts : ps) : ts
+  const newEnd = pe ? (te > pe ? te : pe) : te
+
+  return { date_start: newStart, date_end: newEnd }
+}
+
 export interface BoundsCheckResult {
   isWithinBounds: boolean
   clampedStart: string

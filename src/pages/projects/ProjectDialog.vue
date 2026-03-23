@@ -62,9 +62,9 @@
 
           <!-- Project dates are auto-calculated from tasks -->
 
-          <!-- Project Status -->
+          <!-- Client funnel (informational) -->
           <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Project Status </label>
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Client stage </label>
               <select
                 v-model="form.status"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -78,6 +78,19 @@
                 <option value="Construction">Construction</option>
                 <option value="Completed Project">Completed Project</option>
               </select>
+            <p class="mt-1 text-xs text-gray-500">For sales tracking only.</p>
+          </div>
+
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Lifecycle </label>
+            <select
+              v-model="form.sys_status"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option v-for="opt in projectSysStatusOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
           </div>
 
           <!-- Purchase or Lease -->
@@ -295,6 +308,13 @@ import { hrResourcesApi, type WorkerUser } from '@/core/utils/hr-api'
 import { useAuthStore } from '@/core/stores/auth'
 import ClientSelectorDialog from '@/components/ClientSelectorDialog.vue'
 import { clientsApi, type Client } from '@/core/utils/clients-api'
+import {
+  DEFAULT_PROJECT_SYS_STATUS,
+  PROJECT_SYS_STATUS_OPTIONS,
+  type ProjectSysStatus,
+} from '@/core/utils/project-sys-status'
+
+const projectSysStatusOptions = PROJECT_SYS_STATUS_OPTIONS
 
 // Props
 interface Props {
@@ -476,6 +496,7 @@ watch(
         prj_name: '',
         address: '',
         status: 'Initial Contact Lead',
+        sys_status: DEFAULT_PROJECT_SYS_STATUS,
         purchase_or_lease: 'Purchase',
         notes: '',
         client_id: null,
@@ -673,6 +694,7 @@ async function handleSubmit() {
       date_end: null,
       priority: 'Medium',
       status: form.value.status,
+      sys_status: form.value.sys_status,
       purchase_or_lease: form.value.purchase_or_lease,
       notes: form.value.notes || null,
       client_id: form.value.client_id || null,

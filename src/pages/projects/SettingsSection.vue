@@ -129,9 +129,9 @@
           </div>
         </div>
 
-        <!-- Project Status -->
+        <!-- Client funnel status (informational only; not used for system logic) -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2"> Project Status </label>
+          <label class="block text-sm font-medium text-gray-700 mb-2"> Client stage </label>
             <select
               v-model="settingsForm.status"
               :disabled="!canEdit"
@@ -146,6 +146,23 @@
               <option value="Construction">Construction</option>
               <option value="Completed Project">Completed Project</option>
             </select>
+          <p v-if="canEdit" class="mt-1 text-xs text-gray-500">
+            For sales tracking only. Lifecycle for the app is set below.
+          </p>
+        </div>
+
+        <!-- System lifecycle (drives filters, task UI, reporting) -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2"> Lifecycle </label>
+          <select
+            v-model="settingsForm.sys_status"
+            :disabled="!canEdit"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+          >
+            <option v-for="opt in projectSysStatusOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
         </div>
 
         <!-- Purchase or Lease -->
@@ -261,10 +278,18 @@ import { ref, reactive, watch, onMounted, computed } from 'vue'
 import ClientSelectorDialog from '@/components/ClientSelectorDialog.vue'
 import { clientsApi, type Client } from '@/core/utils/clients-api'
 import type { ClientTableType } from '@/core/utils/project-api'
+import {
+  DEFAULT_PROJECT_SYS_STATUS,
+  PROJECT_SYS_STATUS_OPTIONS,
+  resolveProjectSysStatus,
+  type ProjectSysStatus,
+} from '@/core/utils/project-sys-status'
 
 defineOptions({
   name: 'SettingsSection',
 })
+
+const projectSysStatusOptions = PROJECT_SYS_STATUS_OPTIONS
 
 // Props
 interface ProjectData {
@@ -274,6 +299,7 @@ interface ProjectData {
   startDate?: string | null
   endDate?: string | null
   status: string
+  sys_status?: ProjectSysStatus | string | null
   purchase_or_lease?: string
   notes?: string | null
   area?: number | null
@@ -319,6 +345,7 @@ const settingsForm = reactive({
   address: '',
   description: '',
   status: 'draft',
+  sys_status: DEFAULT_PROJECT_SYS_STATUS as ProjectSysStatus,
   purchase_or_lease: 'Purchase',
   notes: '',
   area: null as number | null,
@@ -383,6 +410,9 @@ function initializeForm() {
     settingsForm.address = String(project.address || '')
     settingsForm.description = String(project.description || '')
     settingsForm.status = String(project.status || 'draft')
+    settingsForm.sys_status = resolveProjectSysStatus({
+      sys_status: project.sys_status ?? null,
+    })
     settingsForm.purchase_or_lease = String(project.purchase_or_lease || 'Purchase')
     settingsForm.notes = String(project.notes || '')
     settingsForm.area = project.area ?? null

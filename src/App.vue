@@ -7,11 +7,6 @@
 
     <!-- Dynamic Layouts based on user role -->
     <template v-else-if="authStore.isAuthenticated">
-      <!-- Debug info -->
-      <div v-if="false" class="fixed top-0 left-0 bg-red-500 text-white p-2 z-50">
-        Role: {{ authStore.currentUser?.role_category }} | Code: {{ authStore.currentUser?.role_code }}
-      </div>
-
       <!-- Global Layout for global users -->
       <GlobalLayout v-if="authStore.currentUser?.role_category === 'global'">
         <RouterView />
@@ -86,3 +81,7 @@ function handleClickOutside(event: Event) {
   }
 }
 </script>
+
+<style scoped>
+/* Keep styles in layouts/components; root app has no CSS here */
+</style>

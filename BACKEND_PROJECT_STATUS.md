@@ -1,5 +1,7 @@
 # Backend: Project Status Values (POST/PUT /api/v1/projects)
 
+> **System lifecycle** (draft / active / closing / suspended / done) is stored separately as **`sys_status`**. See `docs/BACKEND_PROJECT_SYS_STATUS.md`. The values below are **informational** (client sales stage) only.
+
 The frontend sends and displays these **project status** values. The backend must accept them for `POST /api/v1/projects` and `PUT /api/v1/projects/:id` (no enum restriction, or extend the enum to include these).
 
 ## Allowed status values (exact strings)

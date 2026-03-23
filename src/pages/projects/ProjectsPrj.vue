@@ -187,8 +187,11 @@
                 <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[14%] min-w-0">
                   Note
                 </th>
-                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[10%] min-w-0">
+                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[9%] min-w-0">
                   Status
+                </th>
+                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[9%] min-w-0">
+                  Lifecycle
                 </th>
                 <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[8%] min-w-0">
                   Progress
@@ -316,6 +319,15 @@
                     :title="getStatusDisplay(project.status)"
                   >
                     {{ getStatusDisplay(project.status) }}
+                  </span>
+                </td>
+                <td class="px-2 py-4 whitespace-nowrap text-xs min-w-0 overflow-hidden">
+                  <span
+                    :class="getSysStatusClass(resolvedSysStatus(project))"
+                    class="px-2 py-1 font-medium rounded-full inline-block truncate max-w-full"
+                    :title="sysStatusTitle(project)"
+                  >
+                    {{ sysStatusLabel(project) }}
                   </span>
                 </td>
                 <td class="px-2 py-4 whitespace-nowrap min-w-0 overflow-hidden">
@@ -594,6 +606,11 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
 import { projectApi, type Project as ApiProject } from '@/core/utils/project-api'
+import {
+  PROJECT_SYS_STATUS_LABELS,
+  resolveProjectSysStatus,
+  type ProjectSysStatus,
+} from '@/core/utils/project-sys-status'
 import ProjectDialog from './ProjectDialog.vue'
 
 const router = useRouter()
@@ -720,6 +737,41 @@ function getStatusClass(status: string) {
 
 function getStatusDisplay(status: string) {
   return status || '—'
+}
+
+function resolvedSysStatus(project: ApiProject): ProjectSysStatus {
+  return resolveProjectSysStatus({ sys_status: project.sys_status ?? null })
+}
+
+function sysStatusLabel(project: ApiProject): string {
+  return PROJECT_SYS_STATUS_LABELS[resolvedSysStatus(project)]
+}
+
+function sysStatusTitle(project: ApiProject): string {
+  const code = resolvedSysStatus(project)
+  const label = PROJECT_SYS_STATUS_LABELS[code]
+  const stored = project.sys_status != null && String(project.sys_status).trim() !== ''
+  if (stored) {
+    return `${label} (sys_status: ${String(project.sys_status).trim()})`
+  }
+  return `${label} (no sys_status — treated as draft)`
+}
+
+function getSysStatusClass(code: ProjectSysStatus): string {
+  switch (code) {
+    case 'draft':
+      return 'bg-slate-100 text-slate-800'
+    case 'active':
+      return 'bg-emerald-100 text-emerald-800'
+    case 'closing':
+      return 'bg-amber-100 text-amber-800'
+    case 'suspended':
+      return 'bg-orange-100 text-orange-800'
+    case 'done':
+      return 'bg-violet-100 text-violet-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
 }
 
 function formatDate(dateString: string) {

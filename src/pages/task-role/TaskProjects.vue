@@ -1,8 +1,11 @@
 <template>
   <div class="px-4 py-4 max-w-lg mx-auto">
-    <h1 class="text-xl font-semibold text-gray-900 mb-4">My Projects</h1>
+    <h1 class="text-xl font-semibold text-gray-900 mb-1">My Projects</h1>
+    <p class="text-xs text-gray-500 mb-4">
+      One current site; other assigned projects stay here until they start. Closed projects are in Archived.
+    </p>
 
-    <!-- Tabs: Active / Archived -->
+    <!-- Tabs: Active (current + planned) / Archived -->
     <div class="flex rounded-lg bg-gray-200 p-1 mb-4">
       <button
         type="button"
@@ -31,17 +34,85 @@
       <p class="text-sm text-gray-500 mt-4">Loading projects…</p>
     </div>
 
-    <div v-else-if="filteredProjects.length === 0" class="bg-white rounded-xl border border-gray-200 p-8 text-center">
-      <p class="text-gray-500 text-sm">
-        {{ filterActive ? 'No active projects.' : 'No archived projects.' }}
-      </p>
+    <div
+      v-else-if="filterActive && !activePartition.current && activePartition.planned.length === 0"
+      class="bg-white rounded-xl border border-gray-200 p-8 text-center"
+    >
+      <p class="text-gray-500 text-sm">No active projects.</p>
     </div>
 
+    <div
+      v-else-if="!filterActive && archivedProjects.length === 0"
+      class="bg-white rounded-xl border border-gray-200 p-8 text-center"
+    >
+      <p class="text-gray-500 text-sm">No archived projects.</p>
+    </div>
+
+    <!-- Active tab: current + planned -->
+    <div v-else-if="filterActive" class="space-y-6">
+      <section v-if="activePartition.current">
+        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Current project</h2>
+        <RouterLink
+          :to="`/tasks/project/${activePartition.current.id}`"
+          class="block bg-white rounded-xl shadow-sm border-2 border-orange-400 p-4 active:bg-orange-50"
+        >
+          <div class="flex justify-between items-start gap-2">
+            <span class="font-medium text-gray-900 truncate flex-1">{{ activePartition.current.prj_name }}</span>
+            <span
+              :class="[
+                'flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full',
+                statusClass(activePartition.current.status),
+              ]"
+            >
+              {{ activePartition.current.status || '—' }}
+            </span>
+          </div>
+          <p v-if="activePartition.current.address" class="text-xs text-gray-500 mt-1 truncate">
+            {{ activePartition.current.address }}
+          </p>
+          <p v-if="activePartition.current.date_start || activePartition.current.date_end" class="text-xs text-gray-400 mt-1">
+            {{ formatDateRange(activePartition.current.date_start, activePartition.current.date_end) }}
+          </p>
+        </RouterLink>
+      </section>
+
+      <section v-if="activePartition.planned.length > 0">
+        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Planned</h2>
+        <ul class="space-y-3">
+          <li v-for="project in activePartition.planned" :key="project.id">
+            <RouterLink
+              :to="`/tasks/project/${project.id}`"
+              class="block bg-white rounded-xl shadow-sm border border-gray-200 p-4 active:bg-gray-50"
+            >
+              <div class="flex justify-between items-start gap-2">
+                <span class="font-medium text-gray-900 truncate flex-1">{{ project.prj_name }}</span>
+                <span
+                  :class="[
+                    'flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full',
+                    statusClass(project.status),
+                  ]"
+                >
+                  {{ project.status || '—' }}
+                </span>
+              </div>
+              <p v-if="project.address" class="text-xs text-gray-500 mt-1 truncate">
+                {{ project.address }}
+              </p>
+              <p v-if="project.date_start || project.date_end" class="text-xs text-gray-400 mt-1">
+                {{ formatDateRange(project.date_start, project.date_end) }}
+              </p>
+            </RouterLink>
+          </li>
+        </ul>
+      </section>
+    </div>
+
+    <!-- Archived tab -->
     <ul v-else class="space-y-3">
-      <li v-for="project in filteredProjects" :key="project.id">
+      <li v-for="project in archivedProjects" :key="project.id">
         <RouterLink
           :to="`/tasks/project/${project.id}`"
-          class="block bg-white rounded-xl shadow-sm border border-gray-200 p-4 active:bg-gray-50"
+          class="block bg-white rounded-xl shadow-sm border border-gray-200 p-4 active:bg-gray-50 opacity-90"
         >
           <div class="flex justify-between items-start gap-2">
             <span class="font-medium text-gray-900 truncate flex-1">{{ project.prj_name }}</span>
@@ -68,27 +139,37 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useAuthStore } from '@/core/stores/auth'
 import { projectApi } from '@/core/utils/project-api'
 import type { Project } from '@/core/utils/project-api'
+import {
+  filterProjectsForTaskExecutorUser,
+  getProjectListQueryFiltersForUser,
+  isProjectActiveForTaskUi,
+  isProjectArchivedForTaskUi,
+  isTaskExecutorUser,
+  parseProjectsFromListResponse,
+} from '@/core/utils/project-list-for-user'
+import { partitionProjectsForTaskRoleList, readStoredCurrentProjectId } from '@/core/utils/task-role-ux'
+
+const authStore = useAuthStore()
 
 const filterActive = ref(true)
 const projects = ref<Project[]>([])
 const isLoading = ref(true)
 
-const activeStatuses = ['Active', 'In Progress', 'InProgress']
-const archivedStatuses = ['Completed', 'Closed', 'Archived', 'On Hold', 'OnHold', 'Cancelled']
-
-const filteredProjects = computed(() => {
-  const list = projects.value
-  if (filterActive.value) {
-    return list.filter((p) => p.status && activeStatuses.includes(p.status))
+const activePartition = computed(() => {
+  if (!filterActive.value) {
+    return { current: null as Project | null, planned: [] as Project[] }
   }
-  return list.filter((p) => !p.status || archivedStatuses.includes(p.status) || !activeStatuses.includes(p.status))
+  return partitionProjectsForTaskRoleList(projects.value, readStoredCurrentProjectId())
 })
+
+const archivedProjects = computed(() => projects.value.filter((p) => isProjectArchivedForTaskUi(p)))
 
 function statusClass(status: string | undefined): string {
   if (!status) return 'bg-gray-100 text-gray-700'
-  if (activeStatuses.includes(status)) return 'bg-green-100 text-green-800'
+  if (isProjectActiveForTaskUi({ status } as Project)) return 'bg-green-100 text-green-800'
   return 'bg-gray-100 text-gray-700'
 }
 
@@ -101,8 +182,14 @@ function formatDateRange(start: string | null | undefined, end: string | null | 
 
 onMounted(async () => {
   try {
-    const data = await projectApi.getAll(1, 100, {})
-    projects.value = (data as { projects?: Project[] }).projects ?? []
+    const filters = getProjectListQueryFiltersForUser(authStore.currentUser)
+    const data = await projectApi.getAll(1, 100, filters)
+    let list = parseProjectsFromListResponse(data)
+    const uid = authStore.currentUser?.id
+    if (uid != null && isTaskExecutorUser(authStore.currentUser)) {
+      list = await filterProjectsForTaskExecutorUser(list, uid)
+    }
+    projects.value = list
   } catch {
     projects.value = []
   } finally {

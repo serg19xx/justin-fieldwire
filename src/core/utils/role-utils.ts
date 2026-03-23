@@ -19,6 +19,32 @@ const ROLE_CODE_MAP: Record<string, string> = {
 }
 
 /**
+ * Labels for assignment rows: `fw_prj_team_members.role_in_project` (and similar).
+ * These are NOT the same as `fw_glob_roles.code` — they describe participation on a task/project row
+ * (e.g. lead vs brigade member vs guest), not the user's system-wide role.
+ */
+const PROJECT_ASSIGNMENT_ROLE_LABELS: Record<string, string> = {
+  task_lead: 'Task lead',
+  member: 'Team member',
+  invited: 'Invited',
+}
+
+/**
+ * Human-readable label for `role_in_project` / `project_role` on team assignment rows.
+ */
+export function formatProjectAssignmentRole(role: string | undefined | null): string {
+  if (!role) return ''
+  const key = role.trim().toLowerCase()
+  if (PROJECT_ASSIGNMENT_ROLE_LABELS[key]) {
+    return PROJECT_ASSIGNMENT_ROLE_LABELS[key]
+  }
+  return role
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
+}
+
+/**
  * Role id to display name (fw_glob_roles.id -> name) when API returns only role_id
  */
 const ROLE_ID_TO_NAME: Record<number, string> = {
@@ -94,9 +120,9 @@ export function getDisplayRole(data: {
     return ROLE_ID_TO_NAME[data.role_id]
   }
   
-  // Priority 6: project_role (role in project context)
+  // Priority 6: project_role (assignment row: task_lead, member, invited — not fw_glob_roles)
   if (data.project_role) {
-    return data.project_role
+    return formatProjectAssignmentRole(data.project_role)
   }
   
   // Priority 7: role as string (if it's already a readable name)
