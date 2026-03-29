@@ -300,7 +300,7 @@ export function templateToTaskData(
     task_order: template.task_order,
   }
 
-  if (overrides?.task_lead_id !== undefined) {
+  if (overrides?.task_lead_id !== undefined && overrides.task_lead_id !== null) {
     taskData.task_lead_id = overrides.task_lead_id
   }
 

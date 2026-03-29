@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
+import { isTaskRoleForeman } from '@/core/utils/task-role-ux'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -47,8 +48,12 @@ const router = createRouter({
           return import('../pages/dashboard/ProjectDashboard.vue')
         }
 
-        // Task Executors get TaskDashboard
+        // Task role: foreman gets overview dashboard; workers / contractors get compact "my work" dashboard
         if (roleCategory === 'task') {
+          const u = authStore.currentUser
+          if (isTaskRoleForeman(u?.role_code, u?.role_id)) {
+            return import('../pages/dashboard/ForemanDashboard.vue')
+          }
           return import('../pages/dashboard/TaskDashboard.vue')
         }
 
@@ -78,6 +83,14 @@ const router = createRouter({
         // Project/global: legacy projects list
         return import('../pages/projects/ProjectsPrj.vue')
       },
+    },
+    {
+      path: '/tasks/my-week',
+      redirect: '/tasks/schedule',
+    },
+    {
+      path: '/tasks/schedule',
+      component: () => import('../pages/task-role/TaskScheduleWeek.vue'),
     },
     {
       path: '/tasks/project/:id',
@@ -156,7 +169,7 @@ const router = createRouter({
     },
     {
       path: '/projects/:id',
-      beforeEnter: (to, from, next) => {
+      redirect: (to) => {
         const authStore = useAuthStore()
         const roleCode = authStore.currentUser?.role_code
         let roleId: number | string | undefined = (authStore.currentUser as unknown as { role_id?: number | string })?.role_id
@@ -177,11 +190,9 @@ const router = createRouter({
         const isAdmin = roleCode === 'admin' || roleIdNum === 9
 
         console.log('🔀 Redirecting project route based on role:', { roleCode, roleId: roleIdNum, isAdmin })
-        if (isAdmin) {
-          next({ path: `/projects/${to.params.id}/admin` })
-        } else {
-          next({ path: `/projects/${to.params.id}/detail` })
-        }
+        return isAdmin
+          ? { path: `/projects/${to.params.id}/admin` }
+          : { path: `/projects/${to.params.id}/detail` }
       },
     },
     {

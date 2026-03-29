@@ -339,6 +339,7 @@ const form = ref({
   prj_name: '',
   address: '',
   status: 'Initial Contact Lead',
+  sys_status: DEFAULT_PROJECT_SYS_STATUS satisfies ProjectSysStatus,
   purchase_or_lease: 'Purchase',
   notes: '',
   client_id: null as number | null,

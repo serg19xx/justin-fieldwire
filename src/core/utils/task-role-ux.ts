@@ -1,6 +1,9 @@
+import { FOREMAN_ROLE_DB_ID } from '@/config/roles'
 import type { Project } from '@/core/utils/project-api'
 import type { Task } from '@/core/types/task'
 import { isProjectActiveForTaskUi } from '@/core/utils/project-list-for-user'
+
+export { resolveSessionUserId } from '@/core/utils/session-user-id'
 
 const CURRENT_PROJECT_STORAGE_KEY = 'fieldwire_task_role_current_project_id'
 
@@ -97,14 +100,55 @@ export function partitionProjectsForTaskRoleList(
 }
 
 /**
+ * Foreman sees the full project task list in task-role routes; workers and contractors only see assigned tasks.
+ * Matches `role_code` `foreman` or global role id {@link FOREMAN_ROLE_DB_ID} when the API sends `role_id` only.
+ */
+export function isTaskRoleForeman(
+  roleCode?: string | null | undefined,
+  roleId?: number | null | undefined,
+): boolean {
+  const id = Number(roleId)
+  if (Number.isFinite(id) && id === FOREMAN_ROLE_DB_ID) return true
+  return (roleCode || '').toLowerCase() === 'foreman'
+}
+
+/**
+ * True if the user is task lead, team member, or legacy assignee.
+ */
+export function isUserInvolvedInTask(
+  task: Task,
+  userId: number | string | null | undefined,
+): boolean {
+  const uid = typeof userId === 'number' && Number.isFinite(userId) ? userId : Number(userId)
+  if (!Number.isFinite(uid) || uid <= 0) return false
+  return (
+    (task.task_lead_id != null && Number(task.task_lead_id) === uid) ||
+    (task.team_members || []).some((x) => Number(x) === uid) ||
+    (task.assignees || []).some((x) => Number(x) === uid)
+  )
+}
+
+/**
+ * Tasks visible to a worker in task-role project views (server may still return extras).
+ */
+export function filterTasksForInvolvedUser(
+  tasks: Task[],
+  userId: number | string | null | undefined,
+): Task[] {
+  const uid = Number(userId)
+  if (!Number.isFinite(uid) || uid <= 0) return []
+  return tasks.filter((t) => isUserInvolvedInTask(t, uid))
+}
+
+/**
  * Pick the single "active" task for the worker list (top of screen).
  */
-export function pickPrimaryActiveTask(tasks: Task[], userId?: number | null): Task | null {
+export function pickPrimaryActiveTask(
+  tasks: Task[],
+  userId?: number | string | null,
+): Task | null {
   const involves = (t: Task) =>
-    userId == null ||
-    (t.task_lead_id != null && Number(t.task_lead_id) === userId) ||
-    (t.team_members || []).some((x) => Number(x) === userId) ||
-    (t.assignees || []).some((x) => Number(x) === userId)
+    userId == null || isUserInvolvedInTask(t, userId)
 
   const inProg = tasks.filter((t) => t.status === 'in_progress')
   const mineInProg = inProg.filter(involves)

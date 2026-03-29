@@ -819,8 +819,9 @@ async function loadProjects() {
     const limit = useServerPaging.value ? itemsPerPage.value : 100
 
     const response = await projectApi.getAll(page, limit, filters)
-    // Expecting { projects, pagination? }
-    const rawProjects = response.projects || response.data || []
+    const rawProjects = Array.isArray(response)
+      ? response
+      : (response.projects ?? response.data ?? [])
     
     // Map and parse projects, especially client_data JSON field
     projects.value = rawProjects.map((apiProject: ApiProject) => {
@@ -882,11 +883,14 @@ async function loadProjects() {
     })
 
     // Capture server pagination if provided
-    const p = (response.pagination || response.meta || null) as
+    const envelope = Array.isArray(response) ? null : response
+    const p = (envelope?.pagination || envelope?.meta || null) as
       | { total?: number; last_page?: number; current_page?: number }
       | null
-    serverTotalItems.value = typeof response.total === 'number' ? response.total : p?.total ?? null
-    serverTotalPages.value = typeof response.last_page === 'number' ? response.last_page : p?.last_page ?? null
+    serverTotalItems.value =
+      typeof envelope?.total === 'number' ? envelope.total : p?.total ?? null
+    serverTotalPages.value =
+      typeof envelope?.last_page === 'number' ? envelope.last_page : p?.last_page ?? null
   } catch (error: unknown) {
     console.error('❌ Error loading projects:', error)
     const axiosError = error as { response?: { status?: number; data?: { message?: string }; statusText?: string } }

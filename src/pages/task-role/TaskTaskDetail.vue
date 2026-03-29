@@ -101,8 +101,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useAuthStore } from '@/core/stores/auth'
 import { tasksApi } from '@/core/utils/tasks-api'
 import { MILESTONE_ICON } from '@/core/utils/task-utils'
+import {
+  isTaskRoleForeman,
+  isUserInvolvedInTask,
+  resolveSessionUserId,
+} from '@/core/utils/task-role-ux'
 import { isMilestone } from '@/core/types/task'
 import type { Task } from '@/core/types/task'
 
@@ -115,6 +121,7 @@ export interface TaskPhoto {
 }
 
 const route = useRoute()
+const authStore = useAuthStore()
 const projectId = computed(() => String(route.params.projectId))
 const taskId = computed(() => String(route.params.taskId))
 
@@ -187,8 +194,15 @@ async function loadTask() {
   if (!pid || !tid) return
   isLoading.value = true
   try {
-    task.value = await tasksApi.getById(pid, tid)
-    selectedStatus.value = mapStatusFromBackend(task.value.status)
+    const loaded = await tasksApi.getById(pid, tid)
+    const uid = resolveSessionUserId(authStore.currentUser)
+    const foreman = isTaskRoleForeman(authStore.currentUser?.role_code, authStore.currentUser?.role_id)
+    if (!foreman && uid != null && loaded && !isUserInvolvedInTask(loaded, uid)) {
+      task.value = null
+    } else {
+      task.value = loaded
+      selectedStatus.value = mapStatusFromBackend(task.value?.status)
+    }
   } catch {
     task.value = null
   } finally {

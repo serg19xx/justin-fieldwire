@@ -74,18 +74,113 @@ export interface Project {
   updated_at: string
 }
 
+/**
+ * Read lifecycle from API JSON (some backends use camelCase `sysStatus`).
+ * First non-empty value wins: `sys_status`, then `sysStatus`.
+ */
+export function readSysStatusFromApiRow(row: Record<string, unknown> | null | undefined): string | null {
+  if (!row) return null
+  for (const key of ['sys_status', 'sysStatus'] as const) {
+    const v = row[key]
+    if (v == null) continue
+    const s = typeof v === 'string' ? v.trim() : String(v).trim()
+    if (s) return s
+  }
+  return null
+}
+
+function normalizeProjectRecordFromApi(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return raw
+  const row = raw as Record<string, unknown>
+  const next: Record<string, unknown> = { ...row }
+  const sys = readSysStatusFromApiRow(row)
+  if (sys != null) next.sys_status = sys
+  if (next.prj_name == null && typeof next.name === 'string' && next.name.trim()) {
+    next.prj_name = next.name
+  }
+  return next
+}
+
+function normalizeProjectsListPayload(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return raw
+  const o = raw as Record<string, unknown>
+  const out: Record<string, unknown> = { ...o }
+  if (Array.isArray(o.projects)) {
+    out.projects = o.projects.map((p) => normalizeProjectRecordFromApi(p))
+  }
+  if (Array.isArray(o.data)) {
+    out.data = o.data.map((p) => normalizeProjectRecordFromApi(p))
+  }
+  if (Array.isArray(o.results)) {
+    out.results = o.results.map((p) => normalizeProjectRecordFromApi(p))
+  }
+  if (Array.isArray(o.items)) {
+    out.items = o.items.map((p) => normalizeProjectRecordFromApi(p))
+  }
+  return out
+}
+
+/**
+ * Unwrap axios `response.data`: list may be at `data`, nested `data.projects`, or top-level `projects`.
+ */
+function extractProjectsListRoot(response: { data?: unknown }): unknown {
+  const body = response.data as Record<string, unknown> | undefined
+  if (body == null) return null
+  if (Array.isArray(body)) return body
+
+  const inner = body.data
+  if (Array.isArray(inner)) return inner
+  if (inner && typeof inner === 'object' && !Array.isArray(inner)) {
+    const mid = inner as Record<string, unknown>
+    if (
+      Array.isArray(mid.projects) ||
+      Array.isArray(mid.data) ||
+      Array.isArray(mid.results) ||
+      Array.isArray(mid.items)
+    ) {
+      return inner
+    }
+  }
+
+  return body
+}
+
+/** Result of project list endpoint: plain array or envelope with `projects` / `data` / pagination. */
+export type ProjectsListApiResult =
+  | Project[]
+  | {
+      projects?: Project[]
+      data?: Project[]
+      results?: Project[]
+      items?: Project[]
+      pagination?: Record<string, unknown>
+      meta?: Record<string, unknown>
+      total?: number
+      last_page?: number
+    }
+
 // Project API
 export const projectApi = {
-  async getAll(page: number = 1, limit: number = 100, filters: Record<string, unknown> = {}) {
+  async getAll(
+    page: number = 1,
+    limit: number = 100,
+    filters: Record<string, unknown> = {},
+  ): Promise<ProjectsListApiResult> {
     const response = await api.get('/api/v1/projects', {
       params: { page, limit, ...filters },
     })
-    return response.data.data
+    const raw = extractProjectsListRoot(response)
+    if (Array.isArray(raw)) {
+      return raw.map((p) => normalizeProjectRecordFromApi(p)) as Project[]
+    }
+    return normalizeProjectsListPayload(raw) as ProjectsListApiResult
   },
 
   async getById(id: number) {
     const response = await api.get(`/api/v1/projects/${id}`)
-    return response.data.data.project
+    const data = response.data?.data as Record<string, unknown> | undefined
+    const proj = (data?.project ?? data) as unknown
+    return normalizeProjectRecordFromApi(proj) as Project
   },
 
   async update(id: number, data: Record<string, unknown>) {

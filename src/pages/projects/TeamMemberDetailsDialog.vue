@@ -277,7 +277,7 @@ defineOptions({
   name: 'TeamMemberDetailsDialog',
 })
 
-interface ExtendedTeamMember extends ProjectTeamMember {
+interface ExtendedTeamMember extends Omit<ProjectTeamMember, 'phone'> {
   phone?: string | null
   avatar_url?: string | null
   full_img_url?: string | null

@@ -1,8 +1,8 @@
 # Backend API: projects & tasks for Worker / Foreman / Contractor
 
-Frontend role detection: `role_category === 'task'` or `role_code` in `worker`, `foreman`, `contractor`.
+Frontend role detection: `role_category === 'task'` or `role_code` in `worker`, `foreman`, `contractor` (case-insensitive).
 
-**In scope on the SPA today:** task-role **project list** (`/tasks` → `TaskProjects.vue`) and **project tasks** (`TaskProjectDetail.vue`, `TaskTaskDetail.vue`). **Task dashboard** (`TaskDashboard.vue`) is handled separately — do not rely on it for “my projects” filtering until that work is done.
+**In scope on the SPA today:** **Task dashboards** — workers/contractors use `TaskDashboard.vue`; **foreman** (`role_code` / `role_id` 12) uses `ForemanDashboard.vue` (overview + aggregates). Task-role **project list** (`/tasks` → `TaskProjects.vue`) and both dashboards use the same loader `fetchProjectsForTaskScope`: server query params + client-side narrowing when the API returns too many projects. **Project tasks:** `TaskProjectDetail.vue`, `TaskTaskDetail.vue`.
 
 ## 1. Recommended: filter projects on the server (primary gap)
 
@@ -17,7 +17,7 @@ Return only projects where that user is “involved”, for example:
 - Listed on the **project team** (`fw_prj_team_members` with `task_id` NULL / project-level rows, if your schema has them), **and/or**
 - Has at least one **task assignment** in that project (`task_lead_id`, `team_members`, or legacy `assignees` on `fw_prj_tasks` / your task table).
 
-**Why:** Without this, the list returns all projects and the **task-role projects screen** (`/tasks`) cannot stay correct at scale. The SPA falls back to many `GET .../team` + `GET .../tasks` calls per project there only (slow, capped).
+**Why:** Without this, the list returns all projects; the SPA then narrows client-side via `GET .../tasks?user_id=` (when supported), `GET .../team`, and full task lists (slow, capped at 150 projects). If team/task responses differ from what the SPA expects (shape, permissions), the **Projects** tab can appear empty while the dashboard previously showed every project — both now use the same scoped list.
 
 **Alternative endpoint (optional, cleaner):**  
 `GET /api/v1/me/projects` or `GET /api/v1/users/me/projects` — same filter, scoped by JWT (no `user_id` in query).
@@ -28,11 +28,13 @@ Return only projects where that user is “involved”, for example:
 
 **Endpoint:** `GET /api/v1/projects/{projectId}/tasks`
 
-**Query parameter (already sent when filtering):** `user_id=<numeric user id>`
+**Query parameter (optional):** The task-role project screen (`TaskProjectDetail.vue`) calls **`GET .../tasks` without `user_id`** and relies on the **full project task list** plus client-side **`filterTasksForInvolvedUser`** (session user id vs `task_lead_id`, `team_members`, `assignees`). This avoids servers that return an empty list when `user_id` is present. Other code paths may still append `user_id` for discovery (e.g. project list).
 
-**Expected behavior:** Return only tasks where the user is lead, in `team_members`, or in `assignees` (match your DB semantics for IDs).
+**Expected behavior:** Return **all** tasks the user is allowed to read for that project, with `task_lead_id` and/or `team_members` / `assignees` populated so the client can narrow rows for workers.
 
-If this is not implemented, the SPA still filters tasks client-side on task-role screens, but the payload is larger than necessary.
+**Response envelope:** Prefer `data: { tasks: [...], pagination?: {...} }` (also: `error_code` / `status` / `message` wrappers are fine). The SPA accepts `tasks` / `results` / `items` at various nesting levels or a JSON array of tasks.
+
+**Task assignee fields:** Use numeric ids in `task_lead_id`, `team_members`, `assignees`, or objects with `user_id` / `userId` in arrays — the client normalizes these. Session `user.id` is coerced to a number (string ids after JSON/localStorage are common).
 
 ---
 

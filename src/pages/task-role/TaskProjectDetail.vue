@@ -26,8 +26,9 @@
           >
             {{ project.status || '—' }}
           </span>
-          <span v-if="stats" class="text-xs text-gray-500">
-            {{ stats.completed ?? 0 }}/{{ stats.total ?? 0 }} tasks
+          <span v-if="!isLoadingTasks" class="text-xs text-gray-500">
+            <template v-if="isForeman">{{ taskSummary.completed }}/{{ taskSummary.total }} tasks</template>
+            <template v-else>{{ taskSummary.completed }}/{{ taskSummary.total }} your tasks</template>
           </span>
         </div>
         <p v-if="project.address" class="text-sm text-gray-500 mt-1 truncate">{{ project.address }}</p>
@@ -36,7 +37,12 @@
       <section>
         <h2 class="text-base font-semibold text-gray-900 mb-1">Tasks</h2>
         <p class="text-xs text-gray-500 mb-3">
-          All project tasks. Open a task for details, photos, and notes. End-of-day actions will be added next.
+          <template v-if="isForeman">
+            All tasks in this project. Open any task for details, photos, and notes.
+          </template>
+          <template v-else>
+            Tasks where you are lead or team member. Open a task for details, photos, and notes.
+          </template>
         </p>
 
         <div v-if="isLoadingTasks" class="flex justify-center py-8">
@@ -44,7 +50,7 @@
         </div>
 
         <div v-else-if="tasks.length === 0" class="bg-white rounded-xl border border-gray-200 p-6 text-center">
-          <p class="text-gray-500 text-sm">No tasks in this project.</p>
+          <p class="text-gray-500 text-sm">No tasks assigned to you in this project.</p>
         </div>
 
         <div v-else class="space-y-6">
@@ -99,8 +105,13 @@ import { projectApi } from '@/core/utils/project-api'
 import { tasksApi } from '@/core/utils/tasks-api'
 import type { Project } from '@/core/utils/project-api'
 import type { Task } from '@/core/types/task'
-import type { TaskStats } from '@/core/types/task'
-import { splitTasksForTaskRolePanel, writeStoredCurrentProjectId } from '@/core/utils/task-role-ux'
+import {
+  filterTasksForInvolvedUser,
+  isTaskRoleForeman,
+  resolveSessionUserId,
+  splitTasksForTaskRolePanel,
+  writeStoredCurrentProjectId,
+} from '@/core/utils/task-role-ux'
 import TaskListRowContent from './TaskListRowContent.vue'
 
 const route = useRoute()
@@ -109,13 +120,32 @@ const projectId = computed(() => Number(route.params.id))
 
 const project = ref<Project | null>(null)
 const tasks = ref<Task[]>([])
-const stats = ref<TaskStats | null>(null)
 const isLoadingProject = ref(true)
 const isLoadingTasks = ref(true)
 
-const taskPanels = computed(() =>
-  splitTasksForTaskRolePanel(tasks.value, authStore.currentUser?.id ?? null),
+const isForeman = computed(() =>
+  isTaskRoleForeman(authStore.currentUser?.role_code, authStore.currentUser?.role_id),
 )
+
+const sessionUserId = computed(() => resolveSessionUserId(authStore.currentUser))
+
+const taskPanels = computed(() =>
+  splitTasksForTaskRolePanel(tasks.value, sessionUserId.value ?? null),
+)
+
+function countCompletedForSummary(list: Task[]): number {
+  return list.filter((t) => {
+    const n = String(t.status ?? '')
+      .toLowerCase()
+      .replace(/-/g, '_')
+    return n === 'completed' || n === 'done' || n === 'ready_for_inspection'
+  }).length
+}
+
+const taskSummary = computed(() => {
+  const list = tasks.value
+  return { completed: countCompletedForSummary(list), total: list.length }
+})
 
 watch(
   () => project.value?.id,
@@ -140,10 +170,33 @@ async function loadProject() {
 
 async function loadTasks() {
   if (!projectId.value) return
+  const foreman = isTaskRoleForeman(authStore.currentUser?.role_code, authStore.currentUser?.role_id)
+  const sessionUid = resolveSessionUserId(authStore.currentUser)
+  const useWorkerScope = !foreman && sessionUid != null
   isLoadingTasks.value = true
   try {
-    const res = await tasksApi.getAll(projectId.value, 1, 500)
-    tasks.value = res.tasks ?? []
+    // Always load full project task list (same as foreman). Backend returns all tasks; scope by assignees on the client.
+    // Sending user_id breaks some servers; string `id` from session also broke useWorkerScope (Number.isFinite).
+    const res = await tasksApi.getAll(projectId.value, 1, 500, undefined)
+    const raw = res.tasks ?? []
+
+    if (foreman) {
+      tasks.value = raw
+      return
+    }
+
+    if (!useWorkerScope) {
+      tasks.value = []
+      return
+    }
+
+    tasks.value = filterTasksForInvolvedUser(raw, sessionUid)
+    if (tasks.value.length === 0 && raw.length > 0) {
+      console.warn(
+        '[TaskProjectDetail] No tasks matched session user id against task_lead_id / team_members / assignees.',
+        { projectId: projectId.value, sessionUserId: sessionUid },
+      )
+    }
   } catch {
     tasks.value = []
   } finally {
@@ -151,24 +204,13 @@ async function loadTasks() {
   }
 }
 
-async function loadStats() {
-  if (!projectId.value) return
-  try {
-    stats.value = await tasksApi.getStats(projectId.value)
-  } catch {
-    stats.value = null
-  }
-}
-
 onMounted(() => {
   loadProject()
   loadTasks()
-  loadStats()
 })
 
 watch(projectId, () => {
   loadProject()
   loadTasks()
-  loadStats()
 })
 </script>

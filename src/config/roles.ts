@@ -1,4 +1,8 @@
 // Role definitions and permissions
+
+/** Primary key in the global roles table when `code` is `foreman` (e.g. id 12 in fw_roles). */
+export const FOREMAN_ROLE_DB_ID = 12
+
 export interface Role {
   code: string
   name: string

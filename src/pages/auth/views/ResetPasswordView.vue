@@ -265,17 +265,20 @@ async function handleResetPassword() {
     } else {
       errorMessage.value = response.data.message || 'Failed to reset password'
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Reset password error:', error)
 
-    // Show detailed error information
-    if (error.response) {
-      if (error.response.data && error.response.data.message) {
-        errorMessage.value = error.response.data.message
+    const axiosErr = error as {
+      response?: { status?: number; data?: { message?: string } }
+      request?: unknown
+    }
+    if (axiosErr.response) {
+      if (axiosErr.response.data && axiosErr.response.data.message) {
+        errorMessage.value = axiosErr.response.data.message
       } else {
-        errorMessage.value = `Server error: ${error.response.status}`
+        errorMessage.value = `Server error: ${axiosErr.response.status}`
       }
-    } else if (error.request) {
+    } else if (axiosErr.request) {
       errorMessage.value = 'Network error - please check your connection'
     } else {
       errorMessage.value = 'An unexpected error occurred'

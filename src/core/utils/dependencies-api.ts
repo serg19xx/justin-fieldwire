@@ -109,24 +109,24 @@ export async function createDependency(
     
     // Check response structure
     if (response.data.data) {
-      const dataObj = response.data.data
-      
+      const dataObj = response.data.data as Record<string, unknown>
+
       // Check if data contains dependency key (full object)
-      if (dataObj.dependency) {
+      if (dataObj.dependency && typeof dataObj.dependency === 'object') {
         console.log('📦 Found dependency in response.data.data.dependency')
-        return dataObj.dependency
+        return dataObj.dependency as TaskDependency
       }
-      
+
       // Check if data itself is the dependency object (has id, from_task_id, etc.)
       if (dataObj.id !== undefined && dataObj.from_task_id !== undefined) {
         console.log('📦 Data itself is the dependency object')
-        return dataObj as TaskDependency
+        return dataObj as unknown as TaskDependency
       }
-      
+
       // Check if server returns only dependency_id - construct dependency object
       if (dataObj.dependency_id !== undefined) {
         console.log('📦 Server returned dependency_id, constructing dependency object')
-        const dependencyId = dataObj.dependency_id
+        const dependencyId = dataObj.dependency_id as number
         
         // Try to fetch the full dependency object
         try {
@@ -164,7 +164,7 @@ export async function createDependency(
         console.log('📦 Data keys:', keys)
         // Try to find dependency-like object in data
         for (const key of keys) {
-          const value = dataObj[key as keyof typeof dataObj]
+          const value = dataObj[key]
           if (value && typeof value === 'object' && 'id' in value && 'from_task_id' in value) {
             console.log(`📦 Found dependency in response.data.data.${key}`)
             return value as TaskDependency

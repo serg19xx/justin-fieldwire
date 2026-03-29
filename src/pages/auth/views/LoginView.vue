@@ -223,9 +223,10 @@ async function handleRecovery() {
             response = await api.post(endpoint, format)
             success = true
             break
-          } catch (error) {
+          } catch (error: unknown) {
             console.log('❌ Failed with format:', format, error)
-            if (error.response?.status !== 404) {
+            const err = error as { response?: { status?: number } }
+            if (err.response?.status !== 404) {
               throw error
             }
           }
@@ -238,9 +239,10 @@ async function handleRecovery() {
         usedEndpoint = endpoint
         console.log('✅ Success with endpoint:', endpoint)
         break
-      } catch (error) {
+      } catch (error: unknown) {
         console.log('❌ Failed with endpoint:', endpoint, error)
-        if (error.response?.status === 404) {
+        const err = error as { response?: { status?: number } }
+        if (err.response?.status === 404) {
           continue // Try next endpoint
         } else {
           throw error // Re-throw if it's not a 404

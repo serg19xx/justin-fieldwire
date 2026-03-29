@@ -419,12 +419,12 @@ function initializeForm() {
     settingsForm.level = project.level ?? ''
     settingsForm.client_id = project.client_id || null
     settingsForm.client_type = project.client_type || null
-    settingsForm.client_table = project.client_table || null
+    settingsForm.client_table = (project.client_table as ClientTableType | null) || null
     settingsForm.client_data = project.client_data || null
     settingsForm.client_name = (project as any).client_name || null
     settingsForm.client2_id = project.client2_id ?? null
     settingsForm.client2_type = project.client2_type ?? null
-    settingsForm.client2_table = project.client2_table ?? null
+    settingsForm.client2_table = (project.client2_table as ClientTableType | null) ?? null
     settingsForm.client2_data = project.client2_data ?? null
     settingsForm.client2_name = (project as any).client2_name ?? null
     clientValidationError.value = ''

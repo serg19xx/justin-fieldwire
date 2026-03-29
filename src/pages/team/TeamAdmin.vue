@@ -255,7 +255,7 @@ function handleInviteSent(data: {
   console.log('Invitation sent to:', data.email)
 
   // Добавляем нового работника в список без обращения к серверу
-  const newBuilder: WorkerUser = {
+  const newBuilder = {
     id: Date.now(), // Временный ID
     email: data.email,
     first_name: data.firstName,
@@ -285,7 +285,7 @@ function handleInviteSent(data: {
     additional_info: null,
     avatar_url: null,
     two_factor_secret: null,
-  }
+  } as unknown as WorkerUser
 
   builders.value.unshift(newBuilder)
 }

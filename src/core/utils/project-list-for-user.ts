@@ -3,6 +3,7 @@ import type { Task } from '@/core/types/task'
 import { mapApiProjectTeamRowsToRoster } from '@/core/utils/map-api-project-team-response'
 import { projectApi, type Project } from '@/core/utils/project-api'
 import { isProjectSysStatusDone } from '@/core/utils/project-sys-status'
+import { resolveSessionUserId } from '@/core/utils/session-user-id'
 import { tasksApi } from '@/core/utils/tasks-api'
 
 /** Avoid hammering the API if GET /projects returns an unfiltered megalist */
@@ -13,10 +14,27 @@ const MAX_PROJECTS_TO_SCOPED_FILTER = 150
  */
 export function parseProjectsFromListResponse(data: unknown): Project[] {
   if (data == null) return []
+  if (Array.isArray(data)) return data as Project[]
   if (typeof data !== 'object') return []
   const d = data as Record<string, unknown>
+
   if (Array.isArray(d.projects)) return d.projects as Project[]
   if (Array.isArray(d.data)) return d.data as Project[]
+  if (Array.isArray(d.results)) return d.results as Project[]
+  if (Array.isArray(d.items)) return d.items as Project[]
+
+  const single = d.project
+  if (single && typeof single === 'object' && !Array.isArray(single)) {
+    return [single as Project]
+  }
+
+  // Nested envelope e.g. { data: { projects: [...] } }
+  const inner = d.data
+  if (inner != null && typeof inner === 'object' && !Array.isArray(inner)) {
+    const nested = parseProjectsFromListResponse(inner)
+    if (nested.length > 0) return nested
+  }
+
   return []
 }
 
@@ -32,13 +50,14 @@ const TASK_EXECUTOR_ROLE_CODES = ['worker', 'foreman', 'contractor'] as const
 export function isTaskExecutorUser(user: User | null): boolean {
   if (!user) return false
   if (user.role_category === 'task') return true
-  return TASK_EXECUTOR_ROLE_CODES.includes(user.role_code as (typeof TASK_EXECUTOR_ROLE_CODES)[number])
+  const code = (user.role_code || '').toLowerCase()
+  return TASK_EXECUTOR_ROLE_CODES.includes(code as (typeof TASK_EXECUTOR_ROLE_CODES)[number])
 }
 
 export function getProjectListQueryFiltersForUser(user: User | null): Record<string, unknown> {
   if (!user?.id) return {}
 
-  if (user.role_code === 'project_manager') {
+  if ((user.role_code || '').toLowerCase() === 'project_manager') {
     return { prj_manager: user.id }
   }
 
@@ -80,6 +99,16 @@ export async function filterProjectsForTaskExecutorUser(
 
   async function projectMatchesUser(p: Project): Promise<Project | null> {
     try {
+      // 1) Tasks with user_id in query — if backend returns any rows, that means this user has work here.
+      // Do not require task_lead_id/assignees on each row (API often omits them on scoped lists).
+      try {
+        const scoped = await tasksApi.getAll(p.id, 1, 200, { workerId: userId })
+        const scopedTasks = scoped.tasks ?? []
+        if (scopedTasks.length > 0) return p
+      } catch {
+        // 403 / unsupported — fall through to team and full task list
+      }
+
       const teamRes = await projectApi.getTeamMembers(p.id)
       const roster = mapApiProjectTeamRowsToRoster(teamRes)
       const onProjectTeam = roster.some(
@@ -119,4 +148,44 @@ export function isProjectActiveForTaskUi(project: Project): boolean {
 
 export function isProjectArchivedForTaskUi(project: Project): boolean {
   return isProjectSysStatusDone(project)
+}
+
+/**
+ * Shared loader for task dashboard and /tasks project list.
+ * Applies server filters, parses list shape, then client-side scope for executors when needed.
+ */
+export async function fetchProjectsForTaskScope(
+  user: User | null,
+  options?: { page?: number; limit?: number },
+): Promise<Project[]> {
+  const sessionUid = resolveSessionUserId(user)
+  if (user == null || sessionUid == null) return []
+  const page = options?.page ?? 1
+  const limit = options?.limit ?? 100
+  const filters = getProjectListQueryFiltersForUser(user)
+  const data = await projectApi.getAll(page, limit, filters)
+  let list = parseProjectsFromListResponse(data)
+
+  const serverScopedByUserId = filters.user_id != null
+  if (
+    isTaskExecutorUser(user) &&
+    serverScopedByUserId &&
+    list.length > 0 &&
+    list.length <= MAX_PROJECTS_TO_SCOPED_FILTER
+  ) {
+    // Avoid per-project GET /tasks (200 + 500) when API already filtered projects by user_id.
+    return list
+  }
+
+  if (isTaskExecutorUser(user) && list.length > 0) {
+    const filtered = await filterProjectsForTaskExecutorUser(list, sessionUid)
+    if (filtered.length === 0) {
+      console.warn(
+        '[project-list] Client-side scope removed all projects; using API list (server likely already filtered by user_id).',
+      )
+    } else {
+      list = filtered
+    }
+  }
+  return list
 }

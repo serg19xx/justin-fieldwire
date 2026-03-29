@@ -125,7 +125,7 @@ export const useAuthStore = defineStore('auth', () => {
       console.log('🔍 Full user from backend:', JSON.stringify(user, null, 2))
 
       // Преобразуем структуру пользователя в формат фронтенда
-      const frontendUser: User = {
+      const frontendUser: User = ensureUserRoleCategory({
         id: user.id,
         email: user.email,
         name: user.name,
@@ -153,7 +153,7 @@ export const useAuthStore = defineStore('auth', () => {
             ? user.full_img_url
             : `${apiConfig.baseURL}${user.full_img_url}`
           : undefined,
-      }
+      } as User)
 
       // Log invitation status for debugging
       console.log('🔍 Invitation status check:', {
@@ -369,7 +369,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       if (token && user) {
         // Обновляем данные пользователя из ответа
-        const updatedUser: User = {
+        const updatedUser: User = ensureUserRoleCategory({
           id: user.id,
           email: user.email,
           name: user.name,
@@ -377,11 +377,11 @@ export const useAuthStore = defineStore('auth', () => {
           role_category: user.role_category,
           role_code: user.role_code,
           role_name: user.role_name,
-          two_factor_enabled: user.two_factor_enabled,
+          two_factor_enabled: isTwoFactorEnabled(user.two_factor_enabled),
           status: isUserActive(user.status),
           last_login: user.last_login,
           permissions: getPermissionsForRole(user.role_code),
-        }
+        } as User)
 
         localStorage.setItem('authToken', token)
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
@@ -399,9 +399,11 @@ export const useAuthStore = defineStore('auth', () => {
         try {
           console.log('🖼️ Loading full profile data for avatar...')
           const profileResult = await getProfile()
-          if (profileResult.success && profileResult.user) {
-            // Update current user with full profile data
-            currentUser.value = { ...currentUser.value, ...profileResult.user }
+          if (profileResult.success && profileResult.user && currentUser.value) {
+            currentUser.value = mergeUserPreserveLayoutRoles(
+              currentUser.value,
+              profileResult.user,
+            )
             localStorage.setItem('user', JSON.stringify(currentUser.value))
             console.log('✅ Full profile loaded, avatar URL:', currentUser.value.avatar_url)
           }
@@ -644,6 +646,19 @@ export const useAuthStore = defineStore('auth', () => {
           inactive_until: backendUser.inactive_until,
         }
 
+        const hasLayoutCategory =
+          frontendUser.role_category === 'global' ||
+          frontendUser.role_category === 'project' ||
+          frontendUser.role_category === 'task'
+        if (!hasLayoutCategory) {
+          console.warn(
+            '[auth] GET /api/v1/profile: user.role_category is missing or invalid. ' +
+              'Return role_category (global | project | task) with role_code so layout matches login after refresh. ' +
+              'See docs/BACKEND_PROFILE_ROLE_FIELDS.md',
+            { role_code: frontendUser.role_code, raw: backendUser.role_category },
+          )
+        }
+
         // Don't update currentUser - keep login data intact
         // Only return profile data for editing
 
@@ -799,6 +814,41 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /**
+   * Layout + router depend on role_category. Profile API often omits it; spread merge would clear it.
+   */
+  function inferRoleCategoryFromRoleCode(
+    roleCode: string | null | undefined,
+  ): User['role_category'] | undefined {
+    if (roleCode == null || typeof roleCode !== 'string') return undefined
+    const c = roleCode.toLowerCase()
+    if (c === 'admin') return 'global'
+    if (c === 'project_manager' || c === 'architect') return 'project'
+    if (['worker', 'foreman', 'contractor', 'inspector'].includes(c)) return 'task'
+    return undefined
+  }
+
+  function ensureUserRoleCategory(user: User): User {
+    if (user.role_category === 'global' || user.role_category === 'project' || user.role_category === 'task') {
+      return user
+    }
+    const inferred = inferRoleCategoryFromRoleCode(user.role_code)
+    return inferred ? { ...user, role_category: inferred } : user
+  }
+
+  function mergeUserPreserveLayoutRoles(base: User, patch: Partial<User>): User {
+    const merged: User = { ...base, ...patch }
+    merged.role_category =
+      patch.role_category ??
+      base.role_category ??
+      inferRoleCategoryFromRoleCode(patch.role_code ?? base.role_code)
+    merged.role_code = (patch.role_code ?? base.role_code) as User['role_code']
+    merged.role_id = patch.role_id ?? base.role_id
+    merged.role_name = patch.role_name ?? base.role_name
+    merged.permissions = getPermissionsForRole(merged.role_code)
+    return ensureUserRoleCategory(merged)
+  }
+
   function checkPermission(permission: string): boolean {
     if (!currentUser.value) return false
 
@@ -844,7 +894,7 @@ export const useAuthStore = defineStore('auth', () => {
 
         // Validate user data
         if (user && user.id && user.email) {
-          currentUser.value = user
+          currentUser.value = ensureUserRoleCategory(user as User)
           isAuthenticated.value = true
           console.log('✅ Auth initialized from localStorage')
           console.log('👤 Current user:', user.email)
@@ -881,9 +931,11 @@ export const useAuthStore = defineStore('auth', () => {
             try {
               console.log('🖼️ Loading full profile data for missing avatar...')
               const profileResult = await getProfile()
-              if (profileResult.success && profileResult.user) {
-                // Update current user with full profile data
-                currentUser.value = { ...currentUser.value, ...profileResult.user }
+              if (profileResult.success && profileResult.user && currentUser.value) {
+                currentUser.value = mergeUserPreserveLayoutRoles(
+                  currentUser.value,
+                  profileResult.user,
+                )
                 localStorage.setItem('user', JSON.stringify(currentUser.value))
                 console.log(
                   '✅ Full profile loaded on init, avatar URL:',

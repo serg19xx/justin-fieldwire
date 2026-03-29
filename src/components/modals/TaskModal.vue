@@ -297,16 +297,16 @@ async function handleSubmit() {
   try {
     if (isEditing.value && props.task) {
       // Update existing task
-      const updatedTask = await tasksApi.update(Number(props.task.id), {
+      const updatedTask = await tasksApi.update(props.projectId, String(props.task.id), {
         ...formData.value,
-        project_id: props.projectId
+        project_id: props.projectId,
       })
       emit('task-updated', updatedTask)
     } else {
       // Create new task
-      const newTask = await tasksApi.create({
+      const newTask = await tasksApi.create(props.projectId, {
         ...formData.value,
-        project_id: props.projectId
+        project_id: props.projectId,
       })
       emit('task-saved', newTask)
     }

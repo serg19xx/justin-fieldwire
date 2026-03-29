@@ -171,6 +171,10 @@
                   </div>
                 </div>
 
+                <NotificationPreferencesCard
+                  v-if="authStore.currentUser?.role_category === 'task'"
+                />
+
                 <!-- Status Change Reason (when setting to inactive) -->
                 <div v-if="showInactiveReasonFields" class="space-y-3">
                   <div
@@ -1342,6 +1346,7 @@ import { useAuthStore } from '@/core/stores/auth'
 import { api } from '@/core/utils/api'
 import { useProfileStore, WORKFORCE_GROUPS, AVAILABLE_LANGUAGES, PROFICIENCY_LEVELS } from '@/core/stores/profile'
 import AvatarWidget from './AvatarWidget.vue'
+import NotificationPreferencesCard from '@/components/account/NotificationPreferencesCard.vue'
 
 // Component name
 defineOptions({

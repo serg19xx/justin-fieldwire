@@ -41,6 +41,7 @@ import TasksSection from './TasksSection.vue'
 import TeamSection from './TeamSection.vue'
 import PhotosSection from './PhotosSection.vue'
 import SettingsSection from './SettingsSection.vue'
+import ProjectScheduleSection from '@/components/projects/ProjectScheduleSection.vue'
 import TeamMemberDetailsDialog from './TeamMemberDetailsDialog.vue'
 import {
   exportTasksToICal as exportTasksToICalUtil,
@@ -66,7 +67,7 @@ const error = ref<string | null>(null)
 const calendarRef = ref()
 
 // Navigation state
-const activeSection = ref<'plans' | 'tasks' | 'photos' | 'team' | 'settings'>('plans')
+const activeSection = ref<'plans' | 'tasks' | 'schedule' | 'photos' | 'team' | 'settings'>('plans')
 
 // Settings form state
 const settingsForm = ref<{
@@ -285,13 +286,14 @@ async function loadProjects() {
     const filters: Record<string, unknown> = {}
 
     const response = await projectApi.getAll(1, 100, filters)
+    const rows: ApiProject[] = Array.isArray(response) ? response : (response.projects ?? [])
 
-    projects.value = response.projects.map((apiProject: ApiProject) => ({
+    projects.value = rows.map((apiProject: ApiProject) => ({
       id: apiProject.id,
       name: apiProject.prj_name,
       address: apiProject.address,
-      startDate: apiProject.date_start,
-      endDate: apiProject.date_end,
+      startDate: apiProject.date_start ?? '',
+      endDate: apiProject.date_end ?? '',
       status: apiProject.status,
       sys_status: apiProject.sys_status ?? null,
       purchase_or_lease: apiProject.purchase_or_lease,
@@ -343,8 +345,8 @@ async function loadProject() {
       id: apiResponse.id,
       name: apiResponse.prj_name,
       address: apiResponse.address,
-      startDate: apiResponse.date_start,
-      endDate: apiResponse.date_end,
+      startDate: apiResponse.date_start ?? '',
+      endDate: apiResponse.date_end ?? '',
       status: apiResponse.status,
       sys_status: apiResponse.sys_status ?? null,
       purchase_or_lease: apiResponse.purchase_or_lease,
@@ -363,7 +365,7 @@ async function loadProject() {
       client2_table: apiResponse.client2_table,
       client2_name: apiResponse.client2_name,
       client2_data: typeof (apiResponse as { client2_data?: unknown }).client2_data === 'string'
-        ? JSON.parse((apiResponse as { client2_data: string }).client2_data)
+        ? JSON.parse((apiResponse as unknown as { client2_data: string }).client2_data)
         : (apiResponse as { client2_data?: Record<string, unknown> | null }).client2_data,
       projectManager: apiResponse.prj_manager || undefined,
       description: apiResponse.description || '',
@@ -381,7 +383,7 @@ async function loadProject() {
 }
 
 // Navigation functions
-function setActiveSection(section: 'plans' | 'tasks' | 'photos' | 'team' | 'settings') {
+function setActiveSection(section: 'plans' | 'tasks' | 'schedule' | 'photos' | 'team' | 'settings') {
   activeSection.value = section
 
   // Load settings form when switching to settings
@@ -399,6 +401,11 @@ function setActiveSection(section: 'plans' | 'tasks' | 'photos' | 'team' | 'sett
   if (section === 'tasks' && project.value) {
     loadTeamMembers()
   }
+
+  if (section === 'schedule' && project.value) {
+    loadTeamMembers()
+    loadProjectTasks()
+  }
 }
 
 // Load project tasks for Team Section
@@ -407,7 +414,7 @@ async function loadProjectTasks() {
 
   loadingTasks.value = true
   try {
-    const response = await tasksApi.getAll(project.value.id)
+    const response = await tasksApi.getAll(project.value.id, 1, 500)
     projectTasks.value = response.tasks || []
   } catch (error) {
     console.error('❌ Error loading tasks for Team Section:', error)
@@ -558,8 +565,8 @@ async function saveSettings() {
         id: updatedProject.id,
         name: updatedProject.prj_name,
         address: updatedProject.address,
-        startDate: updatedProject.date_start,
-        endDate: updatedProject.date_end,
+        startDate: updatedProject.date_start ?? '',
+        endDate: updatedProject.date_end ?? '',
         status: updatedProject.status,
         sys_status: updatedProject.sys_status ?? null,
         purchase_or_lease: updatedProject.purchase_or_lease,
@@ -582,12 +589,15 @@ async function saveSettings() {
         updatedAt: updatedProject.updated_at,
       }
       
-      console.log('🔄 Local project data updated from API:', {
-        client_id: project.value.client_id,
-        client_type: project.value.client_type,
-        client_table: project.value.client_table,
-        client_data: project.value.client_data,
-      })
+      const p = project.value
+      if (p) {
+        console.log('🔄 Local project data updated from API:', {
+          client_id: p.client_id,
+          client_type: p.client_type,
+          client_table: p.client_table,
+          client_data: p.client_data,
+        })
+      }
       
       // Reload settings form with updated data
       loadSettingsForm()
@@ -1748,7 +1758,7 @@ async function exportTasksToICalLocal() {
     isExporting.value = true
 
     // Fetch tasks from API
-    const tasksResponse = await tasksApi.getAll(project.value.id)
+    const tasksResponse = await tasksApi.getAll(project.value.id, 1, 500)
     const tasks = tasksResponse.tasks
     console.log('📋 Fetched tasks for export:', tasks.length)
 
@@ -1850,7 +1860,7 @@ async function loadTasksForSearch() {
 
   try {
     isSearching.value = true
-    const tasksResponse = await tasksApi.getAll(project.value.id)
+    const tasksResponse = await tasksApi.getAll(project.value.id, 1, 500)
     allTasks.value = tasksResponse.tasks
     console.log(`📋 Loaded ${allTasks.value.length} tasks for search`)
   } catch (error) {
@@ -2288,6 +2298,26 @@ watch(
             </button>
 
             <button
+              @click="setActiveSection('schedule')"
+              :class="[
+                'w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                activeSection === 'schedule'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+              ]"
+            >
+              <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                ></path>
+              </svg>
+              Schedule
+            </button>
+
+            <button
               @click="setActiveSection('photos')"
               :class="[
                 'w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
@@ -2362,6 +2392,7 @@ watch(
             <!-- This will be populated with dynamic content based on activeSection -->
             <p v-if="activeSection === 'plans'">Plans content will go here</p>
             <p v-if="activeSection === 'tasks'">Tasks content will go here</p>
+            <p v-if="activeSection === 'schedule'">Weekly worker–task schedule</p>
             <p v-if="activeSection === 'photos'">Photos content will go here</p>
             <p v-if="activeSection === 'team'">Team content will go here</p>
             <p v-if="activeSection === 'settings'">Settings content will go here</p>
@@ -2557,6 +2588,10 @@ watch(
               </div>
             </template>
 
+            <template v-else-if="activeSection === 'schedule'">
+              <span class="text-sm text-gray-500">Weekly assignments are edited in the main panel.</span>
+            </template>
+
             <!-- Photos Section Buttons -->
             <template v-else-if="activeSection === 'photos'">
               <button
@@ -2729,6 +2764,15 @@ watch(
               const isOpen = task !== null && task !== undefined
               handleEditPanelOpen(isOpen, task as Task | null, 'edit')
             }"
+          />
+
+          <ProjectScheduleSection
+            v-else-if="activeSection === 'schedule'"
+            :project-id="project.id"
+            :can-edit="canEditProject"
+            :team-members="teamMembers"
+            :tasks="projectTasks"
+            @tasks-synced="loadProjectTasks"
           />
 
           <!-- Photos Section -->

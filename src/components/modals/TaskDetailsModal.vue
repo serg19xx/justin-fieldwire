@@ -131,11 +131,11 @@
               </div>
 
               <!-- Dependencies -->
-              <div v-if="task.dependencies && task.dependencies.length > 0">
+              <div v-if="structuredDependencies.length > 0">
                 <h4 class="text-sm font-medium text-gray-700 mb-2">Dependencies</h4>
                 <div class="space-y-2">
                   <div 
-                    v-for="dep in task.dependencies" 
+                    v-for="dep in structuredDependencies" 
                     :key="dep.predecessor_id"
                     class="text-sm text-gray-600"
                   >
@@ -156,11 +156,11 @@
           </div>
 
           <!-- Dependencies Details -->
-          <div v-if="hasDependencies" class="mt-6 pt-6 border-t border-gray-200">
+          <div v-if="hasStructuredDependencies" class="mt-6 pt-6 border-t border-gray-200">
             <h4 class="text-sm font-medium text-gray-700 mb-4">Dependency Details</h4>
             <div class="space-y-3">
               <div 
-                v-for="dep in task.dependencies" 
+                v-for="dep in structuredDependencies" 
                 :key="dep.predecessor_id"
                 class="flex items-center justify-between p-3 bg-gray-50 rounded-md"
               >
@@ -183,6 +183,18 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Task } from '@/core/types/task'
+
+interface TaskDependencyRow {
+  predecessor_id: number
+  type: string
+  lag_days: number
+}
+
+function isTaskDependencyRow(
+  dep: number | { predecessor_id: number; type: string; lag_days: number },
+): dep is TaskDependencyRow {
+  return typeof dep === 'object' && dep !== null && 'predecessor_id' in dep
+}
 
 interface Props {
   isOpen: boolean
@@ -253,9 +265,13 @@ const statusIndicatorClass = computed(() => {
   }
 })
 
-const hasDependencies = computed(() => {
-  return props.task?.dependencies && props.task.dependencies.length > 0
+const structuredDependencies = computed((): TaskDependencyRow[] => {
+  const deps = props.task?.dependencies
+  if (!deps?.length) return []
+  return deps.filter(isTaskDependencyRow)
 })
+
+const hasStructuredDependencies = computed(() => structuredDependencies.value.length > 0)
 
 // Methods
 function formatDate(dateString: string): string {

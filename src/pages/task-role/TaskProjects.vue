@@ -140,15 +140,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/core/stores/auth'
-import { projectApi } from '@/core/utils/project-api'
 import type { Project } from '@/core/utils/project-api'
 import {
-  filterProjectsForTaskExecutorUser,
-  getProjectListQueryFiltersForUser,
+  fetchProjectsForTaskScope,
   isProjectActiveForTaskUi,
   isProjectArchivedForTaskUi,
-  isTaskExecutorUser,
-  parseProjectsFromListResponse,
 } from '@/core/utils/project-list-for-user'
 import { partitionProjectsForTaskRoleList, readStoredCurrentProjectId } from '@/core/utils/task-role-ux'
 
@@ -182,14 +178,7 @@ function formatDateRange(start: string | null | undefined, end: string | null | 
 
 onMounted(async () => {
   try {
-    const filters = getProjectListQueryFiltersForUser(authStore.currentUser)
-    const data = await projectApi.getAll(1, 100, filters)
-    let list = parseProjectsFromListResponse(data)
-    const uid = authStore.currentUser?.id
-    if (uid != null && isTaskExecutorUser(authStore.currentUser)) {
-      list = await filterProjectsForTaskExecutorUser(list, uid)
-    }
-    projects.value = list
+    projects.value = await fetchProjectsForTaskScope(authStore.currentUser, { page: 1, limit: 100 })
   } catch {
     projects.value = []
   } finally {

@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { Task, TaskCreateUpdate, TaskFilter, TaskStats } from '@/core/types/task'
+import type { Task, TaskCreateUpdate, TaskFilter, TaskStats, TaskStatus } from '@/core/types/task'
 import { isMilestone, type MilestoneType } from '@/core/types/task'
 
 // Backend accepts only: planned, in_progress, done, blocked, delayed
@@ -23,11 +23,223 @@ function mapStatusToBackend(status: string | undefined): BackendStatus {
   return mapping[normalized] ?? 'planned'
 }
 
-function normalizeTeamMemberIds(raw: unknown): number[] {
+function asPositiveUserId(v: unknown): number | null {
+  const n = Number(v)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+/**
+ * Normalize assignee / team arrays: numeric ids, string ids, or objects with user_id / userId.
+ */
+export function coerceParticipantIds(raw: unknown): number[] {
   if (!Array.isArray(raw)) return []
-  return raw
-    .map((x) => Number(x))
-    .filter((n): n is number => Number.isFinite(n) && n > 0)
+  const out: number[] = []
+  for (const x of raw) {
+    if (typeof x === 'number' || typeof x === 'string') {
+      const n = asPositiveUserId(x)
+      if (n != null) out.push(n)
+      continue
+    }
+    if (x && typeof x === 'object') {
+      const o = x as Record<string, unknown>
+      const n = asPositiveUserId(o.user_id) ?? asPositiveUserId(o.userId)
+      if (n != null) out.push(n)
+    }
+  }
+  return out
+}
+
+/**
+ * Backend response shapes differ: { data: { tasks, pagination } }, { tasks }, nested data, or tasks array only.
+ */
+function extractTaskRowsAndPagination(responseBody: unknown): {
+  rows: Record<string, unknown>[]
+  pagination: Record<string, unknown> | undefined
+} {
+  if (responseBody == null || typeof responseBody !== 'object') {
+    return { rows: [], pagination: undefined }
+  }
+
+  function readTasksNode(node: unknown): { rows: Record<string, unknown>[]; pagination?: unknown } | null {
+    if (node == null) return null
+    if (Array.isArray(node)) {
+      return { rows: node as Record<string, unknown>[] }
+    }
+    if (typeof node !== 'object') return null
+    const o = node as Record<string, unknown>
+    for (const key of ['tasks', 'results', 'items'] as const) {
+      const arr = o[key]
+      if (Array.isArray(arr)) {
+        return { rows: arr as Record<string, unknown>[], pagination: o.pagination }
+      }
+    }
+    return null
+  }
+
+  let cur: unknown = responseBody
+  for (let depth = 0; depth < 6; depth++) {
+    const got = readTasksNode(cur)
+    if (got != null) {
+      const pag =
+        got.pagination != null && typeof got.pagination === 'object'
+          ? (got.pagination as Record<string, unknown>)
+          : undefined
+      return { rows: got.rows, pagination: pag }
+    }
+    if (cur && typeof cur === 'object' && 'data' in cur) {
+      cur = (cur as Record<string, unknown>).data
+      continue
+    }
+    break
+  }
+
+  return { rows: [], pagination: undefined }
+}
+
+/**
+ * Collect every user id the backend might attach to a task (arrays + common scalar keys).
+ * Used so worker-side filtering matches real API payloads.
+ */
+function extractAllParticipantUserIds(task: Record<string, unknown>): number[] {
+  const set = new Set<number>()
+  const arrayKeys = [
+    'assignees',
+    'team_members',
+    'member_ids',
+    'team_member_ids',
+    'user_ids',
+    'worker_ids',
+    'assignee_ids',
+    'assigned_users',
+    'members',
+    'team',
+    'workers',
+    'participants',
+  ] as const
+  for (const k of arrayKeys) {
+    for (const id of coerceParticipantIds(task[k])) {
+      set.add(id)
+    }
+  }
+  const leadObj =
+    task.task_lead && typeof task.task_lead === 'object'
+      ? (task.task_lead as Record<string, unknown>)
+      : null
+  if (leadObj) {
+    const n = asPositiveUserId(leadObj.user_id) ?? asPositiveUserId(leadObj.userId)
+    if (n != null) set.add(n)
+  }
+  const scalarKeys = [
+    'task_lead_id',
+    'lead_id',
+    'task_lead_user_id',
+    'assigned_user_id',
+    'primary_assignee_id',
+    'responsible_user_id',
+    'owner_user_id',
+  ] as const
+  for (const k of scalarKeys) {
+    const n = asPositiveUserId(task[k])
+    if (n != null) set.add(n)
+  }
+  return Array.from(set)
+}
+
+function normalizeApiTaskStatus(raw: unknown): TaskStatus {
+  if (typeof raw !== 'string' || raw.length === 0) return 'planned'
+  return raw as TaskStatus
+}
+
+function transformTaskFromApiRow(task: Record<string, unknown>): Task {
+  const legacyAssigneeOrder = coerceParticipantIds(task.assignees)
+  const allParticipantIds = extractAllParticipantUserIds(task)
+  const leadObj =
+    task.task_lead && typeof task.task_lead === 'object'
+      ? (task.task_lead as Record<string, unknown>)
+      : null
+
+  const explicitLead =
+    asPositiveUserId(task.task_lead_id) ??
+    asPositiveUserId(task.lead_id) ??
+    asPositiveUserId(task.task_lead_user_id) ??
+    asPositiveUserId(task.assigned_user_id) ??
+    (leadObj ? asPositiveUserId(leadObj.user_id) ?? asPositiveUserId(leadObj.userId) : null)
+
+  const task_lead_id =
+    explicitLead ?? (legacyAssigneeOrder.length > 0 ? legacyAssigneeOrder[0] : null) ?? (allParticipantIds[0] ?? null)
+
+  const teamFromField = coerceParticipantIds(task.team_members)
+  let team_members: number[]
+  if (teamFromField.length > 0) {
+    team_members = teamFromField
+  } else if (task_lead_id != null && allParticipantIds.length > 0) {
+    team_members = allParticipantIds.filter((id) => id !== task_lead_id)
+  } else {
+    team_members =
+      legacyAssigneeOrder.length > 1 ? legacyAssigneeOrder.slice(1) : allParticipantIds.slice(1)
+  }
+
+  const assignees = allParticipantIds.length > 0 ? allParticipantIds : legacyAssigneeOrder
+
+  const id = task.id != null ? String(task.id) : ''
+  const projectNum = Number(task.project_id)
+  const project_id = Number.isFinite(projectNum) ? projectNum : 0
+  const name = task.name != null ? String(task.name) : ''
+  const start_planned = task.start_planned != null ? String(task.start_planned) : ''
+  const progressRaw = task.progress_pct
+  const progress_pct =
+    typeof progressRaw === 'number' && Number.isFinite(progressRaw)
+      ? progressRaw
+      : Number(progressRaw) || 0
+
+  const resources: string[] = Array.isArray(task.resources)
+    ? task.resources.map((x) => String(x))
+    : []
+  const dependencies: Task['dependencies'] = Array.isArray(task.dependencies)
+    ? (task.dependencies as Task['dependencies'])
+    : []
+
+  const milestone =
+    typeof task.milestone === 'string'
+      ? (task.milestone as MilestoneType)
+      : task.milestone
+        ? 'other'
+        : null
+
+  return {
+    id,
+    project_id,
+    name,
+    wbs_path: task.wbs_path != null ? String(task.wbs_path) : '',
+    start_planned,
+    start_time: task.start_time != null ? String(task.start_time) : undefined,
+    end_planned: task.end_planned != null ? String(task.end_planned) : undefined,
+    end_time: task.end_time != null ? String(task.end_time) : undefined,
+    duration_days: typeof task.duration_days === 'number' ? task.duration_days : undefined,
+    milestone,
+    milestone_type:
+      typeof task.milestone === 'string'
+        ? (task.milestone as MilestoneType)
+        : task.milestone
+          ? 'other'
+          : undefined,
+    status: normalizeApiTaskStatus(task.status),
+    progress_pct,
+    notes: task.notes != null ? String(task.notes) : undefined,
+    task_lead_id: task_lead_id ?? undefined,
+    team_members,
+    assignees,
+    created_at: task.created_at != null ? String(task.created_at) : '',
+    updated_at: task.updated_at != null ? String(task.updated_at) : '',
+    resources,
+    dependencies,
+    baseline_start: task.baseline_start != null ? String(task.baseline_start) : undefined,
+    baseline_end: task.baseline_end != null ? String(task.baseline_end) : undefined,
+    actual_start: task.actual_start != null ? String(task.actual_start) : undefined,
+    actual_end: task.actual_end != null ? String(task.actual_end) : undefined,
+    slack_days: typeof task.slack_days === 'number' ? task.slack_days : undefined,
+    task_order: typeof task.task_order === 'number' ? task.task_order : undefined,
+  }
 }
 
 // API response interfaces
@@ -100,58 +312,43 @@ export const tasksApi = {
       const response = await api.get(url)
       console.log('✅ Tasks API: Response received:', response.data)
 
-      // Check if response is empty or malformed
-      if (!response.data || !response.data.data) {
-        console.log('⚠️ Tasks API: Empty or malformed response, throwing error to trigger fallback')
+      if (response.data == null) {
         throw new Error('Empty response from tasks API')
       }
 
-      // Transform database fields to our interface
-      const transformedTasks = response.data.data.tasks.map((task: Record<string, unknown>) => {
+      const { rows, pagination } = extractTaskRowsAndPagination(response.data)
+      if (rows.length === 0) {
+        console.warn(
+          '⚠️ Tasks API: No task rows parsed from response (check envelope: data.tasks, tasks, results).',
+          { projectId, url },
+        )
+      }
+
+      const transformedTasks = rows.map((task) => {
         console.log('🔍 Raw task from API:', task.name, 'dependencies:', task.dependencies)
-        return {
-          ...task,
-          wbs_path: task.wbs_path || '', // Keep as string "1.1.1"
-          start_planned: task.start_planned,
-          end_planned: task.end_planned,
-          duration_days: task.duration_days,
-          // milestone can be text code (MilestoneType) or number/boolean (for backward compatibility)
-          milestone: typeof task.milestone === 'string' 
-            ? task.milestone as MilestoneType
-            : (task.milestone ? 'other' : null),
-          milestone_type: typeof task.milestone === 'string' 
-            ? task.milestone as MilestoneType
-            : (task.milestone ? 'other' : undefined),
-          status: task.status,
-          progress_pct: task.progress_pct || 0,
-          notes: task.notes,
-          // Handle both old and new structure
-          task_lead_id:
-            task.task_lead_id ||
-            (Array.isArray(task.assignees) && task.assignees.length > 0 ? task.assignees[0] : null),
-          team_members: normalizeTeamMemberIds(
-            task.team_members || (Array.isArray(task.assignees) ? task.assignees.slice(1) : []),
-          ),
-          assignees: Array.isArray(task.assignees) ? task.assignees : [], // Keep for backward compatibility
-          resources: task.resources || [],
-          dependencies: task.dependencies || [],
-          baseline_start: task.baseline_start,
-          baseline_end: task.baseline_end,
-          actual_start: task.actual_start,
-          actual_end: task.actual_end,
-          slack_days: task.slack_days,
-          created_at: task.created_at,
-          updated_at: task.updated_at,
-        }
+        return transformTaskFromApiRow(task)
       })
+
+      const pag = pagination || {
+        current_page: page ?? 1,
+        per_page: transformedTasks.length,
+        total: transformedTasks.length,
+        last_page: 1,
+      }
+
+      const totalParsed = Number(pag.total)
+      const currentPageParsed = Number(pag.current_page)
+      const perPageParsed = Number(pag.per_page)
+      const lastPageParsed = Number(pag.last_page)
 
       return {
         tasks: transformedTasks,
-        pagination: response.data.data.pagination || {
-          current_page: 1,
-          per_page: transformedTasks.length,
-          total: transformedTasks.length,
-          last_page: 1,
+        pagination: {
+          current_page: Number.isFinite(currentPageParsed) && currentPageParsed > 0 ? currentPageParsed : page ?? 1,
+          per_page:
+            Number.isFinite(perPageParsed) && perPageParsed > 0 ? perPageParsed : transformedTasks.length,
+          total: Number.isFinite(totalParsed) ? totalParsed : transformedTasks.length,
+          last_page: Number.isFinite(lastPageParsed) && lastPageParsed > 0 ? lastPageParsed : 1,
         },
       }
     } catch (error) {
@@ -171,7 +368,16 @@ export const tasksApi = {
   async getById(projectId: number, taskId: string): Promise<Task> {
     try {
       const response = await api.get(`/api/v1/projects/${projectId}/tasks/${taskId}`)
-      return response.data.data.task
+      const body = response.data as Record<string, unknown> | undefined
+      const envelope = body?.data
+      const raw =
+        envelope && typeof envelope === 'object' && !Array.isArray(envelope)
+          ? (envelope as Record<string, unknown>).task
+          : undefined
+      if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
+        throw new Error('Malformed get task response')
+      }
+      return transformTaskFromApiRow(raw as Record<string, unknown>)
     } catch (error) {
       console.error('Error fetching task:', error)
       throw error
@@ -247,7 +453,7 @@ export const tasksApi = {
       if (data.notes !== undefined) apiData.notes = data.notes
 
       // Use task_lead_id from data if provided and valid (not null, 0, or empty string)
-      if (data.task_lead_id !== undefined && data.task_lead_id !== null && data.task_lead_id !== 0 && data.task_lead_id !== '') {
+      if (data.task_lead_id !== undefined && data.task_lead_id !== null && data.task_lead_id !== 0) {
         const leadId = Number(data.task_lead_id)
         if (!isNaN(leadId) && leadId > 0) {
           apiData.task_lead_id = leadId
@@ -399,7 +605,7 @@ export const tasksApi = {
       if (data.progress_pct !== undefined) apiData.progress_pct = data.progress_pct
       if (data.notes !== undefined) apiData.notes = data.notes
       // Use task_lead_id from data if provided and valid (not null, 0, or empty string)
-      if (data.task_lead_id !== undefined && data.task_lead_id !== null && data.task_lead_id !== 0 && data.task_lead_id !== '') {
+      if (data.task_lead_id !== undefined && data.task_lead_id !== null && data.task_lead_id !== 0) {
         const leadId = Number(data.task_lead_id)
         if (!isNaN(leadId) && leadId > 0) {
           apiData.task_lead_id = leadId
