@@ -38,7 +38,7 @@
                 :value="String(task.id)"
               >
                 {{ task.name }}
-                <span v-if="task.wbs_path"> ({{ task.wbs_path }})</span>
+                <span v-if="task.address?.trim()"> ({{ task.address }})</span>
               </option>
             </select>
             <p class="mt-1 text-xs text-gray-500">

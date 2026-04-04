@@ -44,7 +44,8 @@ export function isMilestone(milestone: MilestoneType | string | number | boolean
 export interface Task {
   id: string
   project_id: number
-  wbs_path?: string // WBS path as string "1.1.1"
+  /** Work site / location for this task (replaces legacy wbs_path) */
+  address?: string
   name: string
   start_planned: string // DATE from database
   start_time?: string // TIME from database (HH:mm:ss format, e.g., "08:00:00")
@@ -87,7 +88,7 @@ export interface CalendarTask {
   startEditable?: boolean
   durationEditable?: boolean
   extendedProps: {
-    wbsPath: string[]
+    address?: string
     status: TaskStatus
     assignees: string[]
     milestone: boolean
@@ -99,7 +100,7 @@ export interface CalendarTask {
 // Task creation/update DTO
 export interface TaskCreateUpdate {
   project_id?: number
-  wbs_path?: string
+  address?: string
   name: string
   start_planned: string
   start_time?: string // TIME format (HH:mm:ss, e.g., "08:00:00")
@@ -119,7 +120,6 @@ export interface TaskCreateUpdate {
   dependencies?: Array<{ predecessor_id: number; type: string; lag_days: number }>
   task_order?: number // Order for manual sorting in Gantt chart
   // Legacy fields for backward compatibility
-  wbsPath?: string[]
   startPlanned?: string
   endPlanned?: string
   durationDays?: number
@@ -132,7 +132,6 @@ export interface TaskFilter {
   status?: TaskStatus[]
   assignees?: string[]
   resources?: string[]
-  wbsPath?: string[]
   dateRange?: {
     start: string
     end: string
@@ -181,7 +180,7 @@ export interface TaskTemplate {
   milestone?: MilestoneType | null
   status?: TaskStatus
   notes?: string
-  wbs_path?: string
+  address?: string
   task_order?: number // Order in template sequence
   created_at?: string
   updated_at?: string

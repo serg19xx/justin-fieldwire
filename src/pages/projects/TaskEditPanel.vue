@@ -6,6 +6,42 @@
     <!-- Content -->
     <div class="flex-1 overflow-y-auto p-6">
       <div class="max-w-5xl mx-auto">
+        <!-- Work site address (summary — visible at top of panel) -->
+        <div
+          class="mb-6 rounded-xl border border-gray-200 bg-gradient-to-br from-slate-50 to-gray-50/80 px-4 py-3.5 flex gap-3 shadow-sm"
+          role="region"
+          aria-label="Work site address"
+        >
+          <span class="text-gray-400 shrink-0 mt-0.5" aria-hidden="true">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+              />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+          </span>
+          <div class="min-w-0 flex-1">
+            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Work site address</p>
+            <p
+              v-if="summaryAddressDisplay"
+              class="text-sm text-gray-900 mt-1 whitespace-pre-wrap break-words leading-snug"
+            >
+              {{ summaryAddressDisplay }}
+            </p>
+            <p v-else class="text-sm text-gray-400 mt-1 leading-snug">
+              No address set — enter it under Basic Information below.
+            </p>
+          </div>
+        </div>
+
         <!-- Basic Information Section -->
         <section class="mb-8">
           <div class="flex items-center justify-between mb-4">
@@ -26,16 +62,16 @@
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- WBS Path -->
+                <!-- Work site address -->
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">
-                    WBS Path <span class="text-gray-400">(optional)</span>
+                    Address <span class="text-gray-400">(optional)</span>
                   </label>
                   <input
-                    v-model="form.wbs_path"
+                    v-model="form.address"
                     type="text"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                    placeholder="e.g., 1.1.1"
+                    placeholder="Site or work location"
                   />
                 </div>
 
@@ -729,7 +765,7 @@ const emit = defineEmits<{
 // State
 const form = ref({
   name: '',
-  wbs_path: '',
+  address: '',
   start_planned: '',
   start_time: '08:00', // Default start time 08:00
   end_planned: '',
@@ -745,6 +781,9 @@ const form = ref({
   project_lead: null as number | null,
   team_members: [] as number[],
 })
+
+/** Address shown in the summary card at the top (stays in sync while editing). */
+const summaryAddressDisplay = computed(() => (form.value.address || '').trim())
 
 const showDependencyDialog = ref(false)
 const showResourceDialog = ref(false)
@@ -1418,7 +1457,7 @@ watch(
 
       form.value = {
         name: '',
-        wbs_path: '',
+        address: '',
         start_planned: '',
         start_time: '08:00', // Default start time 08:00
         end_planned: '',
@@ -1450,7 +1489,7 @@ watch(
 
       form.value = {
         name: props.task.name || '',
-        wbs_path: props.task.wbs_path || '',
+        address: props.task.address || '',
         start_planned: props.task.start_planned || '',
         start_time: formatTimeForInput(props.task.start_time),
         end_planned: props.task.end_planned || '',
@@ -1737,7 +1776,7 @@ function handleBasicInfoSave() {
   // Transform dependencies to match Task type
   const taskData: TaskCreateUpdate & { id?: string } = {
     name: form.value.name,
-    wbs_path: form.value.wbs_path || undefined,
+    address: form.value.address || undefined,
     start_planned: form.value.start_planned || props.task?.start_planned || '',
     start_time: formatTimeForApi(form.value.start_time),
     end_planned: form.value.end_planned || props.task?.end_planned || undefined,
@@ -1974,7 +2013,7 @@ async function addTeamMember(memberIds: number[]) {
         task_lead_id: props.task.task_lead_id,
         team_members: form.value.team_members, // Updated team members
         resources: props.task.resources || [],
-        wbs_path: props.task.wbs_path,
+        address: props.task.address,
         notes: props.task.notes,
         milestone: props.task.milestone,
         milestone_type: typeof props.task.milestone === 'string' ? props.task.milestone : props.task.milestone_type,
@@ -2013,7 +2052,7 @@ function removeTeamMember(index: number) {
         task_lead_id: props.task.task_lead_id,
         team_members: form.value.team_members, // Updated team members
         resources: props.task.resources || [],
-        wbs_path: props.task.wbs_path,
+        address: props.task.address,
         notes: props.task.notes,
         milestone: props.task.milestone,
         milestone_type: typeof props.task.milestone === 'string' ? props.task.milestone : props.task.milestone_type,

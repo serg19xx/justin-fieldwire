@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS `fw_task_templates` (
   `milestone` VARCHAR(50) NULL COMMENT 'Milestone type: inspection, visit, meeting, review, delivery, approval, other, or NULL for regular task',
   `status` VARCHAR(50) DEFAULT 'planned' COMMENT 'Default task status: planned, scheduled, scheduled_accepted, in_progress, partially_completed, delayed_due_to_issue, ready_for_inspection, completed',
   `notes` TEXT NULL COMMENT 'Additional notes for the template',
-  `wbs_path` VARCHAR(100) NULL COMMENT 'Work breakdown structure path (e.g., "1.1.1")',
+  `address` VARCHAR(500) NULL COMMENT 'Default work site / location when creating tasks from template',
   `task_order` INT UNSIGNED NULL COMMENT 'Order in template sequence for sorting',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Creation timestamp',
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Last update timestamp',

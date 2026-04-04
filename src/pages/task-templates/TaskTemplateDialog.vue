@@ -68,13 +68,13 @@
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">WBS Path</label>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
                 <input
-                  v-model="form.wbs_path"
+                  v-model="form.address"
                   type="text"
-                  maxlength="100"
+                  maxlength="500"
                   class="w-full h-10 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  placeholder="e.g. 1.1.1"
+                  placeholder="Default site when creating tasks from template"
                 />
               </div>
             </div>
@@ -229,7 +229,7 @@ const form = ref({
   milestone: '' as '' | MilestoneType,
   status: 'planned' as TaskStatus,
   notes: '' as string | undefined,
-  wbs_path: '' as string | undefined,
+  address: '' as string | undefined,
   task_order: undefined as number | undefined,
 })
 
@@ -248,7 +248,7 @@ watch(
         milestone: (template.milestone ?? '') as '' | MilestoneType,
         status: template.status ?? 'planned',
         notes: template.notes ?? '',
-        wbs_path: template.wbs_path ?? '',
+        address: template.address ?? '',
         task_order: template.task_order,
       }
     } else {
@@ -262,7 +262,7 @@ watch(
         milestone: '' as '' | MilestoneType,
         status: 'planned',
         notes: '',
-        wbs_path: '',
+        address: '',
         task_order: undefined,
       }
     }
@@ -285,7 +285,7 @@ function submit() {
     milestone: form.value.milestone === '' || form.value.milestone == null ? null : form.value.milestone,
     status: form.value.status,
     notes: form.value.notes?.trim() || undefined,
-    wbs_path: form.value.wbs_path?.trim() || undefined,
+    address: form.value.address?.trim() || undefined,
     task_order: form.value.task_order ?? undefined,
   }
   emit('save', payload)

@@ -296,7 +296,7 @@ export function templateToTaskData(
     status: normalizedStatus as TaskStatus,
     progress_pct: 0,
     notes: template.notes,
-    wbs_path: template.wbs_path,
+    address: template.address,
     task_order: template.task_order,
   }
 

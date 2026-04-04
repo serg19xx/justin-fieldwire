@@ -150,6 +150,12 @@ function normalizeApiTaskStatus(raw: unknown): TaskStatus {
   return raw as TaskStatus
 }
 
+/** Prefer `address`; accept legacy `wbs_path` from API until all backends migrate. */
+function readTaskAddressFromApi(task: Record<string, unknown>): string {
+  const raw = task.address ?? task.wbs_path
+  return raw != null && String(raw).length > 0 ? String(raw) : ''
+}
+
 function transformTaskFromApiRow(task: Record<string, unknown>): Task {
   const legacyAssigneeOrder = coerceParticipantIds(task.assignees)
   const allParticipantIds = extractAllParticipantUserIds(task)
@@ -210,7 +216,7 @@ function transformTaskFromApiRow(task: Record<string, unknown>): Task {
     id,
     project_id,
     name,
-    wbs_path: task.wbs_path != null ? String(task.wbs_path) : '',
+    address: readTaskAddressFromApi(task),
     start_planned,
     start_time: task.start_time != null ? String(task.start_time) : undefined,
     end_planned: task.end_planned != null ? String(task.end_planned) : undefined,
@@ -284,9 +290,6 @@ export const tasksApi = {
       }
       if (filters?.assignees?.length) {
         filters.assignees.forEach((assignee) => params.append('assignees[]', assignee))
-      }
-      if (filters?.wbsPath?.length) {
-        filters.wbsPath.forEach((path) => params.append('wbs_path[]', path))
       }
       if (filters?.dateRange) {
         params.append('date_start', filters.dateRange.start)
@@ -421,8 +424,7 @@ export const tasksApi = {
       if (data.progress_pct !== undefined) apiData.progress_pct = data.progress_pct
 
       // Optional fields - include if they exist
-      if (data.wbsPath !== undefined) apiData.wbs_path = data.wbsPath
-      if (data.wbs_path !== undefined) apiData.wbs_path = data.wbs_path
+      if (data.address !== undefined) apiData.address = data.address
 
       // Calculate duration_days if not provided but dates are available
       if (data.durationDays !== undefined && data.durationDays !== null) {
@@ -574,8 +576,7 @@ export const tasksApi = {
       // Convert camelCase to snake_case for API and handle both naming conventions
       const apiData: Record<string, unknown> = {}
       if (data.name !== undefined) apiData.name = data.name
-      if (data.wbsPath !== undefined) apiData.wbs_path = data.wbsPath
-      if (data.wbs_path !== undefined) apiData.wbs_path = data.wbs_path
+      if (data.address !== undefined) apiData.address = data.address
       if (data.startPlanned !== undefined) apiData.start_planned = data.startPlanned
       if (data.endPlanned !== undefined) apiData.end_planned = data.endPlanned
       if (data.start_planned !== undefined) apiData.start_planned = data.start_planned

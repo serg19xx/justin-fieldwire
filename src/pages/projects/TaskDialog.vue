@@ -46,18 +46,18 @@
             />
           </div>
 
-          <!-- WBS Path and Project Lead Row -->
+          <!-- Address and project lead -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
-                WBS Path <span class="text-gray-400">(optional)</span>
+                Address <span class="text-gray-400">(optional)</span>
               </label>
               <input
-                v-model="form.wbs_path"
+                v-model="form.address"
                 :disabled="mode === 'view'"
                 type="text"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
-                placeholder="e.g., 1.1.1"
+                placeholder="Site or work location"
               />
             </div>
             <div>
@@ -203,7 +203,7 @@
                 >
                   <option value="">Select predecessor task</option>
                   <option v-for="task in availableTasks || []" :key="task.id" :value="String(task.id)">
-                    {{ task.milestone ? '🎯' : '📋' }} {{ task.name }} ({{ task.wbs_path || 'No WBS' }})
+                    {{ task.milestone ? '🎯' : '📋' }} {{ task.name }} ({{ task.address?.trim() || 'No address' }})
                   </option>
                 </select>
                 <select
@@ -531,7 +531,7 @@ const emit = defineEmits<{
 // Form data
 const form = ref({
   name: '',
-  wbs_path: '',
+  address: '',
   start_planned: '',
   start_time: '08:00', // Default start time 08:00
   end_planned: '',
@@ -577,7 +577,7 @@ watch(() => props.isOpen, async (isOpen) => {
     // Reset form for create mode
     form.value = {
       name: '',
-      wbs_path: '',
+      address: '',
       start_planned: startDate, // Use initialDate or current date
       start_time: '08:00', // Default start time 08:00
       end_planned: '', // End date for tasks
@@ -626,7 +626,7 @@ watch(() => props.isOpen, async (isOpen) => {
 
     form.value = {
       name: props.task.name || '',
-      wbs_path: props.task.wbs_path || '',
+      address: props.task.address || '',
       start_planned: props.task.start_planned || '',
       start_time: formatTimeForInput(props.task.start_time),
       end_planned: props.task.end_planned || '',
@@ -1076,7 +1076,7 @@ function resetForm() {
 
     form.value = {
       name: props.task.name,
-      wbs_path: props.task.wbs_path || '',
+      address: props.task.address || '',
       start_planned: props.task.start_planned,
       start_time: formatTimeForInput(props.task.start_time),
       end_planned: props.task.end_planned || '',
@@ -1097,7 +1097,7 @@ function resetForm() {
     // Reset to default values for create mode
     form.value = {
       name: '',
-      wbs_path: '',
+      address: '',
       start_planned: new Date().toISOString().split('T')[0], // Today's date
       start_time: '08:00', // Default start time 08:00
       end_planned: '',
@@ -1274,7 +1274,7 @@ function handleSubmit() {
     milestone_type: form.value.milestone ? (props.task?.milestone_type || (typeof props.task?.milestone === 'string' ? props.task.milestone : 'other' as MilestoneType)) : undefined,
     // Convert empty strings to null/undefined
     end_planned: form.value.end_planned || undefined,
-    wbs_path: form.value.wbs_path || undefined,
+    address: form.value.address || undefined,
     notes: form.value.notes || undefined,
     // Duration is calculated on frontend only, not stored in DB
     // Process dependencies - convert to full dependency objects

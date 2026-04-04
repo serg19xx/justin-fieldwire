@@ -7,6 +7,8 @@ export interface MyScheduleTaskSummary {
   name: string
   project_id: number
   status: string
+  /** Work site when API embeds task row (same as task.address) */
+  address?: string
 }
 
 export interface MyScheduleEntry {
@@ -176,8 +178,24 @@ export async function replaceProjectScheduleEntries(
   return normalizeWeekResponse(data)
 }
 
-export async function publishProjectScheduleWeek(projectId: number, weekId: number): Promise<ScheduleWeekMeta | null> {
+/**
+ * @param weekStartYmdForReload - Monday (or any day) of the week; used to GET refresh if the POST body omits `week`/`schedule_week`.
+ */
+export async function publishProjectScheduleWeek(
+  projectId: number,
+  weekId: number,
+  weekStartYmdForReload?: string,
+): Promise<ScheduleWeekMeta | null> {
   const response = await api.post(`/api/v1/projects/${projectId}/schedule-weeks/${weekId}/publish`, {})
-  const data = readEnvelopeData<{ week?: ScheduleWeekMeta }>(response.data)
-  return data?.week ?? null
+  const raw =
+    readScheduleWeekPayload(response.data) ?? readEnvelopeData<Record<string, unknown>>(response.data)
+  let week: ScheduleWeekMeta | null = null
+  if (raw != null) {
+    week = normalizeWeekResponse(raw).week
+  }
+  if (week == null && weekStartYmdForReload) {
+    const reload = await fetchProjectScheduleWeek(projectId, weekStartYmdForReload)
+    week = reload.week
+  }
+  return week
 }

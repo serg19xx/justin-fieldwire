@@ -1081,7 +1081,7 @@ function handleSubmit() {
     start_time: formatTimeForApi(form.value.start_time),
     end_time: formatTimeForApi(form.value.end_time),
     // Milestones don't have these fields
-    wbs_path: undefined,
+    address: undefined,
     duration_days: 1,
     progress_pct: 0,
     dependencies: [],

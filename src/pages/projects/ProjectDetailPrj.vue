@@ -1823,7 +1823,7 @@ async function handleRemoveWorkerFromTask(workerId: number, taskId: string) {
       task_lead_id: task.task_lead_id === workerId ? undefined : task.task_lead_id,
       team_members: (task.team_members || []).filter(id => id !== workerId),
       resources: task.resources || [],
-      wbs_path: task.wbs_path,
+      address: task.address,
       notes: task.notes,
       milestone: task.milestone,
       milestone_type: typeof task.milestone === 'string' ? task.milestone : task.milestone_type,
@@ -1880,7 +1880,7 @@ const filteredTasks = computed(() => {
     (task) =>
       task.name.toLowerCase().includes(query) ||
       (task.notes && task.notes.toLowerCase().includes(query)) ||
-      (task.wbs_path && task.wbs_path.toLowerCase().includes(query)),
+      (task.address && task.address.toLowerCase().includes(query)),
   )
 })
 
@@ -2567,6 +2567,13 @@ watch(
                       {{ editingMode === 'create' ? 'Create New Task' : 'Edit Task' }}
                     </h3>
                     <p v-if="editingTask" class="text-xs text-gray-500">{{ editingTask.name }}</p>
+                    <p
+                      v-if="editingTask?.address?.trim()"
+                      class="text-xs text-gray-600 mt-0.5 max-w-xl truncate"
+                      :title="editingTask.address"
+                    >
+                      {{ editingTask.address }}
+                    </p>
                   </div>
                 </div>
                 <div v-if="editingMode === 'edit' && canEditProject" class="flex items-center space-x-2">
@@ -2657,8 +2664,8 @@ watch(
                   <span class="text-xs">{{ task.milestone ? MILESTONE_ICON : '📋' }}</span>
                   <div class="flex-1 min-w-0">
                     <div class="font-medium truncate">{{ task.name }}</div>
-                    <div v-if="task.wbs_path" class="text-xs text-gray-500 truncate">
-                      WBS: {{ task.wbs_path }}
+                    <div v-if="task.address?.trim()" class="text-xs text-gray-500 truncate">
+                      {{ task.address }}
                     </div>
                     <div v-if="task.notes" class="text-xs text-gray-500 truncate">
                       {{ task.notes }}

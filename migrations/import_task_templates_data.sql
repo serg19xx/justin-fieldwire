@@ -4,7 +4,7 @@
 -- Date: 2025-12-06
 
 INSERT INTO `fw_task_templates`
-  (`name`, `category`, `duration_days`, `start_offset_days`, `end_offset_days`, `milestone`, `status`, `notes`, `wbs_path`, `task_order`)
+  (`name`, `category`, `duration_days`, `start_offset_days`, `end_offset_days`, `milestone`, `status`, `notes`, `address`, `task_order`)
 VALUES
   ('Client Business Planning Meeting 1', 'Planning & Design', 3, 0, NULL, 'meeting', 'planned', NULL, NULL, 1),
   ('Client Business Planning Meeting 2', 'Planning & Design', 3, 3, NULL, 'meeting', 'planned', NULL, NULL, 2),

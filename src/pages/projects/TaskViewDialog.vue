@@ -53,10 +53,10 @@
 
         <!-- Basic Information -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-          <!-- WBS Path -->
-          <div v-if="task?.wbs_path">
-            <label class="block text-sm font-medium text-gray-700 mb-1">WBS Path</label>
-            <p class="text-gray-900">{{ task.wbs_path }}</p>
+          <!-- Work site address -->
+          <div v-if="task?.address?.trim()">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+            <p class="text-gray-900">{{ task.address }}</p>
           </div>
 
           <!-- Duration -->

@@ -55,7 +55,7 @@ SELECT COUNT(*) as imported_count FROM `fw_task_templates`;
 - `milestone` - Тип вехи (inspection, visit, meeting, review, delivery, approval, other, или NULL)
 - `status` - Статус задачи по умолчанию
 - `notes` - Дополнительные заметки
-- `wbs_path` - Путь в структуре работ (WBS)
+- `address` - Адрес / место работ (шаблон задачи)
 - `task_order` - Порядок в последовательности шаблонов
 - `created_at` - Время создания
 - `updated_at` - Время последнего обновления

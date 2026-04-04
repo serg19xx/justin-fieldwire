@@ -11,22 +11,29 @@
           by RBAC). Saving adds people to the task team if needed.
         </p>
       </div>
-      <div class="flex items-center gap-2 flex-wrap">
-        <button
-          type="button"
-          class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm"
-          @click="weekOffset--"
-        >
-          ← Prev week
-        </button>
-        <span class="text-sm font-medium text-gray-900">{{ weekRangeLabel }}</span>
-        <button
-          type="button"
-          class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm"
-          @click="weekOffset++"
-        >
-          Next week →
-        </button>
+        <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2 flex-wrap">
+        <div class="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm"
+            title="Go to the previous calendar week (read-only before this week)"
+            @click="weekOffset--"
+          >
+            ← Prev week
+          </button>
+          <span class="text-sm font-medium text-gray-900">{{ weekRangeLabel }}</span>
+          <button
+            type="button"
+            class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm"
+            @click="weekOffset++"
+          >
+            Next week →
+          </button>
+        </div>
+        <p class="text-xs text-gray-500 max-w-xl">
+          You can open past weeks to review published history. Planning and drafts are only for this week
+          and the future; days before today cannot be chosen in an editable draft.
+        </p>
       </div>
     </div>
 
@@ -47,9 +54,11 @@
 
     <template v-else>
       <div v-if="!weekMeta" class="rounded-xl border border-gray-200 bg-white p-6 text-center">
-        <p class="text-sm text-gray-600 mb-4">No schedule draft for this week yet.</p>
+        <p class="text-sm text-gray-600 mb-4">
+          {{ isViewingPastWeek ? 'No schedule data for this week.' : 'No schedule draft for this week yet.' }}
+        </p>
         <button
-          v-if="canEdit"
+          v-if="canEdit && !isViewingPastWeek"
           type="button"
           class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
           :disabled="isSaving"
@@ -57,7 +66,12 @@
         >
           Create draft week
         </button>
-        <p v-else class="text-xs text-gray-500">Only project managers can create the schedule.</p>
+        <p v-else-if="canEdit && isViewingPastWeek" class="text-xs text-gray-500">
+          Past weeks cannot be created or edited here.
+        </p>
+        <p v-else-if="!canEdit && !isViewingPastWeek" class="text-xs text-gray-500">
+          Only project managers can create the schedule.
+        </p>
       </div>
 
       <template v-else>
@@ -114,20 +128,20 @@
                     </template>
                   </p>
                 </th>
-                <th v-if="canEdit && isDraft" class="w-10 border-b border-gray-200" />
+                <th v-if="isScheduleEditable" class="w-10 border-b border-gray-200" />
               </tr>
               <tr>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Day</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Slot</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Task</th>
-                <th v-if="canEdit && isDraft" class="px-3 py-2 w-10" />
+                <th v-if="isScheduleEditable" class="px-3 py-2 w-10" />
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
               <tr v-for="(row, idx) in visibleRows" :key="`${idx}-${rowKey(row)}`">
                 <td class="px-3 py-2 align-top">
                   <select
-                    v-if="canEdit && isDraft"
+                    v-if="isScheduleEditable"
                     v-model="row.work_date"
                     class="w-full min-w-[10rem] rounded border border-gray-300 text-sm"
                     @change="onDayOrSlotChange(row)"
@@ -146,7 +160,7 @@
                 </td>
                 <td class="px-3 py-2 align-top">
                   <select
-                    v-if="canEdit && isDraft"
+                    v-if="isScheduleEditable"
                     v-model="row.day_part"
                     class="w-full min-w-[7rem] rounded border border-gray-300 text-sm"
                     @change="onDayOrSlotChange(row)"
@@ -164,7 +178,7 @@
                 </td>
                 <td class="px-3 py-2 align-top">
                   <select
-                    v-if="canEdit && isDraft"
+                    v-if="isScheduleEditable"
                     v-model.number="row.task_id"
                     class="w-full min-w-[10rem] rounded border border-gray-300 text-sm"
                   >
@@ -177,7 +191,7 @@
                     No tasks in this project yet.
                   </p>
                 </td>
-                <td v-if="canEdit && isDraft" class="px-3 py-2 align-top">
+                <td v-if="isScheduleEditable" class="px-3 py-2 align-top">
                   <button
                     type="button"
                     class="text-red-600 hover:text-red-800 text-xs font-medium"
@@ -195,17 +209,24 @@
           Select a worker in the table header to view or edit their rows.
         </div>
         <div v-else-if="visibleRows.length === 0" class="text-sm text-gray-500 mt-2">
-          No rows for this worker yet — Add row.
+          <template v-if="isScheduleEditable">No rows for this worker yet — Add row.</template>
+          <template v-else>No rows for this worker in this week.</template>
         </div>
 
         <div
-          v-if="canEdit && isDraft && hasAnySlotConflict"
+          v-if="isScheduleEditable && hasAnySlotConflict"
           class="mt-2 text-sm text-amber-800 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
         >
           Overlapping slots for this worker — adjust day/slot before save.
         </div>
+        <div
+          v-if="isScheduleEditable && hasRowsOnPastDays"
+          class="mt-2 text-sm text-amber-800 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
+        >
+          Some rows use a day before today — move them to today or a future day before Save or Publish.
+        </div>
 
-        <div v-if="canEdit && isDraft" class="mt-4 flex flex-wrap gap-2">
+        <div v-if="isScheduleEditable" class="mt-4 flex flex-wrap gap-2">
           <button
             type="button"
             class="px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 disabled:opacity-45"
@@ -232,7 +253,10 @@
           </button>
         </div>
 
-        <p v-if="!isDraft && !canEdit" class="text-xs text-gray-500 mt-3">
+        <p v-if="isViewingPastWeek" class="text-xs text-gray-500 mt-3">
+          Past week — read only. Move to this week or later to edit drafts or create new ones.
+        </p>
+        <p v-else-if="!isDraft && !canEdit" class="text-xs text-gray-500 mt-3">
           This week is published. Pick a worker above to review their lines.
         </p>
       </template>
@@ -297,6 +321,9 @@ const weekStartYmd = computed(() => toYmd(weekMonday.value))
 
 const weekEndYmd = computed(() => toYmd(addDays(weekMonday.value, 6)))
 
+/** Local calendar today YYYY-MM-DD — no draft planning on earlier dates */
+const todayYmd = computed(() => toYmd(new Date()))
+
 const showPlannerHint = computed(() => selectedPlannerWorkerId.value > 0)
 
 const hasExternalOtherProjectSlots = computed(() =>
@@ -342,6 +369,20 @@ const isDraft = computed(() => weekMeta.value?.status === 'draft')
 
 const workerSelectDisabled = computed(() => isDraft.value && !props.canEdit)
 
+/** Navigated before the current ISO week — browse historical schedules read-only */
+const isViewingPastWeek = computed(() => weekOffset.value < 0)
+
+/** Editable draft rows: PM role, draft status, and not a past calendar week */
+const isScheduleEditable = computed(
+  () => props.canEdit && isDraft.value && !isViewingPastWeek.value,
+)
+
+const hasRowsOnPastDays = computed(
+  () =>
+    isScheduleEditable.value &&
+    allDraftRows.value.some((r) => r.work_date && r.work_date < todayYmd.value),
+)
+
 const visibleRows = computed(() => {
   if (selectedPlannerWorkerId.value <= 0) return []
   return allDraftRows.value.filter((r) => r.user_id === selectedPlannerWorkerId.value)
@@ -357,10 +398,14 @@ const weekDayBadges = computed(() => {
   const uid = selectedPlannerWorkerId.value
   if (uid <= 0) return []
   return dayChoices.value.map((d) => {
-    const level = dayAvailabilityLevel(uid, d.ymd)
+    const isPastDay = d.ymd < todayYmd.value
+    const level = isPastDay ? 'past' : dayAvailabilityLevel(uid, d.ymd)
     let badgeClass = 'border-gray-200 bg-white text-gray-800'
     let sub = ''
-    if (level === 'full') {
+    if (isPastDay) {
+      badgeClass = 'border-gray-200 bg-gray-100 text-gray-400 line-through decoration-gray-400'
+      sub = ' · past'
+    } else if (level === 'full') {
       badgeClass = 'border-gray-300 bg-gray-200 text-gray-500'
       sub = ' · full'
     } else if (level === 'partial') {
@@ -409,6 +454,7 @@ function isSlotTakenByOthers(
 }
 
 function dayAvailabilityLevel(userId: number, ymd: string): 'free' | 'partial' | 'full' {
+  if (ymd < todayYmd.value) return 'full'
   const candidates: ScheduleDayPart[] = ['am', 'pm', 'full']
   let anyFree = false
   const sentinel = {} as ScheduleWeekEntryRow
@@ -432,6 +478,7 @@ function hasWorkerSlotConflict(row: ScheduleWeekEntryRow): boolean {
 }
 
 function rowCanAssignAnySlotOnDay(row: ScheduleWeekEntryRow, ymd: string): boolean {
+  if (ymd < todayYmd.value) return false
   const uid = row.user_id
   for (const part of ['am', 'pm', 'full'] as ScheduleDayPart[]) {
     if (!isSlotTakenByOthers(uid, ymd, part, row)) return true
@@ -441,6 +488,7 @@ function rowCanAssignAnySlotOnDay(row: ScheduleWeekEntryRow, ymd: string): boole
 
 function isDayOptionDisabledForRow(row: ScheduleWeekEntryRow, ymd: string): boolean {
   if (ymd === row.work_date) return false
+  if (isDraft.value && ymd < todayYmd.value) return true
   return !rowCanAssignAnySlotOnDay(row, ymd)
 }
 
@@ -507,7 +555,9 @@ function defaultNewRow(): ScheduleWeekEntryRow {
     work_date: weekStartYmd.value,
     day_part: 'am',
   }
-  for (const d of dayChoices.value) {
+  const planDays = dayChoices.value.filter((d) => d.ymd >= todayYmd.value)
+  const daysToTry = planDays.length > 0 ? planDays : dayChoices.value
+  for (const d of daysToTry) {
     const slot = firstFreeSlotOnDay(uid, d.ymd, row)
     if (slot) {
       row.work_date = d.ymd
@@ -523,6 +573,7 @@ function isRowSaveable(row: ScheduleWeekEntryRow): boolean {
   if (row.user_id <= 0 || row.task_id <= 0) return false
   if (taskById(row.task_id) == null) return false
   if (hasWorkerSlotConflict(row)) return false
+  if (row.work_date && row.work_date < todayYmd.value) return false
   return true
 }
 
@@ -565,7 +616,7 @@ async function syncTaskRosterWithScheduleRows(rows: ScheduleWeekEntryRow[]): Pro
       task_lead_id: task.task_lead_id,
       team_members: [...nextTeam],
       resources: task.resources || [],
-      wbs_path: task.wbs_path,
+      address: task.address,
       notes: task.notes,
       milestone: task.milestone,
       milestone_type: typeof task.milestone === 'string' ? task.milestone : task.milestone_type,
@@ -628,11 +679,12 @@ async function loadExternalScheduleForPlanner(): Promise<void> {
 }
 
 function addRow(): void {
-  if (selectedPlannerWorkerId.value <= 0) return
+  if (!isScheduleEditable.value || selectedPlannerWorkerId.value <= 0) return
   allDraftRows.value.push(defaultNewRow())
 }
 
 function removeRow(row: ScheduleWeekEntryRow): void {
+  if (!isScheduleEditable.value) return
   const i = allDraftRows.value.indexOf(row)
   if (i >= 0) allDraftRows.value.splice(i, 1)
 }
@@ -658,6 +710,10 @@ async function loadWeek(): Promise<void> {
 }
 
 async function onCreateDraft(): Promise<void> {
+  if (isViewingPastWeek.value) {
+    bannerError.value = 'Drafts cannot be created for past weeks.'
+    return
+  }
   isSaving.value = true
   bannerError.value = ''
   try {
@@ -675,9 +731,13 @@ async function onCreateDraft(): Promise<void> {
 }
 
 async function onSaveEntries(): Promise<void> {
-  if (!weekMeta.value || weekMeta.value.status !== 'draft') return
+  if (!isScheduleEditable.value || !weekMeta.value || weekMeta.value.status !== 'draft') return
   if (hasAnySlotConflict.value) {
     bannerError.value = 'Resolve overlapping slots before saving.'
+    return
+  }
+  if (hasRowsOnPastDays.value) {
+    bannerError.value = 'Move or remove rows dated before today — planning is forward-only.'
     return
   }
   const valid = allDraftRows.value.filter((r) => isRowSaveable(r))
@@ -709,9 +769,13 @@ async function onSaveEntries(): Promise<void> {
 }
 
 async function onPublish(): Promise<void> {
-  if (!weekMeta.value || weekMeta.value.status !== 'draft') return
+  if (!isScheduleEditable.value || !weekMeta.value || weekMeta.value.status !== 'draft') return
   if (hasAnySlotConflict.value) {
     bannerError.value = 'Resolve overlapping slots before publishing.'
+    return
+  }
+  if (hasRowsOnPastDays.value) {
+    bannerError.value = 'Move or remove rows dated before today before publishing.'
     return
   }
   const valid = allDraftRows.value.filter((r) => isRowSaveable(r))
@@ -721,6 +785,7 @@ async function onPublish(): Promise<void> {
   }
   isSaving.value = true
   bannerError.value = ''
+  const weekStartSnap = weekMeta.value.week_start
   try {
     await syncTaskRosterWithScheduleRows(valid)
     emit('tasksSynced')
@@ -732,7 +797,11 @@ async function onPublish(): Promise<void> {
     if (week) weekMeta.value = week
     allDraftRows.value = mapEntries(entries)
     reconcileAllRows()
-    const published = await publishProjectScheduleWeek(props.projectId, weekMeta.value.id)
+    const published = await publishProjectScheduleWeek(
+      props.projectId,
+      weekMeta.value.id,
+      weekStartSnap,
+    )
     if (published) weekMeta.value = published
   } catch (err) {
     bannerError.value = getApiErrorMessage(err, 'Publish failed.')

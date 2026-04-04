@@ -35,7 +35,7 @@ export function useTaskFilters(tasks: Ref<Task[]>) {
         (task) =>
           task.name.toLowerCase().includes(query) ||
           task.notes?.toLowerCase().includes(query) ||
-          task.wbs_path?.toLowerCase().includes(query),
+          task.address?.toLowerCase().includes(query),
       )
     }
 

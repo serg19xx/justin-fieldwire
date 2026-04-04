@@ -1,14 +1,16 @@
 <template>
   <div class="px-4 py-4 max-w-lg mx-auto">
-    <RouterLink
-      :to="'/tasks'"
-      class="inline-flex items-center gap-1 text-sm font-medium text-orange-600 hover:text-orange-700 mb-4"
-    >
-      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-      </svg>
-      Projects
-    </RouterLink>
+    <nav class="mb-4" aria-label="Breadcrumb">
+      <ol class="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm">
+        <li>
+          <RouterLink to="/tasks" class="font-medium text-orange-600 hover:text-orange-700">Projects</RouterLink>
+        </li>
+        <li class="text-gray-300 select-none" aria-hidden="true">/</li>
+        <li>
+          <span class="font-medium text-gray-900" aria-current="page">Tasks</span>
+        </li>
+      </ol>
+    </nav>
 
     <div v-if="isLoadingProject" class="flex justify-center py-12">
       <div class="animate-spin w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full" />
@@ -59,7 +61,10 @@
             <ul class="space-y-3">
               <li>
                 <RouterLink
-                  :to="`/tasks/project/${projectId}/task/${taskPanels.primary.id}`"
+                  :to="{
+                    path: `/tasks/project/${projectId}/task/${taskPanels.primary.id}`,
+                    query: { from: 'project' },
+                  }"
                   class="block bg-white rounded-xl shadow-sm border-2 border-orange-300 p-4 active:bg-orange-50"
                 >
                   <TaskListRowContent :task="taskPanels.primary" />
@@ -78,7 +83,10 @@
             <ul class="space-y-3">
               <li v-for="task in taskPanels.planned" :key="task.id">
                 <RouterLink
-                  :to="`/tasks/project/${projectId}/task/${task.id}`"
+                  :to="{
+                    path: `/tasks/project/${projectId}/task/${task.id}`,
+                    query: { from: 'project' },
+                  }"
                   class="block bg-white rounded-xl shadow-sm border border-gray-200 p-4 active:bg-gray-50"
                 >
                   <TaskListRowContent :task="task" />

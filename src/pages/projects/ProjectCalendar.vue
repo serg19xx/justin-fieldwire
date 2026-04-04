@@ -140,9 +140,9 @@ function searchTasks(query: string) {
   const matchingTasks = tasks.value.filter((task) => {
     const nameMatch = task.name.toLowerCase().includes(searchTerm)
     const notesMatch = task.notes?.toLowerCase().includes(searchTerm) || false
-    const wbsMatch = task.wbs_path?.toLowerCase().includes(searchTerm) || false
+    const addressMatch = task.address?.toLowerCase().includes(searchTerm) || false
 
-    return nameMatch || notesMatch || wbsMatch
+    return nameMatch || notesMatch || addressMatch
   })
 
   console.log('🎯 Found matching tasks:', matchingTasks.length)
@@ -2911,7 +2911,7 @@ async function handleTaskSave(taskData: (Partial<TaskCreateUpdate> | Partial<Tas
       createPayload.progressPct = taskData.progress_pct || 0
 
       // Optional fields
-      if (taskData.wbs_path) createPayload.wbsPath = taskData.wbs_path
+      if (taskData.address) createPayload.address = taskData.address
       if (taskData.duration_days) createPayload.durationDays = taskData.duration_days
       if (taskData.notes) createPayload.notes = taskData.notes
 
@@ -3031,7 +3031,7 @@ async function handleTaskSave(taskData: (Partial<TaskCreateUpdate> | Partial<Tas
       if (taskData.progress_pct !== undefined) updatePayload.progress_pct = taskData.progress_pct
 
       // Optional fields - only include if they exist
-      if (taskData.wbs_path !== undefined) updatePayload.wbs_path = taskData.wbs_path
+      if (taskData.address !== undefined) updatePayload.address = taskData.address
       if (taskData.duration_days !== undefined) updatePayload.duration_days = taskData.duration_days
       if (taskData.notes !== undefined) updatePayload.notes = taskData.notes
 
@@ -3197,7 +3197,7 @@ async function handleTaskDuplicate(task: Task) {
       progress_pct: 0,
       milestone: task.milestone,
       notes: task.notes,
-      wbs_path: task.wbs_path,
+      address: task.address,
       task_lead_id: task.task_lead_id, // Добавляем обязательное поле
       dependencies:
         Array.isArray(task.dependencies) &&
@@ -3745,8 +3745,8 @@ defineExpose({
               <!-- Task Basic Details -->
               <div class="grid grid-cols-2 gap-4 mb-6 text-sm">
                 <div>
-                  <span class="font-medium text-gray-700">WBS Path:</span>
-                  <div class="text-gray-600">{{ selectedTask.wbs_path || 'N/A' }}</div>
+                  <span class="font-medium text-gray-700">Address:</span>
+                  <div class="text-gray-600">{{ selectedTask.address?.trim() || 'N/A' }}</div>
                 </div>
                 <div>
                   <span class="font-medium text-gray-700">Status:</span>

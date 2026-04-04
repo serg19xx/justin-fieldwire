@@ -1,36 +1,7 @@
 import type { Task, CalendarTask, TaskStatus, MilestoneType } from '@/core/types/task'
 import { isMilestone } from '@/core/types/task'
 
-// WBS utility functions
-export function parseWbsPath(wbsPath?: string | string[] | null): string[] {
-  // If already an array, return it
-  if (Array.isArray(wbsPath)) {
-    return wbsPath
-  }
-
-  // If it's a string, split it
-  if (typeof wbsPath === 'string' && wbsPath.length > 0) {
-    return wbsPath.split('.')
-  }
-
-  // If null, undefined, or empty string, return empty array
-  return []
-}
-
-export function formatWbsPath(wbsArray: string[]): string {
-  return wbsArray.join('.')
-}
-
-export function getWbsLevel(wbsPath: string): number {
-  return wbsPath ? wbsPath.split('.').length : 0
-}
-
-export function getParentWbs(wbsPath: string): string {
-  const parts = wbsPath.split('.')
-  return parts.slice(0, -1).join('.')
-}
-
-// Универсальная функция для обработки даты окончания задачи
+// Universal helper for task end date display (calendar exclusive end)
 export function processEndDateForDisplay(endDate: string): string {
   if (!endDate) return ''
 
@@ -119,12 +90,14 @@ export function taskToCalendarTask(
     // Add data attributes for selection; milestone class for distinct styling
     classNames: [`task-${task.id}`, ...(taskIsMilestone ? ['fc-event-milestone'] : [])],
     extendedProps: {
-      wbsPath: parseWbsPath(task.wbs_path), // Convert to array for display
+      address: task.address?.trim() || undefined,
       status: task.status,
       assignees: (task.assignees || []).map(String), // Convert numbers to strings for compatibility
       milestone: isMilestone(task.milestone),
       progressPct: task.progress_pct,
-      description: task.notes || `${task.wbs_path || 'No WBS'} - ${task.name}`,
+      description:
+        task.notes ||
+        (task.address?.trim() ? `${task.address.trim()} — ${task.name}` : task.name),
       dependencies: task.dependencies || [],
       // Add data attributes for selection
       'data-event-id': String(task.id),
@@ -350,11 +323,6 @@ export function calculateTaskDuration(startDate: string, endDate?: string): numb
   return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1
 }
 
-// Generate WBS path string
-export function getWbsPathString(wbsPath: string[]): string {
-  return wbsPath.join(' > ')
-}
-
 // Check if task is overdue
 export function isTaskOverdue(task: Task): boolean {
   if (!task.end_planned || task.status === 'completed') return false
@@ -436,7 +404,7 @@ export function exportTasksToICal(tasks: Task[]): string {
 
       // Create description with more details
       const description = [
-        task.wbs_path ? `WBS: ${task.wbs_path}` : 'No WBS',
+        task.address?.trim() ? `Address: ${task.address.trim()}` : 'No address',
         `Status: ${task.status}`,
         task.progress_pct > 0 ? `Progress: ${task.progress_pct}%` : '',
         task.notes ? `Notes: ${task.notes}` : '',
@@ -487,10 +455,7 @@ export function exportTasksToGantt(tasks: Task[]): unknown {
       progress: task.progress_pct || 0,
       type: isMilestone(task.milestone) ? 'milestone' : 'task',
       color: getTaskColor(task.status),
-      parent:
-        task.wbs_path && task.wbs_path.split('.').length > 1
-          ? task.wbs_path.split('.')[task.wbs_path.split('.').length - 2]
-          : undefined,
+      parent: undefined,
       open: true,
       dependencies:
         task.deps?.map(

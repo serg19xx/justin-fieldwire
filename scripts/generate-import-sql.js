@@ -21,7 +21,7 @@ console.log('-- Total templates:', templates.length)
 console.log('-- Date:', new Date().toISOString().split('T')[0])
 console.log('')
 console.log('INSERT INTO `fw_task_templates`')
-console.log('  (`name`, `category`, `duration_days`, `start_offset_days`, `end_offset_days`, `milestone`, `status`, `notes`, `wbs_path`, `task_order`)')
+console.log('  (`name`, `category`, `duration_days`, `start_offset_days`, `end_offset_days`, `milestone`, `status`, `notes`, `address`, `task_order`)')
 console.log('VALUES')
 
 const values = templates.map((template, index) => {
@@ -33,7 +33,7 @@ const values = templates.map((template, index) => {
   const milestone = template.milestone || null
   const status = template.status || 'planned'
   const notes = template.notes ? (template.notes || '').replace(/'/g, "''") : null
-  const wbsPath = template.wbs_path || null
+  const address = template.address ?? template.wbs_path ?? null
   const taskOrder = template.task_order || null
 
   const parts = [
@@ -45,7 +45,7 @@ const values = templates.map((template, index) => {
     milestone ? `'${milestone}'` : 'NULL',
     `'${status}'`,
     notes ? `'${notes}'` : 'NULL',
-    wbsPath ? `'${wbsPath}'` : 'NULL',
+    address ? `'${String(address).replace(/'/g, "''")}'` : 'NULL',
     taskOrder !== null ? taskOrder : 'NULL',
   ]
 
