@@ -93,6 +93,14 @@ const router = createRouter({
       component: () => import('../pages/task-role/TaskScheduleWeek.vue'),
     },
     {
+      path: '/tasks/schedule/task/:projectId/:taskId/chat',
+      component: () => import('../pages/task-role/TaskScheduleSlotChat.vue'),
+    },
+    {
+      path: '/tasks/schedule/task/:projectId/:taskId',
+      component: () => import('../pages/task-role/TaskTaskDetail.vue'),
+    },
+    {
       path: '/tasks/project/:id',
       component: () => import('../pages/task-role/TaskProjectDetail.vue'),
     },
@@ -202,6 +210,24 @@ const router = createRouter({
     {
       path: '/projects/:id/detail',
       component: () => import('../pages/projects/ProjectDetailPrj.vue'),
+    },
+    {
+      path: '/projects/:id/detail/schedule-messages',
+      component: () => import('../pages/projects/ProjectScheduleMessages.vue'),
+    },
+    {
+      path: '/projects/:id/detail/schedule-slot/:entryId/chat',
+      redirect: (to) => ({
+        path: `/projects/${to.params.id}/detail/schedule-messages`,
+        query: {
+          ...(typeof to.query.week_start === 'string' ? { week_start: to.query.week_start } : {}),
+          entryId: to.params.entryId,
+        },
+      }),
+    },
+    {
+      path: '/projects/:id/detail/schedule-slot/:entryId',
+      component: () => import('../pages/projects/ProjectScheduleSlotPlan.vue'),
     },
   ],
 })

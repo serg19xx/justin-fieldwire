@@ -114,10 +114,73 @@
                 <p class="text-xs text-gray-600 mt-0.5 line-clamp-2 leading-snug">
                   {{ slot.projectAddress || '—' }}
                 </p>
+                <p
+                  v-if="slot.assignmentNote"
+                  class="text-[11px] text-gray-700 mt-1 line-clamp-2 leading-snug border-t border-orange-100/80 pt-1"
+                >
+                  {{ slot.assignmentNote }}
+                </p>
                 <p class="text-[11px] text-gray-400 truncate mt-0.5">
                   {{ slot.projectDebugLabel }}
                 </p>
-                <p class="text-[10px] text-orange-700/80 mt-1 font-medium">Tap for details →</p>
+                <div
+                  class="mt-2 flex items-center justify-center gap-3 border-t border-orange-100/80 pt-3 pb-0.5"
+                  @click.stop
+                >
+                  <RouterLink
+                    :to="{
+                      path: `/tasks/schedule/task/${slot.projectId}/${slot.taskId}`,
+                      query: slotQueryForLinks(slot),
+                      hash: '#worker-assignment-docs',
+                    }"
+                    class="inline-flex min-h-14 min-w-14 items-center justify-center rounded-2xl border-2 border-orange-300 bg-white text-orange-800 shadow-sm transition-colors hover:bg-orange-50 active:bg-orange-100 active:scale-[0.97]"
+                    title="Description and documents"
+                    :aria-label="`Description and documents: ${slot.taskName}`"
+                  >
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                      />
+                    </svg>
+                  </RouterLink>
+                  <RouterLink
+                    v-if="slot.scheduleEntryId > 0"
+                    :to="{
+                      path: `/tasks/schedule/task/${slot.projectId}/${slot.taskId}/chat`,
+                      query: slotQueryForLinks(slot),
+                    }"
+                    class="inline-flex min-h-14 min-w-14 items-center justify-center rounded-2xl border-2 border-orange-300 bg-white text-orange-800 shadow-sm transition-colors hover:bg-orange-50 active:bg-orange-100 active:scale-[0.97]"
+                    title="Chat for this slot"
+                    :aria-label="`Chat for this slot: ${slot.taskName}`"
+                  >
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                      />
+                    </svg>
+                  </RouterLink>
+                  <span
+                    v-else
+                    class="inline-flex min-h-14 min-w-14 items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 text-gray-400"
+                    title="Chat needs the real schedule row id from the API (worker_task_schedule_id on GET /me/schedule), not only the snapshot id."
+                    aria-hidden="true"
+                  >
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                      />
+                    </svg>
+                  </span>
+                </div>
               </div>
             </template>
             <div v-else class="rounded-md border px-2.5 py-2 border-gray-100 bg-gray-50/80">
@@ -135,26 +198,33 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import {
+  enrichMyScheduleEntriesWithWeekEntryIds,
   fetchMySchedule,
   type MyScheduleEntry,
   type ScheduleDayPart,
 } from '@/core/utils/schedule-weeks-api'
 import { addDays, startOfWeekMonday, toYmd } from '@/core/utils/week-utils'
+import { useAuthStore } from '@/core/stores/auth'
+import { resolveSessionUserId } from '@/core/utils/task-role-ux'
 
 interface DisplaySlot {
   day_part: ScheduleDayPart
   workYmd: string
   projectId: number
   taskId: number
+  /** Published schedule row id (for chat API and deep links) */
+  scheduleEntryId: number
   taskName: string
   projectName: string
   projectAddress: string
   projectDebugLabel: string
+  assignmentNote: string
 }
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const weekOffset = ref(0)
 const isLoading = ref(false)
@@ -220,10 +290,13 @@ function slotsForDayFromRows(rows: MyScheduleEntry[], ymd: string): DisplaySlot[
     workYmd: entryWorkYmd(e),
     projectId: e.project_id,
     taskId: e.task_id,
+    scheduleEntryId:
+      e.scheduleRowIdForMessages > 0 ? e.scheduleRowIdForMessages : 0,
     taskName: (e.task?.name ?? `Task #${e.task_id}`).trim(),
     projectName: (e.project_name ?? '').trim(),
     projectAddress: (e.task?.address ?? '').trim(),
     projectDebugLabel: e.project_id != null ? `Project #${e.project_id}` : '—',
+    assignmentNote: (typeof e.assignment_note === 'string' ? e.assignment_note : '').trim(),
   }))
 }
 
@@ -315,14 +388,22 @@ function dayPartLabel(part: ScheduleDayPart): string {
   return 'All day'
 }
 
+function slotQueryForLinks(slot: DisplaySlot): Record<string, string> {
+  const q: Record<string, string> = {
+    workDate: slot.workYmd,
+    dayPart: slot.day_part,
+  }
+  if (slot.scheduleEntryId > 0) q.entryId = String(slot.scheduleEntryId)
+  return q
+}
+
 function openSlotDetail(slot: DisplaySlot): void {
   const pid = slot.projectId
   const tid = slot.taskId
   if (!pid || !tid) return
   void router.push({
-    path: `/tasks/project/${pid}/task/${tid}`,
+    path: `/tasks/schedule/task/${pid}/${tid}`,
     query: {
-      from: 'schedule',
       workDate: slot.workYmd,
       dayPart: slot.day_part,
     },
@@ -334,7 +415,12 @@ async function refreshStripData(gen: number): Promise<void> {
   const hi = weekOffset.value + STRIP_WEEKS_AFTER
   const from = toYmd(mondayDateForWeekOffset(lo))
   const to = toYmd(addDays(mondayDateForWeekOffset(hi), 6))
-  stripEntries.value = await fetchMySchedule(from, to)
+  let rows = await fetchMySchedule(from, to)
+  const uid = resolveSessionUserId(authStore.currentUser)
+  if (uid != null) {
+    rows = await enrichMyScheduleEntriesWithWeekEntryIds(rows, uid)
+  }
+  stripEntries.value = rows
   if (gen !== loadGeneration) return
 }
 

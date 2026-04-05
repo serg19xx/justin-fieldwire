@@ -20,3 +20,11 @@ export function addDays(d: Date, n: number): Date {
   x.setDate(x.getDate() + n)
   return x
 }
+
+/** Monday YYYY-MM-DD of the local calendar week that contains `ymd` (ISO date string). */
+export function weekStartMondayYmdFromIsoDate(ymd: string): string {
+  const core = ymd.length >= 10 ? ymd.slice(0, 10) : ymd
+  const d = new Date(`${core}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return core
+  return toYmd(startOfWeekMonday(d))
+}

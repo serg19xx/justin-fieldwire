@@ -5,6 +5,8 @@
         <h2 class="text-lg font-semibold text-gray-900">Weekly task schedule</h2>
         <p class="text-sm text-gray-500 mt-0.5">
           Choose <strong class="font-medium text-gray-700">one worker</strong>, then build their week (day, slot, task).
+          Use the <strong class="font-medium text-gray-700">clipboard</strong> icon for instructions and the
+          <strong class="font-medium text-gray-700">speech bubble</strong> for schedule messages (task tree + PM thread).
           The week bar reflects free / partly busy / fully blocked days using this draft plus
           <strong class="font-medium text-gray-700">published slots in other projects</strong> from
           <code class="text-xs bg-gray-100 px-1 rounded">GET /users/&#123;id&#125;/schedule</code> (when the server allows
@@ -89,7 +91,7 @@
           <table class="min-w-full divide-y divide-gray-200 text-sm">
             <thead class="bg-gray-50">
               <tr>
-                <th colspan="3" class="px-3 py-3 text-left align-middle border-b border-gray-200">
+                <th colspan="4" class="px-3 py-3 text-left align-middle border-b border-gray-200">
                   <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                     <label class="flex items-center gap-2 min-w-0">
                       <span class="text-xs font-medium text-gray-700 shrink-0">Worker</span>
@@ -128,17 +130,28 @@
                     </template>
                   </p>
                 </th>
-                <th v-if="isScheduleEditable" class="w-10 border-b border-gray-200" />
               </tr>
               <tr>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Day</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Slot</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Task</th>
-                <th v-if="isScheduleEditable" class="px-3 py-2 w-10" />
+                <th class="px-2 py-2 text-center font-medium text-gray-700 w-[7.5rem]">
+                  <span class="sr-only">Actions</span>
+                  <span class="inline sm:hidden text-xs font-normal text-gray-500">⋯</span>
+                  <span class="hidden sm:inline text-xs font-normal text-gray-500">Plan / chat / remove</span>
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
-              <tr v-for="(row, idx) in visibleRows" :key="`${idx}-${rowKey(row)}`">
+              <tr
+                v-for="(row, idx) in visibleRows"
+                :key="`${idx}-${rowKey(row)}`"
+                :class="
+                  isScheduleEditable && assignmentNoteLength(row) > assignmentNoteMaxChars
+                    ? 'bg-red-50/80'
+                    : ''
+                "
+              >
                 <td class="px-3 py-2 align-top">
                   <select
                     v-if="isScheduleEditable"
@@ -191,14 +204,86 @@
                     No tasks in this project yet.
                   </p>
                 </td>
-                <td v-if="isScheduleEditable" class="px-3 py-2 align-top">
-                  <button
-                    type="button"
-                    class="text-red-600 hover:text-red-800 text-xs font-medium"
-                    @click="removeRow(row)"
-                  >
-                    Remove
-                  </button>
+                <td class="px-1 py-2 align-middle">
+                  <div class="flex items-center justify-center gap-0.5 sm:gap-1">
+                    <RouterLink
+                      v-if="slotPlanLocation(row)"
+                      :to="slotPlanLocation(row)!"
+                      class="inline-flex items-center justify-center p-1.5 rounded-md transition-colors text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                      title="Assignment — instructions and documents"
+                      aria-label="Open assignment"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                        />
+                      </svg>
+                    </RouterLink>
+                    <span
+                      v-else
+                      class="inline-flex items-center justify-center p-1.5 rounded-md text-gray-300 cursor-not-allowed"
+                      title="Save the draft once so this row has an id, then you can open the assignment panel"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                        />
+                      </svg>
+                    </span>
+                    <RouterLink
+                      v-if="slotChatLocation(row)"
+                      :to="slotChatLocation(row)!"
+                      class="inline-flex items-center justify-center p-1.5 rounded-md transition-colors text-gray-600 hover:text-blue-600 hover:bg-blue-50"
+                      title="Chat for this slot"
+                      aria-label="Open slot chat"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                        />
+                      </svg>
+                    </RouterLink>
+                    <span
+                      v-else
+                      class="inline-flex items-center justify-center p-1.5 rounded-md text-gray-300 cursor-not-allowed"
+                      title="Save the draft once so this row has an id, then you can open chat"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                        />
+                      </svg>
+                    </span>
+                    <button
+                      v-if="isScheduleEditable"
+                      type="button"
+                      class="inline-flex items-center justify-center p-1.5 rounded-md transition-colors text-gray-600 hover:text-red-600 hover:bg-red-50"
+                      title="Remove row"
+                      aria-label="Remove row"
+                      @click="removeRow(row)"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -223,10 +308,55 @@
           v-if="isScheduleEditable && hasRowsOnPastDays"
           class="mt-2 text-sm text-amber-800 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
         >
-          Some rows use a day before today — move them to today or a future day before Save or Publish.
+          Some rows use a day before today — planning is forward-only.
+          <strong class="font-medium text-amber-950">Save and Publish are disabled</strong> until this is fixed.
+          Move each row to today or a later day, or remove past-day rows below.
+        </div>
+        <div
+          v-if="isScheduleEditable && hasRowsOnPastDays"
+          class="mt-2 flex flex-wrap items-center gap-2"
+        >
+          <button
+            type="button"
+            class="px-3 py-2 text-sm font-medium text-amber-900 bg-white border border-amber-300 rounded-lg hover:bg-amber-50 disabled:opacity-45"
+            :disabled="isSaving || pastDayRowCount === 0"
+            @click="onRemovePastDayRows"
+          >
+            Remove {{ pastDayRowCount }} row(s) before today
+          </button>
+          <button
+            type="button"
+            class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-45"
+            :disabled="isSaving"
+            @click="onReloadWeekFromServer"
+          >
+            Reload from server
+          </button>
+        </div>
+        <div
+          v-if="isScheduleEditable && hasAnyAssignmentNoteTooLong"
+          class="mt-2 text-sm text-amber-800 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
+        >
+          Assignment text must be at most {{ assignmentNoteMaxChars }} characters (check highlighted rows).
+        </div>
+        <div v-if="canReopenPublishedWeek" class="mt-3 flex flex-col sm:flex-row sm:items-center gap-2">
+          <button
+            type="button"
+            class="px-4 py-2 text-sm font-medium text-amber-900 bg-amber-100 border border-amber-300 rounded-lg hover:bg-amber-200 disabled:opacity-45"
+            :disabled="isSaving"
+            @click="onReopenPublishedWeekAsDraft"
+          >
+            Reopen week for editing
+          </button>
+          <p class="text-xs text-gray-600 max-w-xl">
+            Only for weeks that still include <strong class="font-medium text-gray-800">today or a future day</strong>.
+            Published plans stay visible to workers until you publish again. Reopening turns this week into a
+            <strong class="font-medium text-gray-800">draft</strong>. Requires the
+            <code class="text-[10px] bg-gray-100 px-1 rounded">reopen-as-draft</code> API on the server.
+          </p>
         </div>
 
-        <div v-if="isScheduleEditable" class="mt-4 flex flex-wrap gap-2">
+        <div v-if="isScheduleEditable" class="mt-4 flex flex-wrap gap-2 items-center">
           <button
             type="button"
             class="px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 disabled:opacity-45"
@@ -238,7 +368,7 @@
           <button
             type="button"
             class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-            :disabled="isSaving || !weekMeta"
+            :disabled="isSaving || !weekMeta || scheduleSavePublishBlocked"
             @click="onSaveEntries"
           >
             Save draft
@@ -246,10 +376,20 @@
           <button
             type="button"
             class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50"
-            :disabled="isSaving || !weekMeta || saveableRowCount === 0"
+            :disabled="isSaving || !weekMeta || saveableRowCount === 0 || scheduleSavePublishBlocked"
             @click="onPublish"
           >
             Publish week
+          </button>
+          <button
+            v-if="!hasRowsOnPastDays"
+            type="button"
+            class="px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-45"
+            :disabled="isSaving"
+            title="Discard unsaved changes and reload this week from the server"
+            @click="onReloadWeekFromServer"
+          >
+            Reload from server
           </button>
         </div>
 
@@ -259,13 +399,18 @@
         <p v-else-if="!isDraft && !canEdit" class="text-xs text-gray-500 mt-3">
           This week is published. Pick a worker above to review their lines.
         </p>
+        <p v-else-if="!isDraft && canEdit && isViewingPastWeek" class="text-xs text-gray-500 mt-3">
+          Published history for a past week — read only. Open the current or a future week to plan or reopen a draft.
+        </p>
       </template>
     </template>
+
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import type { RouteLocationRaw } from 'vue-router'
 import axios from 'axios'
 import type { ProjectTeamMember } from '@/core/utils/project-api'
 import type { Task, TaskCreateUpdate } from '@/core/types/task'
@@ -276,10 +421,12 @@ import {
   replaceProjectScheduleEntries,
   publishProjectScheduleWeek,
   fetchUserSchedule,
+  reopenProjectScheduleWeekAsDraft,
   type ScheduleWeekMeta,
   type ScheduleWeekEntryRow,
   type ScheduleDayPart,
   type MyScheduleEntry,
+  ASSIGNMENT_NOTE_MAX_CHARS,
 } from '@/core/utils/schedule-weeks-api'
 import { addDays, startOfWeekMonday, toYmd } from '@/core/utils/week-utils'
 
@@ -303,6 +450,8 @@ const weekMeta = ref<ScheduleWeekMeta | null>(null)
 const allDraftRows = ref<ScheduleWeekEntryRow[]>([])
 const selectedPlannerWorkerId = ref(0)
 const externalBusyEntries = ref<MyScheduleEntry[]>([])
+
+const assignmentNoteMaxChars = ASSIGNMENT_NOTE_MAX_CHARS
 
 const dayPartOptions: { value: ScheduleDayPart; label: string }[] = [
   { value: 'am', label: 'Morning' },
@@ -383,6 +532,18 @@ const hasRowsOnPastDays = computed(
     allDraftRows.value.some((r) => r.work_date && r.work_date < todayYmd.value),
 )
 
+/** True when the viewed ISO week still includes today or a future calendar day (Mon..Sun range). */
+const weekStillHasPlanableDays = computed(() => weekEndYmd.value >= todayYmd.value)
+
+const pastDayRowCount = computed(
+  () => allDraftRows.value.filter((r) => r.work_date && r.work_date < todayYmd.value).length,
+)
+
+const scheduleSavePublishBlocked = computed(
+  () =>
+    hasRowsOnPastDays.value || hasAnySlotConflict.value || hasAnyAssignmentNoteTooLong.value,
+)
+
 const visibleRows = computed(() => {
   if (selectedPlannerWorkerId.value <= 0) return []
   return allDraftRows.value.filter((r) => r.user_id === selectedPlannerWorkerId.value)
@@ -392,6 +553,53 @@ const saveableRowCount = computed(() => allDraftRows.value.filter((r) => isRowSa
 
 const hasAnySlotConflict = computed(() =>
   allDraftRows.value.some((r) => r.user_id > 0 && hasWorkerSlotConflict(r)),
+)
+
+function assignmentNoteLength(row: ScheduleWeekEntryRow): number {
+  const s = row.assignment_note
+  return typeof s === 'string' ? s.length : 0
+}
+
+function slotPlanLocation(row: ScheduleWeekEntryRow): RouteLocationRaw | null {
+  if (row.id == null || weekMeta.value == null) return null
+  return {
+    path: `/projects/${props.projectId}/detail/schedule-slot/${row.id}`,
+    query: { week_start: weekMeta.value.week_start },
+  }
+}
+
+function slotChatLocation(row: ScheduleWeekEntryRow): RouteLocationRaw | null {
+  if (slotPlanLocation(row) == null || row.id == null) return null
+  const ymd =
+    typeof row.work_date === 'string' && row.work_date.length >= 10
+      ? row.work_date.slice(0, 10)
+      : String(row.work_date ?? '')
+  const dp = String(row.day_part ?? 'am').toLowerCase()
+  const slotPart = dp === 'pm' || dp === 'full' ? dp : 'am'
+  return {
+    path: `/projects/${props.projectId}/detail/schedule-messages`,
+    query: {
+      week_start: weekMeta.value!.week_start,
+      entryId: String(row.id),
+      slotWorker: String(row.user_id),
+      slotTask: String(row.task_id),
+      slotDate: ymd,
+      slotPart,
+    },
+  }
+}
+
+const hasAnyAssignmentNoteTooLong = computed(() =>
+  allDraftRows.value.some((r) => assignmentNoteLength(r) > assignmentNoteMaxChars),
+)
+
+const canReopenPublishedWeek = computed(
+  () =>
+    props.canEdit &&
+    weekMeta.value?.status === 'published' &&
+    !isViewingPastWeek.value &&
+    weekMeta.value != null &&
+    weekStillHasPlanableDays.value,
 )
 
 const weekDayBadges = computed(() => {
@@ -554,6 +762,7 @@ function defaultNewRow(): ScheduleWeekEntryRow {
     task_id: 0,
     work_date: weekStartYmd.value,
     day_part: 'am',
+    assignment_note: '',
   }
   const planDays = dayChoices.value.filter((d) => d.ymd >= todayYmd.value)
   const daysToTry = planDays.length > 0 ? planDays : dayChoices.value
@@ -658,6 +867,7 @@ function mapEntries(list: ScheduleWeekEntryRow[]): ScheduleWeekEntryRow[] {
     work_date: e.work_date,
     day_part: e.day_part,
     id: e.id,
+    assignment_note: e.assignment_note == null ? '' : String(e.assignment_note),
   }))
 }
 
@@ -709,6 +919,52 @@ async function loadWeek(): Promise<void> {
   }
 }
 
+function onRemovePastDayRows(): void {
+  if (!isScheduleEditable.value) return
+  const n = pastDayRowCount.value
+  if (n <= 0) return
+  const ok = window.confirm(
+    `Remove ${n} schedule row(s) dated before today? This only updates the list on screen until you save. You can also use Reload from server to discard all local changes.`,
+  )
+  if (!ok) return
+  allDraftRows.value = allDraftRows.value.filter((r) => !r.work_date || r.work_date >= todayYmd.value)
+  bannerError.value = ''
+}
+
+async function onReloadWeekFromServer(): Promise<void> {
+  bannerError.value = ''
+  await loadWeek()
+}
+
+async function onReopenPublishedWeekAsDraft(): Promise<void> {
+  if (!canReopenPublishedWeek.value || !weekMeta.value) return
+  const ok = window.confirm(
+    'Reopen this week as a draft? Workers keep seeing the last published version until you publish your changes again.',
+  )
+  if (!ok) return
+  isSaving.value = true
+  bannerError.value = ''
+  const snap = weekMeta.value.week_start
+  try {
+    const { week, entries } = await reopenProjectScheduleWeekAsDraft(
+      props.projectId,
+      weekMeta.value.id,
+      snap,
+    )
+    if (week) weekMeta.value = week
+    allDraftRows.value = mapEntries(entries)
+    reconcileAllRows()
+    await loadExternalScheduleForPlanner()
+  } catch (err) {
+    bannerError.value = getApiErrorMessage(
+      err,
+      'Could not reopen week. The server may not implement POST …/reopen-as-draft yet — see docs/SCHEDULE_WEEKS_API.md.',
+    )
+  } finally {
+    isSaving.value = false
+  }
+}
+
 async function onCreateDraft(): Promise<void> {
   if (isViewingPastWeek.value) {
     bannerError.value = 'Drafts cannot be created for past weeks.'
@@ -738,6 +994,10 @@ async function onSaveEntries(): Promise<void> {
   }
   if (hasRowsOnPastDays.value) {
     bannerError.value = 'Move or remove rows dated before today — planning is forward-only.'
+    return
+  }
+  if (hasAnyAssignmentNoteTooLong.value) {
+    bannerError.value = `Shorten assignment text to ${assignmentNoteMaxChars} characters or less.`
     return
   }
   const valid = allDraftRows.value.filter((r) => isRowSaveable(r))
@@ -776,6 +1036,10 @@ async function onPublish(): Promise<void> {
   }
   if (hasRowsOnPastDays.value) {
     bannerError.value = 'Move or remove rows dated before today before publishing.'
+    return
+  }
+  if (hasAnyAssignmentNoteTooLong.value) {
+    bannerError.value = `Shorten assignment text to ${assignmentNoteMaxChars} characters or less.`
     return
   }
   const valid = allDraftRows.value.filter((r) => isRowSaveable(r))

@@ -382,30 +382,31 @@ async function loadProject() {
   }
 }
 
-// Navigation functions
-function setActiveSection(section: 'plans' | 'tasks' | 'schedule' | 'photos' | 'team' | 'settings') {
-  activeSection.value = section
+type ProjectSection = 'plans' | 'tasks' | 'schedule' | 'photos' | 'team' | 'settings'
 
-  // Load settings form when switching to settings
-  if (section === 'settings' && project.value) {
+/** Loads lists/forms needed for the active tab (also used when opening a section via ?section= in the URL). */
+function runSectionDataLoads(section: ProjectSection): void {
+  if (!project.value) return
+  if (section === 'settings') {
     loadSettingsForm()
   }
-
-  // Load team members when switching to team
-  if (section === 'team' && project.value) {
+  if (section === 'team') {
     loadTeamMembers()
     loadProjectTasks()
   }
-
-  // Load roster for task dialogs (assignee names, roles, avatars)
-  if (section === 'tasks' && project.value) {
+  if (section === 'tasks') {
     loadTeamMembers()
   }
-
-  if (section === 'schedule' && project.value) {
+  if (section === 'schedule') {
     loadTeamMembers()
     loadProjectTasks()
   }
+}
+
+// Navigation functions
+function setActiveSection(section: ProjectSection) {
+  activeSection.value = section
+  runSectionDataLoads(section)
 }
 
 // Load project tasks for Team Section
@@ -2154,9 +2155,27 @@ function getStatusColor(status?: string) {
 // }
 
 // Load project on mount
+function applySectionFromRouteQuery(): void {
+  const raw = route.query.section
+  const s = typeof raw === 'string' ? raw : undefined
+  if (
+    s !== 'schedule' &&
+    s !== 'tasks' &&
+    s !== 'plans' &&
+    s !== 'photos' &&
+    s !== 'team' &&
+    s !== 'settings'
+  ) {
+    return
+  }
+  activeSection.value = s
+  runSectionDataLoads(s)
+}
+
 onMounted(async () => {
   await loadProjects()
   await loadProject()
+  applySectionFromRouteQuery()
 
   // Initialize folder structure for the project
   if (project.value?.id) {
@@ -2164,6 +2183,13 @@ onMounted(async () => {
     // The FileManager will handle the initialization
   }
 })
+
+watch(
+  () => route.query.section,
+  () => {
+    applySectionFromRouteQuery()
+  },
+)
 
 // Load tasks and files when project is loaded
 watch(

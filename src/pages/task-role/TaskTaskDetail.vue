@@ -41,7 +41,79 @@
       >
         <span class="font-medium">Your assignment</span>
         <span class="block text-orange-900/90 mt-0.5">{{ scheduleContextLine }}</span>
+        <div
+          v-if="scheduleAssignmentNote"
+          class="mt-2 pt-2 border-t border-orange-200/70 text-orange-950"
+        >
+          <span class="text-[11px] font-semibold uppercase tracking-wide text-orange-800">Manager instructions</span>
+          <p class="mt-1 text-sm whitespace-pre-wrap break-words max-h-48 overflow-y-auto">{{ scheduleAssignmentNote }}</p>
+        </div>
       </div>
+
+      <!-- Schedule: one-day work first; same panel will be reused inside full task on Projects later -->
+      <TaskDayWorkPanel
+        v-if="showDayWorkPanel"
+        :project-id="projectId"
+        :task-id="taskId"
+        :work-ymd="effectiveDaySliceYmd"
+        :day-part="effectiveDaySlicePart"
+      />
+
+      <template v-if="fromSchedule">
+        <section
+          id="worker-assignment-docs"
+          class="mb-4 rounded-xl border border-amber-200/80 bg-amber-50/40 p-4 scroll-mt-4"
+          aria-labelledby="worker-assignment-docs-title"
+        >
+          <h2 id="worker-assignment-docs-title" class="text-sm font-semibold text-amber-950 mb-1">
+            Assignment description &amp; documents
+          </h2>
+          <p class="text-[11px] font-medium uppercase tracking-wide text-amber-800/90 mb-2">
+            UI stub — for testing &amp; documentation
+          </p>
+          <p class="text-xs text-amber-950/90 leading-relaxed">
+            The <strong class="font-medium">whole-task</strong> summary is in the header below (name, dates, address, task notes). Under
+            <strong class="font-medium">Your assignment</strong> you see <strong class="font-medium">slot instructions</strong> from your manager.
+            Planned: file links and attachments for this slot (<code class="text-[10px] bg-white/70 px-1 rounded">assignment_docs_url</code>,
+            see <code class="text-[10px]">SCHEDULE_WEEKS_API.md</code> §3.2) will appear here.
+          </p>
+          <div
+            class="mt-3 rounded-lg border border-dashed border-amber-300/70 bg-white/60 px-3 py-4 text-center text-xs text-amber-800/80"
+          >
+            Document list / preview area (placeholder)
+          </div>
+        </section>
+
+        <section
+          class="mb-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+          aria-labelledby="worker-slot-chat-title"
+        >
+          <h2 id="worker-slot-chat-title" class="text-sm font-semibold text-gray-900 mb-1">Chat for this slot</h2>
+          <p class="text-xs text-gray-500 leading-relaxed mb-3">
+            Short thread with your manager for this scheduled day and part. Messages will load from the schedule-entry API when it is available.
+          </p>
+          <RouterLink
+            v-if="scheduleSlotChatLocation"
+            :to="scheduleSlotChatLocation"
+            class="inline-flex items-center justify-center w-full px-4 py-2.5 rounded-lg border border-orange-200 text-sm font-medium text-orange-900 bg-orange-50 hover:bg-orange-100 transition-colors"
+          >
+            Open slot chat (preview)
+          </RouterLink>
+          <p v-else-if="isScheduleSlotMetaLoading && fromSchedule && scheduleWorkDate" class="text-xs text-gray-500">
+            Loading slot…
+          </p>
+          <p v-else-if="slotChatBlockedNoRowId" class="text-xs text-amber-800/90 leading-relaxed">
+            Chat is unavailable for this slot until the API returns the real schedule row id for messaging (e.g.
+            <code class="text-[10px] bg-amber-50 px-1 rounded">worker_task_schedule_id</code> on GET
+            <code class="text-[10px]">/me/schedule</code>), matching
+            <code class="text-[10px]">data.entries[].id</code> from the project week — not only the snapshot
+            <code class="text-[10px]">id</code>.
+          </p>
+          <p v-else class="text-xs text-gray-500">
+            Open this task from the weekly schedule so the day and time-of-day slot are set.
+          </p>
+        </section>
+      </template>
 
       <!-- Task header -->
       <header class="mb-6">
@@ -78,8 +150,21 @@
         <p v-if="task.notes" class="text-sm text-gray-600 mt-2">{{ task.notes }}</p>
       </header>
 
+      <section
+        v-if="fromSchedule"
+        class="mb-6 rounded-xl border border-gray-200 bg-gray-50/90 p-4"
+        aria-label="Overall task status"
+      >
+        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Whole task</h2>
+        <p class="text-sm text-gray-700">
+          Overall status (entire job, not just today):
+          <span class="font-medium text-gray-900">{{ taskWideStatusLabel }}</span>
+        </p>
+        <p v-if="task.progress_pct != null" class="text-xs text-gray-500 mt-1">Progress: {{ task.progress_pct }}%</p>
+      </section>
+
       <!-- Management & communication (placeholders until messaging API) -->
-      <section class="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <section v-if="!fromSchedule" class="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <h2 class="text-sm font-semibold text-gray-900 mb-1">Management &amp; communication</h2>
         <p class="text-xs text-gray-500 mb-3 leading-relaxed">
           Reach your foreman or project office for questions about this task. In-app messaging with management will
@@ -94,7 +179,7 @@
       </section>
 
       <!-- Personal notes / markers (device-local until backend sync) -->
-      <section class="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+      <section v-if="!fromSchedule" class="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <h2 class="text-sm font-semibold text-gray-900 mb-1">Your notes &amp; markers</h2>
         <p class="text-xs text-gray-500 mb-2">
           Reminders for yourself (saved on this device only for now).
@@ -109,8 +194,8 @@
         <p v-if="notesSavedHint" class="text-xs text-green-700 mt-1.5">{{ notesSavedHint }}</p>
       </section>
 
-      <!-- Status -->
-      <section class="mb-6">
+      <!-- Task-wide status (edit on Projects path; schedule uses per-day panel above) -->
+      <section v-if="!fromSchedule" class="mb-6">
         <h2 class="text-sm font-semibold text-gray-900 mb-2">Status</h2>
         <select
           v-model="selectedStatus"
@@ -197,17 +282,23 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import type { ScheduleDayPart } from '@/core/utils/schedule-weeks-api'
+import type { RouteLocationRaw } from 'vue-router'
+import {
+  fetchMySchedule,
+  resolveScheduleSlotIdForMessages,
+  type ScheduleDayPart,
+} from '@/core/utils/schedule-weeks-api'
 import { useAuthStore } from '@/core/stores/auth'
 import { tasksApi } from '@/core/utils/tasks-api'
-import { MILESTONE_ICON } from '@/core/utils/task-utils'
+import { getTaskStatusLabel, MILESTONE_ICON } from '@/core/utils/task-utils'
 import {
   isTaskRoleForeman,
   isUserInvolvedInTask,
   resolveSessionUserId,
 } from '@/core/utils/task-role-ux'
 import { isMilestone } from '@/core/types/task'
-import type { Task } from '@/core/types/task'
+import type { Task, TaskStatus } from '@/core/types/task'
+import TaskDayWorkPanel from '@/components/task-role/TaskDayWorkPanel.vue'
 
 export interface TaskPhoto {
   id: string
@@ -222,7 +313,8 @@ const authStore = useAuthStore()
 const projectId = computed(() => String(route.params.projectId))
 const taskId = computed(() => String(route.params.taskId))
 
-const fromSchedule = computed(() => route.query.from === 'schedule')
+/** Schedule context: URL under /tasks/schedule/task/… keeps the Schedule bottom tab active. */
+const fromSchedule = computed(() => route.path.startsWith('/tasks/schedule/task/'))
 
 /** Task list for this project (same screen as after opening a project). */
 const projectTasksListLocation = computed(() => ({
@@ -262,7 +354,69 @@ const scheduleContextLine = computed(() => {
   return pl ? `${pretty} · ${pl}` : pretty
 })
 
+/** Date for the day-slice panel (query, else task start date). */
+const effectiveDaySliceYmd = computed(() => {
+  if (scheduleWorkDate.value) return scheduleWorkDate.value
+  const start = task.value?.start_planned
+  if (start && /^\d{4}-\d{2}-\d{2}/.test(start)) return start.slice(0, 10)
+  return ''
+})
+
+const effectiveDaySlicePart = computed((): ScheduleDayPart => {
+  const p = scheduleDayPart.value
+  if (p === 'am' || p === 'pm' || p === 'full') return p
+  return 'full'
+})
+
+const showDayWorkPanel = computed(() => fromSchedule.value && effectiveDaySliceYmd.value.length > 0)
+
+/** Real worker_task_schedules id for messages API (from GET /me/schedule explicit FKs only). */
+const scheduleEntryId = ref(0)
+/** When URL has no dayPart, inferred from /me/schedule so chat links still include a concrete slot part. */
+const scheduleSlotDayPartResolved = ref<ScheduleDayPart | ''>('')
+
+const scheduleSlotChatLocation = computed((): RouteLocationRaw | null => {
+  if (!fromSchedule.value) return null
+  const d = scheduleWorkDate.value
+  if (!d) return null
+  const pid = projectId.value
+  const tid = taskId.value
+  if (!pid || !tid) return null
+  if (scheduleEntryId.value <= 0) return null
+  const part =
+    scheduleDayPart.value === 'am' || scheduleDayPart.value === 'pm' || scheduleDayPart.value === 'full'
+      ? scheduleDayPart.value
+      : scheduleSlotDayPartResolved.value
+  if (part !== 'am' && part !== 'pm' && part !== 'full') return null
+  const q: Record<string, string> = { workDate: d, dayPart: part, entryId: String(scheduleEntryId.value) }
+  return {
+    path: `/tasks/schedule/task/${pid}/${tid}/chat`,
+    query: q,
+  }
+})
+
+/** True while refetching GET /me/schedule for the slot panel (avoids flashing “unavailable” during reset). */
+const isScheduleSlotMetaLoading = ref(false)
+
+const slotChatBlockedNoRowId = computed(
+  () =>
+    Boolean(
+      fromSchedule.value &&
+        scheduleWorkDate.value &&
+        projectId.value &&
+        taskId.value &&
+        !isScheduleSlotMetaLoading.value &&
+        scheduleEntryId.value <= 0,
+    ),
+)
+
+const taskWideStatusLabel = computed(() =>
+  task.value ? getTaskStatusLabel(task.value.status as TaskStatus) : '—',
+)
+
 const task = ref<Task | null>(null)
+/** Loaded from GET /me/schedule when opening task from weekly schedule (published rows). */
+const scheduleAssignmentNote = ref('')
 const isLoading = ref(true)
 const selectedStatus = ref('')
 const isSavingStatus = ref(false)
@@ -282,6 +436,62 @@ function loadWorkerNotes(): void {
     workerNotes.value = localStorage.getItem(workerNotesStorageKey()) ?? ''
   } catch {
     workerNotes.value = ''
+  }
+}
+
+function entryWorkYmdFromSchedule(e: { work_date?: string }): string {
+  const w = e.work_date
+  return typeof w === 'string' && w.length >= 10 ? w.slice(0, 10) : String(w ?? '')
+}
+
+async function loadScheduleAssignmentNote(): Promise<void> {
+  scheduleAssignmentNote.value = ''
+  scheduleEntryId.value = 0
+  scheduleSlotDayPartResolved.value = ''
+  if (!fromSchedule.value) return
+  const d = scheduleWorkDate.value
+  if (!d) return
+  const pid = Number(projectId.value)
+  const tid = Number(taskId.value)
+  if (!pid || !Number.isFinite(tid)) return
+  isScheduleSlotMetaLoading.value = true
+  try {
+    const uid = resolveSessionUserId(authStore.currentUser)
+    const entries = await fetchMySchedule(d, d)
+    const dayMatches = entries.filter((e) => {
+      if (e.project_id !== pid || Number(e.task_id) !== tid) return false
+      return entryWorkYmdFromSchedule(e) === d
+    })
+    let part: ScheduleDayPart | null =
+      scheduleDayPart.value === 'am' || scheduleDayPart.value === 'pm' || scheduleDayPart.value === 'full'
+        ? scheduleDayPart.value
+        : null
+    if (part == null && dayMatches.length === 1) {
+      const dp = String(dayMatches[0].day_part ?? '').toLowerCase()
+      if (dp === 'am' || dp === 'pm' || dp === 'full') part = dp
+    }
+    if (uid != null && part != null) {
+      const rid = await resolveScheduleSlotIdForMessages(pid, uid, tid, d, part)
+      if (rid > 0) scheduleEntryId.value = rid
+      if (
+        !(scheduleDayPart.value === 'am' || scheduleDayPart.value === 'pm' || scheduleDayPart.value === 'full')
+      ) {
+        scheduleSlotDayPartResolved.value = part
+      }
+    }
+    const hit = entries.find((e) => {
+      if (e.project_id !== pid || Number(e.task_id) !== tid) return false
+      if (entryWorkYmdFromSchedule(e) !== d) return false
+      if (part === 'am' || part === 'pm' || part === 'full') return e.day_part === part
+      return dayMatches.length === 1 && e === dayMatches[0]
+    })
+    const note = hit?.assignment_note
+    scheduleAssignmentNote.value = typeof note === 'string' ? note.trim() : ''
+  } catch {
+    scheduleAssignmentNote.value = ''
+    scheduleEntryId.value = 0
+  } finally {
+    isScheduleSlotMetaLoading.value = false
   }
 }
 
@@ -367,7 +577,8 @@ async function loadTask() {
     const uid = resolveSessionUserId(authStore.currentUser)
     const foreman = isTaskRoleForeman(authStore.currentUser?.role_code, authStore.currentUser?.role_id)
     const openedFromPublishedSchedule =
-      route.query.from === 'schedule' && authStore.currentUser?.role_category === 'task'
+      authStore.currentUser?.role_category === 'task' &&
+      (fromSchedule.value || route.query.from === 'schedule')
     if (
       !foreman &&
       uid != null &&
@@ -376,13 +587,20 @@ async function loadTask() {
       !openedFromPublishedSchedule
     ) {
       task.value = null
+      scheduleAssignmentNote.value = ''
+      scheduleEntryId.value = 0
     } else {
       task.value = loaded
       selectedStatus.value = mapStatusFromBackend(task.value?.status)
       loadWorkerNotes()
+      if (fromSchedule.value) {
+        await loadScheduleAssignmentNote()
+      }
     }
   } catch {
     task.value = null
+    scheduleAssignmentNote.value = ''
+    scheduleEntryId.value = 0
   } finally {
     isLoading.value = false
   }
@@ -429,4 +647,13 @@ onMounted(() => {
 watch([projectId, taskId], () => {
   loadTask()
 })
+
+watch(
+  () => [route.query.workDate, route.query.dayPart, projectId.value, taskId.value] as const,
+  () => {
+    if (task.value && fromSchedule.value) {
+      void loadScheduleAssignmentNote()
+    }
+  },
+)
 </script>

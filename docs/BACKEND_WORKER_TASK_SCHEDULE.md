@@ -18,6 +18,9 @@ On create/update of schedule entries:
 2. **User** is allowed on that task under existing rules (e.g. `task_lead_id`, `team_members`, `assignees`, or project team — align with `docs/BACKEND_TASK_USER_PROJECTS_API.md` and your schema).
 3. **`work_date`** is a concrete **DATE** (never “weekday only” without a week anchor).
 4. **`day_part`**: enum `am` | `pm` | `full` (pick one naming style for API + DB and document it).
+5. **`assignment_note`** (optional): string, max **2000** characters; PM instruction for that slot (see `docs/SCHEDULE_WEEKS_API.md` §3.1).
+
+**Planned later (not required for current SPA):** optional `assignment_docs_url` per entry — see `docs/SCHEDULE_WEEKS_API.md` §3.2.
 
 ---
 
@@ -52,6 +55,7 @@ Suggested table: **`worker_task_schedules`** (or `project_worker_schedule_entrie
 | `task_id`           | FK → tasks | **No duplicate task payload** |
 | `work_date`         | DATE   | Not null |
 | `day_part`          | ENUM   | `am` \| `pm` \| `full` |
+| `assignment_note`   | VARCHAR(2000), nullable | Short instruction for the worker for this slot (API: `assignment_note`) |
 
 **Uniqueness (typical rule):** at most **one** planned slot per worker per calendar day per `day_part` **within the same** `schedule_week_id`.  
 Implement as `UNIQUE (schedule_week_id, user_id, work_date, day_part)` if that matches product, or enforce in application layer for MVP.
@@ -59,6 +63,15 @@ Implement as `UNIQUE (schedule_week_id, user_id, work_date, day_part)` if that m
 **Indexes (suggested):** `(schedule_week_id)`; `(user_id, work_date)`; `(task_id)`; `(project_id, week_start)` via join on `schedule_weeks`.
 
 **ON DELETE behaviour:** choose explicitly (e.g. CASCADE entry rows when week deleted; RESTRICT if task deleted while scheduled).
+
+### 2.3 Optional: messages per schedule row (chat)
+
+**Two channels only (`foreman` | `pm`)** — full **FE–BE contract** (API + DB literals + SPA mapping):  
+**`docs/SCHEDULE_ENTRY_MESSAGES_FOREMAN_PM.md`**.
+
+**Table (example):** `fw_worker_task_schedule_messages` — `worker_task_schedule_id`, required **`channel`** (`foreman` \| `pm`), `author_user_id`, `body`, timestamps, optional `deleted_at`; index `(worker_task_schedule_id, channel)`.
+
+API summary: **`docs/SCHEDULE_WEEKS_API.md` §6**.
 
 ---
 
@@ -74,6 +87,7 @@ Summary:
 | POST | `/api/v1/projects/{projectId}/schedule-weeks` — body `{ "week_start" }`, create or return **draft** |
 | PUT | `/api/v1/projects/{projectId}/schedule-weeks/{weekId}/entries` — replace entries (**draft** only) |
 | POST | `/api/v1/projects/{projectId}/schedule-weeks/{weekId}/publish` |
+| POST | `/api/v1/projects/{projectId}/schedule-weeks/{weekId}/reopen-as-draft` — published → draft for PM edits |
 | GET | `/api/v1/me/schedule?from=&to=` — **published** rows + `task` summary |
 
 ---
@@ -82,7 +96,7 @@ Summary:
 
 | Action | Who |
 |--------|-----|
-| POST draft, PUT entries, publish | **`admin`**, **`prj_manager`** / PM (per project) |
+| POST draft, PUT entries, publish, reopen-as-draft | **`admin`**, **`prj_manager`** / PM (per project) |
 | GET project week + entries | Project **manager** or **team member** (read) |
 | GET `/me/schedule` | Any **authenticated** user (only own rows) |
 
@@ -114,3 +128,4 @@ If **draft/publish** is deferred: a single table with `published_at` on each row
 |---------|------|
 | 1.0 | Initial spec for worker task schedule (PM / worker / foreman read path) |
 | 1.1 | API detail moved to `docs/SCHEDULE_WEEKS_API.md`; RBAC aligned with PM / admin / prj_manager + team read |
+| 1.2 | §2.3 messages: **variant B** — `channel` `foreman` \| `pm`; contract file `SCHEDULE_ENTRY_MESSAGES_FOREMAN_PM.md` |
