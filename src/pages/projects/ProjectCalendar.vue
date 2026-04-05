@@ -163,6 +163,51 @@ function searchTasks(query: string) {
   navigateToSearchResult(0)
 }
 
+/**
+ * When a task is chosen from the sidebar or search, move FullCalendar to that task,
+ * refetch if the event was not in the current range, scroll when the view supports it,
+ * then highlight the event in the grid.
+ */
+function focusCalendarOnTask(task: Task): void {
+  const calendar = calendarRef.value?.getApi()
+  if (!calendar) {
+    restoreTaskSelection(task.id)
+    return
+  }
+
+  const finish = () => {
+    const ev = calendar.getEventById(String(task.id))
+    if (ev) {
+      try {
+        calendar.scrollToTime(ev.start)
+      } catch {
+        // dayGrid / all-day: scrollToTime is not supported
+      }
+    }
+    restoreTaskSelection(task.id)
+  }
+
+  if (!task.start_planned) {
+    finish()
+    return
+  }
+
+  let event = calendar.getEventById(String(task.id))
+  if (event) {
+    calendar.gotoDate(event.start)
+    nextTick(() => {
+      setTimeout(finish, 100)
+    })
+    return
+  }
+
+  calendar.gotoDate(new Date(task.start_planned))
+  calendar.refetchEvents()
+  nextTick(() => {
+    setTimeout(finish, 150)
+  })
+}
+
 function navigateToSearchResult(index: number) {
   if (!searchResults.value.length || index < 0 || index >= searchResults.value.length) {
     return
@@ -176,28 +221,8 @@ function navigateToSearchResult(index: number) {
     task.name,
   )
 
-  // Select the task
   selectedTask.value = task
-  restoreTaskSelection(task.id)
-
-  // Navigate to the task date and scroll to it
-  const calendar = calendarRef.value?.getApi()
-  if (calendar) {
-    const event = calendar.getEventById(String(task.id))
-    if (event) {
-      console.log('📅 Navigating to task:', task.name, 'at date:', event.start)
-
-      // Navigate to the date first
-      calendar.gotoDate(event.start)
-
-      // Then scroll to the time (for time-based views)
-      setTimeout(() => {
-        calendar.scrollToTime(event.start)
-      }, 100)
-    } else {
-      console.warn('⚠️ Could not find calendar event for task:', task.id)
-    }
-  }
+  focusCalendarOnTask(task)
 }
 
 function nextSearchResult() {
@@ -2391,7 +2416,9 @@ async function deleteTask(task: Task) {
 // Task list detail functions
 function selectTaskForDetails(task: Task) {
   selectedTask.value = task
-  console.log('📋 Selected task for details:', task.name)
+  if (viewMode.value === 'ical') {
+    focusCalendarOnTask(task)
+  }
 }
 
 // Update selected task after edit
