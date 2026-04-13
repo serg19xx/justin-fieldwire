@@ -44,10 +44,16 @@
               <div class="flex flex-col items-center text-center h-full">
                 <div class="text-3xl mb-2 flex-shrink-0">{{ getFolderIcon() }}</div>
                 <h3
-                  class="text-xs font-medium text-gray-900 truncate w-full flex-shrink-0"
+                  class="text-xs font-medium text-gray-900 truncate w-full flex-shrink-0 flex items-center justify-center gap-1"
                   :title="folder.name"
                 >
-                  {{ folder.name }}
+                  <span class="truncate">{{ folder.name }}</span>
+                  <span
+                    v-if="isPlanFolderFileOpsLocked(folder)"
+                    class="inline-block w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0"
+                    title="Read-only — file operations disabled (plan folder edited=0)"
+                    aria-label="Read-only"
+                  />
                 </h3>
               </div>
             </div>
@@ -202,10 +208,28 @@
                         text-overflow: ellipsis;
                         white-space: nowrap;
                         flex: 1;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
                       "
                       :title="folder.name"
-                      >{{ folder.name }}</span
                     >
+                      <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{
+                        folder.name
+                      }}</span>
+                      <span
+                        v-if="isPlanFolderFileOpsLocked(folder)"
+                        style="
+                          width: 6px;
+                          height: 6px;
+                          border-radius: 9999px;
+                          background: #9ca3af;
+                          flex-shrink: 0;
+                        "
+                        title="Read-only — file operations disabled (plan folder edited=0)"
+                        aria-label="Read-only"
+                      />
+                    </span>
                   </div>
                   <div style="width: 100px; min-width: 100px; text-align: right; padding: 8px; color: #6b7280"></div>
                   <div style="width: 120px; min-width: 120px; text-align: right; padding: 8px">
@@ -227,15 +251,11 @@
                   <div style="width: 300px; min-width: 300px; padding: 8px; color: #6b7280"></div>
                   <div style="width: 100px; min-width: 100px; text-align: right; padding: 8px">
                     <button
-                      style="
-                        color: #2563eb;
-                        padding: 4px;
-                        border-radius: 4px;
-                        background: none;
-                        border: none;
-                        cursor: pointer;
-                      "
-                      title="Rename folder"
+                      type="button"
+                      class="text-blue-600 p-1 rounded bg-transparent border-0 disabled:opacity-45 disabled:cursor-not-allowed"
+                      :class="isPlanFolderFileOpsLocked(folder) ? 'cursor-not-allowed' : 'cursor-pointer'"
+                      :disabled="isPlanFolderFileOpsLocked(folder)"
+                      :title="isPlanFolderFileOpsLocked(folder) ? PLAN_FOLDER_OPS_LOCK_MSG : 'Rename folder'"
                     >
                       ✏️
                     </button>
@@ -561,6 +581,7 @@ import {
   formatFileSize,
   getFileIcon,
   getFolderIcon,
+  isPlanFolderFileOpsLocked,
 } from '@/core/utils/files-api'
 import FolderTreeNode from './FolderTreeNode.vue'
 
@@ -639,6 +660,19 @@ const currentItems = computed(() => {
   return [...currentFolders.value, ...currentFiles.value]
 })
 
+const PLAN_FOLDER_OPS_LOCK_MSG =
+  'This folder is read-only for file operations (plan folder edited=0). Only folders with edited=1 allow delete, move, rename, cut, and copy.'
+
+/** True if any selected folder is locked (`edited !== 1`). */
+const selectionIncludesLockedPlanFolder = computed(() => {
+  for (const item of selectedItems.value) {
+    if (item.type !== 'folder') continue
+    const f = getAllFoldersFlat().find((x) => x.id === item.id)
+    if (f && isPlanFolderFileOpsLocked(f)) return true
+  }
+  return false
+})
+
 const rootFolders = computed(() => {
   // Left panel shows the full hierarchical tree
   // For the root level, show only the Home folder (ID=1) and its children
@@ -707,12 +741,13 @@ function renameFileInTree(fileId: number, newName: string) {
 }
 
 // Rename folder in tree structure
-function renameFolderInTree(folderId: number, newName: string) {
+function renameFolderInTree(folderId: number, newName: string, edited?: number) {
   // Find and rename folder in tree
   const renameInParent = (folderList: Folder[]): boolean => {
     for (const folder of folderList) {
       if (folder.id === folderId) {
         folder.name = newName
+        if (edited !== undefined) folder.edited = edited
         return true
       }
       if (folder.children && renameInParent(folder.children)) {
@@ -1613,6 +1648,10 @@ async function deleteSelected() {
     console.log('❌ No items selected')
     return
   }
+  if (selectionIncludesLockedPlanFolder.value) {
+    alert(PLAN_FOLDER_OPS_LOCK_MSG)
+    return
+  }
 
   const confirmMessage = `Are you sure you want to delete ${selectedItems.value.length} item(s)?`
   if (!confirm(confirmMessage)) {
@@ -1672,6 +1711,10 @@ async function deleteSelected() {
 function copySelected() {
   if (selectedItems.value.length === 0) {
     console.log('❌ No items selected for copy')
+    return
+  }
+  if (selectionIncludesLockedPlanFolder.value) {
+    alert(PLAN_FOLDER_OPS_LOCK_MSG)
     return
   }
 
@@ -1838,6 +1881,10 @@ function getFolderPath(folder: Folder): string {
 function cutSelected() {
   if (selectedItems.value.length === 0) {
     console.log('❌ No items selected for cut')
+    return
+  }
+  if (selectionIncludesLockedPlanFolder.value) {
+    alert(PLAN_FOLDER_OPS_LOCK_MSG)
     return
   }
 

@@ -23,6 +23,11 @@ export interface Folder {
   project_id: number // ID of project this folder belongs to
   created_at: string
   updated_at: string
+  /**
+   * `fw_plan_folders.edited` — from API on tree, content, create, rename, move, copy.
+   * `1` = file-manager operations allowed; `0` or omitted = read-only for cut/copy/delete/move/rename in UI.
+   */
+  edited?: number
   children?: Folder[] // Nested folders
   files?: FileUpload[] // Files in this folder
 }
@@ -320,6 +325,16 @@ export function getFileIcon(mimeType: string, fileName?: string): FileIcon {
 export function getFolderIcon(): string {
   // All folders have the same icon
   return '📁'
+}
+
+/** `edited === 1` — plan folder allows file-manager mutations (delete, move, rename, cut, copy). */
+export function isPlanFolderFileOpsAllowed(folder: Folder): boolean {
+  return Number(folder.edited) === 1
+}
+
+/** `edited !== 1` — folder is read-only for file operations in the client. */
+export function isPlanFolderFileOpsLocked(folder: Folder): boolean {
+  return !isPlanFolderFileOpsAllowed(folder)
 }
 
 // Utility function to format file size

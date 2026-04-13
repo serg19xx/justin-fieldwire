@@ -24,22 +24,39 @@
       <header class="mb-6">
         <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Slot assignment</p>
         <h1 class="text-xl font-semibold text-gray-900 mt-1">{{ taskName }}</h1>
-        <dl class="mt-3 text-sm text-gray-600 space-y-1">
-          <div class="flex flex-wrap gap-x-2">
-            <dt class="font-medium text-gray-700">Worker</dt>
-            <dd>{{ workerLabel }}</dd>
-          </div>
-          <div class="flex flex-wrap gap-x-2">
-            <dt class="font-medium text-gray-700">Day</dt>
+
+        <div class="mt-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
+          <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Assigned worker</h2>
+          <p class="mt-1.5 text-base font-semibold text-gray-900">{{ workerInfo.displayName }}</p>
+          <p v-if="workerInfo.jobTitle" class="mt-1 text-sm text-gray-600">{{ workerInfo.jobTitle }}</p>
+          <p v-if="workerInfo.projectRole" class="mt-1 text-xs text-gray-500">
+            <span class="font-medium text-gray-600">Project role:</span>
+            {{ formatRoleInProject(workerInfo.projectRole) }}
+          </p>
+          <p
+            v-if="!workerInfo.jobTitle && !workerInfo.projectRole && workerInfo.isFallbackName"
+            class="mt-1 text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-md px-2 py-1.5"
+          >
+            Name and role were not found in the project team list — showing user id only. Check that this person is on the project team.
+          </p>
+        </div>
+
+        <dl class="mt-4 text-sm text-gray-600 space-y-2">
+          <div class="flex flex-wrap gap-x-2 gap-y-0.5">
+            <dt class="font-medium text-gray-700 shrink-0">Day</dt>
             <dd>{{ dayLabel }}</dd>
           </div>
-          <div class="flex flex-wrap gap-x-2">
-            <dt class="font-medium text-gray-700">Slot</dt>
+          <div class="flex flex-wrap gap-x-2 gap-y-0.5">
+            <dt class="font-medium text-gray-700 shrink-0">Slot</dt>
             <dd>{{ dayPartLabel(targetEntry.day_part) }}</dd>
           </div>
-          <div class="flex flex-wrap gap-x-2">
-            <dt class="font-medium text-gray-700">Week</dt>
-            <dd>Starts {{ weekMeta.week_start }} · {{ weekMeta.status === 'published' ? 'Published' : 'Draft' }}</dd>
+          <div class="flex flex-wrap gap-x-2 gap-y-0.5">
+            <dt class="font-medium text-gray-700 shrink-0">Schedule week</dt>
+            <dd>
+              Week starting {{ weekMeta.week_start }}
+              <span class="text-gray-400">·</span>
+              {{ weekMeta.status === 'published' ? 'Published' : 'Draft' }}
+            </dd>
           </div>
         </dl>
       </header>
@@ -111,8 +128,103 @@ import {
   type ScheduleDayPart,
 } from '@/core/utils/schedule-weeks-api'
 import { tasksApi } from '@/core/utils/tasks-api'
+import { projectApi } from '@/core/utils/project-api'
 import type { Task } from '@/core/types/task'
 import { toYmd } from '@/core/utils/week-utils'
+
+interface SlotWorkerInfo {
+  displayName: string
+  jobTitle: string | null
+  projectRole: string | null
+  /** True when we only have `User #id` and no team row */
+  isFallbackName: boolean
+}
+
+function formatRoleInProject(raw: string): string {
+  const s = raw.trim()
+  if (!s) return '—'
+  const key = s.toLowerCase().replace(/\s+/g, '_')
+  const map: Record<string, string> = {
+    task_lead: 'Task lead',
+    member: 'Team member',
+    team_member: 'Team member',
+    invited: 'Invited',
+    project_manager: 'Project manager',
+    prj_manager: 'Project manager',
+    admin: 'Administrator',
+  }
+  if (map[key]) return map[key]
+  return s
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function pickPreferProjectRole(a: string | null, b: string | null): string | null {
+  const norm = (s: string | null) => (s || '').toLowerCase().replace(/\s+/g, '_')
+  const score = (s: string) => {
+    if (!s) return 0
+    if (s.includes('lead') || s === 'task_lead') return 3
+    if (s === 'member' || s === 'team_member') return 2
+    if (s === 'invited') return 1
+    return 2
+  }
+  const na = norm(a)
+  const nb = norm(b)
+  if (score(nb) > score(na)) return b
+  if (score(na) > score(nb)) return a
+  return b || a || null
+}
+
+/**
+ * Builds one display row per user_id from GET /projects/:id/team (handles several API shapes).
+ */
+function parseTeamMembersByUserId(raw: unknown): Map<number, SlotWorkerInfo> {
+  const map = new Map<number, SlotWorkerInfo>()
+  const envelope = raw as { data?: { team_members?: unknown[] }; team_members?: unknown[] }
+  const list = envelope?.team_members ?? envelope?.data?.team_members ?? []
+  if (!Array.isArray(list)) return map
+
+  for (const row of list) {
+    const m = row as Record<string, unknown>
+    const uid = Number(m.user_id ?? m.id)
+    if (!Number.isFinite(uid) || uid <= 0) continue
+
+    const displayName =
+      String(m.full_name ?? m.name ?? m.email ?? '')
+        .trim()
+        .replace(/\s+/g, ' ') || ''
+    const jobTitleRaw = m.job_title != null ? String(m.job_title).trim() : ''
+    const roleRaw = String(m.project_role ?? m.role_in_project ?? m.role ?? '').trim()
+
+    const next: SlotWorkerInfo = {
+      displayName: displayName || `User ${uid}`,
+      jobTitle: jobTitleRaw || null,
+      projectRole: roleRaw || null,
+      isFallbackName: !displayName,
+    }
+
+    const prev = map.get(uid)
+    if (!prev) {
+      map.set(uid, next)
+      continue
+    }
+
+    const betterName =
+      displayName && !displayName.startsWith('User ')
+        ? displayName
+        : !prev.displayName.startsWith('User ')
+          ? prev.displayName
+          : displayName || prev.displayName
+
+    map.set(uid, {
+      displayName: betterName,
+      jobTitle: prev.jobTitle || next.jobTitle || null,
+      projectRole: pickPreferProjectRole(prev.projectRole, next.projectRole),
+      isFallbackName: betterName.startsWith('User '),
+    })
+  }
+  return map
+}
 
 const route = useRoute()
 const router = useRouter()
@@ -135,6 +247,7 @@ const isSaving = ref(false)
 const weekMeta = ref<ScheduleWeekMeta | null>(null)
 const allEntries = ref<ScheduleWeekEntryRow[]>([])
 const tasks = ref<Task[]>([])
+const teamByUserId = ref<Map<number, SlotWorkerInfo>>(new Map())
 
 const noteDraft = ref('')
 
@@ -172,10 +285,25 @@ const taskName = computed(() => {
   return t?.name?.trim() || `Task #${e.task_id}`
 })
 
-const workerLabel = computed(() => {
+const workerInfo = computed((): SlotWorkerInfo => {
   const e = targetEntry.value
-  if (!e) return '—'
-  return `User #${e.user_id}`
+  if (!e) {
+    return {
+      displayName: '—',
+      jobTitle: null,
+      projectRole: null,
+      isFallbackName: false,
+    }
+  }
+  const uid = Number(e.user_id)
+  const hit = teamByUserId.value.get(uid)
+  if (hit) return hit
+  return {
+    displayName: `User #${uid}`,
+    jobTitle: null,
+    projectRole: null,
+    isFallbackName: true,
+  }
 })
 
 const dayLabel = computed(() => {
@@ -227,13 +355,15 @@ async function loadPage(): Promise<void> {
     return
   }
   try {
-    const [weekRes, taskRes] = await Promise.all([
+    const [weekRes, taskRes, teamRes] = await Promise.all([
       fetchProjectScheduleWeek(pid, ws),
       tasksApi.getAll(pid, 1, 500),
+      projectApi.getTeamMembers(pid).catch(() => null),
     ])
     weekMeta.value = weekRes.week
     allEntries.value = mapLoadedEntries(weekRes.entries)
     tasks.value = taskRes.tasks
+    teamByUserId.value = teamRes != null ? parseTeamMembersByUserId(teamRes) : new Map()
     const hit = allEntries.value.find((e) => e.id === wid)
     if (!hit) {
       loadError.value = 'This schedule row was not found. It may have been removed — return to the schedule.'
@@ -245,6 +375,7 @@ async function loadPage(): Promise<void> {
     loadError.value = getApiErrorMessage(e, 'Could not load schedule or project data.')
     weekMeta.value = null
     allEntries.value = []
+    teamByUserId.value = new Map()
   } finally {
     isLoading.value = false
   }

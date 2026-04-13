@@ -272,6 +272,33 @@ export interface ProjectScheduleWeekResponse {
   entries: ScheduleWeekEntryRow[]
 }
 
+/**
+ * Worker account id for a schedule entry. APIs may use `user_id`, camelCase, or nest `user.id`.
+ */
+export function normalizeScheduleWeekEntryUserId(e: Record<string, unknown>): number {
+  const flatKeys = [
+    'user_id',
+    'userId',
+    'worker_user_id',
+    'workerUserId',
+    'assignee_user_id',
+    'assigneeUserId',
+  ] as const
+  for (const k of flatKeys) {
+    const n = Number(e[k])
+    if (Number.isFinite(n) && n > 0) return n
+  }
+  const u = e.user
+  if (u != null && typeof u === 'object' && !Array.isArray(u)) {
+    const o = u as Record<string, unknown>
+    for (const k of ['id', 'user_id', 'userId'] as const) {
+      const n = Number(o[k])
+      if (Number.isFinite(n) && n > 0) return n
+    }
+  }
+  return 0
+}
+
 function normalizeWeekResponse(raw: Record<string, unknown>): ProjectScheduleWeekResponse {
   const weekRaw = raw.week ?? raw.schedule_week
   let week: ScheduleWeekMeta | null = null
@@ -296,7 +323,7 @@ function normalizeWeekResponse(raw: Record<string, unknown>): ProjectScheduleWee
       const assignment_note: string | null = typeof n === 'string' ? n : null
       entries.push({
         id: e.id != null ? Number(e.id) : undefined,
-        user_id: Number(e.user_id),
+        user_id: normalizeScheduleWeekEntryUserId(e),
         task_id: Number(e.task_id),
         work_date: String(e.work_date ?? ''),
         day_part: (String(e.day_part ?? 'am') as ScheduleDayPart) || 'am',

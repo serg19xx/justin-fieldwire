@@ -18,7 +18,15 @@
       <span v-else class="w-4"></span>
 
       <span class="text-sm">{{ getFolderIcon() }}</span>
-      <span class="text-sm truncate flex-1 text-gray-900" :title="folder.name">{{ folder.name }}</span>
+      <span class="text-sm truncate flex-1 text-gray-900 flex items-center gap-1 min-w-0" :title="folder.name">
+        <span class="truncate">{{ folder.name }}</span>
+        <span
+          v-if="isPlanFolderFileOpsLocked(folder)"
+          class="inline-block w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0"
+          title="Read-only — file operations disabled (plan folder edited=0)"
+          aria-label="Read-only"
+        />
+      </span>
     </div>
 
     <div v-if="isExpanded && hasChildren" class="ml-4 space-y-1">
@@ -39,7 +47,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { type Folder, getFolderIcon } from '@/core/utils/files-api'
+import { type Folder, getFolderIcon, isPlanFolderFileOpsLocked } from '@/core/utils/files-api'
 
 interface Props {
   folder: Folder

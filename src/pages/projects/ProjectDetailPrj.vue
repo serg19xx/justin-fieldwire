@@ -48,7 +48,7 @@ import {
   downloadFile as downloadFileUtil,
   MILESTONE_ICON,
 } from '@/core/utils/task-utils'
-import { filesApi, type FileUpload, type Folder } from '@/core/utils/files-api'
+import { filesApi, type FileUpload, type Folder, isPlanFolderFileOpsLocked } from '@/core/utils/files-api'
 
 const route = useRoute()
 const router = useRouter()
@@ -223,12 +223,28 @@ const selectedFilesCount = computed(
 const hasSelectedFiles = computed(() => selectedFilesCount.value > 0)
 // const hasSelectedFolders = computed(() => selectedFoldersCount.value > 0) // Removed - not used
 
+/** Selection includes a plan folder with `edited !== 1` — read-only for file ops on the toolbar. */
+const selectionIncludesLockedPlanFolder = computed(() => {
+  const fm = folderManagerRef.value
+  if (!fm?.getAllFoldersFlat) return false
+  const all = fm.getAllFoldersFlat() as Folder[]
+  for (const item of selectedItems.value) {
+    if (item.type !== 'folder') continue
+    const f = all.find((x) => x.id === item.id)
+    if (f && isPlanFolderFileOpsLocked(f)) return true
+  }
+  return false
+})
+
+const planFolderOpsLockTitle =
+  'This folder is read-only (plan folder edited=0). Delete, move, rename, cut, and copy are disabled until the server sets edited=1.'
+
 // Button availability logic
-const canDelete = computed(() => hasSelectedItems.value)
-const canMove = computed(() => hasSelectedItems.value)
-const canRename = computed(() => hasSelectedItems.value)
-const canCut = computed(() => hasSelectedItems.value)
-const canCopy = computed(() => hasSelectedItems.value)
+const canDelete = computed(() => hasSelectedItems.value && !selectionIncludesLockedPlanFolder.value)
+const canMove = computed(() => hasSelectedItems.value && !selectionIncludesLockedPlanFolder.value)
+const canRename = computed(() => hasSelectedItems.value && !selectionIncludesLockedPlanFolder.value)
+const canCut = computed(() => hasSelectedItems.value && !selectionIncludesLockedPlanFolder.value)
+const canCopy = computed(() => hasSelectedItems.value && !selectionIncludesLockedPlanFolder.value)
 const canPaste = computed(() => hasClipboardItems.value)
 const canClear = computed(() => hasClipboardItems.value)
 const canDownload = computed(() => hasSelectedFiles.value)
@@ -890,6 +906,10 @@ async function deleteSelected() {
     alert('Please select items to delete')
     return
   }
+  if (selectionIncludesLockedPlanFolder.value) {
+    alert(planFolderOpsLockTitle)
+    return
+  }
 
   const confirmed = confirm(
     `Are you sure you want to delete ${selectedItems.value.length} item(s)?`,
@@ -925,6 +945,10 @@ function moveSelected() {
     alert('Please select items to move')
     return
   }
+  if (selectionIncludesLockedPlanFolder.value) {
+    alert(planFolderOpsLockTitle)
+    return
+  }
 
   moveItems.value = [...selectedItems.value]
   showMoveDialog.value = true
@@ -933,6 +957,10 @@ function moveSelected() {
 function cutSelected() {
   if (selectedItems.value.length === 0) {
     alert('Please select items to cut')
+    return
+  }
+  if (selectionIncludesLockedPlanFolder.value) {
+    alert(planFolderOpsLockTitle)
     return
   }
 
@@ -955,6 +983,10 @@ function cutSelected() {
 function copySelected() {
   if (selectedItems.value.length === 0) {
     alert('Please select items to copy')
+    return
+  }
+  if (selectionIncludesLockedPlanFolder.value) {
+    alert(planFolderOpsLockTitle)
     return
   }
 
@@ -1049,6 +1081,10 @@ async function renameSelected() {
     alert('Please select items to rename')
     return
   }
+  if (selectionIncludesLockedPlanFolder.value) {
+    alert(planFolderOpsLockTitle)
+    return
+  }
 
   // For now, only allow renaming one item at a time
   if (selectedItems.value.length > 1) {
@@ -1119,11 +1155,11 @@ async function renameSelected() {
       }
     } else {
       // Rename folder via API
-      await filesApi.renameFolder(item.id, finalName)
+      const updatedFolder = await filesApi.renameFolder(item.id, finalName)
 
-      // Update in FileManager tree
+      // Update in FileManager tree (include `edited` from API when present)
       if (folderManagerRef.value) {
-        folderManagerRef.value.renameFolderInTree?.(item.id, finalName)
+        folderManagerRef.value.renameFolderInTree?.(item.id, finalName, updatedFolder.edited)
       }
     }
 
@@ -2485,7 +2521,11 @@ watch(
                   @click="deleteSelected"
                   :disabled="!canDelete"
                   class="px-3 py-1.5 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
-                  :title="`Delete (${selectedItems.length} selected) - Delete / Backspace`"
+                  :title="
+                    selectionIncludesLockedPlanFolder
+                      ? planFolderOpsLockTitle
+                      : `Delete (${selectedItems.length} selected) - Delete / Backspace`
+                  "
                 >
                   Delete
                 </button>
@@ -2493,7 +2533,11 @@ watch(
                   @click="moveSelected"
                   :disabled="!canMove"
                   class="px-3 py-1.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
-                  :title="`Move (${selectedItems.length} selected) - Permanent move to new location`"
+                  :title="
+                    selectionIncludesLockedPlanFolder
+                      ? planFolderOpsLockTitle
+                      : `Move (${selectedItems.length} selected) - Permanent move to new location`
+                  "
                 >
                   📁 Move
                 </button>
@@ -2501,7 +2545,11 @@ watch(
                   @click="renameSelected"
                   :disabled="!canRename"
                   class="px-3 py-1.5 text-xs bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
-                  :title="`Rename (${selectedItems.length} selected) - Rename selected items`"
+                  :title="
+                    selectionIncludesLockedPlanFolder
+                      ? planFolderOpsLockTitle
+                      : `Rename (${selectedItems.length} selected) - Rename selected items`
+                  "
                 >
                   ✏️ Rename
                 </button>
@@ -2509,7 +2557,11 @@ watch(
                   @click="cutSelected"
                   :disabled="!canCut"
                   class="px-3 py-1.5 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
-                  :title="`Cut (${selectedItems.length} selected) - Cut for paste - Ctrl+X / Cmd+X`"
+                  :title="
+                    selectionIncludesLockedPlanFolder
+                      ? planFolderOpsLockTitle
+                      : `Cut (${selectedItems.length} selected) - Cut for paste - Ctrl+X / Cmd+X`
+                  "
                 >
                   ✂️ Cut
                 </button>
@@ -2517,7 +2569,11 @@ watch(
                   @click="copySelected"
                   :disabled="!canCopy"
                   class="px-3 py-1.5 text-xs bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
-                  :title="`Copy (${selectedItems.length} selected) - Ctrl+C / Cmd+C`"
+                  :title="
+                    selectionIncludesLockedPlanFolder
+                      ? planFolderOpsLockTitle
+                      : `Copy (${selectedItems.length} selected) - Ctrl+C / Cmd+C`
+                  "
                 >
                   📋 Copy
                 </button>
