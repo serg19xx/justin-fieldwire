@@ -1,6 +1,12 @@
 # User testing guide — Schedules & photos/files
 
-**For clients who do not use Markdown:** send the same guide as **[USER_TESTING_MANUAL_SCHEDULE_AND_PHOTOS.html](./USER_TESTING_MANUAL_SCHEDULE_AND_PHOTOS.html)** — double‑click to open in a browser; **Print → Save as PDF** if they need a PDF.
+**For clients (production):** after `./deploy.sh`, the guide is a normal page on the same site —  
+`https://fieldwire.medicalcontractor.ca/USER_TESTING_MANUAL_SCHEDULE_AND_PHOTOS.html`  
+(replace the host if yours differs). No login required to read it.
+
+**Repo:** canonical copy for the build is **`public/USER_TESTING_MANUAL_SCHEDULE_AND_PHOTOS.html`** (the file under `docs/` is kept in sync for browsing on GitHub).
+
+**Offline / attachment:** send the `.html` file — double‑click opens it in a browser; **Print → Save as PDF** if they need a PDF.
 
 ---
 
