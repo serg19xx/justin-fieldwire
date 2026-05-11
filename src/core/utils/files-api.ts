@@ -16,9 +16,10 @@ export interface FileUpload {
   updated_at: string
   /**
    * When the plan folder tree includes schedule slot documents (virtual rows), the backend may
-   * use a synthetic negative `id` for tree uniqueness. In that case it must also set the two
-   * fields below so the client can download/delete via schedule-entries documents API instead of
-   * `/api/v1/plan/files/:id`.
+   * use a synthetic negative `id` for tree uniqueness. The client then loads binaries via
+   * `GET .../schedule-entries/:scheduleEntryId/documents/:documentId/download`.
+   * Prefer `schedule_document_id` when present; otherwise treat `abs(id)` as the document id, and
+   * on 404 list slot documents to match by name/size.
    */
   schedule_entry_id?: number
   /** Real document id from `GET .../schedule-entries/:scheduleEntryId/documents`. */

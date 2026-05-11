@@ -659,10 +659,118 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
-function isScheduleSlotTreeFile(file: FileUpload): boolean {
+function canLoadPlanTreeFileViaSlotDocumentsApi(file: FileUpload): boolean {
   const eid = Number(file.schedule_entry_id)
+  if (!Number.isFinite(eid) || eid <= 0) return false
   const did = Number(file.schedule_document_id)
-  return Number.isFinite(eid) && eid > 0 && Number.isFinite(did) && did > 0
+  if (Number.isFinite(did) && did > 0) return true
+  if (file.id < 0) {
+    const abs = Math.abs(file.id)
+    return Number.isFinite(abs) && abs > 0
+  }
+  return false
+}
+
+function initialScheduleSlotDocumentIdCandidate(file: FileUpload): number {
+  const did = Number(file.schedule_document_id)
+  if (Number.isFinite(did) && did > 0) return did
+  return Math.abs(file.id)
+}
+
+/**
+ * Plan-tree virtual files use negative ids; the real document id may match abs(plan id) or only
+ * appear after listing slot documents. Resolve then download.
+ */
+async function downloadScheduleSlotDocumentBlob(file: FileUpload): Promise<Blob> {
+  const scheduleEntryId = Number(file.schedule_entry_id)
+  if (!Number.isFinite(scheduleEntryId) || scheduleEntryId <= 0) {
+    throw new Error('Missing schedule_entry_id for slot document')
+  }
+
+  let docId = initialScheduleSlotDocumentIdCandidate(file)
+  if (!Number.isFinite(docId) || docId <= 0) {
+    throw new Error('Missing schedule_document_id for slot document')
+  }
+
+  const projectId = props.projectId
+
+  async function tryDownload(documentId: number): Promise<Blob> {
+    return scheduleSlotDocumentsApi.download(projectId, scheduleEntryId, documentId)
+  }
+
+  try {
+    return await tryDownload(docId)
+  } catch (err: unknown) {
+    const status = err && typeof err === 'object' && 'response' in err
+      ? (err as { response?: { status?: number } }).response?.status
+      : undefined
+    if (status !== 404) throw err
+  }
+
+  const docs = await scheduleSlotDocumentsApi.fetch(projectId, scheduleEntryId)
+  const all = [...docs.setup, ...docs.completed]
+
+  const byId = all.find((d) => d.id === docId)
+  const byMeta =
+    all.find(
+      (d) =>
+        d.file_name === file.file_name ||
+        d.original_name === file.file_name ||
+        d.original_name === file.original_name ||
+        d.file_name === file.original_name,
+    ) ||
+    (file.file_size > 0
+      ? (() => {
+          const same = all.filter((d) => d.file_size === file.file_size)
+          return same.length === 1 ? same[0] : undefined
+        })()
+      : undefined)
+
+  const fallback = byMeta ?? byId
+  if (!fallback) {
+    throw new Error('Schedule document not found for this plan-tree file')
+  }
+  if (fallback.id === docId) {
+    throw new Error('Schedule document download failed (server returned 404)')
+  }
+  return tryDownload(fallback.id)
+}
+
+async function resolveScheduleSlotDocumentIdsForMutation(file: FileUpload): Promise<{
+  scheduleEntryId: number
+  scheduleDocumentId: number
+}> {
+  const scheduleEntryId = Number(file.schedule_entry_id)
+  if (!Number.isFinite(scheduleEntryId) || scheduleEntryId <= 0) {
+    throw new Error('Missing schedule_entry_id')
+  }
+  const docId = initialScheduleSlotDocumentIdCandidate(file)
+  if (!Number.isFinite(docId) || docId <= 0) {
+    throw new Error('Missing schedule_document_id')
+  }
+  const docs = await scheduleSlotDocumentsApi.fetch(props.projectId, scheduleEntryId)
+  const all = [...docs.setup, ...docs.completed]
+  if (all.some((d) => d.id === docId)) {
+    return { scheduleEntryId, scheduleDocumentId: docId }
+  }
+  const byMeta =
+    all.find(
+      (d) =>
+        d.file_name === file.file_name ||
+        d.original_name === file.file_name ||
+        d.original_name === file.original_name ||
+        d.file_name === file.original_name,
+    ) ||
+    (file.file_size > 0
+      ? (() => {
+          const same = all.filter((d) => d.file_size === file.file_size)
+          return same.length === 1 ? same[0] : undefined
+        })()
+      : undefined)
+  if (!byMeta) {
+    throw new Error('Schedule document not found for this plan-tree file')
+  }
+  return { scheduleEntryId, scheduleDocumentId: byMeta.id }
 }
 
 // State
@@ -1443,20 +1551,16 @@ async function downloadFile(file: FileUpload) {
     console.log('📄 File ID:', file.id)
     console.log('📄 Original name:', file.original_name)
 
-    if (file.id < 0 && !isScheduleSlotTreeFile(file)) {
+    if (file.id < 0 && !canLoadPlanTreeFileViaSlotDocumentsApi(file)) {
       alert(
-        'This file is linked from the schedule but the server did not send schedule_entry_id and schedule_document_id. Ask the API team to include those fields on virtual plan-tree files.',
+        'This file is linked from the schedule but the server did not send schedule_entry_id (and a resolvable document id). Ask the API team to include schedule_entry_id on virtual plan-tree files.',
       )
       return
     }
 
     let blob: Blob
-    if (isScheduleSlotTreeFile(file)) {
-      blob = await scheduleSlotDocumentsApi.download(
-        props.projectId,
-        Number(file.schedule_entry_id),
-        Number(file.schedule_document_id),
-      )
+    if (canLoadPlanTreeFileViaSlotDocumentsApi(file)) {
+      blob = await downloadScheduleSlotDocumentBlob(file)
     } else {
       blob = await filesApi.downloadFile(file.id)
     }
@@ -1480,6 +1584,11 @@ async function downloadFile(file: FileUpload) {
   } catch (error: unknown) {
     console.error('Failed to download file:', error)
     console.error('Error details:', error)
+
+    if (error instanceof Error && error.message && !('response' in error)) {
+      alert(error.message)
+      return
+    }
 
     // Check if it's a 404 error
     if (error && typeof error === 'object' && 'response' in error) {
@@ -1524,9 +1633,9 @@ async function previewFile(file: FileUpload) {
     console.log('📄 File mime_type:', file.mime_type)
     console.log('📄 File extension:', file.file_name.split('.').pop())
 
-    if (file.id < 0 && !isScheduleSlotTreeFile(file)) {
+    if (file.id < 0 && !canLoadPlanTreeFileViaSlotDocumentsApi(file)) {
       alert(
-        'This file is linked from the schedule but the server did not send schedule_entry_id and schedule_document_id. Ask the API team to include those fields on virtual plan-tree files.',
+        'This file is linked from the schedule but the server did not send schedule_entry_id (and a resolvable document id). Ask the API team to include schedule_entry_id on virtual plan-tree files.',
       )
       return
     }
@@ -1535,12 +1644,8 @@ async function previewFile(file: FileUpload) {
     const canPreviewPdf = isLikelyPdfDocument(file.mime_type, file.file_name)
 
     if (canPreviewImage || canPreviewPdf) {
-      const blob = isScheduleSlotTreeFile(file)
-        ? await scheduleSlotDocumentsApi.download(
-            props.projectId,
-            Number(file.schedule_entry_id),
-            Number(file.schedule_document_id),
-          )
+      const blob = canLoadPlanTreeFileViaSlotDocumentsApi(file)
+        ? await downloadScheduleSlotDocumentBlob(file)
         : await filesApi.previewFile(file.id)
       openPreviewModal(blob, file)
     } else {
@@ -1552,6 +1657,11 @@ async function previewFile(file: FileUpload) {
   } catch (error: unknown) {
     console.error('Failed to preview file:', error)
     console.error('Error details:', error)
+
+    if (error instanceof Error && error.message && !('response' in error)) {
+      alert(error.message)
+      return
+    }
 
     // Check if it's a 404 error
     if (error && typeof error === 'object' && 'response' in error) {
@@ -1580,21 +1690,20 @@ async function deleteFile(file: FileUpload) {
     return
   }
 
-  if (file.id < 0 && !isScheduleSlotTreeFile(file)) {
+  if (file.id < 0 && !canLoadPlanTreeFileViaSlotDocumentsApi(file)) {
     alert(
-      'This file is linked from the schedule but the server did not send schedule_entry_id and schedule_document_id. Ask the API team to include those fields on virtual plan-tree files.',
+      'This file is linked from the schedule but the server did not send schedule_entry_id (and a resolvable document id). Ask the API team to include schedule_entry_id on virtual plan-tree files.',
     )
     return
   }
 
   try {
     console.log('📄 Deleting file via API:', file.file_name)
-    if (isScheduleSlotTreeFile(file)) {
-      await scheduleSlotDocumentsApi.remove(
-        props.projectId,
-        Number(file.schedule_entry_id),
-        Number(file.schedule_document_id),
+    if (canLoadPlanTreeFileViaSlotDocumentsApi(file)) {
+      const { scheduleEntryId, scheduleDocumentId } = await resolveScheduleSlotDocumentIdsForMutation(
+        file,
       )
+      await scheduleSlotDocumentsApi.remove(props.projectId, scheduleEntryId, scheduleDocumentId)
     } else {
       await filesApi.deleteFile(file.id)
     }
