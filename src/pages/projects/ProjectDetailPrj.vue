@@ -48,7 +48,7 @@ import {
   downloadFile as downloadFileUtil,
   MILESTONE_ICON,
 } from '@/core/utils/task-utils'
-import { filesApi, type FileUpload, type Folder, isPlanFolderFileOpsLocked } from '@/core/utils/files-api'
+import { filesApi, type FileUpload, type Folder, isFolderReadOnlyInPlanUi, isFileReadOnlyInPlanUi, isFolderUnderScheduleSlotDocumentsPlanBranch, isPlanFolderInboundContentBlocked } from '@/core/utils/files-api'
 
 const route = useRoute()
 const router = useRouter()
@@ -223,29 +223,61 @@ const selectedFilesCount = computed(
 const hasSelectedFiles = computed(() => selectedFilesCount.value > 0)
 // const hasSelectedFolders = computed(() => selectedFoldersCount.value > 0) // Removed - not used
 
-/** Selection includes a plan folder with `edited !== 1` — read-only for file ops on the toolbar. */
-const selectionIncludesLockedPlanFolder = computed(() => {
-  const fm = folderManagerRef.value
-  if (!fm?.getAllFoldersFlat) return false
-  const all = fm.getAllFoldersFlat() as Folder[]
-  for (const item of selectedItems.value) {
-    if (item.type !== 'folder') continue
-    const f = all.find((x) => x.id === item.id)
-    if (f && isPlanFolderFileOpsLocked(f)) return true
-  }
-  return false
-})
+const SCHEDULE_SLOT_PLAN_BRANCH_LOCK_MSG =
+  'This branch is managed by the app (schedule slot documents). You cannot add, change, move, or delete items here.'
 
 const planFolderOpsLockTitle =
-  'This folder is read-only (plan folder edited=0). Delete, move, rename, cut, and copy are disabled until the server sets edited=1.'
+  'This folder is predefined (edited=0). You cannot rename, delete, move, or copy the folder itself. Files inside can still be added and edited.'
+
+const plansSelectionMutationState = computed(() => {
+  const fm = folderManagerRef.value
+  if (!fm?.getAllFoldersFlat) return { blocked: false, reason: '' }
+  const all = fm.getAllFoldersFlat() as Folder[]
+  for (const item of selectedItems.value) {
+    if (item.type === 'folder') {
+      const f = all.find((x) => x.id === item.id)
+      if (f && isFolderReadOnlyInPlanUi(f, all)) {
+        return {
+          blocked: true,
+          reason: isFolderUnderScheduleSlotDocumentsPlanBranch(all, f.id)
+            ? SCHEDULE_SLOT_PLAN_BRANCH_LOCK_MSG
+            : planFolderOpsLockTitle,
+        }
+      }
+    }
+    if (item.type === 'file') {
+      const fi = (fm.files as FileUpload[] | undefined)?.find((x) => x.id === item.id)
+      if (fi && isFileReadOnlyInPlanUi(fi, all)) {
+        return {
+          blocked: true,
+          reason: SCHEDULE_SLOT_PLAN_BRANCH_LOCK_MSG,
+        }
+      }
+    }
+  }
+  return { blocked: false, reason: '' }
+})
+
+const plansCurrentFolderMutationState = computed(() => {
+  const fm = folderManagerRef.value
+  if (!fm?.getAllFoldersFlat || !fm.getCurrentFolderId) return { blocked: false, reason: '' }
+  const all = fm.getAllFoldersFlat() as Folder[]
+  const cid = fm.getCurrentFolderId()
+  if (isFolderUnderScheduleSlotDocumentsPlanBranch(all, cid)) {
+    return { blocked: true, reason: SCHEDULE_SLOT_PLAN_BRANCH_LOCK_MSG }
+  }
+  return { blocked: false, reason: '' }
+})
+
+const canAddItemsToCurrentPlansFolder = computed(() => !plansCurrentFolderMutationState.value.blocked)
 
 // Button availability logic
-const canDelete = computed(() => hasSelectedItems.value && !selectionIncludesLockedPlanFolder.value)
-const canMove = computed(() => hasSelectedItems.value && !selectionIncludesLockedPlanFolder.value)
-const canRename = computed(() => hasSelectedItems.value && !selectionIncludesLockedPlanFolder.value)
-const canCut = computed(() => hasSelectedItems.value && !selectionIncludesLockedPlanFolder.value)
-const canCopy = computed(() => hasSelectedItems.value && !selectionIncludesLockedPlanFolder.value)
-const canPaste = computed(() => hasClipboardItems.value)
+const canDelete = computed(() => hasSelectedItems.value && !plansSelectionMutationState.value.blocked)
+const canMove = computed(() => hasSelectedItems.value && !plansSelectionMutationState.value.blocked)
+const canRename = computed(() => hasSelectedItems.value && !plansSelectionMutationState.value.blocked)
+const canCut = computed(() => hasSelectedItems.value && !plansSelectionMutationState.value.blocked)
+const canCopy = computed(() => hasSelectedItems.value && !plansSelectionMutationState.value.blocked)
+const canPaste = computed(() => hasClipboardItems.value && !plansCurrentFolderMutationState.value.blocked)
 const canClear = computed(() => hasClipboardItems.value)
 const canDownload = computed(() => hasSelectedFiles.value)
 
@@ -885,6 +917,10 @@ function closeEventModal() {
 
 // Folder Manager functions
 async function createNewDocument() {
+  if (plansCurrentFolderMutationState.value.blocked) {
+    alert(plansCurrentFolderMutationState.value.reason)
+    return
+  }
   // Trigger file input for document upload (interface only, no server)
   const input = document.createElement('input')
   input.type = 'file'
@@ -906,8 +942,8 @@ async function deleteSelected() {
     alert('Please select items to delete')
     return
   }
-  if (selectionIncludesLockedPlanFolder.value) {
-    alert(planFolderOpsLockTitle)
+  if (plansSelectionMutationState.value.blocked) {
+    alert(plansSelectionMutationState.value.reason)
     return
   }
 
@@ -945,8 +981,8 @@ function moveSelected() {
     alert('Please select items to move')
     return
   }
-  if (selectionIncludesLockedPlanFolder.value) {
-    alert(planFolderOpsLockTitle)
+  if (plansSelectionMutationState.value.blocked) {
+    alert(plansSelectionMutationState.value.reason)
     return
   }
 
@@ -959,8 +995,8 @@ function cutSelected() {
     alert('Please select items to cut')
     return
   }
-  if (selectionIncludesLockedPlanFolder.value) {
-    alert(planFolderOpsLockTitle)
+  if (plansSelectionMutationState.value.blocked) {
+    alert(plansSelectionMutationState.value.reason)
     return
   }
 
@@ -985,8 +1021,8 @@ function copySelected() {
     alert('Please select items to copy')
     return
   }
-  if (selectionIncludesLockedPlanFolder.value) {
-    alert(planFolderOpsLockTitle)
+  if (plansSelectionMutationState.value.blocked) {
+    alert(plansSelectionMutationState.value.reason)
     return
   }
 
@@ -1009,6 +1045,11 @@ function copySelected() {
 async function pasteToCurrentFolder() {
   if (clipboard.value.length === 0) {
     alert('Clipboard is empty')
+    return
+  }
+
+  if (plansCurrentFolderMutationState.value.blocked) {
+    alert(plansCurrentFolderMutationState.value.reason)
     return
   }
 
@@ -1081,8 +1122,8 @@ async function renameSelected() {
     alert('Please select items to rename')
     return
   }
-  if (selectionIncludesLockedPlanFolder.value) {
-    alert(planFolderOpsLockTitle)
+  if (plansSelectionMutationState.value.blocked) {
+    alert(plansSelectionMutationState.value.reason)
     return
   }
 
@@ -1288,6 +1329,11 @@ async function createNewFolder() {
     return
   }
 
+  if (plansCurrentFolderMutationState.value.blocked) {
+    alert(plansCurrentFolderMutationState.value.reason)
+    return
+  }
+
   try {
     console.log('📁 === STARTING FOLDER CREATION ===')
     console.log('📁 plansSectionRef.value:', plansSectionRef.value)
@@ -1399,6 +1445,16 @@ async function executePasteToFolder(destinationFolderId: number) {
   if (clipboard.value.length === 0) {
     console.log('📋 Clipboard is empty, nothing to paste')
     return
+  }
+
+  const fm = folderManagerRef.value
+  if (fm?.getAllFoldersFlat) {
+    const all = fm.getAllFoldersFlat() as Folder[]
+    const dest = all.find((x) => x.id === destinationFolderId)
+    if (dest && isPlanFolderInboundContentBlocked(dest, all)) {
+      alert(SCHEDULE_SLOT_PLAN_BRANCH_LOCK_MSG)
+      return
+    }
   }
 
   try {
@@ -1642,6 +1698,10 @@ async function generateUniqueName(
 // moveFileInTree, moveFolderInTree, copyFileInTree, copyFolderInTree
 
 async function handleFilesSelected(selectedFiles: File[]) {
+  if (plansCurrentFolderMutationState.value.blocked) {
+    alert(plansCurrentFolderMutationState.value.reason)
+    return
+  }
   if (selectedFiles.length > 0) {
     // Get current path from FolderManager
     // const currentPath = folderManagerRef.value?.currentPath || '/' // Removed - not used
@@ -2476,13 +2536,25 @@ watch(
                 <!-- Create Actions -->
                 <button
                   @click="createNewFolder"
-                  class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors h-7 flex items-center"
+                  :disabled="!canAddItemsToCurrentPlansFolder"
+                  class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors h-7 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  :title="
+                    plansCurrentFolderMutationState.blocked
+                      ? plansCurrentFolderMutationState.reason
+                      : 'Create a new folder in the current location'
+                  "
                 >
                   + New Folder
                 </button>
                 <button
                   @click="createNewDocument"
-                  class="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors h-7 flex items-center"
+                  :disabled="!canAddItemsToCurrentPlansFolder"
+                  class="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors h-7 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  :title="
+                    plansCurrentFolderMutationState.blocked
+                      ? plansCurrentFolderMutationState.reason
+                      : 'Upload documents to the current folder'
+                  "
                 >
                   + New Document
                 </button>
@@ -2522,8 +2594,8 @@ watch(
                   :disabled="!canDelete"
                   class="px-3 py-1.5 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
                   :title="
-                    selectionIncludesLockedPlanFolder
-                      ? planFolderOpsLockTitle
+                    plansSelectionMutationState.blocked
+                      ? plansSelectionMutationState.reason
                       : `Delete (${selectedItems.length} selected) - Delete / Backspace`
                   "
                 >
@@ -2534,8 +2606,8 @@ watch(
                   :disabled="!canMove"
                   class="px-3 py-1.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
                   :title="
-                    selectionIncludesLockedPlanFolder
-                      ? planFolderOpsLockTitle
+                    plansSelectionMutationState.blocked
+                      ? plansSelectionMutationState.reason
                       : `Move (${selectedItems.length} selected) - Permanent move to new location`
                   "
                 >
@@ -2546,8 +2618,8 @@ watch(
                   :disabled="!canRename"
                   class="px-3 py-1.5 text-xs bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
                   :title="
-                    selectionIncludesLockedPlanFolder
-                      ? planFolderOpsLockTitle
+                    plansSelectionMutationState.blocked
+                      ? plansSelectionMutationState.reason
                       : `Rename (${selectedItems.length} selected) - Rename selected items`
                   "
                 >
@@ -2558,8 +2630,8 @@ watch(
                   :disabled="!canCut"
                   class="px-3 py-1.5 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
                   :title="
-                    selectionIncludesLockedPlanFolder
-                      ? planFolderOpsLockTitle
+                    plansSelectionMutationState.blocked
+                      ? plansSelectionMutationState.reason
                       : `Cut (${selectedItems.length} selected) - Cut for paste - Ctrl+X / Cmd+X`
                   "
                 >
@@ -2570,8 +2642,8 @@ watch(
                   :disabled="!canCopy"
                   class="px-3 py-1.5 text-xs bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
                   :title="
-                    selectionIncludesLockedPlanFolder
-                      ? planFolderOpsLockTitle
+                    plansSelectionMutationState.blocked
+                      ? plansSelectionMutationState.reason
                       : `Copy (${selectedItems.length} selected) - Ctrl+C / Cmd+C`
                   "
                 >
@@ -2581,7 +2653,11 @@ watch(
                   @click="pasteToCurrentFolder"
                   :disabled="!canPaste"
                   class="px-3 py-1.5 text-xs bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
-                  :title="`Paste (${clipboard.length} in clipboard) - Ctrl+V / Cmd+V${clipboard.some((item) => item.action === 'copy') ? ' (can paste multiple times)' : ''}`"
+                  :title="
+                    plansCurrentFolderMutationState.blocked
+                      ? plansCurrentFolderMutationState.reason
+                      : `Paste (${clipboard.length} in clipboard) - Ctrl+V / Cmd+V${clipboard.some((item) => item.action === 'copy') ? ' (can paste multiple times)' : ''}`
+                  "
                 >
                   📋 Paste
                 </button>

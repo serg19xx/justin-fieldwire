@@ -83,14 +83,229 @@
         </p>
       </section>
 
-      <section
-        class="mt-6 rounded-xl border border-dashed border-gray-300 bg-gray-50/80 p-4 text-sm text-gray-600"
-        aria-label="Future: documents"
-      >
-        <span class="font-medium text-gray-800">Documents</span>
-        <p class="mt-1 text-xs">Links to drawings and shared folders will be added here in a later step.</p>
+      <section class="mt-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm" aria-label="Slot documents">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            type="button"
+            class="self-end sm:self-auto px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            :disabled="!canUploadSetupDocuments || isUploadingSetupDocument"
+            @click="openUploadDialog"
+          >
+            <template v-if="isUploadingSetupDocument">Uploading…</template>
+            <template v-else>
+              <span class="sm:hidden">Upload</span>
+              <span class="hidden sm:inline">Upload setup doc</span>
+            </template>
+          </button>
+          <div>
+            <h2 class="text-sm font-semibold text-gray-800">Documents</h2>
+            <p class="text-xs text-gray-500 mt-1">
+              Execution logs / task name / schedule date / task setup|task completed.
+            </p>
+            <p class="text-xs text-gray-500">Allowed formats: images and PDF.</p>
+            <p class="text-xs text-gray-500">Max file size: 20 MB.</p>
+          </div>
+          <input
+            ref="dialogFileInputRef"
+            type="file"
+            :accept="scheduleSlotAllowedUploadAccept"
+            class="hidden"
+            @change="onDialogFilePicked"
+          />
+        </div>
+
+        <div v-if="isDocumentsLoading" class="py-4 text-sm text-gray-500">Loading documents…</div>
+        <div v-else class="mt-4 grid gap-4 md:grid-cols-2">
+          <div class="rounded-lg border border-gray-200 p-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Task setup (PM)</p>
+            <ul v-if="setupDocuments.length > 0" class="mt-2 space-y-2">
+              <li
+                v-for="doc in setupDocuments"
+                :key="doc.id"
+                class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-gray-100 px-2 py-1.5"
+              >
+                <button
+                  type="button"
+                  class="text-left min-w-0 overflow-hidden"
+                  @click="openOrDownloadSlotDocument('setup', doc)"
+                >
+                  <p class="text-sm text-gray-900 truncate">
+                    {{ getFileIcon(doc.mime_type, doc.file_name).icon }}
+                    {{ doc.display_name || doc.original_name || doc.file_name }}
+                  </p>
+                  <p class="text-[11px] text-gray-500">
+                    {{ formatFileSize(doc.file_size) }} · {{ formatUploadedAt(doc.uploaded_at) }}
+                  </p>
+                </button>
+                <div v-if="canUploadSetupDocuments" class="flex flex-col items-end gap-1">
+                  <button
+                    type="button"
+                    class="text-xs font-medium text-blue-600 hover:text-blue-700 disabled:opacity-50"
+                    :disabled="isDeletingSetupDocument(doc.id)"
+                    @click="openEditDialog(doc)"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    class="text-xs font-medium text-red-600 hover:text-red-700 disabled:opacity-50"
+                    :disabled="isDeletingSetupDocument(doc.id)"
+                    @click="deleteSetupDocument(doc)"
+                  >
+                    {{ isDeletingSetupDocument(doc.id) ? 'Deleting…' : 'Delete' }}
+                  </button>
+                </div>
+              </li>
+            </ul>
+            <p v-else class="mt-2 text-xs text-gray-500">No setup documents yet.</p>
+          </div>
+
+          <div class="rounded-lg border border-gray-200 p-3">
+            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Task completed (workers)</p>
+            <ul v-if="completedDocuments.length > 0" class="mt-2 space-y-2">
+              <li
+                v-for="doc in completedDocuments"
+                :key="doc.id"
+                class="rounded-md border border-gray-100 px-2 py-1.5"
+              >
+                <button
+                  type="button"
+                  class="text-left w-full min-w-0 overflow-hidden"
+                  @click="downloadSlotDocument('completed', doc)"
+                >
+                  <p class="text-sm text-gray-900 truncate">
+                    {{ getFileIcon(doc.mime_type, doc.file_name).icon }}
+                    {{ doc.display_name || doc.original_name || doc.file_name }}
+                  </p>
+                  <p class="text-[11px] text-gray-500">
+                    {{ formatFileSize(doc.file_size) }} · {{ formatUploadedAt(doc.uploaded_at) }}
+                  </p>
+                </button>
+              </li>
+            </ul>
+            <p v-else class="mt-2 text-xs text-gray-500">No worker completion documents yet.</p>
+          </div>
+        </div>
       </section>
 
+      <div
+        v-if="isPreviewModalOpen"
+        class="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-3 py-4"
+        @click.self="closePreviewModal"
+      >
+        <div class="relative h-full max-h-[92vh] w-full max-w-5xl rounded-xl bg-white p-3 sm:p-4">
+          <div class="mb-3 flex items-center justify-between gap-3 border-b border-gray-200 pb-2">
+            <p class="min-w-0 truncate text-sm font-medium text-gray-800">
+              {{ previewFileName || 'Preview' }}
+            </p>
+            <button
+              type="button"
+              class="shrink-0 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+              @click="closePreviewModal"
+            >
+              Close
+            </button>
+          </div>
+          <div class="h-[calc(92vh-72px)] overflow-hidden">
+            <img
+              v-if="previewMimeType.startsWith('image/') && previewBlobUrl"
+              :src="previewBlobUrl"
+              :alt="previewFileName || 'Preview image'"
+              class="h-full w-full object-contain"
+            />
+            <iframe
+              v-else-if="isPdfPreview"
+              :src="previewBlobUrl"
+              title="PDF preview"
+              class="h-full w-full rounded-md border border-gray-200"
+            />
+            <div v-else class="flex h-full items-center justify-center text-sm text-gray-500">
+              Preview is not available for this file type.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="isFileDialogOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+        @click.self="closeFileDialog"
+      >
+        <div class="w-full max-w-md rounded-xl bg-white p-4 shadow-xl">
+          <h3 class="text-base font-semibold text-gray-900">
+            {{ fileDialogMode === 'upload' ? 'Upload setup document' : 'Edit document name' }}
+          </h3>
+
+          <div class="mt-3">
+            <label for="slot-doc-name" class="block text-xs font-medium text-gray-700">
+              File name for users (optional)
+            </label>
+            <input
+              id="slot-doc-name"
+              v-model.trim="setupDocumentDisplayNameDraft"
+              type="text"
+              maxlength="160"
+              class="mt-1 w-full rounded-md border border-gray-300 px-2 py-2 text-sm text-gray-800"
+              placeholder="Leave empty to use original file name"
+            />
+          </div>
+
+          <template v-if="fileDialogMode === 'upload'">
+            <div class="mt-3">
+              <button
+                type="button"
+                class="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                @click="requestDialogFilePick"
+              >
+                Choose file
+              </button>
+              <p v-if="selectedUploadFileName" class="mt-2 text-xs text-gray-600 truncate">
+                {{ selectedUploadFileName }}
+              </p>
+            </div>
+          </template>
+
+          <template v-else-if="editingDocument">
+            <div class="mt-3 rounded-md border border-gray-200 bg-gray-50 p-2 text-xs text-gray-600">
+              <p><span class="font-medium text-gray-700">Disk name:</span> {{ editingDocument.file_name }}</p>
+              <p><span class="font-medium text-gray-700">Type:</span> {{ editingDocument.mime_type || '—' }}</p>
+              <p><span class="font-medium text-gray-700">Size:</span> {{ formatFileSize(editingDocument.file_size) }}</p>
+            </div>
+          </template>
+
+          <div class="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              class="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+              :disabled="isFileDialogSubmitting"
+              @click="closeFileDialog"
+            >
+              Cancel
+            </button>
+            <button
+              v-if="fileDialogMode === 'upload'"
+              type="button"
+              class="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              :disabled="isFileDialogSubmitting || !selectedUploadFile"
+              @click="submitUploadFromDialog"
+            >
+              {{ isFileDialogSubmitting ? 'Uploading…' : 'Upload' }}
+            </button>
+            <button
+              v-else
+              type="button"
+              class="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              :disabled="isFileDialogSubmitting || !editingDocument"
+              @click="saveDocumentNameFromDialog"
+            >
+              {{ isFileDialogSubmitting ? 'Saving…' : 'Save' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="documentsSuccess" class="mt-4 text-sm text-emerald-700">{{ documentsSuccess }}</div>
+      <div v-if="documentsError" class="mt-4 text-sm text-red-700">{{ documentsError }}</div>
       <div v-if="saveError" class="mt-4 text-sm text-red-700">{{ saveError }}</div>
 
       <div class="mt-6 flex flex-wrap gap-2">
@@ -115,7 +330,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '@/core/stores/auth'
@@ -131,6 +346,15 @@ import { tasksApi } from '@/core/utils/tasks-api'
 import { projectApi } from '@/core/utils/project-api'
 import type { Task } from '@/core/types/task'
 import { toYmd } from '@/core/utils/week-utils'
+import {
+  scheduleSlotDocumentsApi,
+  scheduleSlotAllowedUploadAccept,
+  type ScheduleSlotDocument,
+  type ScheduleSlotDocumentBucket,
+  validateScheduleSlotUploadFile,
+} from '@/core/utils/schedule-slot-documents-api'
+import { formatFileSize, getFileIcon } from '@/core/utils/files-api'
+import { isLikelyPdfDocument } from '@/core/utils/pdf-preview-detect'
 
 interface SlotWorkerInfo {
   displayName: string
@@ -243,6 +467,29 @@ const isLoading = ref(true)
 const loadError = ref('')
 const saveError = ref('')
 const isSaving = ref(false)
+const isDocumentsLoading = ref(false)
+const documentsError = ref('')
+const documentsSuccess = ref('')
+const isUploadingSetupDocument = ref(false)
+const deletingSetupDocumentIds = ref<number[]>([])
+const setupDocumentDisplayNameDraft = ref('')
+const isFileDialogOpen = ref(false)
+const fileDialogMode = ref<'upload' | 'edit'>('upload')
+const selectedUploadFile = ref<File | null>(null)
+const editingDocument = ref<ScheduleSlotDocument | null>(null)
+const isFileDialogSubmitting = ref(false)
+const isPreviewModalOpen = ref(false)
+const previewBlobUrl = ref('')
+const previewMimeType = ref('')
+const previewFileName = ref('')
+const isPdfPreview = computed(
+  () =>
+    Boolean(previewBlobUrl.value) &&
+    isLikelyPdfDocument(previewMimeType.value, previewFileName.value || ''),
+)
+const setupDocuments = ref<ScheduleSlotDocument[]>([])
+const completedDocuments = ref<ScheduleSlotDocument[]>([])
+const dialogFileInputRef = ref<HTMLInputElement | null>(null)
 
 const weekMeta = ref<ScheduleWeekMeta | null>(null)
 const allEntries = ref<ScheduleWeekEntryRow[]>([])
@@ -370,12 +617,15 @@ async function loadPage(): Promise<void> {
       weekMeta.value = null
     } else {
       noteDraft.value = typeof hit.assignment_note === 'string' ? hit.assignment_note : ''
+      await loadDocuments(pid, wid)
     }
   } catch (e) {
     loadError.value = getApiErrorMessage(e, 'Could not load schedule or project data.')
     weekMeta.value = null
     allEntries.value = []
     teamByUserId.value = new Map()
+    setupDocuments.value = []
+    completedDocuments.value = []
   } finally {
     isLoading.value = false
   }
@@ -383,8 +633,22 @@ async function loadPage(): Promise<void> {
 
 function getApiErrorMessage(err: unknown, fallback: string): string {
   if (axios.isAxiosError(err)) {
-    const data = err.response?.data as { message?: string } | undefined
-    if (data?.message && typeof data.message === 'string') return data.message
+    const raw = err.response?.data
+    if (typeof raw === 'string' && raw.trim()) return raw
+    if (raw == null || typeof raw !== 'object') return fallback
+    const data = raw as { message?: string; error?: string; details?: string; errors?: unknown }
+    const list = Array.isArray(data.errors) ? data.errors : null
+    if (list && list.length > 0) {
+      const first = list[0]
+      if (typeof first === 'string' && first.trim()) return first
+      if (first != null && typeof first === 'object') {
+        const msg = (first as { message?: unknown }).message
+        if (typeof msg === 'string' && msg.trim()) return msg
+      }
+    }
+    if (typeof data.message === 'string' && data.message.trim()) return data.message
+    if (typeof data.error === 'string' && data.error.trim()) return data.error
+    if (typeof data.details === 'string' && data.details.trim()) return data.details
   }
   return fallback
 }
@@ -413,6 +677,244 @@ async function onSave(): Promise<void> {
   }
 }
 
+const canUploadSetupDocuments = computed(() => canEditNote.value && !isSaving.value)
+const selectedUploadFileName = computed(() => selectedUploadFile.value?.name || '')
+
+function formatUploadedAt(iso: string): string {
+  if (!iso) return '—'
+  const ms = Date.parse(iso)
+  if (!Number.isFinite(ms)) return iso
+  return new Date(ms).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
+async function loadDocuments(pid: number, scheduleEntryId: number): Promise<void> {
+  isDocumentsLoading.value = true
+  documentsError.value = ''
+  documentsSuccess.value = ''
+  try {
+    const data = await scheduleSlotDocumentsApi.fetch(pid, scheduleEntryId)
+    setupDocuments.value = data.setup
+    completedDocuments.value = data.completed
+  } catch (e) {
+    setupDocuments.value = []
+    completedDocuments.value = []
+    documentsError.value = getApiErrorMessage(
+      e,
+      'Could not load documents for this slot. You can continue editing instructions.',
+    )
+  } finally {
+    isDocumentsLoading.value = false
+  }
+}
+
+function openUploadDialog(): void {
+  if (!canUploadSetupDocuments.value) return
+  fileDialogMode.value = 'upload'
+  setupDocumentDisplayNameDraft.value = ''
+  selectedUploadFile.value = null
+  editingDocument.value = null
+  documentsError.value = ''
+  documentsSuccess.value = ''
+  isFileDialogOpen.value = true
+}
+
+function openEditDialog(doc: ScheduleSlotDocument): void {
+  if (!canUploadSetupDocuments.value) return
+  fileDialogMode.value = 'edit'
+  editingDocument.value = doc
+  selectedUploadFile.value = null
+  setupDocumentDisplayNameDraft.value = doc.display_name || doc.original_name || ''
+  documentsError.value = ''
+  documentsSuccess.value = ''
+  isFileDialogOpen.value = true
+}
+
+function closeFileDialog(): void {
+  if (isFileDialogSubmitting.value) return
+  isFileDialogOpen.value = false
+  selectedUploadFile.value = null
+  editingDocument.value = null
+}
+
+function requestDialogFilePick(): void {
+  if (isFileDialogSubmitting.value) return
+  dialogFileInputRef.value?.click()
+}
+
+function onDialogFilePicked(event: Event): void {
+  const target = event.target as HTMLInputElement | null
+  const file = target?.files?.[0]
+  if (!file) return
+  const validationError = validateScheduleSlotUploadFile(file)
+  if (validationError) {
+    documentsError.value = validationError
+    if (target) target.value = ''
+    return
+  }
+  documentsError.value = ''
+  selectedUploadFile.value = file
+  if (target) target.value = ''
+}
+
+async function submitUploadFromDialog(): Promise<void> {
+  const file = selectedUploadFile.value
+  if (!file || !targetEntry.value?.id) return
+  documentsSuccess.value = ''
+  isFileDialogSubmitting.value = true
+  isUploadingSetupDocument.value = true
+  documentsError.value = ''
+  try {
+    const uploaded = await scheduleSlotDocumentsApi.upload(
+      projectId.value,
+      targetEntry.value.id,
+      'setup',
+      file,
+      setupDocumentDisplayNameDraft.value,
+    )
+    setupDocuments.value = [uploaded, ...setupDocuments.value]
+    documentsSuccess.value = 'Uploaded successfully.'
+    isFileDialogOpen.value = false
+    selectedUploadFile.value = null
+    editingDocument.value = null
+  } catch (e) {
+    documentsError.value = getApiErrorMessage(e, 'Document upload failed. Please try again.')
+  } finally {
+    isFileDialogSubmitting.value = false
+    isUploadingSetupDocument.value = false
+  }
+}
+
+async function saveDocumentNameFromDialog(): Promise<void> {
+  if (!targetEntry.value?.id || !editingDocument.value) return
+  isFileDialogSubmitting.value = true
+  documentsError.value = ''
+  documentsSuccess.value = ''
+  const current = editingDocument.value
+  try {
+    const updated = await scheduleSlotDocumentsApi.updateDisplayName(
+      projectId.value,
+      targetEntry.value.id,
+      current.id,
+      setupDocumentDisplayNameDraft.value,
+    )
+    setupDocuments.value = setupDocuments.value.map((item) => (item.id === updated.id ? updated : item))
+    completedDocuments.value = completedDocuments.value.map((item) => (item.id === updated.id ? updated : item))
+    documentsSuccess.value = 'Document name updated successfully.'
+    isFileDialogOpen.value = false
+    editingDocument.value = null
+  } catch (e) {
+    documentsError.value = getApiErrorMessage(e, 'Could not update document name.')
+  } finally {
+    isFileDialogSubmitting.value = false
+  }
+}
+
+function isPreviewableDocument(doc: ScheduleSlotDocument): boolean {
+  const mime = doc.mime_type || ''
+  const name = doc.display_name || doc.original_name || doc.file_name || ''
+  return mime.startsWith('image/') || isLikelyPdfDocument(mime, name)
+}
+
+function triggerFileDownload(blob: Blob, fileName: string): void {
+  const href = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = href
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(href)
+}
+
+function closePreviewModal(): void {
+  isPreviewModalOpen.value = false
+  previewMimeType.value = ''
+  previewFileName.value = ''
+  if (previewBlobUrl.value) {
+    window.URL.revokeObjectURL(previewBlobUrl.value)
+    previewBlobUrl.value = ''
+  }
+}
+
+function openPreviewModal(blob: Blob, doc: ScheduleSlotDocument): void {
+  if (previewBlobUrl.value) {
+    window.URL.revokeObjectURL(previewBlobUrl.value)
+  }
+  previewBlobUrl.value = window.URL.createObjectURL(blob)
+  previewMimeType.value = doc.mime_type || blob.type || ''
+  previewFileName.value = doc.display_name || doc.original_name || doc.file_name
+  isPreviewModalOpen.value = true
+}
+
+async function openOrDownloadSlotDocument(
+  bucket: ScheduleSlotDocumentBucket,
+  doc: ScheduleSlotDocument,
+): Promise<void> {
+  if (!targetEntry.value?.id) return
+  try {
+    const blob = await scheduleSlotDocumentsApi.download(projectId.value, targetEntry.value.id, doc.id)
+    if (isPreviewableDocument(doc)) {
+      openPreviewModal(blob, doc)
+      return
+    }
+    triggerFileDownload(blob, doc.original_name || doc.file_name)
+  } catch (e) {
+    documentsError.value = getApiErrorMessage(
+      e,
+      `Could not open ${bucket === 'setup' ? 'setup' : 'completed'} file.`,
+    )
+  }
+}
+
+async function downloadSlotDocument(bucket: ScheduleSlotDocumentBucket, doc: ScheduleSlotDocument): Promise<void> {
+  if (!targetEntry.value?.id) return
+  try {
+    const blob = await scheduleSlotDocumentsApi.download(projectId.value, targetEntry.value.id, doc.id)
+    triggerFileDownload(blob, doc.original_name || doc.file_name)
+  } catch (e) {
+    documentsError.value = getApiErrorMessage(
+      e,
+      `Could not download ${bucket === 'setup' ? 'setup' : 'completed'} file.`,
+    )
+  }
+}
+
+function isDeletingSetupDocument(documentId: number): boolean {
+  return deletingSetupDocumentIds.value.includes(documentId)
+}
+
+async function deleteSetupDocument(doc: ScheduleSlotDocument): Promise<void> {
+  if (!targetEntry.value?.id) return
+  const isConfirmed = window.confirm(`Delete file "${doc.original_name || doc.file_name}"?`)
+  if (!isConfirmed) return
+
+  documentsError.value = ''
+  documentsSuccess.value = ''
+  deletingSetupDocumentIds.value = [...deletingSetupDocumentIds.value, doc.id]
+  try {
+    await scheduleSlotDocumentsApi.remove(projectId.value, targetEntry.value.id, doc.id)
+    const refreshed = await scheduleSlotDocumentsApi.fetch(projectId.value, targetEntry.value.id)
+    setupDocuments.value = refreshed.setup
+    completedDocuments.value = refreshed.completed
+    const stillExists = refreshed.setup.some((item) => item.id === doc.id)
+    if (stillExists) {
+      documentsError.value = 'The server returned success, but the file is still present after refresh.'
+      return
+    }
+    documentsSuccess.value = 'Document deleted successfully.'
+  } catch (e) {
+    documentsError.value = getApiErrorMessage(e, 'Could not delete the document.')
+  } finally {
+    deletingSetupDocumentIds.value = deletingSetupDocumentIds.value.filter((id) => id !== doc.id)
+  }
+}
+
 watch(
   () => [route.params.id, route.params.entryId, route.query.week_start] as const,
   () => {
@@ -422,5 +924,9 @@ watch(
 
 onMounted(() => {
   void loadPage()
+})
+
+onBeforeUnmount(() => {
+  closePreviewModal()
 })
 </script>

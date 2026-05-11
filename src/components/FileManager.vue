@@ -49,10 +49,10 @@
                 >
                   <span class="truncate">{{ folder.name }}</span>
                   <span
-                    v-if="isPlanFolderFileOpsLocked(folder)"
+                    v-if="folderUiReadOnly(folder)"
                     class="inline-block w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0"
-                    title="Read-only — file operations disabled (plan folder edited=0)"
-                    aria-label="Read-only"
+                    :title="folderUiLockTitle(folder)"
+                    aria-label="Folder locked for structural changes"
                   />
                 </h3>
               </div>
@@ -218,7 +218,7 @@
                         folder.name
                       }}</span>
                       <span
-                        v-if="isPlanFolderFileOpsLocked(folder)"
+                        v-if="folderUiReadOnly(folder)"
                         style="
                           width: 6px;
                           height: 6px;
@@ -226,8 +226,8 @@
                           background: #9ca3af;
                           flex-shrink: 0;
                         "
-                        title="Read-only — file operations disabled (plan folder edited=0)"
-                        aria-label="Read-only"
+                        :title="folderUiLockTitle(folder)"
+                        aria-label="Folder locked for structural changes"
                       />
                     </span>
                   </div>
@@ -253,9 +253,9 @@
                     <button
                       type="button"
                       class="text-blue-600 p-1 rounded bg-transparent border-0 disabled:opacity-45 disabled:cursor-not-allowed"
-                      :class="isPlanFolderFileOpsLocked(folder) ? 'cursor-not-allowed' : 'cursor-pointer'"
-                      :disabled="isPlanFolderFileOpsLocked(folder)"
-                      :title="isPlanFolderFileOpsLocked(folder) ? PLAN_FOLDER_OPS_LOCK_MSG : 'Rename folder'"
+                      :class="folderUiReadOnly(folder) ? 'cursor-not-allowed' : 'cursor-pointer'"
+                      :disabled="folderUiReadOnly(folder)"
+                      :title="folderUiReadOnly(folder) ? folderUiLockTitle(folder) : 'Rename folder'"
                     >
                       ✏️
                     </button>
@@ -326,28 +326,33 @@
                     }}</span>
                     <span
                       v-else
-                      style="color: #9ca3af; cursor: pointer"
+                      style="color: #9ca3af"
+                      :class="fileUiReadOnly(file) ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'"
                       @click.stop="
-                        startDescriptionEdit({
-                          id: file.id,
-                          type: 'file',
-                          name: file.file_name,
-                          description: file.description,
-                        })
+                        !fileUiReadOnly(file) &&
+                          startDescriptionEdit({
+                            id: file.id,
+                            type: 'file',
+                            name: file.file_name,
+                            description: file.description,
+                          })
                       "
                       >Click to add</span
                     >
                   </div>
                   <div style="width: 100px; min-width: 100px; text-align: right; padding: 8px">
                     <button
+                      type="button"
                       @click.stop="
-                        startDescriptionEdit({
-                          id: file.id,
-                          type: 'file',
-                          name: file.file_name,
-                          description: file.description,
-                        })
+                        !fileUiReadOnly(file) &&
+                          startDescriptionEdit({
+                            id: file.id,
+                            type: 'file',
+                            name: file.file_name,
+                            description: file.description,
+                          })
                       "
+                      :disabled="fileUiReadOnly(file)"
                       style="
                         color: #16a34a;
                         padding: 4px;
@@ -357,11 +362,13 @@
                         cursor: pointer;
                         margin-right: 4px;
                       "
+                      class="disabled:opacity-40 disabled:cursor-not-allowed"
                       title="Edit description"
                     >
                       📝
                     </button>
                     <button
+                      type="button"
                       style="
                         color: #2563eb;
                         padding: 4px;
@@ -370,6 +377,8 @@
                         border: none;
                         cursor: pointer;
                       "
+                      :disabled="fileUiReadOnly(file)"
+                      class="disabled:opacity-40 disabled:cursor-not-allowed"
                       title="Rename file"
                     >
                       ✏️
@@ -570,10 +579,49 @@
       </div>
     </div>
   </div>
+
+  <!-- In-app preview (images + PDF) -->
+  <div
+    v-if="isPreviewModalOpen"
+    class="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-3 py-4"
+    @click.self="closePreviewModal"
+  >
+    <div class="relative h-full max-h-[92vh] w-full max-w-5xl rounded-xl bg-white p-3 sm:p-4">
+      <div class="mb-3 flex items-center justify-between gap-3 border-b border-gray-200 pb-2">
+        <p class="min-w-0 truncate text-sm font-medium text-gray-800">
+          {{ previewFileName || 'Preview' }}
+        </p>
+        <button
+          type="button"
+          class="shrink-0 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+          @click="closePreviewModal"
+        >
+          Close
+        </button>
+      </div>
+      <div class="h-[calc(92vh-72px)] overflow-hidden">
+        <img
+          v-if="previewMimeType.startsWith('image/') && previewBlobUrl"
+          :src="previewBlobUrl"
+          :alt="previewFileName || 'Preview image'"
+          class="h-full w-full object-contain"
+        />
+        <iframe
+          v-else-if="isPdfPreview"
+          :src="previewBlobUrl"
+          title="PDF preview"
+          class="h-full w-full rounded-md border border-gray-200"
+        />
+        <div v-else class="flex h-full items-center justify-center text-sm text-gray-500">
+          Preview is not available for this file type.
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import {
   filesApi,
   type FileUpload,
@@ -581,8 +629,13 @@ import {
   formatFileSize,
   getFileIcon,
   getFolderIcon,
-  isPlanFolderFileOpsLocked,
+  isFileReadOnlyInPlanUi,
+  isFolderReadOnlyInPlanUi,
+  isFolderUnderScheduleSlotDocumentsPlanBranch,
+  isPlanFolderInboundContentBlocked,
 } from '@/core/utils/files-api'
+import { scheduleSlotDocumentsApi } from '@/core/utils/schedule-slot-documents-api'
+import { isLikelyPdfDocument } from '@/core/utils/pdf-preview-detect'
 import FolderTreeNode from './FolderTreeNode.vue'
 
 interface Props {
@@ -605,6 +658,12 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<Emits>()
+
+function isScheduleSlotTreeFile(file: FileUpload): boolean {
+  const eid = Number(file.schedule_entry_id)
+  const did = Number(file.schedule_document_id)
+  return Number.isFinite(eid) && eid > 0 && Number.isFinite(did) && did > 0
+}
 
 // State
 const currentPath = ref(props.initialPath)
@@ -640,7 +699,18 @@ const editItem = ref<{
 } | null>(null)
 const newDescription = ref('')
 
+const isPreviewModalOpen = ref(false)
+const previewBlobUrl = ref('')
+const previewMimeType = ref('')
+const previewFileName = ref('')
+
 // Computed
+
+const isPdfPreview = computed(
+  () =>
+    Boolean(previewBlobUrl.value) &&
+    isLikelyPdfDocument(previewMimeType.value, previewFileName.value || ''),
+)
 
 const currentFolders = computed(() => {
   // For root level, show subfolders of Home (ID=1) instead of Home itself
@@ -661,14 +731,52 @@ const currentItems = computed(() => {
 })
 
 const PLAN_FOLDER_OPS_LOCK_MSG =
-  'This folder is read-only for file operations (plan folder edited=0). Only folders with edited=1 allow delete, move, rename, cut, and copy.'
+  'This folder is predefined (edited=0). You cannot rename, delete, move, or copy the folder itself. Files inside can still be added and edited.'
 
-/** True if any selected folder is locked (`edited !== 1`). */
-const selectionIncludesLockedPlanFolder = computed(() => {
+const SCHEDULE_SLOT_PLAN_BRANCH_LOCK_MSG =
+  'This branch is managed by the app (schedule slot documents). You cannot add, change, move, or delete items here.'
+
+function folderUiReadOnly(folder: Folder): boolean {
+  return isFolderReadOnlyInPlanUi(folder, getAllFoldersFlat())
+}
+
+function folderUiLockTitle(folder: Folder): string {
+  const flat = getAllFoldersFlat()
+  if (isFolderUnderScheduleSlotDocumentsPlanBranch(flat, folder.id)) return SCHEDULE_SLOT_PLAN_BRANCH_LOCK_MSG
+  return PLAN_FOLDER_OPS_LOCK_MSG
+}
+
+function getSelectionLockAlertMessage(): string {
+  const flat = getAllFoldersFlat()
   for (const item of selectedItems.value) {
-    if (item.type !== 'folder') continue
-    const f = getAllFoldersFlat().find((x) => x.id === item.id)
-    if (f && isPlanFolderFileOpsLocked(f)) return true
+    if (item.type === 'folder') {
+      const f = flat.find((x) => x.id === item.id)
+      if (f && isFolderReadOnlyInPlanUi(f, flat)) return folderUiLockTitle(f)
+    }
+    if (item.type === 'file') {
+      const fi = files.value.find((x) => x.id === item.id)
+      if (fi && isFileReadOnlyInPlanUi(fi, flat)) return SCHEDULE_SLOT_PLAN_BRANCH_LOCK_MSG
+    }
+  }
+  return PLAN_FOLDER_OPS_LOCK_MSG
+}
+
+function fileUiReadOnly(file: FileUpload): boolean {
+  return isFileReadOnlyInPlanUi(file, getAllFoldersFlat())
+}
+
+/** Selection blocks destructive / clipboard file ops (plan lock or schedule-slot branch). */
+const selectionIncludesLockedPlanFolder = computed(() => {
+  const flat = getAllFoldersFlat()
+  for (const item of selectedItems.value) {
+    if (item.type === 'folder') {
+      const f = flat.find((x) => x.id === item.id)
+      if (f && isFolderReadOnlyInPlanUi(f, flat)) return true
+    }
+    if (item.type === 'file') {
+      const fi = files.value.find((x) => x.id === item.id)
+      if (fi && isFileReadOnlyInPlanUi(fi, flat)) return true
+    }
   }
   return false
 })
@@ -1221,6 +1329,14 @@ async function loadCurrentPath() {
 async function createFolder() {
   if (!newFolderName.value.trim()) return
 
+  const flat = getAllFoldersFlat()
+  const cid = getCurrentFolderId()
+  const cur = flat.find((f) => f.id === cid)
+  if (cur && isPlanFolderInboundContentBlocked(cur, flat)) {
+    alert(SCHEDULE_SLOT_PLAN_BRANCH_LOCK_MSG)
+    return
+  }
+
   try {
     // Determine parent folder ID
     let parentId: number | undefined = undefined
@@ -1263,6 +1379,11 @@ async function createFolder() {
 
 
 async function deleteFolder(folder: Folder) {
+  if (folderUiReadOnly(folder)) {
+    alert(folderUiLockTitle(folder))
+    return
+  }
+
   if (
     !confirm(
       `Are you sure you want to delete folder "${folder.name}"? This will also delete all files inside.`,
@@ -1322,8 +1443,23 @@ async function downloadFile(file: FileUpload) {
     console.log('📄 File ID:', file.id)
     console.log('📄 Original name:', file.original_name)
 
-    // Download file via API
-    const blob = await filesApi.downloadFile(file.id)
+    if (file.id < 0 && !isScheduleSlotTreeFile(file)) {
+      alert(
+        'This file is linked from the schedule but the server did not send schedule_entry_id and schedule_document_id. Ask the API team to include those fields on virtual plan-tree files.',
+      )
+      return
+    }
+
+    let blob: Blob
+    if (isScheduleSlotTreeFile(file)) {
+      blob = await scheduleSlotDocumentsApi.download(
+        props.projectId,
+        Number(file.schedule_entry_id),
+        Number(file.schedule_document_id),
+      )
+    } else {
+      blob = await filesApi.downloadFile(file.id)
+    }
 
     console.log('📄 Blob received:', {
       size: blob.size,
@@ -1361,6 +1497,26 @@ async function downloadFile(file: FileUpload) {
   }
 }
 
+function closePreviewModal(): void {
+  isPreviewModalOpen.value = false
+  previewMimeType.value = ''
+  previewFileName.value = ''
+  if (previewBlobUrl.value) {
+    URL.revokeObjectURL(previewBlobUrl.value)
+    previewBlobUrl.value = ''
+  }
+}
+
+function openPreviewModal(blob: Blob, file: FileUpload): void {
+  if (previewBlobUrl.value) {
+    URL.revokeObjectURL(previewBlobUrl.value)
+  }
+  previewBlobUrl.value = URL.createObjectURL(blob)
+  previewMimeType.value = blob.type || file.mime_type || ''
+  previewFileName.value = file.file_name
+  isPreviewModalOpen.value = true
+}
+
 async function previewFile(file: FileUpload) {
   try {
     console.log('👁️ Previewing file:', file.file_name)
@@ -1368,26 +1524,27 @@ async function previewFile(file: FileUpload) {
     console.log('📄 File mime_type:', file.mime_type)
     console.log('📄 File extension:', file.file_name.split('.').pop())
 
-    // Check if file can be previewed in browser
-    if (file.mime_type.startsWith('image/')) {
-      console.log('🖼️ Image detected, opening in new tab')
-      // For images, use preview endpoint (inline)
-      const blob = await filesApi.previewFile(file.id)
-      const url = URL.createObjectURL(blob)
-      window.open(url, '_blank')
-      // Clean up URL after a delay
-      setTimeout(() => URL.revokeObjectURL(url), 10000)
-    } else if (file.mime_type === 'application/pdf') {
-      console.log('📄 PDF detected, opening in new tab')
-      // For PDFs, use preview endpoint (inline)
-      const blob = await filesApi.previewFile(file.id)
-      const url = URL.createObjectURL(blob)
-      window.open(url, '_blank')
-      // Clean up URL after a delay
-      setTimeout(() => URL.revokeObjectURL(url), 10000)
+    if (file.id < 0 && !isScheduleSlotTreeFile(file)) {
+      alert(
+        'This file is linked from the schedule but the server did not send schedule_entry_id and schedule_document_id. Ask the API team to include those fields on virtual plan-tree files.',
+      )
+      return
+    }
+
+    const canPreviewImage = file.mime_type.startsWith('image/')
+    const canPreviewPdf = isLikelyPdfDocument(file.mime_type, file.file_name)
+
+    if (canPreviewImage || canPreviewPdf) {
+      const blob = isScheduleSlotTreeFile(file)
+        ? await scheduleSlotDocumentsApi.download(
+            props.projectId,
+            Number(file.schedule_entry_id),
+            Number(file.schedule_document_id),
+          )
+        : await filesApi.previewFile(file.id)
+      openPreviewModal(blob, file)
     } else {
       console.log('📁 Other file type, downloading')
-      // For other files, download them
       await downloadFile(file)
     }
 
@@ -1414,14 +1571,33 @@ async function previewFile(file: FileUpload) {
 
 
 async function deleteFile(file: FileUpload) {
+  if (fileUiReadOnly(file)) {
+    alert(SCHEDULE_SLOT_PLAN_BRANCH_LOCK_MSG)
+    return
+  }
+
   if (!confirm(`Are you sure you want to delete "${file.file_name}"?`)) {
     return
   }
 
+  if (file.id < 0 && !isScheduleSlotTreeFile(file)) {
+    alert(
+      'This file is linked from the schedule but the server did not send schedule_entry_id and schedule_document_id. Ask the API team to include those fields on virtual plan-tree files.',
+    )
+    return
+  }
+
   try {
-    // Delete file via API
     console.log('📄 Deleting file via API:', file.file_name)
-    await filesApi.deleteFile(file.id)
+    if (isScheduleSlotTreeFile(file)) {
+      await scheduleSlotDocumentsApi.remove(
+        props.projectId,
+        Number(file.schedule_entry_id),
+        Number(file.schedule_document_id),
+      )
+    } else {
+      await filesApi.deleteFile(file.id)
+    }
 
     console.log('✅ File deleted via API:', file.file_name)
 
@@ -1579,6 +1755,21 @@ function startDescriptionEdit(item: {
   name: string
   description?: string
 }) {
+  if (item.type === 'file') {
+    const fi = files.value.find((f) => f.id === item.id)
+    if (fi && fileUiReadOnly(fi)) {
+      alert(SCHEDULE_SLOT_PLAN_BRANCH_LOCK_MSG)
+      return
+    }
+  }
+  if (item.type === 'folder') {
+    const f = getAllFoldersFlat().find((x) => x.id === item.id)
+    if (f && folderUiReadOnly(f)) {
+      alert(folderUiLockTitle(f))
+      return
+    }
+  }
+
   editItem.value = {
     id: item.id,
     type: item.type,
@@ -1594,6 +1785,12 @@ function startDescriptionEdit(item: {
 // Execute description update
 async function executeDescriptionUpdate() {
   if (!editItem.value || editItem.value.type !== 'file') return
+
+  const fi = files.value.find((f) => f.id === editItem.value!.id)
+  if (fi && fileUiReadOnly(fi)) {
+    alert(SCHEDULE_SLOT_PLAN_BRANCH_LOCK_MSG)
+    return
+  }
 
   try {
     const updatedFile = await filesApi.updateFileDescription(
@@ -1649,7 +1846,7 @@ async function deleteSelected() {
     return
   }
   if (selectionIncludesLockedPlanFolder.value) {
-    alert(PLAN_FOLDER_OPS_LOCK_MSG)
+    alert(getSelectionLockAlertMessage())
     return
   }
 
@@ -1714,7 +1911,7 @@ function copySelected() {
     return
   }
   if (selectionIncludesLockedPlanFolder.value) {
-    alert(PLAN_FOLDER_OPS_LOCK_MSG)
+    alert(getSelectionLockAlertMessage())
     return
   }
 
@@ -1884,7 +2081,7 @@ function cutSelected() {
     return
   }
   if (selectionIncludesLockedPlanFolder.value) {
-    alert(PLAN_FOLDER_OPS_LOCK_MSG)
+    alert(getSelectionLockAlertMessage())
     return
   }
 
@@ -1984,6 +2181,13 @@ async function pasteToCurrentFolder() {
     console.log('❌ Clipboard is empty')
     return
   }
+  const destId = getCurrentFolderId()
+  const flat = getAllFoldersFlat()
+  const dest = flat.find((f) => f.id === destId)
+  if (dest && isPlanFolderInboundContentBlocked(dest, flat)) {
+    alert(SCHEDULE_SLOT_PLAN_BRANCH_LOCK_MSG)
+    return
+  }
   console.log('📋 Pasting items to current folder:', clipboard.value)
 
   // Execute paste directly to current folder without dialog
@@ -1994,6 +2198,13 @@ async function pasteToCurrentFolder() {
 async function executePasteToFolder(destinationFolderId: number) {
   if (clipboard.value.length === 0) {
     console.log('❌ No items to paste')
+    return
+  }
+
+  const flat = getAllFoldersFlat()
+  const dest = flat.find((f) => f.id === destinationFolderId)
+  if (dest && isPlanFolderInboundContentBlocked(dest, flat)) {
+    alert(SCHEDULE_SLOT_PLAN_BRANCH_LOCK_MSG)
     return
   }
 
@@ -2179,6 +2390,10 @@ watch(
   },
   { immediate: true },
 )
+
+onBeforeUnmount(() => {
+  closePreviewModal()
+})
 
 // Expose methods and state for parent component
 defineExpose({

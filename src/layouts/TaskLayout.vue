@@ -45,7 +45,7 @@
       </div>
     </header>
 
-    <!-- Main content: scrollable, padding for bottom nav (5 tabs) -->
+    <!-- Main content: scrollable, padding for bottom nav (4 tabs) -->
     <main class="flex-1 overflow-auto pb-24">
       <slot />
     </main>
@@ -66,16 +66,6 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 6h6m-3 3v3m0 0v3m0-3h3m-3 0h-3" />
         </svg>
         <span class="text-[10px] sm:text-xs mt-0.5 truncate w-full text-center px-0.5 leading-tight">Home</span>
-      </RouterLink>
-      <RouterLink
-        to="/tasks"
-        class="flex flex-col items-center justify-center flex-1 py-2 min-w-0"
-        :class="isProjectsTabActive ? 'text-orange-600 bg-orange-50 font-medium' : 'text-gray-500 hover:bg-gray-50'"
-      >
-        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-        </svg>
-        <span class="text-[10px] sm:text-xs mt-0.5 truncate w-full text-center px-0.5 leading-tight">Projects</span>
       </RouterLink>
       <RouterLink
         to="/tasks/schedule"
@@ -123,12 +113,6 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const isScheduleTabActive = computed(() => route.path === '/tasks/schedule' || route.path.startsWith('/tasks/schedule/'))
-
-const isProjectsTabActive = computed(() => {
-  if (route.path.startsWith('/projects')) return true
-  if (!route.path.startsWith('/tasks')) return false
-  return !isScheduleTabActive.value
-})
 
 const displayRole = computed(() => {
   const u = authStore.currentUser

@@ -10,15 +10,15 @@
       </p>
     </section>
 
-    <!-- My Projects summary -->
+    <!-- Assigned projects (context only; work opens from Schedule) -->
     <section class="mb-6">
       <div class="flex items-center justify-between mb-3">
-        <h2 class="text-base font-semibold text-gray-900">My Projects</h2>
+        <h2 class="text-base font-semibold text-gray-900">Your projects</h2>
         <RouterLink
-          to="/tasks"
+          to="/tasks/schedule"
           class="text-sm font-medium text-orange-600 hover:text-orange-700"
         >
-          View all
+          Open schedule
         </RouterLink>
       </div>
 
@@ -29,14 +29,14 @@
 
       <div v-else-if="projects.length === 0" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
         <p class="text-gray-500 text-sm">No projects yet.</p>
-        <p class="text-gray-400 text-xs mt-1">Projects you join will appear here.</p>
+        <p class="text-gray-400 text-xs mt-1">Assignments appear on your schedule when published.</p>
       </div>
 
       <div v-else class="space-y-3">
         <RouterLink
           v-for="project in displayProjects"
           :key="project.id"
-          :to="`/tasks/project/${project.id}`"
+          :to="/tasks/schedule"
           class="block bg-white rounded-xl shadow-sm border border-gray-200 p-4 active:bg-gray-50"
         >
           <div class="flex justify-between items-start gap-2">
@@ -57,8 +57,8 @@
       </div>
 
       <div v-if="!isLoading && projects.length > 3" class="mt-3 text-center">
-        <RouterLink to="/tasks" class="text-sm text-orange-600 hover:text-orange-700 font-medium">
-          View all {{ projects.length }} projects
+        <RouterLink to="/tasks/schedule" class="text-sm text-orange-600 hover:text-orange-700 font-medium">
+          Open schedule ({{ projects.length }} sites)
         </RouterLink>
       </div>
     </section>
@@ -68,11 +68,11 @@
       <h2 class="text-base font-semibold text-gray-900 mb-3">Quick actions</h2>
       <div class="grid grid-cols-2 gap-3">
         <RouterLink
-          to="/tasks"
+          to="/tasks/schedule"
           class="flex flex-col items-center justify-center p-4 bg-white rounded-xl shadow-sm border border-gray-200 active:bg-orange-50"
         >
-          <span class="text-2xl mb-1" aria-hidden="true">📋</span>
-          <span class="text-sm font-medium text-gray-900">My Projects</span>
+          <span class="text-2xl mb-1" aria-hidden="true">📅</span>
+          <span class="text-sm font-medium text-gray-900">Schedule</span>
         </RouterLink>
         <RouterLink
           to="/reports"

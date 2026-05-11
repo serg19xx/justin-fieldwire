@@ -94,9 +94,9 @@ Dev Server: ✅ Запущен и работает
 
 ---
 
-## Консольные логи для проверки:
+## Консольные логи для проверки:                                                                        
 
-### При логине с 2FA:
+### При логине с 2FA:г8
 ```javascript
 🔒 2FA required for user: admin@medicalcontractor.ca
 ⚠️ Token NOT saved - waiting for 2FA verification

@@ -73,16 +73,15 @@ const router = createRouter({
     },
     {
       path: '/tasks',
-      component: () => {
+      beforeEnter: (to, _from, next) => {
         const authStore = useAuthStore()
-        const roleCategory = authStore.currentUser?.role_category
-        // Task role (Worker, Foreman, Contractor): mobile project list
-        if (roleCategory === 'task') {
-          return import('../pages/task-role/TaskProjects.vue')
+        if (authStore.currentUser?.role_category === 'task') {
+          next({ path: '/tasks/schedule', replace: true, query: to.query })
+          return
         }
-        // Project/global: legacy projects list
-        return import('../pages/projects/ProjectsPrj.vue')
+        next()
       },
+      component: () => import('../pages/projects/ProjectsPrj.vue'),
     },
     {
       path: '/tasks/my-week',
@@ -102,11 +101,14 @@ const router = createRouter({
     },
     {
       path: '/tasks/project/:id',
-      component: () => import('../pages/task-role/TaskProjectDetail.vue'),
+      redirect: '/tasks/schedule',
     },
     {
       path: '/tasks/project/:projectId/task/:taskId',
-      component: () => import('../pages/task-role/TaskTaskDetail.vue'),
+      redirect: (to) => ({
+        path: `/tasks/schedule/task/${String(to.params.projectId)}/${String(to.params.taskId)}`,
+        query: to.query,
+      }),
     },
     {
       path: '/reports',

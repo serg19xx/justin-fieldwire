@@ -1,6 +1,4 @@
 // Menu configuration based on user category and role
-import { CATEGORIES } from './categories'
-
 export interface MenuItem {
   label: string
   route: string
@@ -62,8 +60,8 @@ export const MENU_CONFIG: Record<string, MenuItem[]> = {
       icon: 'dashboard',
     },
     {
-      label: 'My Tasks',
-      route: '/tasks',
+      label: 'Schedule',
+      route: '/tasks/schedule',
       icon: 'checklist',
     },
     {

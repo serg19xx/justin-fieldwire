@@ -1,5 +1,6 @@
 <template>
   <section
+    v-if="variant === 'full'"
     class="mb-6 rounded-xl border-2 border-orange-200 bg-white p-4 shadow-sm"
     aria-labelledby="task-day-work-heading"
   >
@@ -39,6 +40,18 @@
       <p v-if="saveHint" class="text-xs text-green-700">{{ saveHint }}</p>
     </div>
   </section>
+
+  <div v-else class="space-y-2">
+    <label class="block text-xs font-medium text-gray-700">Describe your work</label>
+    <textarea
+      v-model="dayNotes"
+      rows="5"
+      class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+      placeholder="What you did on site, blockers, quality notes…"
+      @blur="persistDayNotes"
+    />
+    <p v-if="saveHint" class="text-xs text-green-700">{{ saveHint }}</p>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -51,9 +64,13 @@ interface Props {
   /** Calendar date for this slice (YYYY-MM-DD). */
   workYmd: string
   dayPart: ScheduleDayPart
+  /** `full` = status + notes card (non-schedule paths). `notesOnly` = notes field only (status lives in parent). */
+  variant?: 'full' | 'notesOnly'
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  variant: 'full',
+})
 
 const dayStatusOptions = [
   { value: 'not_started', label: 'Not started' },
@@ -93,16 +110,21 @@ function storageKeyNotes(): string {
 }
 
 function loadState(): void {
-  try {
-    const s = localStorage.getItem(storageKeyStatus())
-    if (s && dayStatusOptions.some((o) => o.value === s)) {
-      dayStatus.value = s
-    } else {
+  if (props.variant === 'full') {
+    try {
+      const s = localStorage.getItem(storageKeyStatus())
+      if (s && dayStatusOptions.some((o) => o.value === s)) {
+        dayStatus.value = s
+      } else {
+        dayStatus.value = 'not_started'
+      }
+    } catch {
       dayStatus.value = 'not_started'
     }
+  }
+  try {
     dayNotes.value = localStorage.getItem(storageKeyNotes()) ?? ''
   } catch {
-    dayStatus.value = 'not_started'
     dayNotes.value = ''
   }
 }

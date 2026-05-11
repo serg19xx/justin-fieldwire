@@ -76,7 +76,9 @@
     <section class="mb-6">
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-base font-semibold text-gray-900">Recent projects</h2>
-        <RouterLink to="/tasks" class="text-sm font-medium text-orange-600 hover:text-orange-700">View all</RouterLink>
+        <RouterLink to="/tasks/schedule" class="text-sm font-medium text-orange-600 hover:text-orange-700">
+          Open schedule
+        </RouterLink>
       </div>
 
       <div v-if="isLoading" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
@@ -92,7 +94,7 @@
         <RouterLink
           v-for="project in recentProjects"
           :key="project.id"
-          :to="`/tasks/project/${project.id}`"
+          :to="/tasks/schedule"
           class="block bg-white rounded-xl shadow-sm border border-gray-200 p-4 active:bg-gray-50"
         >
           <div class="flex items-start justify-between gap-2">
@@ -119,11 +121,11 @@
       <h2 class="text-base font-semibold text-gray-900 mb-3">Quick actions</h2>
       <div class="grid grid-cols-2 gap-3">
         <RouterLink
-          to="/tasks"
+          to="/tasks/schedule"
           class="flex flex-col items-center justify-center p-4 bg-white rounded-xl shadow-sm border border-gray-200 active:bg-orange-50"
         >
-          <span class="text-2xl mb-1" aria-hidden="true">📋</span>
-          <span class="text-sm font-medium text-gray-900">All projects</span>
+          <span class="text-2xl mb-1" aria-hidden="true">📅</span>
+          <span class="text-sm font-medium text-gray-900">Schedule</span>
         </RouterLink>
         <RouterLink
           to="/reports"

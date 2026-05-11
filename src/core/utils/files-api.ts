@@ -14,6 +14,15 @@ export interface FileUpload {
   uploaded_by: number
   uploaded_at: string
   updated_at: string
+  /**
+   * When the plan folder tree includes schedule slot documents (virtual rows), the backend may
+   * use a synthetic negative `id` for tree uniqueness. In that case it must also set the two
+   * fields below so the client can download/delete via schedule-entries documents API instead of
+   * `/api/v1/plan/files/:id`.
+   */
+  schedule_entry_id?: number
+  /** Real document id from `GET .../schedule-entries/:scheduleEntryId/documents`. */
+  schedule_document_id?: number
 }
 
 export interface Folder {
@@ -335,6 +344,57 @@ export function isPlanFolderFileOpsAllowed(folder: Folder): boolean {
 /** `edited !== 1` — folder is read-only for file operations in the client. */
 export function isPlanFolderFileOpsLocked(folder: Folder): boolean {
   return !isPlanFolderFileOpsAllowed(folder)
+}
+
+/**
+ * Root folder name for the virtual plan-tree branch that mirrors schedule slot documents
+ * (managed by the app — no manual file-manager mutations in the client).
+ */
+export const SCHEDULE_SLOT_DOCUMENTS_PLAN_TREE_ROOT_NAME = 'Schedule slot documents'
+
+export function isScheduleSlotDocumentsPlanTreeRootFolder(folder: Folder): boolean {
+  return folder.name.trim().toLowerCase() === SCHEDULE_SLOT_DOCUMENTS_PLAN_TREE_ROOT_NAME.toLowerCase()
+}
+
+/** True if `folderId` is that root or any descendant folder. */
+export function isFolderUnderScheduleSlotDocumentsPlanBranch(allFolders: Folder[], folderId: number): boolean {
+  const byId = new Map(allFolders.map((f) => [f.id, f]))
+  let cur: Folder | undefined = byId.get(folderId)
+  while (cur) {
+    if (isScheduleSlotDocumentsPlanTreeRootFolder(cur)) return true
+    const pid = cur.parent_id
+    if (pid == null || pid === undefined) break
+    cur = byId.get(pid)
+  }
+  return false
+}
+
+export function isFileUnderScheduleSlotDocumentsPlanBranch(allFolders: Folder[], file: FileUpload): boolean {
+  return isFolderUnderScheduleSlotDocumentsPlanBranch(allFolders, file.folder_id)
+}
+
+/**
+ * Folder row is locked for structural ops (rename / delete / move / copy folder) when the folder is
+ * under the schedule mirror branch or is a predefined plan folder (`edited !== 1`).
+ * Files inside predefined Home folders are still editable — use `isFileReadOnlyInPlanUi` for files.
+ */
+export function isFolderReadOnlyInPlanUi(folder: Folder, allFolders: Folder[]): boolean {
+  return (
+    isFolderUnderScheduleSlotDocumentsPlanBranch(allFolders, folder.id) || isPlanFolderFileOpsLocked(folder)
+  )
+}
+
+/** File mutations blocked only under the Schedule slot documents mirror branch (not by parent `edited`). */
+export function isFileReadOnlyInPlanUi(file: FileUpload, allFolders: Folder[]): boolean {
+  return isFileUnderScheduleSlotDocumentsPlanBranch(allFolders, file)
+}
+
+/**
+ * Blocks adding content (upload, paste, create subfolder) only under the schedule mirror branch.
+ * Predefined Home folders (`edited !== 1`) still accept uploads and paste.
+ */
+export function isPlanFolderInboundContentBlocked(folder: Folder, allFolders: Folder[]): boolean {
+  return isFolderUnderScheduleSlotDocumentsPlanBranch(allFolders, folder.id)
 }
 
 // Utility function to format file size

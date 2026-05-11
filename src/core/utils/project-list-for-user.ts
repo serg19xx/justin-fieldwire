@@ -151,7 +151,7 @@ export function isProjectArchivedForTaskUi(project: Project): boolean {
 }
 
 /**
- * Shared loader for task dashboard and /tasks project list.
+ * Shared loader for task-role dashboards (home screen project cards).
  * Applies server filters, parses list shape, then client-side scope for executors when needed.
  */
 export async function fetchProjectsForTaskScope(
