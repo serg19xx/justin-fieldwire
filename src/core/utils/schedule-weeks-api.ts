@@ -299,15 +299,94 @@ export function normalizeScheduleWeekEntryUserId(e: Record<string, unknown>): nu
   return 0
 }
 
+/** ISO date prefix from week payloads (supports `YYYY-MM-DD` and datetime strings). */
+function scheduleWeekStartMondayFromRaw(w: Record<string, unknown>): string {
+  const candidates = [
+    w.week_start,
+    w.weekStart,
+    w.week_start_date,
+    w.weekStartDate,
+  ]
+  for (const c of candidates) {
+    if (c == null) continue
+    const s = String(c).trim()
+    if (s.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(s)) {
+      return weekStartMondayYmdFromIsoDate(s.slice(0, 10))
+    }
+  }
+  return ''
+}
+
+function pickScheduleWeekEntryId(e: Record<string, unknown>): number | undefined {
+  const idSource =
+    e.worker_task_schedule_id ??
+    e.workerTaskScheduleId ??
+    e.id ??
+    e.schedule_entry_id ??
+    e.scheduleEntryId
+  const idNum = idSource != null ? Number(idSource) : NaN
+  return Number.isFinite(idNum) && idNum > 0 ? idNum : undefined
+}
+
+/**
+ * Some PUT/publish responses omit `week.week_start` or return a non-Monday date; the schedule
+ * table needs a stable Monday key and week id so plan/chat links stay enabled (`scheduleViewSynced`).
+ */
+export function mergeScheduleWeekMetaAfterWrite(
+  incoming: ScheduleWeekMeta | null,
+  previous: ScheduleWeekMeta | null,
+  viewedWeekStartYmdMonday: string,
+): ScheduleWeekMeta | null {
+  if (incoming == null) return previous
+
+  const viewedMon = weekStartMondayYmdFromIsoDate(viewedWeekStartYmdMonday)
+
+  const incStr = String(incoming.week_start ?? '').trim()
+  const incMon =
+    incStr.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(incStr.slice(0, 10))
+      ? weekStartMondayYmdFromIsoDate(incStr.slice(0, 10))
+      : ''
+
+  const prevStr = previous != null ? String(previous.week_start ?? '').trim() : ''
+  const prevMon =
+    prevStr.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(prevStr.slice(0, 10))
+      ? weekStartMondayYmdFromIsoDate(prevStr.slice(0, 10))
+      : ''
+
+  const week_start = incMon || prevMon || viewedMon
+
+  const id =
+    Number.isFinite(incoming.id) && incoming.id > 0
+      ? incoming.id
+      : previous != null && Number.isFinite(previous.id) && previous.id > 0
+        ? previous.id
+        : incoming.id
+
+  const project_id =
+    Number.isFinite(incoming.project_id) && incoming.project_id > 0
+      ? incoming.project_id
+      : previous != null && Number.isFinite(previous.project_id) && previous.project_id > 0
+        ? previous.project_id
+        : incoming.project_id
+
+  return {
+    ...incoming,
+    id,
+    project_id,
+    week_start,
+  }
+}
+
 function normalizeWeekResponse(raw: Record<string, unknown>): ProjectScheduleWeekResponse {
   const weekRaw = raw.week ?? raw.schedule_week
   let week: ScheduleWeekMeta | null = null
   if (weekRaw != null && typeof weekRaw === 'object' && !Array.isArray(weekRaw)) {
     const w = weekRaw as Record<string, unknown>
+    const week_start = scheduleWeekStartMondayFromRaw(w)
     week = {
       id: Number(w.id),
       project_id: Number(w.project_id),
-      week_start: String(w.week_start ?? ''),
+      week_start,
       status: w.status === 'published' ? 'published' : 'draft',
       published_at: w.published_at != null ? String(w.published_at) : null,
       published_by: w.published_by != null ? Number(w.published_by) : null,
@@ -321,12 +400,15 @@ function normalizeWeekResponse(raw: Record<string, unknown>): ProjectScheduleWee
       const e = row as Record<string, unknown>
       const n = e.assignment_note
       const assignment_note: string | null = typeof n === 'string' ? n : null
+      const dp = String(e.day_part ?? 'am').toLowerCase()
+      const day_part: ScheduleDayPart =
+        dp === 'pm' || dp === 'full' ? (dp as ScheduleDayPart) : 'am'
       entries.push({
-        id: e.id != null ? Number(e.id) : undefined,
+        id: pickScheduleWeekEntryId(e),
         user_id: normalizeScheduleWeekEntryUserId(e),
         task_id: Number(e.task_id),
         work_date: String(e.work_date ?? ''),
-        day_part: (String(e.day_part ?? 'am') as ScheduleDayPart) || 'am',
+        day_part,
         assignment_note,
       })
     }

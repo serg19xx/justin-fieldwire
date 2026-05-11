@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-gray-50 px-4 py-6 max-w-3xl mx-auto w-full">
     <nav class="mb-4" aria-label="Back">
       <RouterLink
-        :to="{ path: `/projects/${projectId}/detail`, query: { section: 'schedule' } }"
+        :to="{ path: `/projects/${projectId}/detail`, query: backToScheduleQuery }"
         class="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800"
       >
         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -319,7 +319,7 @@
           Save instructions
         </button>
         <RouterLink
-          :to="{ path: `/projects/${projectId}/detail`, query: { section: 'schedule' } }"
+          :to="{ path: `/projects/${projectId}/detail`, query: backToScheduleQuery }"
           class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
         >
           Cancel
@@ -331,12 +331,13 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '@/core/stores/auth'
 import {
   fetchProjectScheduleWeek,
   replaceProjectScheduleEntries,
+  mergeScheduleWeekMetaAfterWrite,
   ASSIGNMENT_NOTE_MAX_CHARS,
   type ScheduleWeekEntryRow,
   type ScheduleWeekMeta,
@@ -345,7 +346,7 @@ import {
 import { tasksApi } from '@/core/utils/tasks-api'
 import { projectApi } from '@/core/utils/project-api'
 import type { Task } from '@/core/types/task'
-import { toYmd } from '@/core/utils/week-utils'
+import { toYmd, weekStartMondayYmdFromIsoDate } from '@/core/utils/week-utils'
 import {
   scheduleSlotDocumentsApi,
   scheduleSlotAllowedUploadAccept,
@@ -459,6 +460,18 @@ const entryId = computed(() => Number(route.params.entryId))
 const weekStartQuery = computed(() => {
   const w = route.query.week_start
   return typeof w === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(w) ? w : ''
+})
+
+/** Keeps the same calendar week when leaving (Cancel / Back / after Save) so the schedule section reloads the right draft. */
+const backToScheduleQuery = computed((): Record<string, string> => {
+  const q: Record<string, string> = { section: 'schedule' }
+  const raw =
+    weekStartQuery.value ||
+    (weekMeta.value?.week_start ? String(weekMeta.value.week_start).slice(0, 10) : '')
+  if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    q.week_start = weekStartMondayYmdFromIsoDate(raw)
+  }
+  return q
 })
 
 const assignmentNoteMaxChars = ASSIGNMENT_NOTE_MAX_CHARS
@@ -607,7 +620,7 @@ async function loadPage(): Promise<void> {
       tasksApi.getAll(pid, 1, 500),
       projectApi.getTeamMembers(pid).catch(() => null),
     ])
-    weekMeta.value = weekRes.week
+    weekMeta.value = mergeScheduleWeekMetaAfterWrite(weekRes.week, null, ws)
     allEntries.value = mapLoadedEntries(weekRes.entries)
     tasks.value = taskRes.tasks
     teamByUserId.value = teamRes != null ? parseTeamMembersByUserId(teamRes) : new Map()
@@ -665,11 +678,16 @@ async function onSave(): Promise<void> {
       return { ...row, assignment_note: noteDraft.value }
     })
     const { week, entries } = await replaceProjectScheduleEntries(projectId.value, weekMeta.value.id, next)
-    if (week) weekMeta.value = week
+    if (week) {
+      const anchor =
+        weekStartQuery.value ||
+        weekStartMondayYmdFromIsoDate(String(weekMeta.value?.week_start ?? '').slice(0, 10))
+      weekMeta.value = mergeScheduleWeekMetaAfterWrite(week, weekMeta.value, anchor)
+    }
     allEntries.value = mapLoadedEntries(entries)
     const hit = allEntries.value.find((e) => e.id === id)
     if (hit) noteDraft.value = typeof hit.assignment_note === 'string' ? hit.assignment_note : ''
-    await router.push({ path: `/projects/${projectId.value}/detail`, query: { section: 'schedule' } })
+    await router.push({ path: `/projects/${projectId.value}/detail`, query: { ...backToScheduleQuery.value } })
   } catch (e) {
     saveError.value = getApiErrorMessage(e, 'Save failed. Check that the week is still a draft.')
   } finally {

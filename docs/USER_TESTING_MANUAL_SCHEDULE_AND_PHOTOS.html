@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldWire — User testing guide (Schedules &amp; photos/files)</title>
+  <style>
+    :root {
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ccc;
+      --bg-alt: #f7f7f7;
+      --accent: #0f766e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.5;
+      color: var(--text);
+      max-width: 48rem;
+      margin: 0 auto;
+      padding: 1.25rem 1rem 3rem;
+      font-size: 15px;
+    }
+    .howto-open {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 14px;
+    }
+    .howto-open strong { color: var(--accent); }
+    h1 {
+      font-size: 1.5rem;
+      margin: 0 0 0.5rem;
+      line-height: 1.25;
+    }
+    .subtitle { color: var(--muted); margin: 0 0 1.25rem; font-size: 14px; }
+    h2 {
+      font-size: 1.15rem;
+      margin: 1.75rem 0 0.75rem;
+      padding-bottom: 0.25rem;
+      border-bottom: 2px solid var(--border);
+    }
+    h3 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+    p { margin: 0.5rem 0; }
+    ul, ol { margin: 0.5rem 0; padding-left: 1.35rem; }
+    li { margin: 0.25rem 0; }
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.5rem 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.75rem 0 1rem;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--bg-alt); font-weight: 600; }
+    tr:nth-child(even) td { background: #fafafa; }
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: #e0e7ff;
+      color: #3730a3;
+      margin-left: 0.35rem;
+    }
+    .rule-box {
+      background: var(--bg-alt);
+      border-left: 4px solid var(--accent);
+      padding: 0.65rem 1rem;
+      margin: 1rem 0;
+    }
+    @media print {
+      body { max-width: none; padding: 0; font-size: 11pt; }
+      .howto-open { break-inside: avoid; }
+      h2 { break-after: avoid; }
+      table { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="howto-open">
+    <strong>How to open this document:</strong> Double-click this file — it opens in your web browser (Chrome, Safari, Edge, Firefox). You do not need Word or special software.
+    <br /><br />
+    <strong>To get a PDF:</strong> In the browser menu choose <strong>Print</strong>, then <strong>Save as PDF</strong> (or “Microsoft Print to PDF”).
+  </div>
+
+  <h1>User testing guide — Schedules &amp; photos/files</h1>
+  <p class="subtitle">Simple checks on <strong>staging</strong> or <strong>production</strong>. Use two accounts if you can: a <strong>Project Manager (PM)</strong> and a <strong>worker</strong> on the project team.</p>
+
+  <h2>PM vs Worker — different interfaces</h2>
+  <p>The app uses <strong>different screens and menus</strong> for PMs and for workers. They are not the same layout.</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th></th>
+        <th>Project Manager (PM)</th>
+        <th>Worker (field user)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th scope="row">Main entry</th>
+        <td><strong>My Projects</strong> → open a <strong>project</strong></td>
+        <td><strong>Schedule</strong> (your assignments list) — not the project’s internal schedule grid</td>
+      </tr>
+      <tr>
+        <th scope="row">Schedule screen</th>
+        <td><strong>Inside the project</strong>: weekly <strong>planner</strong> — all workers, all rows for that project</td>
+        <td><strong>Your</strong> list of slots: date, slot, project name, short note — one row per assignment</td>
+      </tr>
+      <tr>
+        <th scope="row">What you plan</th>
+        <td>Pick <strong>worker + day + task + slot</strong>; <strong>save</strong> / <strong>publish</strong> the week</td>
+        <td>You <strong>do not</strong> build the week; you only <strong>open</strong> rows the PM already published</td>
+      </tr>
+      <tr>
+        <th scope="row">Slot / day detail</th>
+        <td><strong>Slot assignment</strong> page: worker card, day, slot, long <strong>instructions</strong> box, <strong>Save instructions</strong></td>
+        <td><strong>Task</strong> screen for <strong>that day</strong>: read PM text and PM files; set <strong>day status</strong> / notes; <strong>upload completion</strong> files</td>
+      </tr>
+      <tr>
+        <th scope="row">Uploading files</th>
+        <td><strong>Task setup (PM)</strong> — button <strong>Upload setup doc</strong> on the slot page</td>
+        <td><strong>Site &amp; completion photos / files</strong> — <strong>Upload</strong> on the task screen</td>
+      </tr>
+      <tr>
+        <th scope="row">Seeing the other side’s files</th>
+        <td>Sees <strong>Task setup (PM)</strong> and <strong>Task completed (workers)</strong> in two columns</td>
+        <td>Sees <strong>PM setup</strong> documents (read-only) and own <strong>completion</strong> uploads</td>
+      </tr>
+      <tr>
+        <th scope="row">Editing / deleting uploads</th>
+        <td>Can <strong>Edit</strong> / <strong>Delete</strong> <strong>setup</strong> docs (when allowed)</td>
+        <td>Can <strong>Edit name</strong> / <strong>Delete</strong> own <strong>completion</strong> docs — <strong>not</strong> PM setup files</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="rule-box">
+    <strong>Short rule:</strong> The PM works <strong>inside a project</strong> and <strong>owns the week grid + setup docs</strong>. The worker uses <strong>My Schedule → task for that day</strong> and <strong>only adds completion evidence</strong>.
+  </div>
+
+  <hr />
+
+  <h2>A. Schedules <span class="tag">PM only</span></h2>
+  <ol>
+    <li><strong>Open a project</strong> → go to the <strong>Schedule</strong> section (weekly grid).</li>
+    <li><strong>Pick a week</strong> (change week if the UI allows).</li>
+    <li><strong>Assign work</strong>
+      <ul>
+        <li>Choose a <strong>worker</strong> and a <strong>day</strong>.</li>
+        <li>Pick a <strong>task</strong> and a <strong>slot</strong> (morning / afternoon / all day, if shown).</li>
+      </ul>
+    </li>
+    <li><strong>Save</strong> the week (or row — follow what the screen asks).</li>
+    <li><strong>Publish</strong> the week when you are ready (workers usually only see <strong>published</strong> weeks).</li>
+    <li><strong>Open one slot in detail</strong>
+      <ul>
+        <li>From the schedule, open the <strong>slot assignment</strong> / plan screen for one row.</li>
+        <li>Type <strong>instructions</strong> for that day and tap <strong>Save instructions</strong>.</li>
+      </ul>
+    </li>
+    <li><strong>Expected</strong>
+      <ul>
+        <li>Draft vs published rules match the hints on screen (you may need to <strong>reopen as draft</strong> to edit after publish).</li>
+        <li>You cannot edit instructions for <strong>past</strong> days until the row is moved to today or a future day (if the app shows that message).</li>
+      </ul>
+    </li>
+  </ol>
+
+  <hr />
+
+  <h2>B. Photos &amp; files — PM (“Task setup”) <span class="tag">PM only</span></h2>
+  <p><strong>Where:</strong> Project → Schedule → open <strong>slot assignment</strong> → <strong>Documents</strong>.</p>
+  <ol>
+    <li>Tap <strong>Upload setup doc</strong> (on small screens it may show as <strong>Upload</strong>).</li>
+    <li>Choose a <strong>small JPG or PNG</strong> → upload should succeed; file appears under <strong>Task setup (PM)</strong>.</li>
+    <li>Choose a <strong>small PDF</strong> → same.</li>
+    <li>Open the file (tap the name) → <strong>preview or download</strong> should work.</li>
+    <li>Use <strong>Edit</strong> / <strong>Delete</strong> on a setup file if you have permission → changes should stick after <strong>reload</strong>.</li>
+    <li><strong>Negative checks</strong>
+      <ul>
+        <li>A <strong>.txt</strong> (or other disallowed type) → should show an error, not upload.</li>
+        <li>A file <strong>over 20 MB</strong> → should show a max-size error.</li>
+      </ul>
+    </li>
+  </ol>
+  <p><strong>Rules in the app:</strong> images and <strong>PDF</strong> only; <strong>max 20 MB</strong> per file.</p>
+
+  <hr />
+
+  <h2>C. Schedules <span class="tag">Worker only</span></h2>
+  <ol>
+    <li>Log in as a worker who has <strong>published</strong> assignments.</li>
+    <li>Open <strong>Schedule</strong> (the menu entry that shows <strong>your</strong> week list).</li>
+    <li>You should see <strong>rows</strong> with date, slot (e.g. Morning), project, and optional short <strong>instructions</strong>.</li>
+    <li><strong>Tap a row</strong> → opens the <strong>task</strong> screen for that <strong>day and slot</strong>.</li>
+  </ol>
+  <p><strong>Expected</strong></p>
+  <ul>
+    <li>If nothing appears: the week may still be <strong>draft</strong> or this user has <strong>no published</strong> rows.</li>
+    <li>Status chip (e.g. Not started / In progress / Completed) may reflect <strong>local</strong> progress on the device — use it only as a quick visual check.</li>
+  </ul>
+
+  <hr />
+
+  <h2>D. Photos &amp; files — Worker (“Task completed”) <span class="tag">Worker only</span></h2>
+  <p><strong>Where:</strong> Worker <strong>Schedule</strong> → open a row → <strong>task detail</strong> for that day.</p>
+  <ol>
+    <li>In <strong>PM setup</strong>, check that <strong>documents</strong> the PM uploaded are <strong>visible</strong>; tap to open/preview.</li>
+    <li>Scroll to <strong>Site &amp; completion photos / files</strong> (or similar).</li>
+    <li>Tap <strong>Upload</strong> → pick <strong>image or PDF</strong> → confirm upload.</li>
+    <li>Optional <strong>display name</strong> in the dialog should save with the file.</li>
+    <li><strong>Edit name</strong> / <strong>Delete</strong> should work; after <strong>reload</strong>, the list should match.</li>
+    <li>Same <strong>negative tests</strong> as PM: wrong file type and <strong>&gt; 20 MB</strong> should fail clearly.</li>
+  </ol>
+
+  <hr />
+
+  <h2>E. Quick smoke checklist (PM + Worker)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Step</th>
+        <th>Who</th>
+        <th>Pass?</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Can build and <strong>publish</strong> a week</td><td>PM</td><td>☐</td></tr>
+      <tr><td>Sees the assignment <strong>after publish</strong></td><td>Worker</td><td>☐</td></tr>
+      <tr><td><strong>Instructions</strong> save and show on worker task screen</td><td>PM → Worker</td><td>☐</td></tr>
+      <tr><td>Can upload <strong>setup</strong> image + PDF</td><td>PM</td><td>☐</td></tr>
+      <tr><td>Can upload <strong>completion</strong> image + PDF</td><td>Worker</td><td>☐</td></tr>
+      <tr><td>Bad type / oversized file <strong>rejected</strong></td><td>Both (separate tests)</td><td>☐</td></tr>
+      <tr><td>Files still there after <strong>browser refresh</strong></td><td>Both</td><td>☐</td></tr>
+    </tbody>
+  </table>
+
+  <hr />
+
+  <h2>F. If something fails</h2>
+  <p>Write down: <strong>role</strong> (PM vs worker), <strong>project id</strong>, <strong>week start date</strong>, <strong>browser</strong> (and phone vs desktop), and attach a <strong>screenshot</strong>. For uploads, say whether <strong>PM</strong> or <strong>worker</strong> flow failed and the <strong>approximate file size</strong> and <strong>type</strong> (jpg / pdf / other).</p>
+
+  <hr />
+
+  <h2>G. Optional test files</h2>
+  <p>Prepare on your device:</p>
+  <ul>
+    <li>Small <strong>.jpg</strong> / <strong>.png</strong></li>
+    <li>Small <strong>.pdf</strong></li>
+    <li>A <strong>.txt</strong> (should be rejected for slot uploads)</li>
+    <li>A <strong>large .pdf</strong> over <strong>20 MB</strong> (should be rejected)</li>
+  </ul>
+
+</body>
+</html>

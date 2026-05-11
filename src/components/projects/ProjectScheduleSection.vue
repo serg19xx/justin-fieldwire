@@ -480,7 +480,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
-import type { RouteLocationRaw } from 'vue-router'
+import { useRoute, type RouteLocationRaw } from 'vue-router'
 import axios from 'axios'
 import type { ProjectTeamMember } from '@/core/utils/project-api'
 import type { Task, TaskCreateUpdate } from '@/core/types/task'
@@ -492,13 +492,14 @@ import {
   publishProjectScheduleWeek,
   fetchUserSchedule,
   reopenProjectScheduleWeekAsDraft,
+  mergeScheduleWeekMetaAfterWrite,
   type ScheduleWeekMeta,
   type ScheduleWeekEntryRow,
   type ScheduleDayPart,
   type MyScheduleEntry,
   ASSIGNMENT_NOTE_MAX_CHARS,
 } from '@/core/utils/schedule-weeks-api'
-import { addDays, startOfWeekMonday, toYmd } from '@/core/utils/week-utils'
+import { addDays, startOfWeekMonday, toYmd, weekStartMondayYmdFromIsoDate } from '@/core/utils/week-utils'
 
 /** Stable positive user id for schedule rows (avoids string/number mismatch vs worker select). */
 function scheduleUserId(raw: unknown): number {
@@ -522,7 +523,22 @@ const emit = defineEmits<{
   tasksSynced: []
 }>()
 
-const weekOffset = ref(0)
+const route = useRoute()
+
+/** Align with `?week_start=` when returning from slot assignment (Cancel / Back). */
+function weekOffsetFromWeekStartQuery(raw: unknown): number {
+  if (typeof raw !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return 0
+  const targetMon = weekStartMondayYmdFromIsoDate(raw)
+  const nowMon = toYmd(startOfWeekMonday(new Date()))
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000
+  const diff = Math.round(
+    (new Date(`${targetMon}T12:00:00`).getTime() - new Date(`${nowMon}T12:00:00`).getTime()) /
+      msPerWeek,
+  )
+  return Number.isFinite(diff) ? diff : 0
+}
+
+const weekOffset = ref(weekOffsetFromWeekStartQuery(route.query.week_start))
 /** True while GET schedule-weeks is in flight */
 const isFetchingWeek = ref(false)
 const isSaving = ref(false)
@@ -555,8 +571,10 @@ const weekEndYmd = computed(() => toYmd(addDays(weekMonday.value, 6)))
 /** GET response matches the week the user navigated to (toolbar / template dates). */
 const scheduleViewSynced = computed(() => {
   if (weekMeta.value == null) return false
-  const w = String(weekMeta.value.week_start ?? '').slice(0, 10)
-  return w === weekStartYmd.value
+  const w = String(weekMeta.value.week_start ?? '').trim()
+  if (w.length < 10 || !/^\d{4}-\d{2}-\d{2}/.test(w.slice(0, 10))) return false
+  const metaMon = weekStartMondayYmdFromIsoDate(w.slice(0, 10))
+  return metaMon === weekStartYmd.value
 })
 
 /** Full-page spinner only when nothing to show yet (first paint or empty week → empty week). */
@@ -930,7 +948,8 @@ function onDayOrSlotChange(row: ScheduleWeekEntryRow): void {
 function syncTaskForRow(row: ScheduleWeekEntryRow): void {
   const ts = allTaskSelectOptions.value
   if (ts.length === 0) {
-    row.task_id = 0
+    // Project tasks may still be loading after mount (e.g. Cancel from slot → remount).
+    // Do not clear server-assigned task_id — reconcile runs again when tasks arrive.
     return
   }
   if (row.task_id <= 0) return
@@ -1147,7 +1166,7 @@ async function loadWeek(): Promise<void> {
   isFetchingWeek.value = true
   try {
     const { week, entries } = await fetchProjectScheduleWeek(props.projectId, weekStartYmd.value)
-    weekMeta.value = week
+    weekMeta.value = mergeScheduleWeekMetaAfterWrite(week, null, weekStartYmd.value)
     allDraftRows.value = mapEntries(entries)
     reconcileAllRows()
     primePlannerWorkerFromRows()
@@ -1201,7 +1220,7 @@ async function onReopenPublishedWeekAsDraft(): Promise<void> {
       weekMeta.value.id,
       snap,
     )
-    if (week) weekMeta.value = week
+    if (week) weekMeta.value = mergeScheduleWeekMetaAfterWrite(week, weekMeta.value, weekStartYmd.value)
     allDraftRows.value = mapEntries(entries)
     reconcileAllRows()
     await nextTick()
@@ -1226,7 +1245,7 @@ async function onCreateDraft(): Promise<void> {
   bannerError.value = ''
   try {
     const { week, entries } = await ensureProjectScheduleDraft(props.projectId, weekStartYmd.value)
-    weekMeta.value = week
+    weekMeta.value = mergeScheduleWeekMetaAfterWrite(week, null, weekStartYmd.value)
     allDraftRows.value = mapEntries(entries)
     reconcileAllRows()
     primePlannerWorkerFromRows()
@@ -1266,7 +1285,7 @@ async function onSaveEntries(): Promise<void> {
       weekMeta.value.id,
       valid,
     )
-    if (week) weekMeta.value = week
+    if (week) weekMeta.value = mergeScheduleWeekMetaAfterWrite(week, weekMeta.value, weekStartYmd.value)
     allDraftRows.value = mapEntries(entries)
     reconcileAllRows()
     await nextTick()
@@ -1313,15 +1332,16 @@ async function onPublish(): Promise<void> {
       weekMeta.value.id,
       valid,
     )
-    if (week) weekMeta.value = week
+    if (week) weekMeta.value = mergeScheduleWeekMetaAfterWrite(week, weekMeta.value, weekStartYmd.value)
     allDraftRows.value = mapEntries(entries)
     reconcileAllRows()
     const published = await publishProjectScheduleWeek(
       props.projectId,
-      weekMeta.value.id,
+      weekMeta.value!.id,
       weekStartSnap,
     )
-    if (published) weekMeta.value = published
+    if (published)
+      weekMeta.value = mergeScheduleWeekMetaAfterWrite(published, weekMeta.value, weekStartYmd.value)
     await nextTick()
     ensureWeekTemplateRowsForSelectedWorker()
   } catch (err) {
@@ -1349,6 +1369,15 @@ watch(
 watch(weekOffset, () => {
   loadWeek()
 })
+
+watch(
+  () => route.query.week_start,
+  (w) => {
+    const next = weekOffsetFromWeekStartQuery(w)
+    if (next !== weekOffset.value) weekOffset.value = next
+    else void loadWeek()
+  },
+)
 
 watch([selectedPlannerWorkerId, weekStartYmd], () => {
   void loadExternalScheduleForPlanner()
