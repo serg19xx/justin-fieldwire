@@ -234,6 +234,25 @@ const router = createRouter({
   ],
 })
 
+// After deploy, cached index.html can point at removed hashed chunks — recover once.
+router.onError((err) => {
+  console.error('Router lazy-load error:', err)
+  const msg = err instanceof Error ? err.message : String(err)
+  const isChunkFail =
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('Importing a module script failed') ||
+    msg.includes('error loading dynamically imported module')
+  if (!isChunkFail) return
+  try {
+    const url = new URL(window.location.href)
+    if (url.searchParams.has('_chunk_reload')) return
+    url.searchParams.set('_chunk_reload', '1')
+    window.location.replace(url.toString())
+  } catch {
+    window.location.reload()
+  }
+})
+
 // Navigation guard
 router.beforeEach(async (to, from, next) => {
   console.log('🛡️ Router guard checking:', { to: to.path, from: from.path })

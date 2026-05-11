@@ -7,8 +7,8 @@ import tailwindcss from 'tailwindcss'
 import autoprefixer from 'autoprefixer'
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [vue(), vueDevTools()],
+export default defineConfig(({ mode }) => ({
+  plugins: [vue(), ...(mode === 'development' ? [vueDevTools()] : [])],
   css: {
     postcss: {
       plugins: [tailwindcss, autoprefixer],
@@ -62,4 +62,4 @@ export default defineConfig({
       }
     }
   },
-})
+}))
