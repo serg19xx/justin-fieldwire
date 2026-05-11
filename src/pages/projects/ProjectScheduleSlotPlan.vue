@@ -171,7 +171,7 @@
                 <button
                   type="button"
                   class="text-left w-full min-w-0 overflow-hidden"
-                  @click="downloadSlotDocument('completed', doc)"
+                  @click="openOrDownloadSlotDocument('completed', doc)"
                 >
                   <p class="text-sm text-gray-900 truncate">
                     {{ getFileIcon(doc.mime_type, doc.file_name).icon }}
@@ -868,19 +868,6 @@ async function openOrDownloadSlotDocument(
     documentsError.value = getApiErrorMessage(
       e,
       `Could not open ${bucket === 'setup' ? 'setup' : 'completed'} file.`,
-    )
-  }
-}
-
-async function downloadSlotDocument(bucket: ScheduleSlotDocumentBucket, doc: ScheduleSlotDocument): Promise<void> {
-  if (!targetEntry.value?.id) return
-  try {
-    const blob = await scheduleSlotDocumentsApi.download(projectId.value, targetEntry.value.id, doc.id)
-    triggerFileDownload(blob, doc.original_name || doc.file_name)
-  } catch (e) {
-    documentsError.value = getApiErrorMessage(
-      e,
-      `Could not download ${bucket === 'setup' ? 'setup' : 'completed'} file.`,
     )
   }
 }

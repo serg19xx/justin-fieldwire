@@ -1081,15 +1081,20 @@ async function downloadSelected() {
         }
 
         console.log('📥 Downloading file:', file.file_name)
-        const blob = await filesApi.downloadFile(file.id)
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = file.original_name || file.file_name
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        URL.revokeObjectURL(url)
+        const fm = folderManagerRef.value as { downloadFile?: (f: FileUpload) => Promise<void> } | undefined
+        if (typeof fm?.downloadFile === 'function') {
+          await fm.downloadFile(file)
+        } else {
+          const blob = await filesApi.downloadFile(file.id)
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = file.original_name || file.file_name
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
+        }
         console.log('✅ File downloaded:', file.file_name)
       } catch (error) {
         console.error('❌ Error downloading file:', error)
@@ -2523,16 +2528,16 @@ watch(
       </div>
     </div>
 
-    <!-- Main Content Area -->
-    <div class="flex-1 flex flex-col ml-64 overflow-x-clip max-w-full min-w-0">
+    <!-- Main Content Area: do not use overflow-x-clip here — it clips position:fixed descendants (toolbar). -->
+    <div class="flex-1 flex flex-col ml-64 max-w-full min-w-0">
       <!-- Content Header -->
       <div class="bg-white shadow-sm border-b border-gray-200 px-6 py-2 fixed top-12 left-64 right-0 z-40" style="margin-top: 0; padding-top: 0.5rem; padding-bottom: 0.5rem;">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between gap-2 min-w-0">
           <!-- Dynamic Action Buttons -->
-          <div class="flex-1 flex items-center">
+          <div class="flex-1 min-w-0 overflow-x-auto overflow-y-visible flex items-center [&::-webkit-scrollbar]:h-1.5">
             <!-- Plans Section Buttons -->
             <template v-if="activeSection === 'plans'">
-              <div class="flex items-center space-x-2">
+              <div class="flex flex-nowrap items-center space-x-2">
                 <!-- Create Actions -->
                 <button
                   @click="createNewFolder"
@@ -2786,7 +2791,7 @@ watch(
           </div>
 
           <!-- Search Bar -->
-          <div v-if="!isTaskEditPanelOpen" class="w-64 relative">
+          <div v-if="!isTaskEditPanelOpen" class="w-64 shrink-0 relative">
             <input
               v-model="searchQuery"
               type="text"
@@ -2837,8 +2842,8 @@ watch(
         </div>
       </div>
 
-      <!-- Content Body -->
-      <div class="flex-1 overflow-y-auto overflow-x-hidden px-6" style="padding-bottom: 0;">
+      <!-- Content Body: avoid overflow-x-hidden on this ancestor — it also clips fixed siblings in some browsers. -->
+      <div class="flex-1 overflow-y-auto min-w-0 px-6" style="padding-bottom: 0;">
         <!-- Spacer for fixed toolbar -->
         <div class="h-16"></div>
         <!-- Loading State -->
@@ -2896,7 +2901,7 @@ watch(
         <!-- Content based on active section -->
         <div
           v-else-if="project"
-          class="flex-1 flex flex-col min-w-0 overflow-x-clip max-w-full"
+          class="flex-1 flex flex-col min-w-0 max-w-full"
         >
           <!-- Plans Section -->
           <PlansSection

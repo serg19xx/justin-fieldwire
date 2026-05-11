@@ -2524,5 +2524,8 @@ defineExpose({
   currentPath,
   selectedItems,
   clipboard,
+  previewFile,
+  closePreviewModal,
+  downloadFile,
 })
 </script>
