@@ -36,7 +36,7 @@
         <RouterLink
           v-for="project in displayProjects"
           :key="project.id"
-          :to="/tasks/schedule"
+          to="/tasks/schedule"
           class="block bg-white rounded-xl shadow-sm border border-gray-200 p-4 active:bg-gray-50"
         >
           <div class="flex justify-between items-start gap-2">

@@ -94,7 +94,7 @@
         <RouterLink
           v-for="project in recentProjects"
           :key="project.id"
-          :to="/tasks/schedule"
+          to="/tasks/schedule"
           class="block bg-white rounded-xl shadow-sm border border-gray-200 p-4 active:bg-gray-50"
         >
           <div class="flex items-start justify-between gap-2">
