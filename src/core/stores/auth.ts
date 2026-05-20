@@ -289,14 +289,25 @@ export const useAuthStore = defineStore('auth', () => {
         const axiosError = error as {
           response?: { data?: { message?: string; data?: { message?: string } }; status?: number }
         }
-        console.log('🔍 Login error response status:', axiosError.response?.status)
+        const status = axiosError.response?.status
+        console.log('🔍 Login error response status:', status)
         console.log('🔍 Login error response data:', axiosError.response?.data)
 
-        // Try to get error message from different possible locations
-        const errorMessage =
-          axiosError.response?.data?.message ||
-          axiosError.response?.data?.data?.message ||
-          'Invalid email or password'
+        const bodyMsg =
+          axiosError.response?.data?.message || axiosError.response?.data?.data?.message
+
+        // 500 with empty body is common when PHP/backend crashes — do not imply bad credentials.
+        let errorMessage: string
+        if (status === 500) {
+          errorMessage =
+            typeof bodyMsg === 'string' && bodyMsg.trim() !== ''
+              ? bodyMsg
+              : 'Server error (500). Check that the API is running on the proxy target (e.g. localhost:8000) and inspect backend logs.'
+        } else if (status === 401 || status === 403) {
+          errorMessage = bodyMsg || 'Invalid email or password'
+        } else {
+          errorMessage = bodyMsg || 'Login failed. Please try again.'
+        }
 
         return { success: false, error: errorMessage }
       }

@@ -134,10 +134,10 @@
             </select>
           </div>
 
-          <!-- Project Manager -->
+          <!-- My Account (visible label only; assigns project manager user id) -->
           <div v-if="canAssignManager" class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Project Manager <span class="text-red-500">*</span>
+              My Account <span class="text-red-500">*</span>
             </label>
             <select
               v-model="form.prj_manager"
@@ -146,7 +146,7 @@
                 validationErrors.prj_manager ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300'
               ]"
             >
-              <option value="">Select Project Manager</option>
+              <option value="">Select user</option>
               <option v-for="manager in availableManagers" :key="manager.id" :value="manager.id">
                 {{ manager.name }} ({{ manager.email }})
               </option>
@@ -156,9 +156,9 @@
             </p>
           </div>
 
-          <!-- Auto-assigned manager info for Project Managers -->
+          <!-- Auto-assigned account info for Project Managers -->
           <div v-else class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Project Manager </label>
+            <label class="block text-sm font-medium text-gray-700 mb-2"> My Account </label>
             <div
               class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-600"
             >
@@ -450,7 +450,7 @@ function validateForm() {
 
   // Admin must select a project manager
   if (canAssignManager.value && !form.value.prj_manager) {
-    errors.prj_manager = 'Project Manager is required for administrators'
+    errors.prj_manager = 'My Account is required for administrators'
   }
 
   // Client is required
