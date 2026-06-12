@@ -2,13 +2,24 @@ import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
 import tailwindcss from 'tailwindcss'
 import autoprefixer from 'autoprefixer'
 
+function hasWorkingLocalStorage(): boolean {
+  return typeof globalThis.localStorage?.getItem === 'function'
+}
+
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => ({
-  plugins: [vue(), ...(mode === 'development' ? [vueDevTools()] : [])],
+export default defineConfig(async ({ mode }) => {
+  const plugins = [vue()]
+
+  if (mode === 'development' && hasWorkingLocalStorage()) {
+    const { default: vueDevTools } = await import('vite-plugin-vue-devtools')
+    plugins.push(vueDevTools())
+  }
+
+  return {
+  plugins,
   css: {
     postcss: {
       plugins: [tailwindcss, autoprefixer],
@@ -62,4 +73,5 @@ export default defineConfig(({ mode }) => ({
       }
     }
   },
-}))
+  }
+})
