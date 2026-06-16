@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldWire — Personal calendar testing guide</title>
+  <style>
+    :root {
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ccc;
+      --bg-alt: #f7f7f7;
+      --accent: #2563eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.55;
+      color: var(--text);
+      max-width: 50rem;
+      margin: 0 auto;
+      padding: 1.25rem 1rem 3rem;
+      font-size: 15px;
+    }
+    .howto-open {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 14px;
+    }
+    .howto-open strong { color: var(--accent); }
+    .howto-open code {
+      font-size: 12px;
+      word-break: break-all;
+      background: #fff;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      border: 1px solid #bfdbfe;
+    }
+    h1 { font-size: 1.55rem; margin: 0 0 0.5rem; line-height: 1.25; }
+    .subtitle { color: var(--muted); margin: 0 0 1.25rem; font-size: 14px; }
+    h2 {
+      font-size: 1.15rem;
+      margin: 1.75rem 0 0.75rem;
+      padding-bottom: 0.25rem;
+      border-bottom: 2px solid var(--border);
+    }
+    h3 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+    p { margin: 0.5rem 0; }
+    ul, ol { margin: 0.5rem 0; padding-left: 1.35rem; }
+    li { margin: 0.3rem 0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.75rem 0 1rem;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--bg-alt); font-weight: 600; }
+    tr:nth-child(even) td { background: #fafafa; }
+    .rule-box {
+      background: var(--bg-alt);
+      border-left: 4px solid var(--accent);
+      padding: 0.65rem 1rem;
+      margin: 1rem 0;
+    }
+    .warn-box {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      padding: 0.65rem 1rem;
+      margin: 1rem 0;
+    }
+    .swatch {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+    .swatch-ring {
+      background: #fff;
+      box-shadow: inset 0 0 0 2px #f59e0b;
+    }
+    @media print {
+      body { max-width: none; padding: 0; font-size: 11pt; }
+      .howto-open { break-inside: avoid; }
+      h2 { break-after: avoid; }
+      table { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="howto-open">
+    <strong>How to open:</strong> this page is available at
+    <code id="self-url">…</code>
+    (no login required).
+    <br /><br />
+    <strong>PDF:</strong> use <strong>Print</strong> (Ctrl/Cmd+P) → <strong>Save as PDF</strong>.
+    <br /><br />
+    <strong>Word:</strong> open the PDF in Word, or copy text from this page.
+  </div>
+  <script>
+    (function () {
+      try {
+        var el = document.getElementById('self-url')
+        if (el && window.location && window.location.origin) {
+          el.textContent = window.location.origin + '/CLIENT_CALENDAR_TESTING_GUIDE.html'
+        }
+      } catch (e) { /* ignore */ }
+    })()
+  </script>
+
+  <h1>Personal calendar — testing guide</h1>
+  <p class="subtitle">
+    FieldWire · v1.1 ·
+    <a href="https://fieldwire.medicalcontractor.ca">fieldwire.medicalcontractor.ca</a>
+  </p>
+
+  <div class="warn-box">
+    <strong>Important:</strong> this is <em>not</em> the Tasks calendar. The calendar view under <strong>Tasks</strong> is disabled.
+    The new <strong>Calendar</strong> is a separate personal calendar. Events are <strong>not linked</strong> to project tasks.
+  </div>
+
+  <h2>1. Two calendar modes</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th></th>
+        <th>Global calendar</th>
+        <th>Project calendar</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Where</strong></td>
+        <td>Top menu <strong>Calendar</strong></td>
+        <td>Project → sidebar <strong>Calendar</strong></td>
+      </tr>
+      <tr>
+        <td><strong>Visible</strong></td>
+        <td>Personal + <strong>all projects</strong></td>
+        <td>Personal + <strong>this project</strong></td>
+      </tr>
+      <tr>
+        <td><strong>Editable</strong></td>
+        <td><strong>Personal</strong> only</td>
+        <td><strong>Project</strong> events only</td>
+      </tr>
+      <tr>
+        <td><strong>Other projects</strong></td>
+        <td>Read-only (gray)</td>
+        <td>Hidden</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="rule-box">
+    Edit personal events in the <strong>global</strong> calendar. Edit project events in that <strong>project’s Calendar</strong> tab.
+  </div>
+
+  <h2>2. Event types</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th>Requires my presence</th>
+        <th>Behaviour</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Reminder</strong></td>
+        <td>off</td>
+        <td>Unlimited overlaps; no conflict checks.</td>
+      </tr>
+      <tr>
+        <td><strong>Requires my presence</strong></td>
+        <td>on</td>
+        <td>Warns on overlap with other presence events (all calendars).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p>On conflict: <strong>Save</strong> → list → <strong>Save anyway</strong> or <strong>Cancel</strong>.</p>
+
+  <h2>3. Export (iCalendar / Google Calendar)</h2>
+
+  <p>Green <strong>Export iCal</strong> button on both calendars:</p>
+  <ul>
+    <li><strong>iCalendar (.ics)</strong> — download for Apple Calendar, Outlook, etc.</li>
+    <li><strong>Google Calendar…</strong> — downloads .ics and shows how to import in Google Calendar</li>
+  </ul>
+  <p>Google import: <strong>+</strong> next to “Other calendars” → <strong>Import</strong> → upload the file.</p>
+  <p>Export includes <strong>all</strong> events in that view, not only the visible month.</p>
+
+  <h2>4. Colours</h2>
+
+  <h3>Global</h3>
+  <ul>
+    <li><span class="swatch" style="background:#3B82F6"></span> Blue — personal (editable)</li>
+    <li><span class="swatch" style="background:#6B7280"></span> Gray — project (read-only)</li>
+    <li><span class="swatch swatch-ring"></span> Amber border — requires presence</li>
+  </ul>
+
+  <h3>Project</h3>
+  <ul>
+    <li><span class="swatch" style="background:#059669"></span> Green — project (editable)</li>
+    <li><span class="swatch" style="background:#93C5FD"></span> Light blue — personal (read-only)</li>
+    <li><span class="swatch swatch-ring"></span> Amber border — requires presence</li>
+  </ul>
+
+  <h2>5. Creating events</h2>
+  <ul>
+    <li><strong>Month:</strong> single click selects day; double-click or <strong>+ New event</strong> opens form (default 10:00–12:00).</li>
+    <li><strong>Week / Day:</strong> drag a time range or double-click a slot.</li>
+  </ul>
+
+  <h2>6. Test scenarios</h2>
+  <ol>
+    <li>Personal reminder in global calendar — create, edit, delete.</li>
+    <li>Two reminders at the same time — both save.</li>
+    <li>Two presence events overlapping — warning; <strong>Save anyway</strong> works.</li>
+    <li>Presence in project A conflicts with presence in global calendar.</li>
+    <li>Project event editable in project tab; read-only in global calendar.</li>
+    <li>Event in project B not visible in project A calendar.</li>
+    <li><strong>Export iCal</strong> — download .ics; import into Google or open in Apple Calendar.</li>
+  </ol>
+
+  <h2>7. Limitations</h2>
+  <ul>
+    <li>No live sync with Google/Outlook (export/import only).</li>
+    <li>Events do not create or change Tasks.</li>
+    <li>Presence checks apply only to the logged-in user.</li>
+  </ul>
+
+  <hr />
+  <p class="subtitle">Document v1.1 · personal calendar + iCal export</p>
+
+</body>
+</html>

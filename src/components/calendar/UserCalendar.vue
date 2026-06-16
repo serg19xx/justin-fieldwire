@@ -8,6 +8,7 @@ import listPlugin from '@fullcalendar/list'
 import type { CalendarEvent, CalendarEventInput, CalendarSaveOptions, UserCalendarMode } from '@/core/types/calendar-event'
 import { calendarApi, CalendarConflictError } from '@/core/utils/calendar-api'
 import { calendarEventToFcEvent, toHm, toYmd } from '@/core/utils/calendar-event-utils'
+import { downloadCalendarICal, openGoogleCalendarImportHint } from '@/core/utils/calendar-ical-export'
 import CalendarEventDialog from '@/components/calendar/CalendarEventDialog.vue'
 
 const props = defineProps<{
@@ -24,6 +25,8 @@ const rangeFrom = ref<string>()
 const rangeTo = ref<string>()
 const selectedDate = ref<string | null>(null)
 const lastDateClick = ref<{ date: string; time: number } | null>(null)
+const isExporting = ref(false)
+const exportMenuOpen = ref(false)
 
 const selectedDateLabel = computed(() => {
   if (!selectedDate.value) return null
@@ -277,6 +280,61 @@ function openCreateDialog(options?: string | CreateDialogOptions) {
 watch(selectedDate, () => {
   nextTick(() => calendarRef.value?.getApi()?.render())
 })
+
+async function fetchAllEventsForExport(): Promise<CalendarEvent[]> {
+  if (props.mode === 'global') {
+    return calendarApi.listGlobal()
+  }
+  if (props.projectId) {
+    return calendarApi.listForProject(props.projectId)
+  }
+  return []
+}
+
+function exportFilename(extension: 'ics'): string {
+  const dateStr = new Date().toISOString().slice(0, 10)
+  if (props.mode === 'project' && props.projectId) {
+    return `fieldwire_project_${props.projectId}_calendar_${dateStr}.${extension}`
+  }
+  return `fieldwire_calendar_${dateStr}.${extension}`
+}
+
+function calendarExportName(): string {
+  return props.mode === 'project' ? 'FieldWire Project Calendar' : 'FieldWire Calendar'
+}
+
+async function handleExportICal(): Promise<boolean> {
+  exportMenuOpen.value = false
+  isExporting.value = true
+  try {
+    const list = await fetchAllEventsForExport()
+    if (list.length === 0) {
+      alert('No events to export')
+      return false
+    }
+    downloadCalendarICal(list, exportFilename('ics'), calendarExportName())
+    return true
+  } catch (e) {
+    console.error('Calendar iCal export failed', e)
+    alert('Failed to export calendar. Please try again.')
+    return false
+  } finally {
+    isExporting.value = false
+  }
+}
+
+async function handleExportGoogleCalendar() {
+  const ok = await handleExportICal()
+  if (!ok) return
+  openGoogleCalendarImportHint()
+  alert(
+    'The .ics file was downloaded.\n\nIn Google Calendar: click the + next to "Other calendars" → Import → upload the file.',
+  )
+}
+
+function toggleExportMenu() {
+  exportMenuOpen.value = !exportMenuOpen.value
+}
 </script>
 
 <template>
@@ -287,13 +345,53 @@ watch(selectedDate, () => {
           <h2 class="text-lg font-semibold text-gray-900">Calendar</h2>
           <p class="text-xs text-gray-500 mt-0.5">{{ subtitle }}</p>
         </div>
-        <button
-          type="button"
-          class="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 self-start"
-          @click="openCreateDialog()"
-        >
-          + New event
-        </button>
+        <div class="flex flex-wrap items-center gap-2 self-start">
+          <button
+            type="button"
+            class="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            @click="openCreateDialog()"
+          >
+            + New event
+          </button>
+          <div class="relative">
+            <button
+              type="button"
+              :disabled="isExporting"
+              class="px-3 py-1.5 text-sm font-medium rounded-md flex items-center gap-1.5 transition-colors"
+              :class="
+                isExporting
+                  ? 'bg-gray-400 text-white cursor-not-allowed'
+                  : 'bg-green-600 text-white hover:bg-green-700'
+              "
+              title="Export to iCalendar (.ics) or Google Calendar"
+              @click="toggleExportMenu"
+            >
+              <span v-if="isExporting" class="animate-spin">⏳</span>
+              <span v-else>📅</span>
+              <span>{{ isExporting ? 'Exporting…' : 'Export iCal' }}</span>
+              <span class="text-xs opacity-80">▾</span>
+            </button>
+            <div
+              v-if="exportMenuOpen && !isExporting"
+              class="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-md shadow-lg z-20 py-1 text-sm"
+            >
+              <button
+                type="button"
+                class="w-full text-left px-3 py-2 hover:bg-gray-50 text-gray-800"
+                @click="handleExportICal"
+              >
+                iCalendar (.ics)
+              </button>
+              <button
+                type="button"
+                class="w-full text-left px-3 py-2 hover:bg-gray-50 text-gray-800"
+                @click="handleExportGoogleCalendar"
+              >
+                Google Calendar…
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
       <p class="text-xs text-gray-500 mt-2">
         Month: click a day to select; double-click or <strong>+ New event</strong> to create (default 10:00–12:00).

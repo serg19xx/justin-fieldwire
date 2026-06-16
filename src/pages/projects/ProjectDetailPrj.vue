@@ -45,8 +45,6 @@ import ProjectScheduleSection from '@/components/projects/ProjectScheduleSection
 import ProjectUserCalendarSection from '@/components/projects/ProjectUserCalendarSection.vue'
 import TeamMemberDetailsDialog from './TeamMemberDetailsDialog.vue'
 import {
-  exportTasksToICal as exportTasksToICalUtil,
-  downloadFile as downloadFileUtil,
   MILESTONE_ICON,
 } from '@/core/utils/task-utils'
 import { filesApi, type FileUpload, type Folder, isFolderReadOnlyInPlanUi, isFileReadOnlyInPlanUi, isFolderUnderScheduleSlotDocumentsPlanBranch, isPlanFolderInboundContentBlocked } from '@/core/utils/files-api'
@@ -128,9 +126,6 @@ const selectedMember = ref<ProjectTeamMember | null>(null)
 // Tasks for Team Section
 const projectTasks = ref<Task[]>([])
 const loadingTasks = ref(false)
-
-// Export state
-const isExporting = ref(false)
 
 // Task edit panel state
 const isTaskEditPanelOpen = ref(false)
@@ -1849,48 +1844,6 @@ function handleFileDoubleClick(file: FileUpload) {
 
 // Folder management functions
 
-async function exportTasksToICalLocal() {
-  if (!project.value?.id) {
-    alert('No project selected')
-    return
-  }
-
-  console.log('📅 Export tasks to iCal for project:', project.value.id)
-
-  try {
-    isExporting.value = true
-
-    // Fetch tasks from API
-    const tasksResponse = await tasksApi.getAll(project.value.id, 1, 500)
-    const tasks = tasksResponse.tasks
-    console.log('📋 Fetched tasks for export:', tasks.length)
-
-    if (tasks.length === 0) {
-      alert('No tasks found to export')
-      return
-    }
-
-    // Generate iCal content
-    const icalContent = exportTasksToICalUtil(tasks)
-
-    // Create filename with project name and date
-    const projectName = project.value.name.replace(/[^a-zA-Z0-9]/g, '_')
-    const dateStr = new Date().toISOString().split('T')[0]
-    const filename = `${projectName}_tasks_${dateStr}.ics`
-
-    // Download the file
-    downloadFileUtil(icalContent, filename, 'text/calendar')
-
-    console.log('✅ iCal export completed:', filename)
-    console.log('📄 iCal content preview:', icalContent.substring(0, 500) + '...')
-  } catch (error) {
-    console.error('❌ Export failed:', error)
-    alert('Failed to export tasks. Please try again.')
-  } finally {
-    isExporting.value = false
-  }
-}
-
 function uploadPhoto() {
   console.log('📸 Upload photo for project:', project.value?.id)
   // TODO: Open file upload dialog
@@ -2707,26 +2660,6 @@ watch(
               </div>
             </template>
 
-            <!-- Tasks Section Buttons - Normal Mode -->
-            <template v-else-if="activeSection === 'tasks' && !isTaskEditPanelOpen">
-              <div class="flex items-center space-x-2">
-                <button
-                  @click="exportTasksToICalLocal"
-                  :disabled="isExporting"
-                  :class="[
-                    'px-4 rounded-md transition-colors text-sm font-medium flex items-center space-x-2 h-7',
-                    isExporting
-                      ? 'bg-gray-400 text-white cursor-not-allowed'
-                      : 'bg-green-600 text-white hover:bg-green-700',
-                  ]"
-                  title="Export tasks to iCal format"
-                >
-                  <span v-if="isExporting" class="animate-spin">⏳</span>
-                  <span v-else>📅</span>
-                  <span>{{ isExporting ? 'Exporting...' : 'Export iCal' }}</span>
-                </button>
-              </div>
-            </template>
 
             <!-- Tasks Section Buttons - Edit Panel Mode -->
             <template v-else-if="activeSection === 'tasks' && isTaskEditPanelOpen">

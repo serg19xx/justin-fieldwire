@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldWire — Руководство: личный календарь</title>
+  <style>
+    :root {
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ccc;
+      --bg-alt: #f7f7f7;
+      --accent: #2563eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.55;
+      color: var(--text);
+      max-width: 50rem;
+      margin: 0 auto;
+      padding: 1.25rem 1rem 3rem;
+      font-size: 15px;
+    }
+    .howto-open {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 14px;
+    }
+    .howto-open strong { color: var(--accent); }
+    .howto-open code {
+      font-size: 12px;
+      word-break: break-all;
+      background: #fff;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      border: 1px solid #bfdbfe;
+    }
+    h1 {
+      font-size: 1.55rem;
+      margin: 0 0 0.5rem;
+      line-height: 1.25;
+    }
+    .subtitle { color: var(--muted); margin: 0 0 1.25rem; font-size: 14px; }
+    h2 {
+      font-size: 1.15rem;
+      margin: 1.75rem 0 0.75rem;
+      padding-bottom: 0.25rem;
+      border-bottom: 2px solid var(--border);
+    }
+    h3 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+    p { margin: 0.5rem 0; }
+    ul, ol { margin: 0.5rem 0; padding-left: 1.35rem; }
+    li { margin: 0.3rem 0; }
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.5rem 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.75rem 0 1rem;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--bg-alt); font-weight: 600; }
+    tr:nth-child(even) td { background: #fafafa; }
+    .rule-box {
+      background: var(--bg-alt);
+      border-left: 4px solid var(--accent);
+      padding: 0.65rem 1rem;
+      margin: 1rem 0;
+    }
+    .warn-box {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      padding: 0.65rem 1rem;
+      margin: 1rem 0;
+    }
+    .swatch {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+    .swatch-ring {
+      background: #fff;
+      box-shadow: inset 0 0 0 2px #f59e0b;
+    }
+    @media print {
+      body { max-width: none; padding: 0; font-size: 11pt; }
+      .howto-open { break-inside: avoid; }
+      h2 { break-after: avoid; }
+      table { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="howto-open">
+    <strong>Как открыть:</strong> эта страница доступна по адресу
+    <code id="self-url">…</code>
+    (вход в приложение не нужен).
+    <br /><br />
+  <strong>PDF:</strong> в браузере <strong>Файл → Печать</strong> (или Ctrl/Cmd+P) → <strong>Сохранить как PDF</strong>.
+    <br /><br />
+    <strong>DOC/DOCX:</strong> откройте PDF в Word или скопируйте текст из этой страницы в Word.
+  </div>
+  <script>
+    (function () {
+      try {
+        var el = document.getElementById('self-url')
+        if (el && window.location && window.location.origin) {
+          el.textContent = window.location.origin + '/CLIENT_CALENDAR_TESTING_GUIDE_RU.html'
+        }
+      } catch (e) { /* ignore */ }
+    })()
+  </script>
+
+  <h1>Руководство для тестирования: личный календарь</h1>
+  <p class="subtitle">
+    FieldWire · версия 1.0 ·
+    <a href="https://fieldwire.medicalcontractor.ca">fieldwire.medicalcontractor.ca</a>
+  </p>
+
+  <div class="warn-box">
+    <strong>Важно:</strong> это <em>не</em> календарь задач. В разделе <strong>Tasks</strong> календарный вид отключён.
+    Новый <strong>Calendar</strong> — отдельный личный календарь (встречи, напоминания, визиты). События <strong>не связаны</strong> с задачами проекта.
+  </div>
+
+  <h2>1. Два режима календаря</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th></th>
+        <th>Глобальный календарь</th>
+        <th>Календарь проекта</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Где открыть</strong></td>
+        <td>Пункт <strong>Calendar</strong> в верхнем меню</td>
+        <td>Проект → боковое меню <strong>Calendar</strong> (между Schedule и Photos)</td>
+      </tr>
+      <tr>
+        <td><strong>Что видно</strong></td>
+        <td>Все ваши события: личные + из <strong>всех</strong> проектов</td>
+        <td>Личные + события <strong>текущего</strong> проекта</td>
+      </tr>
+      <tr>
+        <td><strong>Что редактируется</strong></td>
+        <td>Только <strong>личные</strong> события</td>
+        <td>Только события <strong>этого проекта</strong></td>
+      </tr>
+      <tr>
+        <td><strong>Другие проекты</strong></td>
+        <td>Видны, <strong>только просмотр</strong></td>
+        <td><strong>Скрыты</strong></td>
+      </tr>
+      <tr>
+        <td><strong>Личные события</strong></td>
+        <td>Синие, редактируемые</td>
+        <td>Светло-синие, только просмотр</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="rule-box">
+    <strong>Правило:</strong> личное событие создавайте и меняйте в <strong>глобальном</strong> календаре.
+    Событие проекта — во вкладке <strong>Calendar</strong> внутри нужного проекта.
+  </div>
+
+  <h2>2. Типы событий</h2>
+
+  <p>В форме события есть чекбокс <strong>Requires my presence</strong> («Требуется моё присутствие»).</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Тип</th>
+        <th>Чекбокс</th>
+        <th>Поведение</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Reminder</strong> (напоминание)</td>
+        <td>выключен</td>
+        <td>Можно создать сколько угодно событий на одно время. Конфликты <strong>не</strong> проверяются.</td>
+      </tr>
+      <tr>
+        <td><strong>Requires my presence</strong></td>
+        <td>включён</td>
+        <td>Проверка пересечений с другими presence-событиями <strong>этого пользователя</strong> (личный календарь + все проекты).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>При конфликте presence</h3>
+  <ol>
+    <li>Первое нажатие <strong>Save</strong> — показывается список занятых слотов.</li>
+    <li><strong>Save anyway</strong> — сохранить несмотря на пересечение.</li>
+    <li><strong>Cancel</strong> — отменить.</li>
+  </ol>
+  <p>Напоминания (Reminder) никогда не блокируют сохранение и не участвуют в проверке чужих presence-событий.</p>
+
+  <h2>3. Цвета и легенда</h2>
+
+  <h3>Глобальный календарь</h3>
+  <ul>
+    <li><span class="swatch" style="background:#3B82F6"></span> Синий — личное (редактируемое)</li>
+    <li><span class="swatch" style="background:#6B7280"></span> Серый — проект (только просмотр)</li>
+    <li><span class="swatch swatch-ring"></span> Янтарная рамка — Requires my presence</li>
+  </ul>
+
+  <h3>Календарь проекта</h3>
+  <ul>
+    <li><span class="swatch" style="background:#059669"></span> Зелёный — проект (редактируемое)</li>
+    <li><span class="swatch" style="background:#93C5FD"></span> Светло-синий — личное (только просмотр)</li>
+    <li><span class="swatch swatch-ring"></span> Янтарная рамка — Requires my presence</li>
+  </ul>
+
+  <h2>4. Как создать событие</h2>
+
+  <h3>Месяц (Month)</h3>
+  <ul>
+    <li><strong>Один клик</strong> по дню — выделение даты (диалог не открывается).</li>
+    <li><strong>Двойной клик</strong> или кнопка <strong>+ New event</strong> — форма создания.</li>
+    <li>По умолчанию для события с временем: <strong>10:00–12:00</strong>.</li>
+  </ul>
+
+  <h3>Неделя / День (Week / Day)</h3>
+  <ul>
+    <li>Перетащите мышью интервал времени.</li>
+    <li>Или двойной клик по ячейке времени.</li>
+  </ul>
+
+  <h3>Поля формы</h3>
+  <ul>
+    <li><strong>Title</strong> — обязательно</li>
+    <li><strong>Requires my presence</strong> — тип события</li>
+    <li><strong>Notes</strong>, <strong>Location</strong> — по желанию</li>
+    <li><strong>All day</strong> — целый день</li>
+    <li>Даты и время начала/окончания</li>
+  </ul>
+
+  <h2>5. Сценарии тестирования</h2>
+
+  <h3>Тест 1 — Личное напоминание (глобальный календарь)</h3>
+  <ol>
+    <li>Меню <strong>Calendar</strong> → <strong>+ New event</strong>.</li>
+    <li>Заполнить заголовок и время. Чекбокс presence — <strong>выключен</strong>.</li>
+    <li><strong>Save</strong>. Ожидание: синее событие, можно редактировать и удалить.</li>
+  </ol>
+
+  <h3>Тест 2 — Два напоминания на одно время</h3>
+  <ol>
+    <li>Создать два Reminder на одинаковое время.</li>
+    <li>Ожидание: оба сохраняются без предупреждения.</li>
+  </ol>
+
+  <h3>Тест 3 — Presence и конфликт</h3>
+  <ol>
+    <li>Событие A: presence, например Пн 10:00–12:00.</li>
+    <li>Событие B на пересекающееся время, тоже с presence.</li>
+    <li>Ожидание: список конфликтов, кнопка <strong>Save anyway</strong>.</li>
+  </ol>
+
+  <h3>Тест 4 — Конфликт между проектом и личным календарём</h3>
+  <ol>
+    <li>В <strong>проекте A</strong> создать presence на время T.</li>
+    <li>В <strong>глобальном</strong> календаре создать presence на то же T.</li>
+    <li>Ожидание: конфликт. Reminder на T — без конфликта.</li>
+  </ol>
+
+  <h3>Тест 5 — Права редактирования</h3>
+  <ol>
+    <li>Событие проекта в глобальном календаре — серое, только просмотр.</li>
+    <li>Редактировать его в <strong>Calendar</strong> внутри того же проекта.</li>
+    <li>Личное событие в проекте — только просмотр; менять в глобальном календаре.</li>
+  </ol>
+
+  <h3>Тест 6 — События другого проекта</h3>
+  <ol>
+    <li>Событие в проекте B.</li>
+    <li>В календаре проекта A — <strong>не видно</strong>.</li>
+    <li>В глобальном календаре — <strong>видно</strong> (серое).</li>
+  </ol>
+
+  <h2>6. Ограничения</h2>
+  <ul>
+    <li>Нет синхронизации с Google Calendar / Outlook.</li>
+    <li>События не создают и не меняют задачи в Tasks.</li>
+    <li>Проверка presence — только для текущего пользователя.</li>
+    <li><strong>Save anyway</strong> — осознанный обход; жёсткой блокировки двойного бронирования нет.</li>
+  </ul>
+
+  <h2>7. Если что-то не работает</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Симптом</th>
+        <th>Что проверить</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Ошибка 500 при сохранении</td>
+        <td>Сообщить разработчику (серверная настройка БД).</td>
+      </tr>
+      <tr>
+        <td>Нет пункта Calendar</td>
+        <td>Обновить страницу (Ctrl+F5).</td>
+      </tr>
+      <tr>
+        <td>Нет конфликта</td>
+        <td>У обоих событий включён Requires my presence; время пересекается.</td>
+      </tr>
+      <tr>
+        <td>Не редактируется</td>
+        <td>Событие проекта — только в Calendar этого проекта.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr />
+  <p class="subtitle">Документ v1.0 · личный календарь FieldWire (presence / reminder)</p>
+
+</body>
+</html>
