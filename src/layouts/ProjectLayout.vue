@@ -47,6 +47,13 @@
             Team
           </RouterLink>
           <RouterLink
+            to="/calendar"
+            class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
+            :class="{ 'bg-green-700 text-white': $route.path === '/calendar' }"
+          >
+            Calendar
+          </RouterLink>
+          <RouterLink
             to="/reports"
             class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
             :class="{ 'bg-green-700 text-white': $route.path === '/reports' }"
@@ -144,6 +151,13 @@
             class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
           >
             Team
+          </RouterLink>
+          <RouterLink
+            to="/calendar"
+            @click="closeMobileMenu"
+            class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
+          >
+            Calendar
           </RouterLink>
           <RouterLink
             to="/reports"

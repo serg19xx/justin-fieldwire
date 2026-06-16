@@ -281,16 +281,18 @@
 
                   <!-- Save Inactive Status Button -->
                   <div
-                    v-if="showInactiveReasonFields && profileForm.status_reason"
+                    v-if="showInactiveReasonFields"
                     class="flex justify-end space-x-3"
                   >
                     <button
-                      @click="showInactiveReasonFields = false"
+                      type="button"
+                      @click="cancelInactiveStatus"
                       class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       Cancel
                     </button>
                     <button
+                      type="button"
                       @click="saveInactiveStatus"
                       :disabled="isUpdating"
                       class="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
@@ -1344,6 +1346,7 @@
 import { ref, reactive, onMounted, computed, watch, nextTick } from 'vue'
 import { useAuthStore } from '@/core/stores/auth'
 import { api } from '@/core/utils/api'
+import { getApiBaseUrl } from '@/config/api'
 import { useProfileStore, WORKFORCE_GROUPS, AVAILABLE_LANGUAGES, PROFICIENCY_LEVELS } from '@/core/stores/profile'
 import AvatarWidget from './AvatarWidget.vue'
 import NotificationPreferencesCard from '@/components/account/NotificationPreferencesCard.vue'
@@ -2483,18 +2486,46 @@ async function changePassword() {
 }
 
 // Work status functions
+function normalizeWorkStatus(status: unknown): boolean {
+  if (typeof status === 'boolean') return status
+  if (typeof status === 'number') return status === 1
+  if (typeof status === 'string') {
+    const normalized = status.toLowerCase()
+    return normalized === 'active' || normalized === '1' || normalized === 'true' || normalized === 'yes'
+  }
+  return false
+}
+
+function syncWorkStatusToAuthStore(isActive: boolean) {
+  if (authStore.currentUser) {
+    authStore.currentUser.status = isActive
+    authStore.currentUser.isActive = isActive
+    localStorage.setItem('user', JSON.stringify(authStore.currentUser))
+  }
+}
+
+function cancelInactiveStatus() {
+  showInactiveReasonFields.value = false
+  profileForm.status_reason = ''
+  profileForm.status_details = ''
+  profileForm.status_end_at = ''
+  errorMessage.value = ''
+}
+
 async function toggleWorkStatus() {
+  if (isUpdating.value) return
+
   const newStatus = !profileForm.status
   console.log('🔄 toggleWorkStatus called, newStatus:', newStatus)
 
   if (newStatus) {
-    // Setting to active - automatically save
-    console.log('🔄 Setting to active, calling saveActiveStatus')
+    if (showInactiveReasonFields.value) {
+      cancelInactiveStatus()
+      return
+    }
     await saveActiveStatus()
   } else {
-    // Setting to inactive - show reason fields
-    console.log('🔄 Setting to inactive, showing reason fields')
-    profileForm.status = false
+    console.log('🔄 Opening inactive status form (no API call until saved)')
     showInactiveReasonFields.value = true
   }
 }
@@ -2502,8 +2533,8 @@ async function toggleWorkStatus() {
 async function saveActiveStatus() {
   console.log('🔄 saveActiveStatus called')
   isUpdating.value = true
+  errorMessage.value = ''
   try {
-    // Используем profile store для обновления статуса
     const result = await profileStore.updateWorkStatus({
       status: true,
       status_reason: '',
@@ -2512,10 +2543,11 @@ async function saveActiveStatus() {
     })
 
     if (result.success) {
-      // Обновляем локальное состояние
       profileForm.status = true
       showInactiveReasonFields.value = false
+      syncWorkStatusToAuthStore(true)
       successMessage.value = 'Status updated to active'
+      errorMessage.value = ''
     } else {
       errorMessage.value = result.error || 'Failed to update status'
     }
@@ -2561,6 +2593,7 @@ async function saveInactiveStatus() {
       // Обновляем локальное состояние
       profileForm.status = false
       showInactiveReasonFields.value = false
+      syncWorkStatusToAuthStore(false)
     } else {
       console.log('❌ Inactive status update failed:', result.error)
       console.log('🔍 Setting error message for inactive status')
@@ -2627,7 +2660,7 @@ onMounted(async () => {
       profileForm.last_name = userData.last_name || ''
       profileForm.phone = userData.phone || ''
       profileForm.job_title = userData.job_title || ''
-      profileForm.status = userData.status
+      profileForm.status = normalizeWorkStatus(userData.status)
       profileForm.gender = userData.gender || ''
       profileForm.birth_date = userData.dob || ''
       profileForm.age = userData.age || ''
@@ -2679,12 +2712,12 @@ onMounted(async () => {
         if (userData.avatar_url) {
           authStore.currentUser.avatar_url = userData.avatar_url.startsWith('http')
             ? userData.avatar_url
-            : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${userData.avatar_url}`
+            : `${getApiBaseUrl()}${userData.avatar_url}`
         }
         if (userData.full_img_url) {
           authStore.currentUser.full_img_url = userData.full_img_url.startsWith('http')
             ? userData.full_img_url
-            : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${userData.full_img_url}`
+            : `${getApiBaseUrl()}${userData.full_img_url}`
         }
 
         // Сохраняем обновленные данные в localStorage
@@ -2701,7 +2734,7 @@ onMounted(async () => {
         profileForm.last_name = nameParts.slice(1).join(' ') || ''
         profileForm.phone = authStore.currentUser.phone || ''
         profileForm.job_title = authStore.currentUser.job_title || ''
-        profileForm.status = authStore.currentUser.status ?? true
+        profileForm.status = normalizeWorkStatus(authStore.currentUser.status)
       }
     }
   } catch (error) {
@@ -2716,7 +2749,7 @@ onMounted(async () => {
       profileForm.last_name = nameParts.slice(1).join(' ') || ''
       profileForm.phone = authStore.currentUser.phone || ''
       profileForm.job_title = authStore.currentUser.job_title || ''
-      profileForm.status = authStore.currentUser.status ?? true
+      profileForm.status = normalizeWorkStatus(authStore.currentUser.status)
     }
   } finally {
     isLoading.value = false

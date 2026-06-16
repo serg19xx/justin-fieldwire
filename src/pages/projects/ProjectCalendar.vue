@@ -24,6 +24,11 @@ import TaskTemplateDialog from '@/components/task-templates/TaskTemplateDialog.v
 import TaskFilterDialog from '@/components/tasks/TaskFilterDialog.vue'
 import TaskListSidebar from '@/components/tasks/TaskListSidebar.vue'
 import { useTaskFilters } from '@/composables/useTaskFilters'
+import {
+  DEFAULT_TASKS_VIEW_MODE,
+  TASKS_CALENDAR_ENABLED,
+  type TasksViewMode,
+} from '@/config/features'
 
 // Props
 interface Props {
@@ -81,8 +86,11 @@ const shouldShowDependencyIndicators = computed(() => {
 const tasks = ref<Task[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
-const viewMode = ref<'ical' | 'gantt' | 'list'>('ical')
+const viewMode = ref<TasksViewMode>(DEFAULT_TASKS_VIEW_MODE)
 const currentCalendarView = ref<'month' | 'week' | 'day'>('month')
+const isCalendarViewActive = computed(
+  () => TASKS_CALENDAR_ENABLED && viewMode.value === 'ical',
+)
 
 // Gantt version: 'old' | 'new'
 // ganttVersion removed - using only working Gantt
@@ -169,6 +177,8 @@ function searchTasks(query: string) {
  * then highlight the event in the grid.
  */
 function focusCalendarOnTask(task: Task): void {
+  if (!TASKS_CALENDAR_ENABLED) return
+
   const calendar = calendarRef.value?.getApi()
   if (!calendar) {
     restoreTaskSelection(task.id)
@@ -402,6 +412,7 @@ const calendarEvents = ref<unknown[]>([])
 
 // Apply project bounds styling to calendar days
 function applyProjectBoundsStyling() {
+  if (!TASKS_CALENDAR_ENABLED) return
   if (!projectInfo.value || !calendarRef.value) return
   if (!projectInfo.value.date_start || !projectInfo.value.date_end) return // No bounds when dates are null
 
@@ -792,6 +803,8 @@ const calendarRef = ref()
 
 // Function to update calendar events
 function updateCalendarEvents(events: unknown[]) {
+  if (!TASKS_CALENDAR_ENABLED) return
+
   calendarEvents.value = events
   console.log('📅 Updating calendar with events:', events.length)
   console.log('📅 Calendar events data:', events)
@@ -810,6 +823,8 @@ function updateCalendarEvents(events: unknown[]) {
 
 // Function to restore task selection after DOM updates
 function restoreTaskSelection(taskId: string | number) {
+  if (!TASKS_CALENDAR_ENABLED) return
+
   console.log('🔄 Restoring task selection for ID:', taskId)
   console.log('🔄 Current viewMode:', viewMode.value)
   console.log('🔄 Calendar ref exists:', !!calendarRef.value)
@@ -920,75 +935,79 @@ async function loadTasks() {
     tasks.value = response.tasks || []
     console.log('📋 Tasks array updated:', tasks.value.length, 'tasks')
 
-    // Filter out tasks without start_planned date (they can't be displayed in calendar)
-    const tasksWithDates = tasks.value.filter((task) => {
-      if (!task.start_planned) {
-        console.warn('⚠️ Task missing start_planned date, skipping calendar display:', {
-          id: task.id,
-          name: task.name,
-          start_planned: task.start_planned,
-          end_planned: task.end_planned,
-        })
-        return false
-      }
-      return true
-    })
-    console.log('📋 Tasks with dates:', tasksWithDates.length, 'out of', tasks.value.length)
-
-    // Convert tasks to calendar events
-    // Use current view type to properly render tasks for week/day views
-    const viewType: 'month' | 'week' | 'day' = currentCalendarView.value
-    const events = tasksWithDates.map((task) => {
-      const calendarEvent = taskToCalendarTask(task, shouldShowDependencyIndicators.value, viewType)
-      console.log('📅 Task converted to calendar event:', {
-        taskId: task.id,
-        taskName: task.name,
-        viewType,
-        start: calendarEvent.start,
-        end: calendarEvent.end,
-        hasStart: !!calendarEvent.start,
-        hasEnd: !!calendarEvent.end,
+    if (TASKS_CALENDAR_ENABLED) {
+      // Filter out tasks without start_planned date (they can't be displayed in calendar)
+      const tasksWithDates = tasks.value.filter((task) => {
+        if (!task.start_planned) {
+          console.warn('⚠️ Task missing start_planned date, skipping calendar display:', {
+            id: task.id,
+            name: task.name,
+            start_planned: task.start_planned,
+            end_planned: task.end_planned,
+          })
+          return false
+        }
+        return true
       })
-      return calendarEvent
-    })
-    console.log('📅 Converted to calendar events:', events.length, 'events')
+      console.log('📋 Tasks with dates:', tasksWithDates.length, 'out of', tasks.value.length)
 
-    // Update calendar events
-    updateCalendarEvents(events)
+      // Convert tasks to calendar events
+      // Use current view type to properly render tasks for week/day views
+      const viewType: 'month' | 'week' | 'day' = currentCalendarView.value
+      const events = tasksWithDates.map((task) => {
+        const calendarEvent = taskToCalendarTask(task, shouldShowDependencyIndicators.value, viewType)
+        console.log('📅 Task converted to calendar event:', {
+          taskId: task.id,
+          taskName: task.name,
+          viewType,
+          start: calendarEvent.start,
+          end: calendarEvent.end,
+          hasStart: !!calendarEvent.start,
+          hasEnd: !!calendarEvent.end,
+        })
+        return calendarEvent
+      })
+      console.log('📅 Converted to calendar events:', events.length, 'events')
+
+      // Update calendar events
+      updateCalendarEvents(events)
+    }
 
     // Load all project workers for filtering
     await loadAllProjectWorkers()
 
-    // Apply project bounds styling after tasks are loaded
-    setTimeout(() => {
-      applyProjectBoundsStyling()
+    if (TASKS_CALENDAR_ENABLED) {
+      // Apply project bounds styling after tasks are loaded
+      setTimeout(() => {
+        applyProjectBoundsStyling()
 
-      // Restore selection if a task was previously selected
-      if (selectedTask.value) {
-        const calendar = calendarRef.value?.getApi()
-        if (calendar) {
-          const event = calendar.getEventById(String(selectedTask.value.id))
-          if (event) {
-            if (event.addClass) {
-              event.addClass('fc-event-selected')
-              console.log('📋 Task selection restored after reload:', selectedTask.value.name)
-            } else {
-              // Alternative approach: manipulate the DOM element directly
-              const eventElement =
-                document.querySelector(`[data-event-id="${selectedTask.value.id}"]`) ||
-                document.querySelector(`.fc-event[data-event-id="${selectedTask.value.id}"]`)
-              if (eventElement) {
-                eventElement.classList.add('fc-event-selected')
-                console.log(
-                  '📋 Task selection restored via DOM manipulation:',
-                  selectedTask.value.name,
-                )
+        // Restore selection if a task was previously selected
+        if (selectedTask.value) {
+          const calendar = calendarRef.value?.getApi()
+          if (calendar) {
+            const event = calendar.getEventById(String(selectedTask.value.id))
+            if (event) {
+              if (event.addClass) {
+                event.addClass('fc-event-selected')
+                console.log('📋 Task selection restored after reload:', selectedTask.value.name)
+              } else {
+                // Alternative approach: manipulate the DOM element directly
+                const eventElement =
+                  document.querySelector(`[data-event-id="${selectedTask.value.id}"]`) ||
+                  document.querySelector(`.fc-event[data-event-id="${selectedTask.value.id}"]`)
+                if (eventElement) {
+                  eventElement.classList.add('fc-event-selected')
+                  console.log(
+                    '📋 Task selection restored via DOM manipulation:',
+                    selectedTask.value.name,
+                  )
+                }
               }
             }
           }
         }
-      }
-    }, 100)
+      }, 100)
+    }
   } catch (err) {
     console.error('❌ Error loading tasks:', err)
     error.value = 'Failed to load tasks'
@@ -2180,6 +2199,7 @@ watch(
 watch(
   calendarEvents,
   () => {
+    if (!TASKS_CALENDAR_ENABLED) return
     console.log('📅 Calendar events changed, refreshing calendar')
     if (calendarRef.value) {
       const calendarApi = calendarRef.value.getApi()
@@ -2191,25 +2211,25 @@ watch(
 
 // Watch filteredTasks to update calendar events
 watch(filteredTasks, () => {
-  if (viewMode.value === 'ical' && calendarRef.value) {
-    const calendarApi = calendarRef.value.getApi()
-    calendarApi.refetchEvents()
-  }
+  if (!isCalendarViewActive.value || !calendarRef.value) return
+  const calendarApi = calendarRef.value.getApi()
+  calendarApi.refetchEvents()
 }, { deep: true })
 
 // Watch for dependency indicators toggle changes
 watch(shouldShowDependencyIndicators, () => {
+  if (!TASKS_CALENDAR_ENABLED) return
   console.log('🔄 Dependency indicators toggle changed, updating calendar events')
-  if (viewMode.value === 'ical' && calendarRef.value) {
-    const calendarApi = calendarRef.value.getApi()
-    calendarApi.refetchEvents()
-  }
+  if (!isCalendarViewActive.value || !calendarRef.value) return
+  const calendarApi = calendarRef.value.getApi()
+  calendarApi.refetchEvents()
 })
 
 // Watch for selected task changes to restore selection in calendar
 watch(selectedTask, (newSelectedTask) => {
   console.log('🎯 selectedTask changed:', newSelectedTask?.name || 'null', 'viewMode:', viewMode.value)
-  if (newSelectedTask && viewMode.value === 'ical') {
+  if (!isCalendarViewActive.value) return
+  if (newSelectedTask) {
     console.log('🎯 Restoring task selection in calendar:', newSelectedTask.name)
     // Use nextTick with delay to ensure calendar is fully rendered
     nextTick(() => {
@@ -2218,7 +2238,7 @@ watch(selectedTask, (newSelectedTask) => {
         restoreTaskSelection(newSelectedTask.id)
       }, 100) // Reduced delay to prevent double selection
     })
-  } else if (!newSelectedTask && viewMode.value === 'ical') {
+  } else if (!newSelectedTask) {
     console.log('🎯 Clearing task selection in calendar')
     // Clear selection in calendar
     const calendar = calendarRef.value?.getApi()
@@ -2235,6 +2255,11 @@ watch(selectedTask, (newSelectedTask) => {
 
 // Watch for view mode changes to restore selection when switching to calendar
 watch(viewMode, (newMode, oldMode) => {
+  if (!TASKS_CALENDAR_ENABLED && newMode === 'ical') {
+    viewMode.value = DEFAULT_TASKS_VIEW_MODE
+    return
+  }
+
   console.log('🔄 viewMode changed from:', oldMode, 'to:', newMode, 'selectedTask:', selectedTask.value?.name || 'null')
 
   if (newMode === 'ical') {
@@ -2416,7 +2441,7 @@ async function deleteTask(task: Task) {
 // Task list detail functions
 function selectTaskForDetails(task: Task) {
   selectedTask.value = task
-  if (viewMode.value === 'ical') {
+  if (isCalendarViewActive.value) {
     focusCalendarOnTask(task)
   }
 }
@@ -3316,14 +3341,16 @@ function clearSearch() {
   isSearchActive.value = false
 
   // Clear any search highlighting
-  const calendar = calendarRef.value?.getApi()
-  if (calendar) {
-    const allEvents = calendar.getEvents()
-    allEvents.forEach((event: { removeClass?: (className: string) => void }) => {
-      if (event.removeClass) {
-        event.removeClass('fc-event-selected')
-      }
-    })
+  if (TASKS_CALENDAR_ENABLED) {
+    const calendar = calendarRef.value?.getApi()
+    if (calendar) {
+      const allEvents = calendar.getEvents()
+      allEvents.forEach((event: { removeClass?: (className: string) => void }) => {
+        if (event.removeClass) {
+          event.removeClass('fc-event-selected')
+        }
+      })
+    }
   }
 
   // Clear selection
@@ -3652,6 +3679,7 @@ defineExpose({
             <!-- View Mode Toggle -->
             <div class="flex bg-gray-100 rounded-lg p-1">
               <button
+                v-if="TASKS_CALENDAR_ENABLED"
                 @click="viewMode = 'ical'"
                 :class="[
                   'px-3 py-1.5 text-xs font-medium rounded transition-colors',
@@ -3694,7 +3722,7 @@ defineExpose({
         </div>
 
         <!-- Calendar View -->
-        <div v-if="viewMode === 'ical'" class="flex h-[calc(100vh-300px)] min-h-[600px] overflow-x-clip max-w-full">
+        <div v-if="isCalendarViewActive" class="flex h-[calc(100vh-300px)] min-h-[600px] overflow-x-clip max-w-full">
         <!-- Task List Sidebar -->
         <div class="w-80 flex-shrink-0 flex flex-col border-r border-gray-200 sticky left-0 z-20 bg-white">
           <TaskListSidebar

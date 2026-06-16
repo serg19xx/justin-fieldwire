@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { api } from '@/core/utils/api'
+import { getApiBaseUrl } from '@/config/api'
 
 export interface WorkerLanguage {
   worker_id: number
@@ -235,8 +236,10 @@ export const useProfileStore = defineStore('profile', () => {
         error.value = response.data.message || 'Failed to update work status'
         return { success: false, error: error.value || undefined }
       }
-    } catch {
-      error.value = 'Failed to update work status'
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } }
+      error.value =
+        axiosError.response?.data?.message || 'Failed to update work status'
       return { success: false, error: error.value }
     } finally {
       isLoading.value = false
@@ -294,7 +297,7 @@ export const useProfileStore = defineStore('profile', () => {
         const avatarUrl = response.data.data.avatar_url
         const fullAvatarUrl = avatarUrl.startsWith('http')
           ? avatarUrl
-          : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${avatarUrl}`
+          : `${getApiBaseUrl()}${avatarUrl}`
 
         // Обновляем локальное состояние
         if (profile.value) {
@@ -344,11 +347,11 @@ export const useProfileStore = defineStore('profile', () => {
 
         const fullAvatarUrl = avatarUrl.startsWith('http')
           ? avatarUrl
-          : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${avatarUrl}`
+          : `${getApiBaseUrl()}${avatarUrl}`
 
         const fullFullImageUrl = fullImageUrl.startsWith('http')
           ? fullImageUrl
-          : `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${fullImageUrl}`
+          : `${getApiBaseUrl()}${fullImageUrl}`
 
         // Обновляем локальное состояние
         if (profile.value) {

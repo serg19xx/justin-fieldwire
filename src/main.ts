@@ -6,16 +6,21 @@ import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './core/stores/auth'
 
-const app = createApp(App)
+async function bootstrap() {
+  const app = createApp(App)
+  const pinia = createPinia()
 
-app.use(createPinia())
-app.use(router)
+  app.use(pinia)
 
-// Initialize auth store
-const authStore = useAuthStore()
-authStore.initializeAuth().catch((error) => {
-  console.error('Failed to initialize auth:', error)
-})
+  const authStore = useAuthStore()
+  try {
+    await authStore.initializeAuth()
+  } catch (error) {
+    console.error('Failed to initialize auth:', error)
+  }
 
-app.mount('#app')
+  app.use(router)
+  app.mount('#app')
+}
 
+bootstrap()

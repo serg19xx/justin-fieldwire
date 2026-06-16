@@ -111,6 +111,10 @@ const router = createRouter({
       }),
     },
     {
+      path: '/calendar',
+      component: () => import('@/pages/calendar/GlobalCalendar.vue'),
+    },
+    {
       path: '/reports',
       component: () => {
         const authStore = useAuthStore()
@@ -259,7 +263,7 @@ router.beforeEach(async (to, from, next) => {
 
   const authStore = useAuthStore()
 
-  // All routes require authentication by default
+  await authStore.initializeAuth()
 
   // Public routes that don't require authentication
   const isPublic = to.matched.some((record) => record.meta && record.meta.requiresAuth === false)

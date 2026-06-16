@@ -42,6 +42,13 @@
             Team
           </RouterLink>
           <RouterLink
+            to="/calendar"
+            class="text-sm font-medium text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md"
+            :class="{ 'bg-gray-100 text-gray-900': $route.path === '/calendar' }"
+          >
+            Calendar
+          </RouterLink>
+          <RouterLink
             to="/reports"
             class="text-sm font-medium text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md"
             :class="{ 'bg-gray-100 text-gray-900': $route.path === '/reports' }"

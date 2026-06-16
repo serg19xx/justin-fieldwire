@@ -1,12 +1,14 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api, setSessionExpiredCallback } from '@/core/utils/api'
-import { apiConfig } from '@/config/api'
+import { apiConfig, getApiBaseUrl } from '@/config/api'
 import {
   initializeSessionManager,
   startSessionManager,
   stopSessionManager,
 } from '@/core/utils/session-manager'
+
+const AUTH_API_BASE_STORAGE_KEY = 'authApiBaseUrl'
 
 export interface User {
   id: number
@@ -61,7 +63,9 @@ export interface Invitation {
 export const useAuthStore = defineStore('auth', () => {
   const currentUser = ref<User | null>(null)
   const isAuthenticated = ref(false)
+  const authReady = ref(false)
   const invitations = ref<Invitation[]>([])
+  let authInitPromise: Promise<void> | null = null
 
   // Mock users data
   const users = ref<User[]>([])
@@ -72,6 +76,20 @@ export const useAuthStore = defineStore('auth', () => {
   const canManageUsers = computed(() =>
     ['admin', 'project_manager'].includes(currentUser.value?.role_code || ''),
   )
+
+  function clearLocalAuth() {
+    stopSessionManager()
+    currentUser.value = null
+    isAuthenticated.value = false
+    localStorage.removeItem('user')
+    localStorage.removeItem('authToken')
+    localStorage.removeItem(AUTH_API_BASE_STORAGE_KEY)
+    delete api.defaults.headers.common['Authorization']
+  }
+
+  function persistAuthApiBase() {
+    localStorage.setItem(AUTH_API_BASE_STORAGE_KEY, getApiBaseUrl())
+  }
   const canManageProjects = computed(() =>
     ['admin', 'project_manager'].includes(currentUser.value?.role_code || ''),
   )
@@ -216,6 +234,7 @@ export const useAuthStore = defineStore('auth', () => {
       if (token && !requires_2fa) {
         localStorage.setItem('authToken', token)
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        persistAuthApiBase()
         console.log('🔐 Token saved to localStorage')
       } else if (token && requires_2fa) {
         console.log('⚠️ Token received but NOT saved - waiting for 2FA verification')
@@ -238,19 +257,13 @@ export const useAuthStore = defineStore('auth', () => {
         // Merge profile (avatar, etc.) but keep role fields from login so layout stays correct
         try {
           const profileResult = await getProfile()
-          if (profileResult.success && profileResult.user) {
-            const profileUser = profileResult.user
-            currentUser.value = {
-              ...currentUser.value,
-              ...profileUser,
-              role_category: frontendUser.role_category,
-              role_code: frontendUser.role_code,
-              role_id: frontendUser.role_id,
-              role_name: frontendUser.role_name,
-              permissions: getPermissionsForRole(frontendUser.role_code),
-            }
+          if (profileResult.success && profileResult.user && currentUser.value) {
+            currentUser.value = mergeProfilePreserveAuthRoles(
+              currentUser.value,
+              profileResult.user,
+            )
             localStorage.setItem('user', JSON.stringify(currentUser.value))
-            console.log('✅ Profile merged, role_category kept from login:', currentUser.value.role_category)
+            console.log('✅ Profile merged, role kept from login:', currentUser.value.role_code)
           }
         } catch (error) {
           console.warn('⚠️ Failed to load profile after login:', error)
@@ -302,7 +315,7 @@ export const useAuthStore = defineStore('auth', () => {
           errorMessage =
             typeof bodyMsg === 'string' && bodyMsg.trim() !== ''
               ? bodyMsg
-              : 'Server error (500). Check that the API is running on the proxy target (e.g. localhost:8000) and inspect backend logs.'
+              : 'Server error (500). Check that the API is running on localhost:8000 and inspect backend logs.'
         } else if (status === 401 || status === 403) {
           errorMessage = bodyMsg || 'Invalid email or password'
         } else {
@@ -396,6 +409,7 @@ export const useAuthStore = defineStore('auth', () => {
 
         localStorage.setItem('authToken', token)
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        persistAuthApiBase()
         currentUser.value = updatedUser
         isAuthenticated.value = true
         localStorage.setItem('user', JSON.stringify(updatedUser))
@@ -411,7 +425,7 @@ export const useAuthStore = defineStore('auth', () => {
           console.log('🖼️ Loading full profile data for avatar...')
           const profileResult = await getProfile()
           if (profileResult.success && profileResult.user && currentUser.value) {
-            currentUser.value = mergeUserPreserveLayoutRoles(
+            currentUser.value = mergeProfilePreserveAuthRoles(
               currentUser.value,
               profileResult.user,
             )
@@ -805,6 +819,7 @@ export const useAuthStore = defineStore('auth', () => {
       isAuthenticated.value = false
       localStorage.removeItem('user')
       localStorage.removeItem('authToken')
+      localStorage.removeItem(AUTH_API_BASE_STORAGE_KEY)
       delete api.defaults.headers.common['Authorization']
 
       console.log('✅ Logout completed - local state cleared')
@@ -818,6 +833,7 @@ export const useAuthStore = defineStore('auth', () => {
       isAuthenticated.value = false
       localStorage.removeItem('user')
       localStorage.removeItem('authToken')
+      localStorage.removeItem(AUTH_API_BASE_STORAGE_KEY)
       delete api.defaults.headers.common['Authorization']
 
       console.log('✅ Logout error cleanup completed')
@@ -847,17 +863,17 @@ export const useAuthStore = defineStore('auth', () => {
     return inferred ? { ...user, role_category: inferred } : user
   }
 
-  function mergeUserPreserveLayoutRoles(base: User, patch: Partial<User>): User {
-    const merged: User = { ...base, ...patch }
-    merged.role_category =
-      patch.role_category ??
-      base.role_category ??
-      inferRoleCategoryFromRoleCode(patch.role_code ?? base.role_code)
-    merged.role_code = (patch.role_code ?? base.role_code) as User['role_code']
-    merged.role_id = patch.role_id ?? base.role_id
-    merged.role_name = patch.role_name ?? base.role_name
-    merged.permissions = getPermissionsForRole(merged.role_code)
-    return ensureUserRoleCategory(merged)
+  /** Merge profile fields (avatar, phone, etc.) while keeping role from login / saved session. */
+  function mergeProfilePreserveAuthRoles(authUser: User, profilePatch: Partial<User>): User {
+    return ensureUserRoleCategory({
+      ...authUser,
+      ...profilePatch,
+      role_category: authUser.role_category,
+      role_code: authUser.role_code,
+      role_id: authUser.role_id,
+      role_name: authUser.role_name,
+      permissions: getPermissionsForRole(authUser.role_code),
+    })
   }
 
   function checkPermission(permission: string): boolean {
@@ -883,93 +899,89 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   // Initialize from localStorage and token
-  async function initializeAuth() {
+  async function doInitializeAuth() {
     const token = localStorage.getItem('authToken')
     const savedUser = localStorage.getItem('user')
+    const currentApiBase = getApiBaseUrl()
+    const storedApiBase = localStorage.getItem(AUTH_API_BASE_STORAGE_KEY)
 
     console.log('🔄 Initializing auth...')
     console.log('🔑 Token exists:', !!token)
     console.log('👤 Saved user exists:', !!savedUser)
+    console.log('🔗 API base:', currentApiBase, 'stored:', storedApiBase)
 
-    if (token && savedUser) {
-      try {
-        // Temporarily disabled token expiration check for development
-        // if (isTokenExpiredLocal(token)) {
-        //   console.log('❌ Token is expired, logging out')
-        //   logout()
-        //   return
-        // }
-
-        // Parse saved user data
-        const user = JSON.parse(savedUser)
-
-        // Validate user data
-        if (user && user.id && user.email) {
-          currentUser.value = ensureUserRoleCategory(user as User)
-          isAuthenticated.value = true
-          console.log('✅ Auth initialized from localStorage')
-          console.log('👤 Current user:', user.email)
-          console.log('🔍 Auth state after init:', {
-            isAuthenticated: isAuthenticated.value,
-            hasUser: !!currentUser.value,
-          })
-
-          // Initialize session manager
-          initializeSessionManager({
-            checkInterval: 5 * 60 * 1000, // 5 minutes
-            activityCheckInterval: 60 * 1000, // 1 minute
-            useAPI: true, // Enable API checks now that backend is ready
-            onSessionExpired: () => {
-              console.log('🔒 Session expired - logging out')
-              logout()
-            },
-            onSessionValid: () => {
-              console.log('✅ Session is valid')
-            },
-          })
-
-          // Set up API interceptor callback
-          setSessionExpiredCallback(() => {
-            console.log('🔒 API interceptor detected session expiration')
-            logout()
-          })
-
-          // Start session monitoring
-          startSessionManager()
-
-          // Load full profile data if avatar is missing
-          if (currentUser.value && !currentUser.value.avatar_url) {
-            try {
-              console.log('🖼️ Loading full profile data for missing avatar...')
-              const profileResult = await getProfile()
-              if (profileResult.success && profileResult.user && currentUser.value) {
-                currentUser.value = mergeUserPreserveLayoutRoles(
-                  currentUser.value,
-                  profileResult.user,
-                )
-                localStorage.setItem('user', JSON.stringify(currentUser.value))
-                console.log(
-                  '✅ Full profile loaded on init, avatar URL:',
-                  currentUser.value.avatar_url,
-                )
-              }
-            } catch (error) {
-              console.warn('⚠️ Failed to load full profile on init:', error)
-            }
-          }
-        } else {
-          // User data corrupted, clear everything
-          console.log('❌ User data corrupted, logging out')
-          logout()
-        }
-      } catch (error) {
-        console.error('Auth initialization error:', error)
-        // Clear everything on error
-        logout()
-      }
-    } else {
+    if (!token || !savedUser) {
       console.log('❌ No token or user data found')
+      return
     }
+
+    if (storedApiBase && storedApiBase !== currentApiBase) {
+      console.warn('⚠️ API base changed — clearing stale session')
+      clearLocalAuth()
+      return
+    }
+
+    try {
+      const user = JSON.parse(savedUser)
+
+      if (!user?.id || !user?.email) {
+        console.log('❌ User data corrupted, logging out')
+        clearLocalAuth()
+        return
+      }
+
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+
+      const profileResult = await getProfile()
+      if (!profileResult.success) {
+        console.warn('⚠️ Session invalid for current API:', profileResult.error)
+        clearLocalAuth()
+        return
+      }
+
+      currentUser.value = mergeProfilePreserveAuthRoles(
+        ensureUserRoleCategory(user as User),
+        profileResult.user!,
+      )
+      isAuthenticated.value = true
+      persistAuthApiBase()
+      localStorage.setItem('user', JSON.stringify(currentUser.value))
+
+      console.log('✅ Auth initialized and verified with API')
+      console.log('👤 Current user:', currentUser.value.email)
+
+      initializeSessionManager({
+        checkInterval: 5 * 60 * 1000,
+        activityCheckInterval: 60 * 1000,
+        useAPI: true,
+        onSessionExpired: () => {
+          console.log('🔒 Session expired - logging out')
+          logout()
+        },
+        onSessionValid: () => {
+          console.log('✅ Session is valid')
+        },
+      })
+
+      setSessionExpiredCallback(() => {
+        console.log('🔒 API interceptor detected session expiration')
+        logout()
+      })
+
+      startSessionManager()
+    } catch (error) {
+      console.error('Auth initialization error:', error)
+      clearLocalAuth()
+    }
+  }
+
+  function initializeAuth(): Promise<void> {
+    if (!authInitPromise) {
+      authInitPromise = doInitializeAuth().finally(() => {
+        authReady.value = true
+      })
+    }
+    return authInitPromise
   }
 
   // Helper function to check if user is active
@@ -1042,6 +1054,7 @@ export const useAuthStore = defineStore('auth', () => {
     // State
     currentUser,
     isAuthenticated,
+    authReady,
     users,
     invitations,
 

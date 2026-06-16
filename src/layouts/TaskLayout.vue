@@ -78,6 +78,16 @@
         <span class="text-[10px] sm:text-xs mt-0.5 truncate w-full text-center px-0.5 leading-tight">Schedule</span>
       </RouterLink>
       <RouterLink
+        to="/calendar"
+        class="flex flex-col items-center justify-center flex-1 py-2 min-w-0"
+        :class="$route.path === '/calendar' ? 'text-orange-600 bg-orange-50 font-medium' : 'text-gray-500 hover:bg-gray-50'"
+      >
+        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <span class="text-[10px] sm:text-xs mt-0.5 truncate w-full text-center px-0.5 leading-tight">Calendar</span>
+      </RouterLink>
+      <RouterLink
         to="/reports"
         class="flex flex-col items-center justify-center flex-1 py-2 min-w-0"
         :class="$route.path === '/reports' ? 'text-orange-600 bg-orange-50 font-medium' : 'text-gray-500 hover:bg-gray-50'"

@@ -2,6 +2,17 @@
 
 A modern web application for construction project management, built with Vue.js 3, TypeScript, and Tailwind CSS.
 
+## Architecture
+
+This repo is the **frontend only**. The database is always **remote** (on hosting).
+
+| Environment | Frontend | API (backend) | Database |
+|-------------|----------|---------------|----------|
+| **Local dev** | `http://localhost:5174` | `http://localhost:8000` (local PHP API) | Remote (hosting) |
+| **Production** | `https://fieldwire.medicalcontractor.ca` | `https://fwapi.medicalcontractor.ca` | Remote (hosting) |
+
+Local backend (`justin-fieldwire-api` on port 8000) connects to the same remote DB as production API.
+
 ## Features
 
 - 📊 **Dashboard** - Overview of projects and key metrics
@@ -47,14 +58,16 @@ A modern web application for construction project management, built with Vue.js 
    npm install
    ```
 
-3. **Start development server**
+3. **Start local backend** (separate repo `justin-fieldwire-api`, port 8000, remote DB credentials)
+
+4. **Start development server**
    ```bash
    npm run dev
    ```
 
-4. **Open in browser**
+5. **Open in browser**
    ```
-   http://localhost:5173
+   http://localhost:5174
    ```
 
 ## Available Scripts

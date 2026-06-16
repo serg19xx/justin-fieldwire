@@ -952,9 +952,12 @@ function handleProjectCreated(project: ApiProject) {
 function canEditProject(project: ApiProject): boolean {
   if (!authStore.currentUser) return false
 
+  const userId = Number(authStore.currentUser.id)
+  const managerId = Number(project.prj_manager)
+
   // Project managers can only edit their own projects
   if (authStore.currentUser.role_code === 'project_manager') {
-    return project.prj_manager === authStore.currentUser.id
+    return !Number.isNaN(userId) && !Number.isNaN(managerId) && managerId === userId
   }
 
   // Administrators have read-only access to all projects

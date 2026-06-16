@@ -53,7 +53,11 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 // Auto-redirect unauthenticated users to login (except for auth pages)
-watch(() => authStore.isAuthenticated, (isAuthenticated) => {
+watch(
+  [() => authStore.isAuthenticated, () => authStore.authReady],
+  ([isAuthenticated, ready]) => {
+    if (!ready) return
+
   // Wait for router to process the route
   if (!route.matched.length) {
     return
@@ -70,7 +74,9 @@ watch(() => authStore.isAuthenticated, (isAuthenticated) => {
     // Immediate redirect to login
     router.replace('/login')
   }
-}, { immediate: true })
+},
+  { immediate: true },
+)
 
 // Close user menu when clicking outside
 function handleClickOutside(event: Event) {

@@ -30,6 +30,11 @@ export const MENU_CONFIG: Record<string, MenuItem[]> = {
       route: '/reports',
       icon: 'chart',
     },
+    {
+      label: 'Calendar',
+      route: '/calendar',
+      icon: 'calendar',
+    },
   ],
   project: [
     {
@@ -51,6 +56,11 @@ export const MENU_CONFIG: Record<string, MenuItem[]> = {
       label: 'Reports',
       route: '/reports',
       icon: 'chart',
+    },
+    {
+      label: 'Calendar',
+      route: '/calendar',
+      icon: 'calendar',
     },
   ],
   task: [

@@ -1,21 +1,31 @@
 # 🚀 FieldWire Deployment Guide
 
+## Architecture
+
+**Database is always remote** (on hosting). Only the API location differs:
+
+```
+Local dev:   localhost:5174  →  localhost:8000  →  remote DB
+Production:  fieldwire.medicalcontractor.ca  →  fwapi.medicalcontractor.ca  →  remote DB
+```
+
 ## Окружения
 
-### Development (Разработка)
-- **Frontend**: http://localhost:5173
-- **Backend**: http://localhost:8000
-- **API URL**: http://localhost:8000
+### Development (разработка)
+- **Frontend**: http://localhost:5174
+- **Backend**: http://localhost:8000 (`justin-fieldwire-api`, локально)
+- **Database**: remote (на хостинге; бэкенд подключается к ней по credentials)
 
-### Production (Продакшн)
+### Production (продакшн)
 - **Frontend**: https://fieldwire.medicalcontractor.ca
 - **Backend**: https://fwapi.medicalcontractor.ca
-- **API URL**: https://fwapi.medicalcontractor.ca
+- **Database**: remote (на хостинге)
 
 ## Команды для разработки
 
 ```bash
-# Запуск в режиме разработки
+# 1. Запустить локальный бэкенд (в репозитории justin-fieldwire-api, порт 8000)
+# 2. Запустить фронт
 npm run dev
 
 # Сборка для разработки
@@ -28,73 +38,30 @@ npm run build:prod
 ## Команды для деплоя
 
 ```bash
-# Деплой в продакшн (по умолчанию)
-./deploy.sh
-
-# Деплой в продакшн (явно)
+./deploy.sh              # production (по умолчанию)
 ./deploy.sh production
-
-# Деплой в development (если нужно)
 ./deploy.sh development
 ```
 
 ## Переменные окружения
 
-### Development (env.development)
+### Development (`.env.development`)
 ```
 VITE_API_URL=http://localhost:8000
 VITE_APP_ENV=development
 VITE_APP_TITLE=FieldWire (Development)
 ```
 
-### Production (env.production)
+### Production (`.env.production`)
 ```
 VITE_API_URL=https://fwapi.medicalcontractor.ca
 VITE_APP_ENV=production
 VITE_APP_TITLE=FieldWire
 ```
 
-## Автоматическое определение окружения
+## Backend
 
-Приложение автоматически определяет окружение по hostname:
+Отдельный репозиторий: [justin-fieldwire-api](https://github.com/serg19xx/justin-fieldwire-api)
 
-- `localhost` или `127.0.0.1` → Development
-- Содержит `staging` или `dev` → Staging  
-- Остальные → Production
-
-## Индикатор окружения
-
-На всех окружениях кроме production отображается индикатор в правом верхнем углу:
-- 🟡 **DEVELOPMENT** - желтый
-- 🔵 **STAGING** - синий
-- 🟢 **PRODUCTION** - зеленый (не показывается)
-
-## Тестирование API
-
-### Локально
-```bash
-# Запустите локальный бэкенд на порту 8000
-# Затем откройте http://localhost:5173/api-tester
-```
-
-### На продакшне
-```
-https://fieldwire.medicalcontractor.ca/api-tester
-```
-
-## Troubleshooting
-
-### CORS ошибки
-- Убедитесь, что бэкенд настроен для CORS
-- **Важно**: Бэкенд должен разрешать `http://localhost:5173` (не 3000!)
-- Проверьте заголовок `Access-Control-Allow-Origin` в ответах бэкенда
-- Проверьте правильность API URL в конфигурации
-- Если видите `access-control-allow-origin: http://localhost:3000`, нужно обновить настройки CORS на бэкенде
-
-### Проблемы с роутингом
-- Убедитесь, что .htaccess загружен на сервер
-- Проверьте настройки Apache/Nginx для SPA
-
-### Проблемы с авторизацией
-- API Tester не требует авторизации
-- Остальные страницы требуют логин
+- **Локально**: PHP на `:8000`, в `.env` — credentials удалённой БД
+- **На хостинге**: `fwapi.medicalcontractor.ca`, та же удалённая БД

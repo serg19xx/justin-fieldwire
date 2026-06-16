@@ -42,6 +42,7 @@ import TeamSection from './TeamSection.vue'
 import PhotosSection from './PhotosSection.vue'
 import SettingsSection from './SettingsSection.vue'
 import ProjectScheduleSection from '@/components/projects/ProjectScheduleSection.vue'
+import ProjectUserCalendarSection from '@/components/projects/ProjectUserCalendarSection.vue'
 import TeamMemberDetailsDialog from './TeamMemberDetailsDialog.vue'
 import {
   exportTasksToICal as exportTasksToICalUtil,
@@ -67,7 +68,7 @@ const error = ref<string | null>(null)
 const calendarRef = ref()
 
 // Navigation state
-const activeSection = ref<'plans' | 'tasks' | 'schedule' | 'photos' | 'team' | 'settings'>('plans')
+const activeSection = ref<'plans' | 'tasks' | 'schedule' | 'calendar' | 'photos' | 'team' | 'settings'>('plans')
 
 // Settings form state
 const settingsForm = ref<{
@@ -430,7 +431,7 @@ async function loadProject() {
   }
 }
 
-type ProjectSection = 'plans' | 'tasks' | 'schedule' | 'photos' | 'team' | 'settings'
+type ProjectSection = 'plans' | 'tasks' | 'schedule' | 'calendar' | 'photos' | 'team' | 'settings'
 
 /** Loads lists/forms needed for the active tab (also used when opening a section via ?section= in the URL). */
 function runSectionDataLoads(section: ProjectSection): void {
@@ -2261,6 +2262,7 @@ function applySectionFromRouteQuery(): void {
   const s = typeof raw === 'string' ? raw : undefined
   if (
     s !== 'schedule' &&
+    s !== 'calendar' &&
     s !== 'tasks' &&
     s !== 'plans' &&
     s !== 'photos' &&
@@ -2442,6 +2444,26 @@ watch(
                 ></path>
               </svg>
               Schedule
+            </button>
+
+            <button
+              @click="setActiveSection('calendar')"
+              :class="[
+                'w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
+                activeSection === 'calendar'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+              ]"
+            >
+              <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                ></path>
+              </svg>
+              Calendar
             </button>
 
             <button
@@ -2943,6 +2965,11 @@ watch(
             :team-members="teamMembers"
             :tasks="projectTasks"
             @tasks-synced="loadProjectTasks"
+          />
+
+          <ProjectUserCalendarSection
+            v-else-if="activeSection === 'calendar' && project"
+            :project-id="project.id"
           />
 
           <!-- Photos Section -->
