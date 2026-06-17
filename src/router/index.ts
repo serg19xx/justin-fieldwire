@@ -115,6 +115,22 @@ const router = createRouter({
       component: () => import('@/pages/calendar/GlobalCalendar.vue'),
     },
     {
+      path: '/clients',
+      redirect: '/clients/pharma',
+    },
+    {
+      path: '/clients/:type',
+      beforeEnter: (_to, _from, next) => {
+        const authStore = useAuthStore()
+        if (authStore.currentUser?.role_category !== 'global') {
+          next('/dashboard')
+          return
+        }
+        next()
+      },
+      component: () => import('@/pages/clients/ClientsListPage.vue'),
+    },
+    {
       path: '/reports',
       component: () => {
         const authStore = useAuthStore()

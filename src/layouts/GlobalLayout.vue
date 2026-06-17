@@ -34,6 +34,7 @@
           >
             Projects
           </RouterLink>
+          <ClientsNavDropdown :active-key="clientsActiveKey" />
           <RouterLink
             to="/team"
             class="text-sm font-medium text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md"
@@ -97,7 +98,7 @@
     </header>
 
     <!-- Main content -->
-    <main class="pt-12 min-h-screen">
+    <main class="pt-12 min-h-screen w-full min-w-0 max-w-full overflow-x-hidden">
       <slot />
     </main>
   </div>
@@ -105,13 +106,19 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
 import { getDisplayRole } from '@/core/utils/role-utils'
 import TopBarAvatar from '@/components/TopBarAvatar.vue'
+import ClientsNavDropdown from '@/components/clients/ClientsNavDropdown.vue'
 
+const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+
+const clientsActiveKey = computed(() =>
+  route.path.startsWith('/clients/') ? String(route.params.type ?? '') : undefined,
+)
 
 const displayRole = computed(() => {
   const u = authStore.currentUser
