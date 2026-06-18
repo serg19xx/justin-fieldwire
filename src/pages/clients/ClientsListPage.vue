@@ -4,10 +4,21 @@ import { useRoute, useRouter } from 'vue-router'
 import type { ClientListRow, ClientRowActionId, ClientToolbarActionId } from '@/core/types/client-registry'
 import { getClientRegistryEntry } from '@/config/clients-registry'
 import { clientsRegistryApi } from '@/core/utils/clients-registry-api'
+import { getDefaultClientSort, type ClientSortDirection } from '@/core/utils/client-list-sort'
+import {
+  formatContactFilterLabel,
+  getClientContactFilterFields,
+  type ClientContactFilterFieldKey,
+  type ClientContactFilterMode,
+} from '@/core/utils/client-contact-filter'
 import { exportClientsCsv } from '@/core/utils/clients-export'
 import AppIcon from '@/components/AppIcon.vue'
 import ClientsPagination from '@/components/clients/ClientsPagination.vue'
 import ClientsTableShell from '@/components/clients/ClientsTableShell.vue'
+import PharmacyEditDialog from '@/components/clients/PharmacyEditDialog.vue'
+import PhysicianEditDialog from '@/components/clients/PhysicianEditDialog.vue'
+import PharmacistEditDialog from '@/components/clients/PharmacistEditDialog.vue'
+import MedicalClinicEditDialog from '@/components/clients/MedicalClinicEditDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -27,13 +38,73 @@ const filterValues = ref<Record<string, string>>({})
 const countryOptions = ref<Array<{ code: string; name: string; geoCode: string }>>([])
 const regionOptions = ref<string[]>([])
 const dataFilterOptions = ref<Record<string, string[]>>({})
+const selectedIds = ref<number[]>([])
+const clientEditOpen = ref(false)
+const clientEditId = ref<number | null>(null)
+const actionBusy = ref(false)
+const saveNotice = ref<string | null>(null)
+const sortBy = ref('')
+const sortDir = ref<ClientSortDirection>('asc')
+const contactFilterField = ref<ClientContactFilterFieldKey | ''>('')
+const contactFilterMode = ref<ClientContactFilterMode>('filled')
+
+const contactFilterFields = computed(() =>
+  entry.value ? getClientContactFilterFields(entry.value.key) : [],
+)
+
+const activeContactFilterLabel = computed(() => {
+  if (!contactFilterField.value) return null
+  const field = contactFilterFields.value.find((f) => f.key === contactFilterField.value)
+  if (!field) return null
+  return formatContactFilterLabel(field, contactFilterMode.value)
+})
+
+function resetSort() {
+  if (!entry.value) {
+    sortBy.value = ''
+    sortDir.value = 'asc'
+    return
+  }
+  const defaults = getDefaultClientSort(entry.value.key)
+  sortBy.value = defaults.sortBy
+  sortDir.value = defaults.sortDir
+}
+
+function handleSort(nextSortBy: string) {
+  if (sortBy.value === nextSortBy) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortBy.value = nextSortBy
+    sortDir.value = 'asc'
+  }
+  page.value = 1
+  void load()
+}
+
+const supportsClientCrud = computed(() =>
+  entry.value?.key === 'pharma' ||
+  entry.value?.key === 'physician' ||
+  entry.value?.key === 'pharmacist' ||
+  entry.value?.key === 'medical_clinic',
+)
+
+const selectedCount = computed(() => selectedIds.value.length)
+const isBulkSelection = computed(() => selectedCount.value > 1)
+const canAddClient = computed(() => !isBulkSelection.value)
+
+const bulkCommActions = computed(() => {
+  const trailing = entry.value?.trailingActions ?? []
+  return {
+    sms: trailing.includes('sms'),
+    email: trailing.includes('email'),
+  }
+})
 
 const pageTitle = computed(() => entry.value?.listTitle ?? entry.value?.pluralLabel ?? 'Clients')
 const pageSizeChoices = computed(() => entry.value?.pageSizeOptions ?? [10, 25, 50])
 const entriesLabel = computed(() => entry.value?.entriesLabel ?? 'entries')
 const toolbarActions = computed<ClientToolbarActionId[]>(
-  () =>
-    entry.value?.toolbarActions ?? ['loadCsv', 'exportCsv', 'sendgridTemplate', 'add'],
+  () => entry.value?.toolbarActions ?? ['add', 'exportCsv', 'sendgridTemplate'],
 )
 const hasCountryFilter = computed(() =>
   (entry.value?.filters ?? []).some((f) => f.key === 'country'),
@@ -52,10 +123,19 @@ function goToPage(nextPage: number) {
 }
 
 function buildQuery() {
-  const q: Record<string, string | number> = {
+  const q: Record<string, string | number | boolean> = {
     page: page.value,
     limit: pageSize.value,
     search: search.value,
+    sortBy: sortBy.value,
+    sortDir: sortDir.value,
+  }
+  if (contactFilterField.value) {
+    if (contactFilterMode.value === 'filled') {
+      q.nonEmpty = contactFilterField.value
+    } else {
+      q.empty = contactFilterField.value
+    }
   }
   for (const f of entry.value?.filters ?? []) {
     const v = filterValues.value[f.key]
@@ -119,7 +199,27 @@ async function load() {
 function resetFilters() {
   filterValues.value = {}
   regionOptions.value = []
+  contactFilterField.value = ''
+  contactFilterMode.value = 'filled'
   page.value = 1
+  resetSort()
+}
+
+function onContactFilterChange() {
+  page.value = 1
+  void load()
+}
+
+function setContactFilterMode(mode: ClientContactFilterMode) {
+  if (!contactFilterField.value) return
+  contactFilterMode.value = mode
+  onContactFilterChange()
+}
+
+function clearContactFilter() {
+  contactFilterField.value = ''
+  contactFilterMode.value = 'filled'
+  onContactFilterChange()
 }
 
 function onCountryChange() {
@@ -142,11 +242,131 @@ function exportCsv() {
   exportClientsCsv(entry.value, rows.value)
 }
 
+function clearSelection() {
+  selectedIds.value = []
+}
+
+function handleAddClient() {
+  if (!canAddClient.value || !entry.value) return
+  if (supportsClientCrud.value) {
+    clientEditId.value = null
+    clientEditOpen.value = true
+    return
+  }
+  alert(`Add ${entry.value.label} — form coming in next phase`)
+}
+
+function handleBulkDelete() {
+  if (!isBulkSelection.value || !entry.value) return
+  const label = entry.value.pluralLabel.toLowerCase()
+  const confirmed = window.confirm(
+    `Delete ${selectedCount.value} selected ${label}?\n\nThis action cannot be undone.`,
+  )
+  if (!confirmed) return
+  void runBulkDelete()
+}
+
+async function runBulkDelete() {
+  if (!entry.value) return
+  const ids = [...selectedIds.value]
+  actionBusy.value = true
+  try {
+    const failed = await clientsRegistryApi.removeMany(entry.value, ids)
+    if (failed.length === 0) {
+      clearSelection()
+    } else {
+      selectedIds.value = failed
+      window.alert(
+        `Deleted ${ids.length - failed.length} record(s). Failed IDs: ${failed.join(', ')}`,
+      )
+    }
+    await load()
+  } catch (e) {
+    console.error('Bulk delete failed', e)
+    window.alert('Bulk delete failed. Check API access.')
+  } finally {
+    actionBusy.value = false
+  }
+}
+
+async function handleClientDelete(row: ClientListRow) {
+  if (!entry.value || !supportsClientCrud.value) return
+  const name = String(row[entry.value.nameField] ?? row.id)
+  const label = entry.value.label.toLowerCase()
+  const confirmed = window.confirm(`Delete ${label} "${name}" (id: ${row.id})?\n\nThis cannot be undone.`)
+  if (!confirmed) return
+  actionBusy.value = true
+  try {
+    await clientsRegistryApi.remove(entry.value, row.id)
+    selectedIds.value = selectedIds.value.filter((id) => id !== row.id)
+    await load()
+  } catch (e) {
+    console.error(`Delete ${label} failed`, e)
+    window.alert(e instanceof Error ? e.message : `Failed to delete ${label}.`)
+  } finally {
+    actionBusy.value = false
+  }
+}
+
+function openClientEdit(id: number) {
+  clientEditId.value = id
+  clientEditOpen.value = true
+}
+
+function closeClientEdit() {
+  clientEditOpen.value = false
+  clientEditId.value = null
+}
+
+async function onClientSaved(savedId: number) {
+  if (!entry.value) return
+  saveNotice.value = null
+  await load()
+  await loadFilterOptionsFromData()
+  if (!rows.value.some((row) => row.id === savedId)) {
+    try {
+      const row = await clientsRegistryApi.getById(entry.value, savedId)
+      const name = String(row[entry.value.nameField] ?? savedId)
+      saveNotice.value = `${entry.value.label} "${name}" (#${savedId}) was saved but is hidden by your search or filters. Clear them to see it in the list.`
+    } catch {
+      saveNotice.value = `${entry.value.label} #${savedId} was not found after save. Check the database or try another page.`
+    }
+  }
+}
+
+function clearSaveNotice() {
+  saveNotice.value = null
+}
+
+function clearSearchAndFilters() {
+  search.value = ''
+  contactFilterField.value = ''
+  contactFilterMode.value = 'filled'
+  resetFilters()
+  saveNotice.value = null
+  void load()
+}
+
+function handleBulkSms() {
+  if (!isBulkSelection.value || !entry.value || !bulkCommActions.value.sms) return
+  alert(
+    `Bulk SMS — coming soon\n\n${selectedCount.value} ${entry.value.pluralLabel.toLowerCase()}\nIDs: ${selectedIds.value.join(', ')}`,
+  )
+}
+
+function handleBulkEmail() {
+  if (!isBulkSelection.value || !entry.value || !bulkCommActions.value.email) return
+  alert(
+    `Bulk email — coming soon\n\n${selectedCount.value} ${entry.value.pluralLabel.toLowerCase()}\nIDs: ${selectedIds.value.join(', ')}`,
+  )
+}
+
 const actionLabels: Record<ClientRowActionId, string> = {
   delete: 'Delete',
   edit: 'Edit',
   fixAddress: 'Fix address',
   sms: 'SMS',
+  fax: 'Fax',
   message: 'Message',
   documents: 'Documents',
   email: 'Email',
@@ -157,8 +377,38 @@ const actionLabels: Record<ClientRowActionId, string> = {
   addUser: 'Add user',
 }
 
+function resolveRowPhone(row: ClientListRow): string | null {
+  const phone =
+    row.cell_phone ??
+    row.cellPhone ??
+    row.phone ??
+    row.cell ??
+    row.officePhone
+  if (phone === null || phone === undefined || String(phone).trim() === '') return null
+  return String(phone)
+}
+
+function resolveRowFax(row: ClientListRow): string | null {
+  const fax = row.fax ?? row.faxNumber
+  if (fax === null || fax === undefined || String(fax).trim() === '') return null
+  return String(fax)
+}
+
 function handleAction(actionId: ClientRowActionId, row: ClientListRow) {
+  if (isBulkSelection.value || actionBusy.value) return
   const name = entry.value ? String(row[entry.value.nameField] ?? row.id) : row.id
+
+  if (supportsClientCrud.value) {
+    if (actionId === 'edit') {
+      openClientEdit(row.id)
+      return
+    }
+    if (actionId === 'delete') {
+      void handleClientDelete(row)
+      return
+    }
+  }
+
   if (actionId === 'email' && row.email) {
     window.location.href = `mailto:${row.email}`
     return
@@ -168,15 +418,16 @@ function handleAction(actionId: ClientRowActionId, row: ClientListRow) {
     return
   }
   if (actionId === 'sms' || actionId === 'message') {
-    const phone =
-      row.cell_phone ??
-      row.cellPhone ??
-      row.phone ??
-      row.cell ??
-      row.cell_phone ??
-      row.officePhone
+    const phone = resolveRowPhone(row)
     if (phone) {
       window.location.href = `tel:${phone}`
+      return
+    }
+  }
+  if (actionId === 'fax') {
+    const fax = resolveRowFax(row)
+    if (fax) {
+      window.location.href = `tel:${fax}`
       return
     }
   }
@@ -187,6 +438,12 @@ watch(registryKey, () => {
   page.value = 1
   pageSize.value = entry.value?.defaultPageSize ?? 10
   search.value = ''
+  selectedIds.value = []
+  rows.value = []
+  error.value = null
+  clientEditOpen.value = false
+  clientEditId.value = null
+  saveNotice.value = null
   resetFilters()
   if (!entry.value) {
     router.replace('/clients/pharma')
@@ -214,6 +471,7 @@ onMounted(async () => {
     return
   }
   pageSize.value = entry.value.defaultPageSize ?? 10
+  resetSort()
   if (hasCountryFilter.value) {
     await loadCountries()
   }
@@ -230,6 +488,21 @@ onMounted(async () => {
           <h1 class="text-xl font-semibold text-gray-900 truncate">{{ pageTitle }}</h1>
         </div>
         <div class="flex flex-wrap items-center gap-3 text-sm min-w-0">
+          <button
+            v-if="toolbarActions.includes('add')"
+            type="button"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600"
+            :disabled="!canAddClient"
+            :title="
+              canAddClient
+                ? undefined
+                : 'Clear multi-selection to add a new client'
+            "
+            @click="handleAddClient"
+          >
+            <AppIcon icon="mdi:plus" :size="18" />
+            Add {{ entry?.label ?? 'client' }}
+          </button>
           <button
             v-if="toolbarActions.includes('loadCsv')"
             type="button"
@@ -260,15 +533,6 @@ onMounted(async () => {
                 ? 'SGrid email templates'
                 : 'Add SendGrid email template'
             }}
-          </button>
-          <button
-            v-if="toolbarActions.includes('add')"
-            type="button"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            @click="alert('Add client — form coming in next phase')"
-          >
-            <AppIcon icon="mdi:plus" :size="18" />
-            Add {{ entry?.label ?? 'client' }}
           </button>
         </div>
       </div>
@@ -333,6 +597,53 @@ onMounted(async () => {
           </template>
         </div>
 
+        <div v-if="entry" class="flex flex-wrap items-center gap-2">
+          <label class="text-sm text-gray-600 whitespace-nowrap">Field filter:</label>
+          <select
+            v-model="contactFilterField"
+            class="border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white min-w-[10rem] max-w-full"
+            @change="onContactFilterChange"
+          >
+            <option value="">All records</option>
+            <option v-for="f in contactFilterFields" :key="f.key" :value="f.key">
+              {{ f.label }}
+            </option>
+          </select>
+          <div
+            class="inline-flex rounded-md border border-gray-300 bg-white text-xs overflow-hidden shrink-0"
+            :class="{ 'opacity-50 pointer-events-none': !contactFilterField }"
+            role="group"
+            aria-label="Has or empty value"
+          >
+            <button
+              type="button"
+              class="px-2.5 py-1.5 transition-colors"
+              :class="
+                contactFilterMode === 'filled'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              "
+              :disabled="!contactFilterField"
+              @click="setContactFilterMode('filled')"
+            >
+              Has value
+            </button>
+            <button
+              type="button"
+              class="px-2.5 py-1.5 border-l border-gray-300 transition-colors"
+              :class="
+                contactFilterMode === 'empty'
+                  ? 'bg-blue-600 text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              "
+              :disabled="!contactFilterField"
+              @click="setContactFilterMode('empty')"
+            >
+              No value
+            </button>
+          </div>
+        </div>
+
         <div class="flex items-center gap-2">
           <label class="text-sm text-gray-600 whitespace-nowrap">Search:</label>
           <div class="relative w-full sm:w-48">
@@ -350,6 +661,21 @@ onMounted(async () => {
         </div>
       </div>
 
+      <p
+        v-if="activeContactFilterLabel"
+        class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2"
+      >
+        Showing:
+        <span class="font-medium">{{ activeContactFilterLabel }}</span>
+        <button
+          type="button"
+          class="ml-2 text-amber-900 hover:underline"
+          @click="clearContactFilter"
+        >
+          Clear
+        </button>
+      </p>
+
       <ClientsPagination
         v-if="pagination.total > 0"
         :page="page"
@@ -360,16 +686,95 @@ onMounted(async () => {
         @update:page="goToPage"
       />
 
+      <div
+        v-if="saveNotice"
+        class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+      >
+        <p>{{ saveNotice }}</p>
+        <div class="flex shrink-0 gap-2">
+          <button
+            type="button"
+            class="rounded-md border border-amber-300 bg-white px-2.5 py-1 text-sm font-medium hover:bg-amber-100"
+            @click="clearSearchAndFilters"
+          >
+            Clear search &amp; filters
+          </button>
+          <button
+            type="button"
+            class="rounded-md px-2.5 py-1 text-sm text-amber-800 hover:underline"
+            @click="clearSaveNotice"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+
+      <div
+        v-if="selectedCount > 0"
+        class="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-sm"
+        :class="
+          isBulkSelection
+            ? 'border-slate-300 bg-slate-50 text-slate-900'
+            : 'border-blue-200 bg-blue-50 text-blue-900'
+        "
+      >
+        <span class="font-medium">{{ selectedCount }} selected</span>
+        <template v-if="isBulkSelection">
+          <button
+            v-if="bulkCommActions.sms"
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-md border border-green-300 bg-white px-2.5 py-1 text-sm font-medium text-green-700 hover:bg-green-50"
+            @click="handleBulkSms"
+          >
+            <AppIcon icon="mdi:message-text-outline" :size="16" />
+            Send SMS
+          </button>
+          <button
+            v-if="bulkCommActions.email"
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-md border border-blue-300 bg-white px-2.5 py-1 text-sm font-medium text-blue-700 hover:bg-blue-50"
+            @click="handleBulkEmail"
+          >
+            <AppIcon icon="mdi:at" :size="16" />
+            Send email
+          </button>
+          <button
+            type="button"
+            class="inline-flex items-center gap-1.5 rounded-md border border-red-300 bg-white px-2.5 py-1 text-sm font-medium text-red-700 hover:bg-red-50"
+            @click="handleBulkDelete"
+          >
+            <AppIcon icon="mdi:delete-outline" :size="16" />
+            Delete selected
+          </button>
+        </template>
+        <span v-else class="text-blue-700 hidden sm:inline">
+          Tip: Shift+click for a range, Ctrl/Cmd+click to add or remove rows with gaps.
+        </span>
+        <button
+          type="button"
+          class="ml-auto hover:underline text-slate-700 hover:text-slate-900"
+          @click="clearSelection"
+        >
+          Clear selection
+        </button>
+      </div>
+
       <div class="w-full min-w-0 max-w-full">
         <ClientsTableShell
           v-if="entry"
+          :key="registryKey"
           :entry="entry"
           :rows="rows"
           :page="page"
           :page-size="pageSize"
           :loading="loading"
           :error="error"
+          :sort-by="sortBy"
+          :sort-dir="sortDir"
+          v-model:selected-ids="selectedIds"
+          :row-actions-disabled="isBulkSelection"
           @action="handleAction"
+          @sort="handleSort"
         />
       </div>
 
@@ -383,5 +788,38 @@ onMounted(async () => {
         @update:page="goToPage"
       />
     </main>
+
+    <PharmacyEditDialog
+      v-if="entry?.key === 'pharma'"
+      :open="clientEditOpen"
+      :entry="entry"
+      :pharmacy-id="clientEditId"
+      @close="closeClientEdit"
+      @saved="onClientSaved"
+    />
+    <PhysicianEditDialog
+      v-if="entry?.key === 'physician'"
+      :open="clientEditOpen"
+      :entry="entry"
+      :physician-id="clientEditId"
+      @close="closeClientEdit"
+      @saved="onClientSaved"
+    />
+    <PharmacistEditDialog
+      v-if="entry?.key === 'pharmacist'"
+      :open="clientEditOpen"
+      :entry="entry"
+      :pharmacist-id="clientEditId"
+      @close="closeClientEdit"
+      @saved="onClientSaved"
+    />
+    <MedicalClinicEditDialog
+      v-if="entry?.key === 'medical_clinic'"
+      :open="clientEditOpen"
+      :entry="entry"
+      :clinic-id="clientEditId"
+      @close="closeClientEdit"
+      @saved="onClientSaved"
+    />
   </div>
 </template>

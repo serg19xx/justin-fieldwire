@@ -6,6 +6,11 @@ export interface ClientListQuery {
   page?: number
   limit?: number
   search?: string
+  sortBy?: string
+  sortDir?: 'asc' | 'desc'
+  nonEmpty?: string
+  empty?: string
+  missingContacts?: boolean
   country?: string
   region?: string
   specialty?: string
@@ -58,12 +63,24 @@ export const clientsRegistryApi = {
     if (query.clinicType) params.clinicType = query.clinicType
     if (query.sub_type) params.sub_type = query.sub_type
     if (query.sales_cycle) params.sales_cycle = query.sales_cycle
+    if (query.search?.trim()) params.search = query.search.trim()
+    if (query.sortBy) params.sortBy = query.sortBy
+    if (query.sortDir) params.sortDir = query.sortDir
+    if (query.nonEmpty) params.nonEmpty = query.nonEmpty
+    if (query.empty) params.empty = query.empty
+    if (query.missingContacts) params.missingContacts = 1
 
     const response = await api.get(`/api/v1${entry.listApiPath}`, { params })
     let { rows, pagination } = extractListPayload(response.data, entry.listResponseKey)
 
     const search = query.search?.trim().toLowerCase()
-    if (search) {
+    const serverSearch =
+      (entry.key === 'pharma' ||
+        entry.key === 'physician' ||
+        entry.key === 'pharmacist' ||
+        entry.key === 'medical_clinic') &&
+      Boolean(search)
+    if (search && !serverSearch) {
       rows = rows.filter((row) => {
         const name = String(row[entry.nameField] ?? '').toLowerCase()
         const email = String(row.email ?? '').toLowerCase()
@@ -133,5 +150,56 @@ export const clientsRegistryApi = {
     } catch {
       return []
     }
+  },
+
+  async getById(entry: ClientRegistryEntry, id: number): Promise<ClientListRow> {
+    const response = await api.get(`/api/v1${entry.listApiPath}/${id}`)
+    const data = response.data?.data
+    if (!data || typeof data !== 'object') {
+      throw new Error('Record not found')
+    }
+    return data as ClientListRow
+  },
+
+  async create(entry: ClientRegistryEntry, payload: Record<string, unknown>): Promise<number> {
+    const response = await api.post(`/api/v1${entry.listApiPath}`, payload)
+    if (response.data?.error_code && response.data.error_code !== 0) {
+      throw new Error(response.data?.message ?? 'Create failed')
+    }
+    const id = Number(response.data?.data?.id)
+    if (!Number.isFinite(id)) {
+      throw new Error('Create succeeded but no id returned')
+    }
+    return id
+  },
+
+  async update(
+    entry: ClientRegistryEntry,
+    id: number,
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    const response = await api.put(`/api/v1${entry.listApiPath}/${id}`, payload)
+    if (response.data?.error_code && response.data.error_code !== 0) {
+      throw new Error(response.data?.message ?? 'Update failed')
+    }
+  },
+
+  async remove(entry: ClientRegistryEntry, id: number): Promise<void> {
+    const response = await api.delete(`/api/v1${entry.listApiPath}/${id}`)
+    if (response.data?.error_code && response.data.error_code !== 0) {
+      throw new Error(response.data?.message ?? 'Delete failed')
+    }
+  },
+
+  async removeMany(entry: ClientRegistryEntry, ids: number[]): Promise<number[]> {
+    const failed: number[] = []
+    for (const id of ids) {
+      try {
+        await this.remove(entry, id)
+      } catch {
+        failed.push(id)
+      }
+    }
+    return failed
   },
 }

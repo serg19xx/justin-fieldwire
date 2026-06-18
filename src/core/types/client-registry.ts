@@ -10,6 +10,7 @@ export type ClientRowActionId =
   | 'edit'
   | 'fixAddress'
   | 'sms'
+  | 'fax'
   | 'documents'
   | 'email'
   | 'statusMessage'
@@ -28,6 +29,8 @@ export interface ClientTableColumn {
   label: string
   kind?: ClientColumnKind
   sortable?: boolean
+  /** API/DB field used when sorting (defaults to `key`; use for rowIndex → id). */
+  sortKey?: string
   /** For kind=coordinates */
   latKey?: string
   lngKey?: string
@@ -62,7 +65,9 @@ export interface ClientRegistryEntry {
   nameField: string
   columns: ClientTableColumn[]
   filters: ClientFilterDef[]
+  /** First table column: per-row edit and delete. */
   leadingActions: ClientRowActionId[]
+  /** Last table column: communication and secondary actions. */
   trailingActions: ClientRowActionId[]
   toolbarActions?: ClientToolbarActionId[]
   /** Suffix after page-size select, e.g. "entries per page" */
