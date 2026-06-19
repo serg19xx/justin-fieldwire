@@ -11,7 +11,6 @@ import {
   type ClientContactFilterFieldKey,
   type ClientContactFilterMode,
 } from '@/core/utils/client-contact-filter'
-import { exportClientsCsv } from '@/core/utils/clients-export'
 import AppIcon from '@/components/AppIcon.vue'
 import ClientsPagination from '@/components/clients/ClientsPagination.vue'
 import ClientsTableShell from '@/components/clients/ClientsTableShell.vue'
@@ -19,6 +18,9 @@ import PharmacyEditDialog from '@/components/clients/PharmacyEditDialog.vue'
 import PhysicianEditDialog from '@/components/clients/PhysicianEditDialog.vue'
 import PharmacistEditDialog from '@/components/clients/PharmacistEditDialog.vue'
 import MedicalClinicEditDialog from '@/components/clients/MedicalClinicEditDialog.vue'
+import ClientCommDialog from '@/components/clients/ClientCommDialog.vue'
+import ClientExportCsvDialog from '@/components/clients/ClientExportCsvDialog.vue'
+import type { ClientCommChannel } from '@/core/utils/clients-comms-api'
 
 const route = useRoute()
 const router = useRouter()
@@ -47,6 +49,15 @@ const sortBy = ref('')
 const sortDir = ref<ClientSortDirection>('asc')
 const contactFilterField = ref<ClientContactFilterFieldKey | ''>('')
 const contactFilterMode = ref<ClientContactFilterMode>('filled')
+
+const commDialogOpen = ref(false)
+const commChannel = ref<ClientCommChannel>('sms')
+const commClientId = ref<number | null>(null)
+const commClientName = ref('')
+const commDestination = ref('')
+const commBulkIds = ref<number[] | undefined>(undefined)
+
+const exportDialogOpen = ref(false)
 
 const contactFilterFields = computed(() =>
   entry.value ? getClientContactFilterFields(entry.value.key) : [],
@@ -104,7 +115,7 @@ const pageTitle = computed(() => entry.value?.listTitle ?? entry.value?.pluralLa
 const pageSizeChoices = computed(() => entry.value?.pageSizeOptions ?? [10, 25, 50])
 const entriesLabel = computed(() => entry.value?.entriesLabel ?? 'entries')
 const toolbarActions = computed<ClientToolbarActionId[]>(
-  () => entry.value?.toolbarActions ?? ['add', 'exportCsv', 'sendgridTemplate'],
+  () => entry.value?.toolbarActions ?? ['add', 'exportCsv'],
 )
 const hasCountryFilter = computed(() =>
   (entry.value?.filters ?? []).some((f) => f.key === 'country'),
@@ -235,11 +246,16 @@ function onFilterChange() {
 }
 
 function exportCsv() {
-  if (!entry.value || rows.value.length === 0) {
-    alert('No rows to export')
-    return
-  }
-  exportClientsCsv(entry.value, rows.value)
+  if (!entry.value) return
+  exportDialogOpen.value = true
+}
+
+function closeExportDialog() {
+  exportDialogOpen.value = false
+}
+
+function onExportDone(message: string) {
+  saveNotice.value = message
 }
 
 function clearSelection() {
@@ -349,16 +365,65 @@ function clearSearchAndFilters() {
 
 function handleBulkSms() {
   if (!isBulkSelection.value || !entry.value || !bulkCommActions.value.sms) return
-  alert(
-    `Bulk SMS — coming soon\n\n${selectedCount.value} ${entry.value.pluralLabel.toLowerCase()}\nIDs: ${selectedIds.value.join(', ')}`,
-  )
+  openCommDialog('sms', undefined, [...selectedIds.value])
 }
 
 function handleBulkEmail() {
   if (!isBulkSelection.value || !entry.value || !bulkCommActions.value.email) return
-  alert(
-    `Bulk email — coming soon\n\n${selectedCount.value} ${entry.value.pluralLabel.toLowerCase()}\nIDs: ${selectedIds.value.join(', ')}`,
-  )
+  openCommDialog('email', undefined, [...selectedIds.value])
+}
+
+function openCommDialog(
+  channel: ClientCommChannel,
+  row?: ClientListRow,
+  bulkIds?: number[],
+) {
+  if (!entry.value || actionBusy.value) return
+
+  commChannel.value = channel
+  commBulkIds.value = bulkIds && bulkIds.length > 1 ? bulkIds : undefined
+  commClientId.value = row?.id ?? (bulkIds?.length === 1 ? bulkIds[0] ?? null : null)
+
+  if (row) {
+    commClientName.value = String(row[entry.value.nameField] ?? row.id)
+    if (channel === 'sms') {
+      commDestination.value = resolveRowPhone(row) ?? ''
+    } else if (channel === 'email') {
+      commDestination.value = row.email ? String(row.email) : ''
+    } else {
+      commDestination.value = resolveRowFax(row) ?? ''
+    }
+  } else {
+    commClientName.value = entry.value.pluralLabel
+    commDestination.value = ''
+  }
+
+  if (!commBulkIds.value && commClientId.value === null) return
+
+  if (!commBulkIds.value) {
+    if (channel === 'sms' && !commDestination.value) {
+      alert('This client has no phone number on file.')
+      return
+    }
+    if (channel === 'email' && !commDestination.value) {
+      alert('This client has no email on file.')
+      return
+    }
+    if (channel === 'fax' && !commDestination.value) {
+      alert('This client has no fax number on file.')
+      return
+    }
+  }
+
+  commDialogOpen.value = true
+}
+
+function closeCommDialog() {
+  commDialogOpen.value = false
+}
+
+function onCommSent(notice: string) {
+  saveNotice.value = notice
 }
 
 const actionLabels: Record<ClientRowActionId, string> = {
@@ -409,27 +474,17 @@ function handleAction(actionId: ClientRowActionId, row: ClientListRow) {
     }
   }
 
-  if (actionId === 'email' && row.email) {
-    window.location.href = `mailto:${row.email}`
-    return
-  }
-  if (actionId === 'statusEmail' && row.email) {
-    window.location.href = `mailto:${row.email}`
+  if (actionId === 'email' || actionId === 'statusEmail') {
+    openCommDialog('email', row)
     return
   }
   if (actionId === 'sms' || actionId === 'message') {
-    const phone = resolveRowPhone(row)
-    if (phone) {
-      window.location.href = `tel:${phone}`
-      return
-    }
+    openCommDialog('sms', row)
+    return
   }
   if (actionId === 'fax') {
-    const fax = resolveRowFax(row)
-    if (fax) {
-      window.location.href = `tel:${fax}`
-      return
-    }
+    openCommDialog('fax', row)
+    return
   }
   alert(`${actionLabels[actionId]} — coming soon\n\n${name} (id: ${row.id})`)
 }
@@ -486,6 +541,15 @@ onMounted(async () => {
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 min-w-0">
         <div class="min-w-0 shrink-0">
           <h1 class="text-xl font-semibold text-gray-900 truncate">{{ pageTitle }}</h1>
+          <a
+            href="/CLIENT_COMMUNICATIONS_USER_GUIDE_RU.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mt-1 inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
+          >
+            <AppIcon icon="mdi:book-open-page-variant-outline" :size="16" />
+            SMS, Email &amp; Fax guide
+          </a>
         </div>
         <div class="flex flex-wrap items-center gap-3 text-sm min-w-0">
           <button
@@ -520,19 +584,6 @@ onMounted(async () => {
           >
             <AppIcon icon="mdi:download" :size="16" />
             Export CSV
-          </button>
-          <button
-            v-if="toolbarActions.includes('sendgridTemplate')"
-            type="button"
-            class="inline-flex items-center gap-1.5 text-blue-600 hover:underline"
-            @click="alert('Add SendGrid email template — coming soon')"
-          >
-            <AppIcon icon="mdi:email-multiple-outline" :size="16" />
-            {{
-              entry?.key === 'pharma'
-                ? 'SGrid email templates'
-                : 'Add SendGrid email template'
-            }}
           </button>
         </div>
       </div>
@@ -820,6 +871,27 @@ onMounted(async () => {
       :clinic-id="clientEditId"
       @close="closeClientEdit"
       @saved="onClientSaved"
+    />
+    <ClientCommDialog
+      v-if="entry"
+      :open="commDialogOpen"
+      :channel="commChannel"
+      :client-type="entry.key"
+      :client-name="commClientName"
+      :destination="commDestination"
+      :client-id="commClientId"
+      :bulk-ids="commBulkIds"
+      @close="closeCommDialog"
+      @sent="onCommSent"
+    />
+    <ClientExportCsvDialog
+      v-if="entry"
+      :open="exportDialogOpen"
+      :entry="entry"
+      :initial-country="filterValues.country ?? ''"
+      :initial-region="filterValues.region ?? ''"
+      @close="closeExportDialog"
+      @exported="onExportDone"
     />
   </div>
 </template>

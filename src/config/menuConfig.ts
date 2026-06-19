@@ -59,6 +59,17 @@ export const MENU_CONFIG: Record<string, MenuItem[]> = {
       icon: 'folder',
     },
     {
+      label: 'Clients',
+      route: '/clients/pharma',
+      icon: 'contacts',
+      children: [
+        { label: 'Pharmacies', route: '/clients/pharma' },
+        { label: 'Physicians & Providers', route: '/clients/physician' },
+        { label: 'Pharmacists', route: '/clients/pharmacist' },
+        { label: 'Medical clinics', route: '/clients/medical_clinic' },
+      ],
+    },
+    {
       label: 'Team',
       route: '/team',
       icon: 'users',

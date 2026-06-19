@@ -122,7 +122,8 @@ const router = createRouter({
       path: '/clients/:type',
       beforeEnter: (_to, _from, next) => {
         const authStore = useAuthStore()
-        if (authStore.currentUser?.role_category !== 'global') {
+        const roleCode = authStore.currentUser?.role_code
+        if (roleCode !== 'admin' && roleCode !== 'project_manager') {
           next('/dashboard')
           return
         }

@@ -20,7 +20,7 @@ export type ClientRowActionId =
   | 'message'
   | 'addUser'
 
-export type ClientToolbarActionId = 'loadCsv' | 'exportCsv' | 'sendgridTemplate' | 'add'
+export type ClientToolbarActionId = 'loadCsv' | 'exportCsv' | 'add'
 
 export type ClientColumnKind = 'text' | 'coordinates' | 'map' | 'rowIndex'
 

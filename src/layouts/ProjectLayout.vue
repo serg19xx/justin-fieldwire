@@ -39,6 +39,11 @@
           >
             {{ authStore.currentUser?.job_title === 'System Administrator' ? 'All Projects' : 'My Projects' }}
           </RouterLink>
+          <ClientsNavDropdown
+            v-if="showClientsNav"
+            variant="on-dark"
+            :active-key="clientsActiveKey"
+          />
           <RouterLink
             to="/team"
             class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
@@ -145,6 +150,21 @@
           >
             {{ authStore.currentUser?.job_title === 'System Administrator' ? 'All Projects' : 'My Projects' }}
           </RouterLink>
+          <template v-if="showClientsNav">
+            <p class="px-4 pt-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              Clients
+            </p>
+            <RouterLink
+              v-for="t in clientTypes"
+              :key="t.key"
+              :to="`/clients/${t.key}`"
+              @click="closeMobileMenu"
+              class="block px-4 py-2.5 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
+              :class="{ 'border-green-500 bg-green-50 font-medium': $route.path === `/clients/${t.key}` }"
+            >
+              {{ t.pluralLabel }}
+            </RouterLink>
+          </template>
           <RouterLink
             to="/team"
             @click="closeMobileMenu"
@@ -197,13 +217,27 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
 import { getDisplayRole } from '@/core/utils/role-utils'
+import { canAccessClientsRegistry } from '@/core/utils/clients-access'
+import { getEnabledClientTypes } from '@/config/clients-registry'
 import TopBarAvatar from '@/components/TopBarAvatar.vue'
+import ClientsNavDropdown from '@/components/clients/ClientsNavDropdown.vue'
 
+const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+
+const clientTypes = getEnabledClientTypes()
+
+const showClientsNav = computed(() =>
+  canAccessClientsRegistry(authStore.currentUser?.role_code),
+)
+
+const clientsActiveKey = computed(() =>
+  route.path.startsWith('/clients/') ? String(route.params.type ?? '') : undefined,
+)
 
 const displayRole = computed(() => {
   const u = authStore.currentUser

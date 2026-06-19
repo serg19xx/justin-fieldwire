@@ -117,7 +117,15 @@ api.interceptors.request.use(
     } else {
       console.log('🔑 No token found - request will be unauthorized')
     }
-    
+
+    if (config.data instanceof FormData) {
+      if (typeof config.headers.delete === 'function') {
+        config.headers.delete('Content-Type')
+      } else {
+        delete config.headers['Content-Type']
+      }
+    }
+
     return config
   },
   (error) => {
@@ -160,6 +168,21 @@ export const authApi = {
       }
     }
   },
+}
+
+export function getApiErrorMessage(error: unknown, fallback = 'Request failed'): string {
+  if (axios.isAxiosError(error)) {
+    const message = error.response?.data?.message
+    if (typeof message === 'string' && message.trim() !== '') {
+      return message
+    }
+  }
+
+  if (error instanceof Error && error.message.trim() !== '') {
+    return error.message
+  }
+
+  return fallback
 }
 
 export default api

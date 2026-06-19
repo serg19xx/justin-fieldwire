@@ -4,9 +4,16 @@ import { RouterLink } from 'vue-router'
 import AppIcon from '@/components/AppIcon.vue'
 import { getEnabledClientTypes } from '@/config/clients-registry'
 
-const props = defineProps<{
-  activeKey?: string
-}>()
+const props = withDefaults(
+  defineProps<{
+    activeKey?: string
+    /** `on-dark` — white text on green project header; default — gray on light header */
+    variant?: 'light' | 'on-dark'
+  }>(),
+  { variant: 'light' },
+)
+
+const isOnDark = computed(() => props.variant === 'on-dark')
 
 const rootRef = ref<HTMLElement | null>(null)
 const open = ref(false)
@@ -48,8 +55,12 @@ onUnmounted(() => {
       class="text-sm font-medium px-3 py-2 rounded-md flex items-center gap-1"
       :class="
         $route.path.startsWith('/clients')
-          ? 'bg-gray-100 text-gray-900'
-          : 'text-gray-700 hover:text-gray-900'
+          ? isOnDark
+            ? 'bg-green-700 text-white'
+            : 'bg-gray-100 text-gray-900'
+          : isOnDark
+            ? 'text-white hover:text-green-100'
+            : 'text-gray-700 hover:text-gray-900'
       "
       @click.stop="toggle"
     >

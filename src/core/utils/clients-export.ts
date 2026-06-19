@@ -1,5 +1,28 @@
 import type { ClientListRow, ClientRegistryEntry } from '@/core/types/client-registry'
 
+export interface ClientGeoExportFilters {
+  country?: string
+  region?: string
+  city?: string
+}
+
+function slugPart(value: string): string {
+  return value
+    .trim()
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 48)
+}
+
+function buildExportFilename(entry: ClientRegistryEntry, geo?: ClientGeoExportFilters): string {
+  const date = new Date().toISOString().slice(0, 10)
+  const parts = [entry.key, date]
+  if (geo?.country) parts.splice(1, 0, slugPart(geo.country))
+  if (geo?.region) parts.splice(parts.length - 1, 0, slugPart(geo.region))
+  if (geo?.city) parts.splice(parts.length - 1, 0, slugPart(geo.city))
+  return `${parts.filter(Boolean).join('_')}.csv`
+}
+
 function escapeCsv(value: string): string {
   if (/[",\n]/.test(value)) {
     return `"${value.replace(/"/g, '""')}"`
@@ -29,7 +52,11 @@ function cellForExport(entry: ClientRegistryEntry, row: ClientListRow, colKey: s
   return v === null || v === undefined ? '' : String(v)
 }
 
-export function exportClientsCsv(entry: ClientRegistryEntry, rows: ClientListRow[]): void {
+export function exportClientsCsv(
+  entry: ClientRegistryEntry,
+  rows: ClientListRow[],
+  geo?: ClientGeoExportFilters,
+): void {
   const exportColumns = entry.columns.filter((c) => c.kind !== 'map' && c.kind !== 'rowIndex')
   const header = exportColumns.map((c) => escapeCsv(c.label)).join(',')
   const lines = rows.map((row) =>
@@ -40,7 +67,7 @@ export function exportClientsCsv(entry: ClientRegistryEntry, rows: ClientListRow
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `${entry.key}_${new Date().toISOString().slice(0, 10)}.csv`
+  link.download = buildExportFilename(entry, geo)
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)

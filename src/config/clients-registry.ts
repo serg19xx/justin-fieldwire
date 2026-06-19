@@ -6,14 +6,12 @@ const rowActions = ['edit', 'delete'] as const
 const defaultToolbar: ClientRegistryEntry['toolbarActions'] = [
   'add',
   'exportCsv',
-  'sendgridTemplate',
 ]
 
 const pharmaToolbar: ClientRegistryEntry['toolbarActions'] = [
   'add',
   'loadCsv',
   'exportCsv',
-  'sendgridTemplate',
 ]
 
 export const CLIENTS_REGISTRY: ClientRegistryEntry[] = [

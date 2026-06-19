@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldWire — SMS, Email и Fax из Clients</title>
+  <style>
+    :root {
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ccc;
+      --bg-alt: #f7f7f7;
+      --accent: #2563eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.55;
+      color: var(--text);
+      max-width: 50rem;
+      margin: 0 auto;
+      padding: 1.25rem 1rem 3rem;
+      font-size: 15px;
+    }
+    .howto-open {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 14px;
+    }
+    .howto-open strong { color: var(--accent); }
+    .howto-open code {
+      font-size: 12px;
+      word-break: break-all;
+      background: #fff;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      border: 1px solid #bfdbfe;
+    }
+    h1 { font-size: 1.55rem; margin: 0 0 0.5rem; line-height: 1.25; }
+    .subtitle { color: var(--muted); margin: 0 0 1.25rem; font-size: 14px; }
+    h2 {
+      font-size: 1.15rem;
+      margin: 1.75rem 0 0.75rem;
+      padding-bottom: 0.25rem;
+      border-bottom: 2px solid var(--border);
+    }
+    h3 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+    p { margin: 0.5rem 0; }
+    ul, ol { margin: 0.5rem 0; padding-left: 1.35rem; }
+    li { margin: 0.3rem 0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.75rem 0 1rem;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--bg-alt); font-weight: 600; }
+    tr:nth-child(even) td { background: #fafafa; }
+    .rule-box {
+      background: var(--bg-alt);
+      border-left: 4px solid var(--accent);
+      padding: 0.65rem 1rem;
+      margin: 1rem 0;
+    }
+    .warn-box {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      padding: 0.65rem 1rem;
+      margin: 1rem 0;
+    }
+    a { color: var(--accent); }
+    @media print {
+      body { max-width: none; padding: 0; font-size: 11pt; }
+      .howto-open { break-inside: avoid; }
+      h2 { break-after: avoid; }
+      table { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="howto-open">
+    <strong>Как открыть:</strong> страница доступна по адресу
+    <code id="self-url">…</code>
+    (вход не требуется).
+    <br /><br />
+    <strong>English:</strong> <a id="en-url" href="/CLIENT_COMMUNICATIONS_USER_GUIDE.html">CLIENT_COMMUNICATIONS_USER_GUIDE.html</a>
+    <br /><br />
+    <strong>В приложении:</strong> Clients → любой список → ссылка <strong>SMS, Email и Fax</strong> в шапке.
+    <br /><br />
+    <strong>PDF:</strong> Печать (Ctrl/Cmd+P) → Сохранить как PDF.
+  </div>
+  <script>
+    (function () {
+      try {
+        var el = document.getElementById('self-url')
+        var en = document.getElementById('en-url')
+        if (el && window.location && window.location.origin) {
+          el.textContent = window.location.origin + '/CLIENT_COMMUNICATIONS_USER_GUIDE_RU.html'
+          if (en) en.href = window.location.origin + '/CLIENT_COMMUNICATIONS_USER_GUIDE.html'
+        }
+      } catch (e) { /* ignore */ }
+    })()
+  </script>
+
+  <h1>Clients: SMS, Email и Fax</h1>
+  <p class="subtitle">FieldWire — сообщения контактам из реестра клиентов (Admin и Project Manager)</p>
+
+  <div class="rule-box">
+    Отправка SMS, email и fax аптекам, врачам, фармацевтам и медклиникам из меню <strong>Clients</strong> — аналог сообщений в legacy EasyRx, встроенный в FieldWire.
+  </div>
+
+  <h2>Кто может пользоваться</h2>
+  <table>
+    <thead><tr><th>Роль</th><th>Доступ</th></tr></thead>
+    <tbody>
+      <tr><td>Administrator</td><td>Полный доступ</td></tr>
+      <tr><td>Project Manager</td><td>Полный доступ</td></tr>
+      <tr><td>Другие роли</td><td>Меню Clients и отправка недоступны</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Где найти</h2>
+  <ol>
+    <li>Войдите в FieldWire.</li>
+    <li>Откройте <strong>Clients</strong> в главном меню.</li>
+    <li>Выберите список: Pharmacies, Physicians &amp; Providers, Pharmacists или Medical clinics.</li>
+    <li>Иконки в строке (SMS, email, fax) или выделение нескольких строк для массовой SMS/email.</li>
+  </ol>
+
+  <h2>Каналы</h2>
+  <table>
+    <thead>
+      <tr><th>Канал</th><th>Списки</th><th>Массово</th><th>Ограничения</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>SMS</strong></td><td>Аптеки, врачи, фармацевты</td><td>Да</td><td>Текст, макс. 1600 символов</td></tr>
+      <tr><td><strong>Email</strong></td><td>Все четыре списка</td><td>Да</td><td>Свободное письмо или шаблон SendGrid</td></tr>
+      <tr><td><strong>Fax</strong></td><td>Аптеки, врачи, медклиники</td><td>Нет</td><td>PDF/изображение до 50 МБ + обложка</td></tr>
+    </tbody>
+  </table>
+  <p>У фармацевтов только SMS и email (без fax).</p>
+
+  <h2>SMS</h2>
+  <ol>
+    <li>Зелёная иконка <strong>SMS</strong> в строке.</li>
+    <li>Текст сообщения (счётчик символов).</li>
+    <li><strong>Send SMS</strong>.</li>
+  </ol>
+  <p><strong>Массово:</strong> 2+ строк → <strong>Send SMS</strong>. Без телефона — пропуск.</p>
+
+  <h2>Email</h2>
+  <ol>
+    <li>Иконка email в строке.</li>
+    <li><strong>Email format:</strong>
+      <ul>
+        <li><strong>Free form letter</strong> — свой subject и текст.</li>
+        <li><strong>Шаблон SendGrid</strong> — вёрстка из SendGrid; имя клиента подставляется.</li>
+      </ul>
+    </li>
+    <li><strong>Send Email</strong>.</li>
+  </ol>
+  <p><strong>Массово:</strong> выделение строк → <strong>Send Email</strong>.</p>
+
+  <h2>Fax</h2>
+  <ol>
+    <li>Иконка fax в строке.</li>
+    <li>По желанию: <strong>Subject</strong>, <strong>Cover text</strong>.</li>
+    <li>Файл: PDF или изображение, макс. <strong>50 МБ</strong>.</li>
+    <li><strong>Send Fax</strong>. Большие файлы — до ~1 минуты.</li>
+  </ol>
+  <div class="warn-box">
+    Нужны cover text <em>или</em> вложение (или оба). Массовый fax не поддерживается.
+  </div>
+
+  <h2>Фильтр контактов</h2>
+  <p><strong>Filter: Phone / Email / Fax</strong> + <strong>Has value</strong> / <strong>Empty</strong> — найти клиентов с контактом или без.</p>
+
+  <h2>Export CSV</h2>
+  <p><strong>Export CSV</strong> — выгрузка списка. Load from CSV пока недоступен.</p>
+
+  <h2>Как устроено технически</h2>
+  <p>Браузер вызывает API FieldWire; отправка через серверные сервисы (ключи только на API, не во frontend):</p>
+  <table>
+    <thead><tr><th>Канал</th><th>Сервис</th></tr></thead>
+    <tbody>
+      <tr><td>Email</td><td>SendGrid (API + dynamic templates)</td></tr>
+      <tr><td>SMS</td><td>Twilio</td></tr>
+      <tr><td>Fax</td><td>HumbleFax (обложка + файл → очередь отправки)</td></tr>
+    </tbody>
+  </table>
+  <p>Fax: черновик на HumbleFax → загрузка вложения → отправка на номер из карточки клиента.</p>
+
+  <h2>Решение проблем</h2>
+  <table>
+    <thead><tr><th>Проблема</th><th>Что проверить</th></tr></thead>
+    <tbody>
+      <tr><td>Нет кнопок отправки</td><td>Роль Admin или Project Manager</td></tr>
+      <tr><td>Нет телефона/email/fax</td><td>Карточка клиента или фильтр контактов</td></tr>
+      <tr><td>Пустые шаблоны email</td><td>SendGrid и активные шаблоны</td></tr>
+      <tr><td>Fax долго отправляется</td><td>Нормально для файлов нескольких МБ</td></tr>
+      <tr><td>Файл отклонён</td><td>Макс. 50 МБ; PDF или поддерживаемое изображение</td></tr>
+    </tbody>
+  </table>
+
+  <hr />
+  <p class="subtitle">Версия документа 1.0 — коммуникации из Clients (SMS, email, fax)</p>
+
+</body>
+</html>

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldWire — Clients SMS, Email &amp; Fax guide</title>
+  <style>
+    :root {
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ccc;
+      --bg-alt: #f7f7f7;
+      --accent: #2563eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.55;
+      color: var(--text);
+      max-width: 50rem;
+      margin: 0 auto;
+      padding: 1.25rem 1rem 3rem;
+      font-size: 15px;
+    }
+    .howto-open {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 14px;
+    }
+    .howto-open strong { color: var(--accent); }
+    .howto-open code {
+      font-size: 12px;
+      word-break: break-all;
+      background: #fff;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      border: 1px solid #bfdbfe;
+    }
+    h1 { font-size: 1.55rem; margin: 0 0 0.5rem; line-height: 1.25; }
+    .subtitle { color: var(--muted); margin: 0 0 1.25rem; font-size: 14px; }
+    h2 {
+      font-size: 1.15rem;
+      margin: 1.75rem 0 0.75rem;
+      padding-bottom: 0.25rem;
+      border-bottom: 2px solid var(--border);
+    }
+    h3 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+    p { margin: 0.5rem 0; }
+    ul, ol { margin: 0.5rem 0; padding-left: 1.35rem; }
+    li { margin: 0.3rem 0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.75rem 0 1rem;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--bg-alt); font-weight: 600; }
+    tr:nth-child(even) td { background: #fafafa; }
+    .rule-box {
+      background: var(--bg-alt);
+      border-left: 4px solid var(--accent);
+      padding: 0.65rem 1rem;
+      margin: 1rem 0;
+    }
+    .warn-box {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      padding: 0.65rem 1rem;
+      margin: 1rem 0;
+    }
+    a { color: var(--accent); }
+    @media print {
+      body { max-width: none; padding: 0; font-size: 11pt; }
+      .howto-open { break-inside: avoid; }
+      h2 { break-after: avoid; }
+      table { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="howto-open">
+    <strong>How to open:</strong> this page is available at
+    <code id="self-url">…</code>
+    (no login required).
+    <br /><br />
+    <strong>Russian:</strong> <a id="ru-url" href="/CLIENT_COMMUNICATIONS_USER_GUIDE_RU.html">CLIENT_COMMUNICATIONS_USER_GUIDE_RU.html</a>
+    <br /><br />
+    <strong>In the app:</strong> Clients → any list → link <strong>SMS, Email &amp; Fax guide</strong> in the page header.
+    <br /><br />
+    <strong>PDF:</strong> Print (Ctrl/Cmd+P) → Save as PDF.
+  </div>
+  <script>
+    (function () {
+      try {
+        var el = document.getElementById('self-url')
+        var ru = document.getElementById('ru-url')
+        if (el && window.location && window.location.origin) {
+          el.textContent = window.location.origin + '/CLIENT_COMMUNICATIONS_USER_GUIDE.html'
+          if (ru) ru.href = window.location.origin + '/CLIENT_COMMUNICATIONS_USER_GUIDE_RU.html'
+        }
+      } catch (e) { /* ignore */ }
+    })()
+  </script>
+
+  <h1>Clients: SMS, Email &amp; Fax</h1>
+  <p class="subtitle">FieldWire — send messages to client registry contacts (Admin &amp; Project Manager)</p>
+
+  <div class="rule-box">
+    Send operational SMS, email, and fax to pharmacies, physicians, pharmacists, and medical clinics from the <strong>Clients</strong> menu — the same workflow as legacy EasyRx client messaging, integrated into FieldWire.
+  </div>
+
+  <h2>Who can use this</h2>
+  <table>
+    <thead><tr><th>Role</th><th>Access</th></tr></thead>
+    <tbody>
+      <tr><td>Administrator</td><td>Full access</td></tr>
+      <tr><td>Project Manager</td><td>Full access</td></tr>
+      <tr><td>Other roles</td><td>Clients menu and send actions are not available</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Where to find it</h2>
+  <ol>
+    <li>Sign in to FieldWire.</li>
+    <li>Open <strong>Clients</strong> in the main navigation.</li>
+    <li>Choose a list: Pharmacies, Physicians &amp; Providers, Pharmacists, or Medical clinics.</li>
+    <li>Use row action icons (SMS, email, fax) or multi-select rows for bulk SMS/email.</li>
+  </ol>
+
+  <h2>Channels overview</h2>
+  <table>
+    <thead>
+      <tr><th>Channel</th><th>Lists</th><th>Bulk</th><th>Limits</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>SMS</strong></td><td>Pharmacies, Physicians, Pharmacists</td><td>Yes</td><td>Plain text, max 1600 characters</td></tr>
+      <tr><td><strong>Email</strong></td><td>All four lists</td><td>Yes</td><td>Free-form or SendGrid dynamic template</td></tr>
+      <tr><td><strong>Fax</strong></td><td>Pharmacies, Physicians, Medical clinics</td><td>No</td><td>PDF/image up to 50 MB + optional cover page</td></tr>
+    </tbody>
+  </table>
+  <p>Pharmacists support SMS and email only (no fax column).</p>
+
+  <h2>SMS</h2>
+  <ol>
+    <li>Click the green <strong>SMS</strong> icon on a row.</li>
+    <li>Type your message (character counter; multiple segments if long).</li>
+    <li>Click <strong>Send SMS</strong>.</li>
+  </ol>
+  <p><strong>Bulk:</strong> select two or more rows → <strong>Send SMS</strong> in the selection bar. Rows without a phone number are skipped.</p>
+
+  <h2>Email</h2>
+  <ol>
+    <li>Click the email icon on a row.</li>
+    <li>Choose <strong>Email format</strong>:
+      <ul>
+        <li><strong>Free form letter</strong> — your subject and body.</li>
+        <li><strong>SendGrid template</strong> — layout from SendGrid; client name is passed automatically.</li>
+      </ul>
+    </li>
+    <li>Click <strong>Send Email</strong>.</li>
+  </ol>
+  <p><strong>Bulk:</strong> multi-select → <strong>Send Email</strong>. Rows without email are skipped.</p>
+
+  <h2>Fax</h2>
+  <ol>
+    <li>Click the fax icon on a row.</li>
+    <li>Optionally enter <strong>Subject</strong> and <strong>Cover text</strong>.</li>
+    <li>Attach a document: PDF or image (JPEG, PNG, GIF, TIFF, BMP, WebP), max <strong>50 MB</strong>.</li>
+    <li>Click <strong>Send Fax</strong>. Large files may take up to about one minute.</li>
+  </ol>
+  <div class="warn-box">
+    You need cover text <em>or</em> an attachment (or both). Bulk fax is not supported.
+  </div>
+
+  <h2>Contact filter</h2>
+  <p>Use <strong>Filter: Phone / Email / Fax</strong> with <strong>Has value</strong> or <strong>Empty</strong> to find clients reachable on each channel.</p>
+
+  <h2>Export CSV</h2>
+  <p><strong>Export CSV</strong> downloads the filtered list. Load from CSV is planned but not available yet.</p>
+
+  <h2>How it is built (technical overview)</h2>
+  <p>The browser calls the FieldWire API; the API sends through server-side providers (credentials never appear in the frontend):</p>
+  <table>
+    <thead><tr><th>Channel</th><th>Provider</th></tr></thead>
+    <tbody>
+      <tr><td>Email</td><td>SendGrid (API + optional dynamic templates)</td></tr>
+      <tr><td>SMS</td><td>Twilio</td></tr>
+      <tr><td>Fax</td><td>HumbleFax (cover sheet + document upload, then queue)</td></tr>
+    </tbody>
+  </table>
+  <p>Flow for fax: create draft on HumbleFax → upload attachment → send to recipient fax number from the client record.</p>
+
+  <h2>Troubleshooting</h2>
+  <table>
+    <thead><tr><th>Issue</th><th>What to check</th></tr></thead>
+    <tbody>
+      <tr><td>No send buttons</td><td>Role must be Admin or Project Manager</td></tr>
+      <tr><td>No phone/email/fax on file</td><td>Edit client record or use contact filter</td></tr>
+      <tr><td>Empty email templates</td><td>SendGrid configured; templates active in same account</td></tr>
+      <tr><td>Fax slow</td><td>Normal for multi-MB files; wait up to ~1 minute</td></tr>
+      <tr><td>File rejected</td><td>Max 50 MB; use PDF or supported image types</td></tr>
+    </tbody>
+  </table>
+
+  <hr />
+  <p class="subtitle">Document version 1.0 — Clients communications (SMS, email, fax)</p>
+
+</body>
+</html>

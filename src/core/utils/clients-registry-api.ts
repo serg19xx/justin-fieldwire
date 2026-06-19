@@ -13,6 +13,7 @@ export interface ClientListQuery {
   missingContacts?: boolean
   country?: string
   region?: string
+  city?: string
   specialty?: string
   clinicType?: string
   sub_type?: string
@@ -59,6 +60,7 @@ export const clientsRegistryApi = {
     }
     if (query.country) params.country = query.country
     if (query.region) params.region = query.region
+    if (query.city) params.city = query.city
     if (query.specialty) params.specialty = query.specialty
     if (query.clinicType) params.clinicType = query.clinicType
     if (query.sub_type) params.sub_type = query.sub_type
@@ -201,5 +203,42 @@ export const clientsRegistryApi = {
       }
     }
     return failed
+  },
+
+  /** Fetch all rows matching query by paging through the API (for CSV export). */
+  async listAll(entry: ClientRegistryEntry, query: ClientListQuery = {}): Promise<ClientListRow[]> {
+    const pageSize = 500
+    let page = 1
+    const all: ClientListRow[] = []
+
+    while (page <= 200) {
+      const { rows, pagination } = await this.list(entry, {
+        ...query,
+        page,
+        limit: pageSize,
+      })
+      all.push(...rows)
+      if (page >= pagination.pages || pagination.pages === 0) {
+        break
+      }
+      page++
+    }
+
+    return all
+  },
+
+  /** Distinct city names for export filter (requires country + region). */
+  async listDistinctCities(
+    entry: ClientRegistryEntry,
+    country: string,
+    region: string,
+  ): Promise<string[]> {
+    const rows = await this.listAll(entry, { country, region })
+    const cities = new Set<string>()
+    for (const row of rows) {
+      const city = String(row.city ?? row.pharmacy_city ?? '').trim()
+      if (city) cities.add(city)
+    }
+    return [...cities].sort((a, b) => a.localeCompare(b))
   },
 }
