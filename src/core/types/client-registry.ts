@@ -10,6 +10,7 @@ export type ClientRowActionId =
   | 'edit'
   | 'fixAddress'
   | 'sms'
+  | 'meetingInvite'
   | 'fax'
   | 'documents'
   | 'email'

@@ -19,6 +19,7 @@ import PhysicianEditDialog from '@/components/clients/PhysicianEditDialog.vue'
 import PharmacistEditDialog from '@/components/clients/PharmacistEditDialog.vue'
 import MedicalClinicEditDialog from '@/components/clients/MedicalClinicEditDialog.vue'
 import ClientCommDialog from '@/components/clients/ClientCommDialog.vue'
+import ClientMeetingInviteDialog from '@/components/clients/ClientMeetingInviteDialog.vue'
 import ClientExportCsvDialog from '@/components/clients/ClientExportCsvDialog.vue'
 import type { ClientCommChannel } from '@/core/utils/clients-comms-api'
 
@@ -56,6 +57,11 @@ const commClientId = ref<number | null>(null)
 const commClientName = ref('')
 const commDestination = ref('')
 const commBulkIds = ref<number[] | undefined>(undefined)
+
+const meetingInviteOpen = ref(false)
+const meetingInviteClientId = ref(0)
+const meetingInviteClientName = ref('')
+const meetingInvitePhone = ref('')
 
 const exportDialogOpen = ref(false)
 
@@ -426,11 +432,33 @@ function onCommSent(notice: string) {
   saveNotice.value = notice
 }
 
+function openMeetingInviteDialog(row: ClientListRow) {
+  if (!entry.value || actionBusy.value || isBulkSelection.value) return
+  const phone = resolveRowPhone(row)
+  if (!phone) {
+    alert('This client has no phone number on file.')
+    return
+  }
+  meetingInviteClientId.value = row.id
+  meetingInviteClientName.value = String(row[entry.value.nameField] ?? row.id)
+  meetingInvitePhone.value = phone
+  meetingInviteOpen.value = true
+}
+
+function closeMeetingInviteDialog() {
+  meetingInviteOpen.value = false
+}
+
+function onMeetingInviteSent(notice: string) {
+  saveNotice.value = notice
+}
+
 const actionLabels: Record<ClientRowActionId, string> = {
   delete: 'Delete',
   edit: 'Edit',
   fixAddress: 'Fix address',
   sms: 'SMS',
+  meetingInvite: 'Schedule call',
   fax: 'Fax',
   message: 'Message',
   documents: 'Documents',
@@ -480,6 +508,10 @@ function handleAction(actionId: ClientRowActionId, row: ClientListRow) {
   }
   if (actionId === 'sms' || actionId === 'message') {
     openCommDialog('sms', row)
+    return
+  }
+  if (actionId === 'meetingInvite') {
+    openMeetingInviteDialog(row)
     return
   }
   if (actionId === 'fax') {
@@ -883,6 +915,16 @@ onMounted(async () => {
       :bulk-ids="commBulkIds"
       @close="closeCommDialog"
       @sent="onCommSent"
+    />
+    <ClientMeetingInviteDialog
+      v-if="entry"
+      :open="meetingInviteOpen"
+      :client-type="entry.key"
+      :client-id="meetingInviteClientId"
+      :client-name="meetingInviteClientName"
+      :phone="meetingInvitePhone"
+      @close="closeMeetingInviteDialog"
+      @sent="onMeetingInviteSent"
     />
     <ClientExportCsvDialog
       v-if="entry"

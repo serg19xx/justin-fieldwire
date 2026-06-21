@@ -30,7 +30,7 @@ export const CLIENTS_REGISTRY: ClientRegistryEntry[] = [
     pageSizeOptions: [10, 25, 50, 100],
     toolbarActions: pharmaToolbar,
     leadingActions: [...rowActions],
-    trailingActions: ['sms', 'email', 'fax'],
+    trailingActions: ['sms', 'meetingInvite', 'email', 'fax'],
     filters: [
       { key: 'country', label: 'Select country', queryParam: 'country' },
       { key: 'region', label: 'Select region', queryParam: 'region' },
@@ -67,7 +67,7 @@ export const CLIENTS_REGISTRY: ClientRegistryEntry[] = [
     entriesLabel: 'entries per page',
     toolbarActions: [...defaultToolbar],
     leadingActions: [...rowActions],
-    trailingActions: ['sms', 'email', 'fax'],
+    trailingActions: ['sms', 'meetingInvite', 'email', 'fax'],
     filters: [
       {
         key: 'specialty',
@@ -107,7 +107,7 @@ export const CLIENTS_REGISTRY: ClientRegistryEntry[] = [
     entriesLabel: 'entries per page',
     toolbarActions: [...defaultToolbar],
     leadingActions: [...rowActions],
-    trailingActions: ['sms', 'email'],
+    trailingActions: ['sms', 'meetingInvite', 'email'],
     filters: [],
     columns: [
       { key: '_rowIndex', label: '#', kind: 'rowIndex', sortable: true, sortKey: 'id' },
@@ -135,7 +135,7 @@ export const CLIENTS_REGISTRY: ClientRegistryEntry[] = [
     entriesLabel: 'entries per page',
     toolbarActions: [...defaultToolbar],
     leadingActions: [...rowActions],
-    trailingActions: ['email', 'fax'],
+    trailingActions: ['meetingInvite', 'email', 'fax'],
     filters: [
       { key: 'country', label: 'Select country', queryParam: 'country' },
       { key: 'region', label: 'Select region', queryParam: 'region' },

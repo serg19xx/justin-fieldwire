@@ -24,6 +24,11 @@ const actionMeta: Record<
   edit: { title: 'Edit', icon: 'mdi:pencil-outline', className: 'text-blue-600 hover:bg-blue-50' },
   fixAddress: { title: 'Fix address', icon: 'mdi:wrench-outline', className: 'text-blue-600 hover:bg-blue-50' },
   sms: { title: 'Send SMS', icon: 'mdi:message-text-outline', className: 'text-green-600 hover:bg-green-50' },
+  meetingInvite: {
+    title: 'Schedule call via SMS',
+    icon: 'mdi:calendar-clock-outline',
+    className: 'text-teal-600 hover:bg-teal-50',
+  },
   fax: { title: 'Send fax', icon: 'mdi:fax', className: 'text-amber-700 hover:bg-amber-50' },
   message: { title: 'Send message', icon: 'mdi:comment-text-outline', className: 'text-purple-600 hover:bg-purple-50' },
   documents: { title: 'Documents', icon: 'mdi:file-document-outline', className: 'text-blue-600 hover:bg-blue-50' },
