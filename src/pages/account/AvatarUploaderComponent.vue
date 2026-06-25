@@ -135,6 +135,7 @@ import { ref, watch, toRefs, onMounted } from 'vue'
 import { Cropper } from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css'
 import { api } from '@/core/utils/api'
+import { resolveApiMediaUrl } from '@/config/api'
 
 /**
  * Props: можно прокидывать старый аватар и endpoint
@@ -496,10 +497,23 @@ async function saveAvatar() {
     // Отправляем данные на сервер
     const serverResponse = await uploadAvatarToServer(avatarData)
 
-    if (serverResponse.success) {
-      console.log('✅ Avatar saved to server successfully')
-      console.log('🔗 Server avatar URL:', serverResponse.avatarUrl)
-      console.log('🔗 Server full image URL:', serverResponse.fullImageUrl)
+    if (!serverResponse.success) {
+      throw new Error('Avatar upload failed')
+    }
+
+    console.log('✅ Avatar saved to server successfully')
+    console.log('🔗 Server avatar URL:', serverResponse.avatarUrl)
+    console.log('🔗 Server full image URL:', serverResponse.fullImageUrl)
+
+    const savedPayload = {
+      croppedAvatar:
+        resolveApiMediaUrl(serverResponse.avatarUrl) ||
+        avatarData.croppedAvatar,
+      fullImage:
+        resolveApiMediaUrl(serverResponse.fullImageUrl) ||
+        resolveApiMediaUrl(serverResponse.avatarUrl) ||
+        avatarData.fullImage ||
+        avatarData.croppedAvatar,
     }
 
     // Сохраняем трансформации для возможности повторного редактирования
@@ -521,8 +535,8 @@ async function saveAvatar() {
       }
     }
 
-    // Уведомляем родительский компонент о сохранении с двумя изображениями
-    emit('avatar-saved', avatarData)
+    // Notify parent with server URLs (not base64 blobs).
+    emit('avatar-saved', savedPayload)
   } catch (error) {
     console.error('❌ Error saving avatar:', error)
     console.error('❌ Error details:', {

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api, setSessionExpiredCallback } from '@/core/utils/api'
-import { apiConfig, getApiBaseUrl, resolveApiMediaUrl } from '@/config/api'
+import { apiConfig, getApiBaseUrl } from '@/config/api'
 import {
   initializeSessionManager,
   startSessionManager,
@@ -161,8 +161,16 @@ export const useAuthStore = defineStore('auth', () => {
         isActive: isUserActive(user.status), // Add compatibility field
         last_login: user.last_login,
         permissions: getPermissionsForRole(user.role_code),
-        avatar_url: resolveApiMediaUrl(user.avatar_url),
-        full_img_url: resolveApiMediaUrl(user.full_img_url),
+        avatar_url: user.avatar_url
+          ? user.avatar_url.startsWith('http')
+            ? user.avatar_url
+            : `${apiConfig.baseURL}${user.avatar_url}`
+          : undefined,
+        full_img_url: user.full_img_url
+          ? user.full_img_url.startsWith('http')
+            ? user.full_img_url
+            : `${apiConfig.baseURL}${user.full_img_url}`
+          : undefined,
       } as User)
 
       // Log invitation status for debugging
@@ -640,8 +648,16 @@ export const useAuthStore = defineStore('auth', () => {
           isActive: isUserActive(backendUser.status), // Add compatibility field
           last_login: backendUser.last_login,
           permissions: getPermissionsForRole(backendUser.role_code),
-          avatar_url: resolveApiMediaUrl(backendUser.avatar_url),
-          full_img_url: resolveApiMediaUrl(backendUser.full_img_url),
+          avatar_url: backendUser.avatar_url
+            ? backendUser.avatar_url.startsWith('http')
+              ? backendUser.avatar_url
+              : `${apiConfig.baseURL}${backendUser.avatar_url}`
+            : undefined,
+          full_img_url: backendUser.full_img_url
+            ? backendUser.full_img_url.startsWith('http')
+              ? backendUser.full_img_url
+              : `${apiConfig.baseURL}${backendUser.full_img_url}`
+            : undefined,
           // Добавляем дополнительные поля
           phone: backendUser.phone,
           job_title: backendUser.job_title,

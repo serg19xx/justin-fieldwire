@@ -16,34 +16,6 @@ export function getApiBaseUrl(): string {
   return import.meta.env.PROD ? REMOTE_API_URL : LOCAL_API_URL
 }
 
-/** Rewrite stale localhost media URLs to the current API host. */
-export function resolveApiMediaUrl(url?: string | null): string | undefined {
-  if (!url) {
-    return undefined
-  }
-
-  const trimmed = url.trim()
-  if (!trimmed) {
-    return undefined
-  }
-
-  const base = getApiBaseUrl().replace(/\/$/, '')
-
-  if (/^https?:\/\//i.test(trimmed)) {
-    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(trimmed)) {
-      try {
-        const parsed = new URL(trimmed)
-        return `${base}${parsed.pathname}${parsed.search}`
-      } catch {
-        return trimmed
-      }
-    }
-    return trimmed
-  }
-
-  return `${base}${trimmed.startsWith('/') ? trimmed : `/${trimmed}`}`
-}
-
 const environments = {
   development: {
     baseURL: getApiBaseUrl(),

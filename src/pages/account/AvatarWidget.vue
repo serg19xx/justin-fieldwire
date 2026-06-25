@@ -3,11 +3,12 @@
     <!-- Avatar -->
     <div class="avatar-container">
       <img
-        v-if="avatar && !isDefaultAvatar"
-        :src="avatar"
+        v-if="avatar && !isDefaultAvatar && !avatarLoadFailed"
+        :src="avatarWithCacheBust"
         alt="Avatar"
         class="avatar-img cursor-pointer hover:opacity-80 transition-opacity"
         @click="showFullPhoto"
+        @error="onAvatarError"
         :title="hasFullPhoto ? 'Click to view full photo' : 'Click to edit avatar'"
       />
       <div
@@ -69,14 +70,24 @@
           <div v-if="showFullPhotoModal" class="full-photo-modal">
             <div class="flex justify-between items-center mb-3 sm:mb-4">
               <h2 class="text-base sm:text-lg font-semibold">Full Photo</h2>
-              <button @click="closeFullPhoto" class="text-gray-500 hover:text-black">✖</button>
+              <div class="flex items-center gap-3">
+                <button type="button" class="text-sm text-blue-600 hover:text-blue-800" @click="openModalFromFullPhoto">
+                  Change photo
+                </button>
+                <button @click="closeFullPhoto" class="text-gray-500 hover:text-black">✖</button>
+              </div>
             </div>
             <div class="flex justify-center items-center min-h-0 flex-1">
               <img
+                v-if="!fullPhotoLoadFailed"
                 :src="fullPhotoUrlComputed"
                 alt="Full photo"
                 class="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+                @error="onFullPhotoError"
               />
+              <p v-else class="text-sm text-gray-500 text-center px-4">
+                Photo file is missing on the server. Click “Change photo” to upload again.
+              </p>
             </div>
           </div>
         </Transition>
@@ -88,6 +99,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import AvatarUploaderComponent from './AvatarUploaderComponent.vue'
+import { resolveApiMediaUrl } from '@/config/api'
 
 const props = defineProps({
   initialAvatar: { type: String, default: '/images/default-avatar.png' },
@@ -101,7 +113,10 @@ const showModal = ref(false)
 const showFullPhotoModal = ref(false)
 const avatar = ref(props.initialAvatar)
 const fullPhoto = ref(props.fullPhotoUrl)
-const originalFullPhoto = ref(props.fullPhotoUrl) // Сохраняем оригинальное полное изображение
+const originalFullPhoto = ref(props.fullPhotoUrl)
+const avatarLoadFailed = ref(false)
+const fullPhotoLoadFailed = ref(false)
+const avatarCacheBust = ref(0)
 
 // Инициализируем fullPhoto и originalFullPhoto при загрузке
 if (props.fullPhotoUrl) {
@@ -121,6 +136,7 @@ watch(
   () => props.initialAvatar,
   (newAvatar) => {
     avatar.value = newAvatar
+    avatarLoadFailed.value = false
   },
   { immediate: true },
 )
@@ -130,9 +146,8 @@ watch(
   () => props.fullPhotoUrl,
   (newFullPhoto) => {
     fullPhoto.value = newFullPhoto
+    fullPhotoLoadFailed.value = false
 
-    // Обновляем оригинальное изображение ТОЛЬКО если это новое изображение
-    // (не обрезанный аватар, а полное изображение)
     if (newFullPhoto && !newFullPhoto.includes('avatar') && newFullPhoto.includes('full-image')) {
       originalFullPhoto.value = newFullPhoto
     }
@@ -161,15 +176,38 @@ const isDefaultAvatar = computed(() => {
 
 const hasFullPhoto = computed(() => {
   return (
+    !avatarLoadFailed.value &&
+    !fullPhotoLoadFailed.value &&
     fullPhoto.value &&
     fullPhoto.value !== '/default-avatar.png' &&
     !fullPhoto.value.includes('default-avatar')
   )
 })
 
+const avatarWithCacheBust = computed(() => {
+  if (!avatar.value || avatarLoadFailed.value) {
+    return ''
+  }
+  const separator = avatar.value.includes('?') ? '&' : '?'
+  return `${avatar.value}${separator}v=${avatarCacheBust.value}`
+})
+
 const fullPhotoUrlComputed = computed(() => {
   return fullPhoto.value || avatar.value
 })
+
+function onAvatarError() {
+  avatarLoadFailed.value = true
+}
+
+function onFullPhotoError() {
+  fullPhotoLoadFailed.value = true
+}
+
+function openModalFromFullPhoto() {
+  closeFullPhoto()
+  openModal()
+}
 
 // Modal functions
 function openModal() {
@@ -195,16 +233,19 @@ function closeFullPhoto() {
 
 // Обработчик события avatar-saved от AvatarUploaderComponent
 function onAvatarSaved(avatarData: { croppedAvatar: string; fullImage: string } | string) {
+  avatarLoadFailed.value = false
+  fullPhotoLoadFailed.value = false
+  avatarCacheBust.value = Date.now()
+
   if (typeof avatarData === 'string') {
-    // Старый формат (только обрезанный аватар)
-    avatar.value = avatarData
-    fullPhoto.value = avatarData // Используем тот же URL для полного фото
-    // НЕ обновляем originalFullPhoto для старого формата
+    avatar.value = resolveApiMediaUrl(avatarData) || avatarData
+    fullPhoto.value = avatar.value
   } else {
-    // Новый формат (объект с двумя изображениями)
-    avatar.value = avatarData.croppedAvatar
-    fullPhoto.value = avatarData.fullImage
-    // НЕ обновляем originalFullPhoto - сохраняем оригинальное полное изображение
+    avatar.value = resolveApiMediaUrl(avatarData.croppedAvatar) || avatarData.croppedAvatar
+    fullPhoto.value = resolveApiMediaUrl(avatarData.fullImage) || avatarData.fullImage
+    if (avatarData.fullImage.includes('full-image')) {
+      originalFullPhoto.value = fullPhoto.value
+    }
   }
 
   closeModal()

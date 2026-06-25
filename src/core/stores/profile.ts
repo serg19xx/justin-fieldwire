@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { api } from '@/core/utils/api'
-import { resolveApiMediaUrl } from '@/config/api'
+import { getApiBaseUrl } from '@/config/api'
 
 export interface WorkerLanguage {
   worker_id: number
@@ -129,8 +129,8 @@ export const useProfileStore = defineStore('profile', () => {
           status_reason: userData.status_reason,
           status_details: userData.status_details,
           additional_info: userData.additional_info,
-          avatar_url: resolveApiMediaUrl(userData.avatar_url) ?? null,
-          full_img_url: resolveApiMediaUrl(userData.full_img_url) ?? null,
+          avatar_url: userData.avatar_url,
+          full_img_url: userData.full_img_url,
           two_factor_enabled: userData.two_factor_enabled,
           last_login: userData.last_login,
           created_at: userData.created_at,
@@ -259,8 +259,8 @@ export const useProfileStore = defineStore('profile', () => {
       if (response.data.status === 'success') {
         // Обновляем локальное состояние
         if (profile.value) {
-          profile.value.avatar_url = resolveApiMediaUrl(response.data.data.avatar_url) ?? null
-          profile.value.full_img_url = resolveApiMediaUrl(response.data.data.full_image_url) ?? null
+          profile.value.avatar_url = response.data.data.avatar_url
+          profile.value.full_img_url = response.data.data.full_image_url
         }
 
         return { success: true, profile: profile.value || undefined }
@@ -294,10 +294,13 @@ export const useProfileStore = defineStore('profile', () => {
       })
 
       if (response.data.status === 'success') {
-        const fullAvatarUrl = resolveApiMediaUrl(response.data.data.avatar_url)
+        const avatarUrl = response.data.data.avatar_url
+        const fullAvatarUrl = avatarUrl.startsWith('http')
+          ? avatarUrl
+          : `${getApiBaseUrl()}${avatarUrl}`
 
         // Обновляем локальное состояние
-        if (profile.value && fullAvatarUrl) {
+        if (profile.value) {
           profile.value.avatar_url = fullAvatarUrl
         }
 
@@ -339,13 +342,21 @@ export const useProfileStore = defineStore('profile', () => {
       })
 
       if (response.data.status === 'success') {
-        const fullAvatarUrl = resolveApiMediaUrl(response.data.data.avatar_url)
-        const fullFullImageUrl = resolveApiMediaUrl(response.data.data.full_image_url)
+        const avatarUrl = response.data.data.avatar_url
+        const fullImageUrl = response.data.data.full_image_url
+
+        const fullAvatarUrl = avatarUrl.startsWith('http')
+          ? avatarUrl
+          : `${getApiBaseUrl()}${avatarUrl}`
+
+        const fullFullImageUrl = fullImageUrl.startsWith('http')
+          ? fullImageUrl
+          : `${getApiBaseUrl()}${fullImageUrl}`
 
         // Обновляем локальное состояние
         if (profile.value) {
-          if (fullAvatarUrl) profile.value.avatar_url = fullAvatarUrl
-          if (fullFullImageUrl) profile.value.full_img_url = fullFullImageUrl
+          profile.value.avatar_url = fullAvatarUrl
+          profile.value.full_img_url = fullFullImageUrl
         }
 
         return { success: true, avatarUrl: fullAvatarUrl, fullImageUrl: fullFullImageUrl }

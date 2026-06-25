@@ -1326,7 +1326,7 @@
 import { ref, reactive, onMounted, computed, watch, nextTick } from 'vue'
 import { useAuthStore } from '@/core/stores/auth'
 import { api } from '@/core/utils/api'
-import { resolveApiMediaUrl } from '@/config/api'
+import { getApiBaseUrl } from '@/config/api'
 import { useProfileStore, AVAILABLE_LANGUAGES, PROFICIENCY_LEVELS } from '@/core/stores/profile'
 import AvatarWidget from './AvatarWidget.vue'
 import NotificationPreferencesCard from '@/components/account/NotificationPreferencesCard.vue'
@@ -1342,7 +1342,7 @@ const profileStore = useProfileStore()
 // User data
 const user = computed(() => authStore.currentUser)
 const userAvatar = computed(() => {
-  return resolveApiMediaUrl(profileStore.profile?.avatar_url || user.value?.avatar_url) || '/default-avatar.png'
+  return profileStore.profile?.avatar_url || user.value?.avatar_url || '/default-avatar.png'
 })
 
 // Password form validation
@@ -1587,7 +1587,7 @@ const fullName = computed(() => {
 })
 
 const fullPhotoUrl = computed(() => {
-  return resolveApiMediaUrl(user.value?.full_img_url || user.value?.avatar_url) || '/default-avatar.png'
+  return user.value?.full_img_url || user.value?.avatar_url || '/default-avatar.png'
 })
 
 // Functions
@@ -2251,14 +2251,14 @@ function handleAvatarUpdated(avatarData: { croppedAvatar: string; fullImage: str
     if (typeof avatarData === 'string') {
       // Old format - just avatar URL
       if (authStore.currentUser) {
-        authStore.currentUser.avatar_url = resolveApiMediaUrl(avatarData)
+        authStore.currentUser.avatar_url = avatarData
         localStorage.setItem('user', JSON.stringify(authStore.currentUser))
       }
     } else {
       // New format - object with croppedAvatar and fullImage
       if (authStore.currentUser) {
-        authStore.currentUser.avatar_url = resolveApiMediaUrl(avatarData.croppedAvatar)
-        ;(authStore.currentUser as { full_img_url?: string }).full_img_url = resolveApiMediaUrl(avatarData.fullImage)
+        authStore.currentUser.avatar_url = avatarData.croppedAvatar
+        ;(authStore.currentUser as { full_img_url?: string }).full_img_url = avatarData.fullImage
         localStorage.setItem('user', JSON.stringify(authStore.currentUser))
       }
     }
@@ -2279,8 +2279,8 @@ function handleAvatarUpdated(avatarData: { croppedAvatar: string; fullImage: str
 async function handleAvatarSaved(avatarData: { croppedAvatar: string; fullImage: string }) {
   try {
     if (authStore.currentUser) {
-      authStore.currentUser.avatar_url = resolveApiMediaUrl(avatarData.croppedAvatar)
-      ;(authStore.currentUser as { full_img_url?: string }).full_img_url = resolveApiMediaUrl(avatarData.fullImage)
+        authStore.currentUser.avatar_url = avatarData.croppedAvatar
+      ;(authStore.currentUser as { full_img_url?: string }).full_img_url = avatarData.fullImage
       localStorage.setItem('user', JSON.stringify(authStore.currentUser))
     }
 
@@ -2687,10 +2687,14 @@ onMounted(async () => {
 
         // Обновляем URL изображений, если они есть
         if (userData.avatar_url) {
-          authStore.currentUser.avatar_url = resolveApiMediaUrl(userData.avatar_url)
+          authStore.currentUser.avatar_url = userData.avatar_url.startsWith('http')
+            ? userData.avatar_url
+            : `${getApiBaseUrl()}${userData.avatar_url}`
         }
         if (userData.full_img_url) {
-          authStore.currentUser.full_img_url = resolveApiMediaUrl(userData.full_img_url)
+          authStore.currentUser.full_img_url = userData.full_img_url.startsWith('http')
+            ? userData.full_img_url
+            : `${getApiBaseUrl()}${userData.full_img_url}`
         }
 
         // Сохраняем обновленные данные в localStorage
