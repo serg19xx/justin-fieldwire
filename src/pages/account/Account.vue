@@ -482,26 +482,6 @@
                   </p>
                 </div>
 
-                <!-- Workforce Group -->
-                <div class="md:col-span-2">
-                  <label for="workforce_group" class="block text-sm font-medium text-gray-700 mb-2">
-                    Workforce Group *
-                  </label>
-                  <select
-                    id="workforce_group"
-                    v-model="profileForm.workforce_group"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select workforce group</option>
-                    <option v-for="group in WORKFORCE_GROUPS" :key="group.value" :value="group.value">
-                      {{ group.label }}
-                    </option>
-                  </select>
-                  <p v-if="validationErrors.workforce_group" class="mt-1 text-sm text-red-600">
-                    {{ validationErrors.workforce_group }}
-                  </p>
-                </div>
-
                 <!-- Languages -->
                 <div class="md:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -1347,7 +1327,7 @@ import { ref, reactive, onMounted, computed, watch, nextTick } from 'vue'
 import { useAuthStore } from '@/core/stores/auth'
 import { api } from '@/core/utils/api'
 import { getApiBaseUrl } from '@/config/api'
-import { useProfileStore, WORKFORCE_GROUPS, AVAILABLE_LANGUAGES, PROFICIENCY_LEVELS } from '@/core/stores/profile'
+import { useProfileStore, AVAILABLE_LANGUAGES, PROFICIENCY_LEVELS } from '@/core/stores/profile'
 import AvatarWidget from './AvatarWidget.vue'
 import NotificationPreferencesCard from '@/components/account/NotificationPreferencesCard.vue'
 
@@ -1562,9 +1542,6 @@ const validationRules: Record<string, ValidationRule> = {
   country_of_origin: {
     maxLength: 100,
     pattern: /^[a-zA-Zа-яА-Я\s'-]+$/,
-  },
-  workforce_group: {
-    required: true,
   },
   city: {
     required: true,
