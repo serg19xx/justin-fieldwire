@@ -2,10 +2,10 @@
   <div
     v-if="isOpen"
     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4"
-    @click.self="closeDialog"
+    @click.self="!isCreating && closeDialog()"
   >
     <div
-      class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
+      class="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col"
     >
       <!-- Header -->
       <div class="flex items-center justify-between p-4 sm:p-6 border-b border-gray-200 flex-shrink-0">
@@ -15,7 +15,11 @@
             {{ selectedTemplates.length }} template{{ selectedTemplates.length !== 1 ? 's' : '' }} selected
           </p>
         </div>
-        <button @click="closeDialog" class="text-gray-400 hover:text-gray-600 transition-colors">
+        <button
+          @click="closeDialog"
+          :disabled="isCreating"
+          class="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               stroke-linecap="round"
@@ -65,6 +69,14 @@
             </p>
           </div>
 
+          <p
+            v-if="autoFilledCount > 0"
+            class="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900"
+          >
+            {{ autoFilledCount }} template{{ autoFilledCount !== 1 ? 's' : '' }} had no schedule in the
+            library — all start on the project date (1 day each). Adjust on the calendar anytime.
+          </p>
+
           <!-- Default Foreman -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -101,12 +113,7 @@
             <div
               v-for="(selectedTemplate, index) in taskConfigs"
               :key="selectedTemplate.template.id"
-              :class="[
-                'p-4 border rounded-lg transition-colors',
-                hasTaskErrors(selectedTemplate, index)
-                  ? 'border-red-300 bg-red-50/30 hover:border-red-400'
-                  : 'border-gray-200 hover:border-gray-300'
-              ]"
+              class="p-4 border border-gray-200 rounded-lg transition-colors hover:border-gray-300"
             >
               <div class="flex items-start justify-between gap-4">
                 <div class="flex-1">
@@ -131,90 +138,35 @@
                   <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
                     <!-- Start Date Override -->
                     <div>
-                      <label class="block text-xs font-medium text-gray-600 mb-1">
-                        Start Date Offset
-                        <span v-if="selectedTemplate.template.start_offset_days === null" class="text-red-500">
-                          *
-                        </span>
-                      </label>
+                      <label class="block text-xs font-medium text-gray-600 mb-1">Start Date Offset</label>
                       <div class="flex items-center gap-2">
                         <input
                           v-model.number="selectedTemplate.start_offset_days"
                           type="number"
-                          :placeholder="
-                            selectedTemplate.template.start_offset_days !== null
-                              ? String(selectedTemplate.template.start_offset_days)
-                              : 'Enter days from start'
-                          "
-                          :class="[
-                            'flex-1 px-2 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 text-gray-900',
-                            hasStartOffsetError(selectedTemplate, index)
-                              ? 'border-red-500 focus:ring-red-500 bg-red-50'
-                              : 'border-gray-300 focus:ring-blue-500'
-                          ]"
+                          min="0"
+                          class="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                         />
                         <span class="text-xs text-gray-500 whitespace-nowrap">days</span>
                       </div>
                       <p v-if="calculatedStartDate(selectedTemplate)" class="text-xs text-gray-500 mt-1">
                         → {{ formatDate(calculatedStartDate(selectedTemplate)!) }}
                       </p>
-                      <p
-                        v-if="hasStartOffsetError(selectedTemplate, index)"
-                        class="text-xs text-red-600 mt-1 flex items-center gap-1"
-                      >
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                        This field is required
-                      </p>
                     </div>
 
                     <!-- Duration Override -->
                     <div>
-                      <label class="block text-xs font-medium text-gray-600 mb-1">
-                        Duration
-                        <span v-if="!selectedTemplate.template.duration_days" class="text-red-500">*</span>
-                      </label>
+                      <label class="block text-xs font-medium text-gray-600 mb-1">Duration</label>
                       <div class="flex items-center gap-2">
                         <input
                           v-model.number="selectedTemplate.duration_days"
                           type="number"
                           min="1"
-                          :placeholder="
-                            selectedTemplate.template.duration_days
-                              ? String(selectedTemplate.template.duration_days)
-                              : 'Enter duration'
-                          "
-                          :class="[
-                            'flex-1 px-2 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 text-gray-900',
-                            hasDurationError(selectedTemplate, index)
-                              ? 'border-red-500 focus:ring-red-500 bg-red-50'
-                              : 'border-gray-300 focus:ring-blue-500'
-                          ]"
+                          class="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                         />
                         <span class="text-xs text-gray-500 whitespace-nowrap">days</span>
                       </div>
                       <p v-if="calculatedEndDate(selectedTemplate)" class="text-xs text-gray-500 mt-1">
                         → {{ formatDate(calculatedEndDate(selectedTemplate)!) }}
-                      </p>
-                      <p
-                        v-if="hasDurationError(selectedTemplate, index)"
-                        class="text-xs text-red-600 mt-1 flex items-center gap-1"
-                      >
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                        This field is required
                       </p>
                     </div>
 
@@ -254,6 +206,31 @@
         </div>
       </div>
 
+      <!-- Creating overlay -->
+      <div
+        v-if="isCreating"
+        class="absolute inset-0 z-10 flex items-center justify-center bg-white/80 backdrop-blur-[1px]"
+      >
+        <div class="mx-4 w-full max-w-sm rounded-lg border border-gray-200 bg-white px-6 py-5 shadow-lg text-center">
+          <div
+            class="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-[3px] border-blue-200 border-t-blue-600"
+            role="status"
+            aria-label="Creating tasks"
+          />
+          <p class="text-sm font-semibold text-gray-900">Creating tasks…</p>
+          <p class="mt-1 text-sm text-gray-600">
+            {{ createProgressCurrent }} / {{ createProgressTotal }}
+          </p>
+          <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-200">
+            <div
+              class="h-full rounded-full bg-blue-600 transition-all duration-300"
+              :style="{ width: `${createProgressPercent}%` }"
+            />
+          </div>
+          <p class="mt-2 text-xs text-gray-500">Please keep this window open</p>
+        </div>
+      </div>
+
       <!-- Footer -->
       <div class="border-t border-gray-200 flex-shrink-0 bg-gray-50">
         <!-- Validation Errors Section -->
@@ -281,7 +258,10 @@
         <!-- Footer Actions -->
         <div class="flex items-center justify-between p-4 sm:p-6">
           <div class="text-sm text-gray-600">
-            <span v-if="validationErrors.length > 0" class="text-red-600">
+            <span v-if="isCreating" class="text-blue-700">
+              Creating {{ createProgressCurrent }} / {{ createProgressTotal }}…
+            </span>
+            <span v-else-if="validationErrors.length > 0" class="text-red-600">
               Please fix the errors above
             </span>
             <span v-else class="text-green-600">Ready to create {{ selectedTemplates.length }} tasks</span>
@@ -289,16 +269,21 @@
           <div class="flex gap-3">
             <button
               @click="closeDialog"
-              class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              :disabled="isCreating"
+              class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               @click="handleCreateTasks"
               :disabled="isCreating || validationErrors.length > 0 || !projectStartDate"
-              class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed inline-flex items-center gap-2"
             >
-              <span v-if="isCreating">Creating...</span>
+              <span
+                v-if="isCreating"
+                class="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+              />
+              <span v-if="isCreating">Creating {{ createProgressCurrent }} / {{ createProgressTotal }}</span>
               <span v-else>Create {{ selectedTemplates.length }} Tasks</span>
             </button>
           </div>
@@ -312,8 +297,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { tasksApi } from '@/core/utils/tasks-api'
 import { templateToTaskData } from '@/core/utils/task-templates-api'
-import type { TaskTemplate, SelectedTemplate } from '@/core/types/task'
-import type { TaskCreateUpdate } from '@/core/types/task'
+import { isMilestone, type SelectedTemplate, type TaskTemplate } from '@/core/types/task'
 
 interface Props {
   isOpen: boolean
@@ -335,21 +319,78 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
-const projectStartDate = ref(props.projectStartDate || '')
+const projectStartDate = ref(props.projectStartDate || getTodayIsoDate())
 const defaultTaskLeadId = ref<number | null>(null)
 const taskConfigs = ref<SelectedTemplate[]>([])
 const isCreating = ref(false)
+const createProgressCurrent = ref(0)
+const createProgressTotal = ref(0)
 
-// Initialize task configs from selected templates
+const createProgressPercent = computed(() => {
+  if (createProgressTotal.value === 0) return 0
+  return Math.round((createProgressCurrent.value / createProgressTotal.value) * 100)
+})
+
+function getTodayIsoDate(): string {
+  return new Date().toISOString().split('T')[0]
+}
+
+function resolveDurationDays(config: SelectedTemplate): number {
+  if (isMilestone(config.template.milestone)) return 1
+  const value = config.duration_days ?? config.template.duration_days
+  return value && value > 0 ? value : 1
+}
+
+function templateNeedsAutoSchedule(template: TaskTemplate): boolean {
+  return (
+    (template.start_offset_days === null || template.start_offset_days === undefined) &&
+    (template.duration_days === null || template.duration_days === undefined)
+  )
+}
+
+function applyAutoScheduleDefaults(configs: SelectedTemplate[]): SelectedTemplate[] {
+  return configs.map((item) => {
+    const template = item.template
+    const hasTemplateOffset =
+      template.start_offset_days !== null && template.start_offset_days !== undefined
+    const hasConfigOffset =
+      item.start_offset_days !== null && item.start_offset_days !== undefined
+
+    const offset = hasConfigOffset
+      ? item.start_offset_days!
+      : hasTemplateOffset
+        ? template.start_offset_days!
+        : 0
+
+    const duration = resolveDurationDays({
+      ...item,
+      start_offset_days: offset,
+      duration_days: item.duration_days ?? template.duration_days ?? null,
+    })
+
+    return {
+      ...item,
+      start_offset_days: offset,
+      duration_days: duration,
+    }
+  })
+}
+
 function initializeTaskConfigs() {
-  taskConfigs.value = props.selectedTemplates.map((template) => ({
+  const baseConfigs = props.selectedTemplates.map((template) => ({
     template,
     selected: true,
     start_offset_days: template.start_offset_days ?? null,
     duration_days: template.duration_days ?? null,
     task_lead_id: null,
   }))
+
+  taskConfigs.value = applyAutoScheduleDefaults(baseConfigs)
 }
+
+const autoFilledCount = computed(
+  () => taskConfigs.value.filter((config) => templateNeedsAutoSchedule(config.template)).length,
+)
 
 // Watch for changes in selected templates
 watch(
@@ -358,6 +399,18 @@ watch(
     initializeTaskConfigs()
   },
   { immediate: true },
+)
+
+watch(
+  () => props.isOpen,
+  (open) => {
+    if (open) {
+      projectStartDate.value = props.projectStartDate || getTodayIsoDate()
+      createProgressCurrent.value = 0
+      createProgressTotal.value = 0
+      initializeTaskConfigs()
+    }
+  },
 )
 
 // Watch for project start date changes
@@ -371,45 +424,17 @@ watch(
   { immediate: true },
 )
 
-// Validation
 const validationErrors = computed(() => {
-  const errors: string[] = []
-
   if (!projectStartDate.value) {
-    errors.push('Project start date is required')
+    return ['Project start date is required']
   }
-
-  taskConfigs.value.forEach((config, index) => {
-    const template = config.template
-    if (config.start_offset_days === null && template.start_offset_days === null) {
-      errors.push(`Task "${template.name}" (#${index + 1}): Start date offset is required`)
-    }
-    if (!config.duration_days && !template.duration_days) {
-      errors.push(`Task "${template.name}" (#${index + 1}): Duration is required`)
-    }
-  })
-
-  return errors
+  return []
 })
 
-// Helper functions to check if specific fields have errors
-function hasStartOffsetError(config: SelectedTemplate, index: number): boolean {
-  return config.start_offset_days === null && config.template.start_offset_days === null
-}
-
-function hasDurationError(config: SelectedTemplate, index: number): boolean {
-  return !config.duration_days && !config.template.duration_days
-}
-
-function hasTaskErrors(config: SelectedTemplate, index: number): boolean {
-  return hasStartOffsetError(config, index) || hasDurationError(config, index)
-}
-
-// Calculate dates
 function calculatedStartDate(config: SelectedTemplate): string | null {
   if (!projectStartDate.value) return null
-  const offset = config.start_offset_days ?? config.template.start_offset_days
-  if (offset === null || offset === undefined) return null
+  const offset = config.start_offset_days
+  if (offset === null || offset === undefined) return projectStartDate.value
 
   const date = new Date(projectStartDate.value)
   date.setDate(date.getDate() + offset)
@@ -420,11 +445,9 @@ function calculatedEndDate(config: SelectedTemplate): string | null {
   const startDate = calculatedStartDate(config)
   if (!startDate) return null
 
-  const duration = config.duration_days ?? config.template.duration_days
-  if (!duration) return null
-
+  const duration = resolveDurationDays(config)
   const date = new Date(startDate)
-  date.setDate(date.getDate() + duration - 1) // -1 because start day counts as day 1
+  date.setDate(date.getDate() + duration - 1)
   return date.toISOString().split('T')[0]
 }
 
@@ -440,11 +463,13 @@ async function handleCreateTasks() {
   }
 
   isCreating.value = true
+  createProgressCurrent.value = 0
+  createProgressTotal.value = taskConfigs.value.length
 
   try {
     const createdTasks = []
 
-    for (const config of taskConfigs.value) {
+    for (const [index, config] of taskConfigs.value.entries()) {
       const taskData = templateToTaskData(config.template, props.projectId, projectStartDate.value, {
         start_offset_days: config.start_offset_days,
         duration_days: config.duration_days,
@@ -453,6 +478,7 @@ async function handleCreateTasks() {
 
       const task = await tasksApi.create(props.projectId, taskData)
       createdTasks.push(task)
+      createProgressCurrent.value = index + 1
     }
 
     emit('tasks-created', createdTasks)
@@ -466,6 +492,7 @@ async function handleCreateTasks() {
 }
 
 function closeDialog() {
+  if (isCreating.value) return
   emit('close')
 }
 

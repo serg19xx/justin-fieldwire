@@ -84,9 +84,62 @@ const shouldShowDependencyIndicators = computed(() => {
 
 // State
 const tasks = ref<Task[]>([])
+const tasksLoadTotal = ref(0)
 const loading = ref(false)
 const error = ref<string | null>(null)
-const viewMode = ref<TasksViewMode>(DEFAULT_TASKS_VIEW_MODE)
+
+function tasksViewStorageKey(projectId: number): string {
+  return `fw-tasks-view-${projectId}`
+}
+
+function selectedTaskStorageKey(projectId: number): string {
+  return `fw-selected-task-${projectId}`
+}
+
+function taskListScrollStorageKey(projectId: number): string {
+  return `fw-task-list-scroll-${projectId}`
+}
+
+function readStoredViewMode(projectId: number): TasksViewMode {
+  try {
+    const stored = sessionStorage.getItem(tasksViewStorageKey(projectId))
+    if (stored === 'list' || stored === 'gantt' || stored === 'ical') {
+      if (stored === 'ical' && !TASKS_CALENDAR_ENABLED) {
+        return DEFAULT_TASKS_VIEW_MODE
+      }
+      return stored
+    }
+  } catch {
+    // sessionStorage may be unavailable
+  }
+  return DEFAULT_TASKS_VIEW_MODE
+}
+
+function readStoredSelectedTaskId(projectId: number): string | null {
+  try {
+    return sessionStorage.getItem(selectedTaskStorageKey(projectId))
+  } catch {
+    return null
+  }
+}
+
+function readStoredTaskListScroll(projectId: number): number {
+  try {
+    const raw = sessionStorage.getItem(taskListScrollStorageKey(projectId))
+    if (raw) {
+      const parsed = Number.parseInt(raw, 10)
+      if (!Number.isNaN(parsed) && parsed >= 0) {
+        return parsed
+      }
+    }
+  } catch {
+    // sessionStorage may be unavailable
+  }
+  return 0
+}
+
+const viewMode = ref<TasksViewMode>(readStoredViewMode(props.projectId))
+const taskListScrollTop = ref(readStoredTaskListScroll(props.projectId))
 const currentCalendarView = ref<'month' | 'week' | 'day'>('month')
 const isCalendarViewActive = computed(
   () => TASKS_CALENDAR_ENABLED && viewMode.value === 'ical',
@@ -100,6 +153,48 @@ const projectInfo = ref<Project | null>(null)
 
 // Selected task for details view
 const selectedTask = ref<Task | null>(null)
+
+function restoreStoredSelectedTask() {
+  if (selectedTask.value) return
+
+  const storedId = readStoredSelectedTaskId(props.projectId)
+  if (!storedId) return
+
+  const task = tasks.value.find((item) => String(item.id) === storedId)
+  if (task) {
+    selectedTask.value = task
+  }
+}
+
+watch(
+  () => props.projectId,
+  (projectId) => {
+    viewMode.value = readStoredViewMode(projectId)
+    taskListScrollTop.value = readStoredTaskListScroll(projectId)
+    restoreStoredSelectedTask()
+  },
+)
+
+watch(taskListScrollTop, (scrollTop) => {
+  try {
+    sessionStorage.setItem(taskListScrollStorageKey(props.projectId), String(scrollTop))
+  } catch {
+    // sessionStorage may be unavailable
+  }
+})
+
+watch(
+  selectedTask,
+  (task) => {
+    try {
+      if (task?.id) {
+        sessionStorage.setItem(selectedTaskStorageKey(props.projectId), String(task.id))
+      }
+    } catch {
+      // sessionStorage may be unavailable
+    }
+  },
+)
 
 // Search state
 const searchResults = ref<Task[]>([])
@@ -929,11 +1024,15 @@ async function loadTasks() {
     error.value = null
 
     const response = await tasksApi.getAll(props.projectId)
-    console.log('✅ Tasks loaded from API:', response)
+    console.log('✅ Tasks loaded from API:', {
+      loaded: response.tasks?.length ?? 0,
+      total: response.pagination?.total ?? 0,
+    })
 
     // Update tasks array
     tasks.value = response.tasks || []
-    console.log('📋 Tasks array updated:', tasks.value.length, 'tasks')
+    tasksLoadTotal.value = response.pagination?.total ?? tasks.value.length
+    console.log('📋 Tasks array updated:', tasks.value.length, 'of', tasksLoadTotal.value, 'tasks')
 
     if (TASKS_CALENDAR_ENABLED) {
       // Filter out tasks without start_planned date (they can't be displayed in calendar)
@@ -975,6 +1074,8 @@ async function loadTasks() {
 
     // Load all project workers for filtering
     await loadAllProjectWorkers()
+
+    restoreStoredSelectedTask()
 
     if (TASKS_CALENDAR_ENABLED) {
       // Apply project bounds styling after tasks are loaded
@@ -2260,6 +2361,12 @@ watch(viewMode, (newMode, oldMode) => {
     return
   }
 
+  try {
+    sessionStorage.setItem(tasksViewStorageKey(props.projectId), newMode)
+  } catch {
+    // sessionStorage may be unavailable
+  }
+
   console.log('🔄 viewMode changed from:', oldMode, 'to:', newMode, 'selectedTask:', selectedTask.value?.name || 'null')
 
   if (newMode === 'ical') {
@@ -2447,10 +2554,35 @@ function selectTaskForDetails(task: Task) {
 }
 
 // Update selected task after edit
+function upsertTaskInList(task: Task) {
+  const index = tasks.value.findIndex((item) => String(item.id) === String(task.id))
+  if (index >= 0) {
+    tasks.value[index] = task
+  } else {
+    tasks.value.push(task)
+  }
+}
+
+function refreshCalendarEventsFromTasks() {
+  if (!TASKS_CALENDAR_ENABLED) return
+
+  const tasksWithDates = tasks.value.filter((task) => !!task.start_planned)
+  const viewType: 'month' | 'week' | 'day' = currentCalendarView.value
+  const events = tasksWithDates.map((task) =>
+    taskToCalendarTask(task, shouldShowDependencyIndicators.value, viewType),
+  )
+  updateCalendarEvents(events)
+}
+
 function updateSelectedTask(updatedTask: unknown) {
-  if (selectedTask.value && (updatedTask as Task).id === selectedTask.value.id) {
-    selectedTask.value = updatedTask as Task
-    console.log('📝 Updated selected task details:', (updatedTask as Task).name)
+  const task = updatedTask as Task
+  if (!task?.id) return
+
+  upsertTaskInList(task)
+
+  if (selectedTask.value && String(task.id) === String(selectedTask.value.id)) {
+    selectedTask.value = task
+    console.log('📝 Updated selected task details:', task.name)
   }
 }
 
@@ -2877,9 +3009,16 @@ function handleProjectUpdated(updatedProject: Project) {
 }
 
 function handleTaskUpdate(updatedTask: Task | null) {
-  console.log('📅 Task updated from Gantt, emitting to parent:', updatedTask)
+  console.log('📅 Task updated from Gantt, syncing local list:', updatedTask?.name || 'none')
 
-  // Emit to parent component to update project dates and refresh
+  if (updatedTask?.id) {
+    upsertTaskInList(updatedTask)
+    if (selectedTask.value && String(selectedTask.value.id) === String(updatedTask.id)) {
+      selectedTask.value = updatedTask
+    }
+    refreshCalendarEventsFromTasks()
+  }
+
   emit('taskUpdate', updatedTask ?? ({} as Task))
 }
 
@@ -3176,8 +3315,11 @@ async function handleTaskSave(taskData: (Partial<TaskCreateUpdate> | Partial<Tas
       )
       console.log('✅ Task updated via API:', updatedTask)
 
-      // Reload tasks from API to get fresh data
-      await loadTasks()
+      upsertTaskInList(updatedTask as Task)
+      if (selectedTask.value && String(selectedTask.value.id) === String(taskData.id)) {
+        selectedTask.value = updatedTask as Task
+      }
+      refreshCalendarEventsFromTasks()
 
       emit('taskUpdate', updatedTask)
 
@@ -3634,7 +3776,16 @@ defineExpose({
             <span v-if="loading" class="text-sm text-gray-500">Loading tasks...</span>
             <span v-else-if="error" class="text-sm text-red-500">{{ error }}</span>
             <span v-else class="text-sm text-gray-500">
-              {{ filteredTasks.length }} tasks
+              {{ filteredTasks.length }} shown
+              <span v-if="tasksLoadTotal > 0 && tasks.length < tasksLoadTotal" class="text-amber-700 font-medium">
+                · loaded {{ tasks.length }} of {{ tasksLoadTotal }}
+              </span>
+              <span v-else-if="tasks.length > 0" class="text-gray-400">
+                · {{ tasks.length }} total
+              </span>
+              <span v-if="activeFiltersCount > 0" class="ml-2 text-amber-600">
+                ({{ activeFiltersCount }} filter{{ activeFiltersCount !== 1 ? 's' : '' }} active)
+              </span>
               <span v-if="selectedWorkerId" class="ml-2 text-blue-600">
                 (filtered by worker)
               </span>
@@ -3729,7 +3880,9 @@ defineExpose({
             :filtered-tasks="filteredTasks"
             :selected-task-id="selectedTask?.id"
             :active-filters-count="activeFiltersCount"
+            :initial-scroll-top="taskListScrollTop"
             @task-selected="selectTaskForDetails"
+            @scroll-position="taskListScrollTop = $event"
           />
         </div>
         <!-- Calendar -->
@@ -3744,14 +3897,16 @@ defineExpose({
         </div>
 
         <!-- Task List View -->
-        <div v-else-if="viewMode === 'list'" class="flex h-[calc(100vh-300px)] min-h-[600px] overflow-x-clip max-w-full">
+        <div v-show="viewMode === 'list'" class="flex h-[calc(100vh-300px)] min-h-[600px] overflow-x-clip max-w-full">
         <!-- Task List Sidebar -->
         <div class="w-80 flex-shrink-0 flex flex-col border-r border-gray-200 sticky left-0 z-20 bg-white">
           <TaskListSidebar
             :filtered-tasks="filteredTasks"
             :selected-task-id="selectedTask?.id"
             :active-filters-count="activeFiltersCount"
+            :initial-scroll-top="taskListScrollTop"
             @task-selected="selectTaskForDetails"
+            @scroll-position="taskListScrollTop = $event"
           />
         </div>
         <!-- Task Detail View -->
@@ -3902,7 +4057,7 @@ defineExpose({
         </div>
 
         <!-- Gantt View -->
-        <div v-else-if="viewMode === 'gantt'" class="p-4 overflow-hidden" style="max-width: 100%; width: 100%;">
+        <div v-show="viewMode === 'gantt'" class="px-4 pt-4 pb-8 overflow-hidden" style="max-width: 100%; width: 100%;">
          <!-- Gantt Chart -->
          <ProjectGantt
            :project-id="projectId"

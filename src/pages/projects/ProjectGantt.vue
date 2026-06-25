@@ -153,23 +153,23 @@
             </div>
 
     <!-- Gantt Chart Container -->
-    <div class="gantt-main-container" :key="componentKey">
+    <div class="gantt-main-container">
       <!-- Left Panel: Task List -->
-      <div class="gantt-left-panel" ref="leftPanelRef" @click="handleLeftPanelClick">
-        <!-- Task List Header -->
-        <div class="gantt-header-row">
+      <div class="gantt-left-panel" @click="handleLeftPanelClick">
+        <div class="gantt-header-row gantt-left-header">
           <div class="gantt-task-header">
             <div class="flex items-center gap-2">
               <span>Task</span>
+              <span class="text-xs text-gray-500">({{ mappedTasks.length }})</span>
               <span v-if="!sortByStartDate" class="text-xs text-gray-400">
                 (drag to reorder)
               </span>
             </div>
           </div>
-          </div>
+        </div>
 
-        <!-- Task List -->
-        <div class="gantt-task-list">
+        <div class="gantt-left-body" ref="leftBodyRef" @wheel.prevent="handleLeftBodyWheel">
+          <div class="gantt-task-list">
           <div
             v-for="task in mappedTasks"
             :key="task.id"
@@ -215,30 +215,42 @@
                 </div>
 
                 <!-- Duration Badge -->
-                <span class="ml-2 text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded flex-shrink-0">
-                  {{ task.milestone ? MILESTONE_ICON : `${task.duration}d` }}
+                <span
+                  class="ml-2 text-xs text-gray-700 bg-gray-100 px-2 py-1 rounded flex-shrink-0"
+                  :class="{ 'bg-amber-50 text-amber-800': task.unscheduled }"
+                >
+                  {{
+                    task.unscheduled
+                      ? 'No dates'
+                      : task.milestone
+                        ? MILESTONE_ICON
+                        : `${task.duration}d`
+                  }}
                 </span>
               </div>
             </div>
           </div>
-              </div>
-            </div>
+        </div>
+        </div>
+      </div>
 
       <!-- Right Panel: Gantt Grid -->
-      <div class="gantt-right-panel" ref="rightPanelRef" @scroll="handleDependencyLineScroll">
-        <!-- Grid Header -->
-        <div class="gantt-header-row gantt-grid-header">
-          <div
-            v-for="(day, idx) in days"
-            :key="`${day.toISOString().split('T')[0]}-${selectedTask?.id || 'none'}-${idx}`"
-            class="gantt-day-header"
-            :class="getDayHeaderClasses(day)"
-            :style="isMonthBoundary(day) ? 'font-size:12px;color:green;' : ''"
-          >
-            {{ formatDay(day) }}
+      <div class="gantt-right-panel">
+        <div class="gantt-right-header" ref="rightHeaderRef" @scroll="handleRightHeaderScroll">
+          <div class="gantt-header-row gantt-grid-header">
+            <div
+              v-for="(day, idx) in days"
+              :key="`${day.toISOString().split('T')[0]}-${selectedTask?.id || 'none'}-${idx}`"
+              class="gantt-day-header"
+              :class="getDayHeaderClasses(day)"
+              :style="isMonthBoundary(day) ? 'font-size:12px;color:green;' : ''"
+            >
+              {{ formatDay(day) }}
+            </div>
           </div>
         </div>
 
+        <div class="gantt-right-body" ref="rightBodyRef" @scroll="handleRightBodyScroll">
         <!-- Grid Content -->
         <div class="gantt-grid-content" @click="handleGridClick">
           <div
@@ -399,6 +411,7 @@
             </g>
           </svg>
         </div>
+        </div>
       </div>
     </div>
 
@@ -533,6 +546,7 @@ interface GanttTask {
   start: string // YYYY-MM-DD
   end: string // YYYY-MM-DD
   duration: number // duration in days
+  unscheduled?: boolean
   status: 'planned' | 'scheduled' | 'scheduled_accepted' | 'in_progress' | 'partially_completed' | 'delayed_due_to_issue' | 'ready_for_inspection' | 'completed'
   milestone?: boolean
   milestone_type?: MilestoneType
@@ -546,8 +560,7 @@ interface GanttTask {
 
 // Calculate project range based on project dates or task dates as fallback
 const projectRange = computed(() => {
-  // Use tasks from props (already filtered by parent component)
-  const tasksToUse = localTasks.value.length > 0 ? localTasks.value : (props.tasks || [])
+  const tasksToUse = resolveGanttSourceTasks()
   if (!tasksToUse || tasksToUse.length === 0) return null
 
   // Use project dates if available, otherwise fall back to task dates
@@ -678,16 +691,42 @@ const originalResizeEnd = ref<string>('')
 // Force update trigger
 // const forceUpdate = ref(0) // Removed unused variable
 
-// Force component re-render
-const componentKey = ref(0)
-const forceRerender = () => {
-  componentKey.value++
-}
-
-// Highlighted days logic moved to getDayHeaderClasses function
-
 // Selected task in the list
 const selectedTaskInList = ref<GanttTask | null>(null)
+
+const ganttPanelScroll = ref({ top: 0, left: 0 })
+
+function captureGanttPanelScroll() {
+  ganttPanelScroll.value = {
+    top: leftBodyRef.value?.scrollTop ?? rightBodyRef.value?.scrollTop ?? ganttPanelScroll.value.top,
+    left: rightBodyRef.value?.scrollLeft ?? ganttPanelScroll.value.left,
+  }
+}
+
+function restoreGanttPanelScroll() {
+  const { top, left } = ganttPanelScroll.value
+
+  const applyScroll = () => {
+    if (leftBodyRef.value) {
+      leftBodyRef.value.scrollTop = top
+    }
+    if (rightBodyRef.value) {
+      rightBodyRef.value.scrollTop = top
+      rightBodyRef.value.scrollLeft = left
+    }
+    if (rightHeaderRef.value) {
+      rightHeaderRef.value.scrollLeft = left
+    }
+  }
+
+  nextTick(() => {
+    applyScroll()
+    requestAnimationFrame(() => {
+      applyScroll()
+      requestAnimationFrame(applyScroll)
+    })
+  })
+}
 
 // Show/hide dependencies toggle
 const showDependencies = ref(true)
@@ -765,21 +804,44 @@ const days = computed<Date[]>(() => {
 // Local tasks state for drag operations
 const localTasks = ref<Task[]>([])
 
+// Prefer parent tasks when local copy is stale (e.g. partial load before getAll finished)
+function resolveGanttSourceTasks(): Task[] {
+  const fromProps = props.tasks ?? []
+  const fromLocal = localTasks.value
+  if (fromProps.length > fromLocal.length) {
+    return fromProps
+  }
+  return fromLocal.length > 0 ? fromLocal : fromProps
+}
+
 // Note: Worker filtering is handled by parent component (ProjectCalendar)
 // Tasks are already filtered when passed via props.tasks
 
-// Initialize local tasks when props change
-// Note: Worker filtering is handled by parent component (ProjectCalendar)
-watch(() => props.tasks, (newTasks) => {
-  if (newTasks) {
-    localTasks.value = [...newTasks]
+function patchLocalTask(updatedTask: Task) {
+  captureGanttPanelScroll()
+
+  const taskId = String(updatedTask.id)
+  const index = localTasks.value.findIndex((task) => String(task.id) === taskId)
+  if (index >= 0) {
+    localTasks.value[index] = updatedTask
+  } else {
+    localTasks.value = [...localTasks.value, updatedTask]
   }
-}, { immediate: true })
+
+  if (selectedTask.value && String(selectedTask.value.id) === taskId) {
+    const ganttTask = mappedTasks.value.find((task) => String(task.id) === taskId)
+    if (ganttTask) {
+      selectedTask.value = ganttTask
+      selectedTaskInList.value = ganttTask
+    }
+  }
+
+  restoreGanttPanelScroll()
+}
 
 // Map tasks to gantt format
 const mappedTasks = computed<GanttTask[]>(() => {
-  // Use tasks from props (already filtered by parent component)
-  const tasksToUse = localTasks.value.length > 0 ? localTasks.value : (props.tasks || [])
+  const tasksToUse = resolveGanttSourceTasks()
   if (tasksToUse.length === 0) return []
 
   // Sort by task_order if available, otherwise by start date
@@ -797,39 +859,33 @@ const mappedTasks = computed<GanttTask[]>(() => {
     }
   })
 
-  const tasks = sortedTasks
-    .filter((t) => !!t.start_planned)
-    .map((t) => {
-      // Calculate duration from dates if duration_days is not available
+  const tasks = sortedTasks.map((t) => {
+      const hasSchedule = !!t.start_planned
       let duration = t.duration_days
       if (!duration && t.start_planned && t.end_planned) {
         const startDate = new Date(t.start_planned)
         const endDate = new Date(t.end_planned)
         const diffTime = endDate.getTime() - startDate.getTime()
-        // Use Math.floor + 1 to get inclusive days
         duration = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1
       }
-      duration = duration || 1 // fallback to 1 day
+      duration = hasSchedule ? (duration || 1) : 0
 
-      // Calculate end date properly
       let endDate = t.end_planned
       if (!endDate && t.start_planned) {
-        // If no end date, calculate it from start date + duration
         const startDate = new Date(t.start_planned)
-        startDate.setDate(startDate.getDate() + duration - 1) // -1 because start day counts as day 1
+        startDate.setDate(startDate.getDate() + (duration || 1) - 1)
         endDate = startDate.toISOString().split('T')[0]
       }
 
-
-      // Convert milestone to boolean - milestone can be MilestoneType | null | 0 | false
       const isMilestone = typeof t.milestone === 'string' || (typeof t.milestone === 'boolean' && t.milestone) || (typeof t.milestone === 'number' && t.milestone > 0)
 
       return {
         id: Number(t.id),
         title: t.name,
-        start: t.start_planned,
-        end: endDate || t.start_planned,
-        duration: duration,
+        start: t.start_planned || '',
+        end: endDate || t.start_planned || '',
+        duration,
+        unscheduled: !hasSchedule,
         status: mapStatus(t.status),
         milestone: isMilestone ? true : undefined,
         milestone_type: typeof t.milestone === 'string' ? t.milestone : t.milestone_type,
@@ -857,19 +913,8 @@ watch(() => props.selectedTaskFromParent, (newSelectedTask) => {
     console.log('🎯 Auto-selecting task in Gantt from parent:', newSelectedTask.name)
     const ganttTask = mappedTasks.value.find(t => Number(t.id) === Number(newSelectedTask.id))
     if (ganttTask) {
-      // Select the task
       selectedTask.value = ganttTask
       selectedTaskInList.value = ganttTask
-
-      // Update highlighted days
-      // Highlighted days now calculated in getDayHeaderClasses
-
-      // Force component re-render to update day headers
-      nextTick(() => {
-        forceRerender()
-      })
-
-      // No auto-scroll when task is selected from parent
     }
   } else {
     // Clear selection if parent task is null
@@ -1263,7 +1308,7 @@ function handleTaskDoubleClick(task: GanttTask) {
 
 function handleTaskClick(task: GanttTask) {
   console.log('🎯 handleTaskClick called (FROM GRID - NO SCROLL):', task.title)
-  console.log('🎯 Current scroll position before:', rightPanelRef.value?.scrollLeft)
+  console.log('🎯 Current scroll position before:', rightBodyRef.value?.scrollLeft)
 
   // Force cleanup any lingering drag state
   if (isDragging.value) {
@@ -1280,7 +1325,7 @@ function handleTaskClick(task: GanttTask) {
   // Highlighted days are now computed automatically
 
   // NO SCROLL when clicking on task bar - preserve current scroll position
-  console.log('🎯 Current scroll position after:', rightPanelRef.value?.scrollLeft)
+  console.log('🎯 Current scroll position after:', rightBodyRef.value?.scrollLeft)
 
   // Emit selected task to parent component
   const fullTask = props.tasks?.find(t => Number(t.id) === Number(task.id))
@@ -1363,28 +1408,42 @@ function openMilestoneDialog(mode: 'create' | 'edit' | 'view', taskId?: string |
 }
 
 // Task management handlers
-async function handleTaskSave(taskData: TaskCreateUpdate) {
+async function handleTaskSave(taskData: TaskCreateUpdate & { id?: string }) {
   try {
-    console.log('💾 Saving task in Gantt:', taskData)
-    console.log('💾 Dialog mode:', taskDialog.value.mode)
-    console.log('💾 Dialog task:', taskDialog.value.task)
+    const fromMilestone = milestoneDialog.value.isOpen
+    const dialogMode = fromMilestone ? milestoneDialog.value.mode : taskDialog.value.mode
+    const dialogTask = fromMilestone ? milestoneDialog.value.task : taskDialog.value.task
+    const taskId = taskData.id ?? dialogTask?.id
 
-    if (taskDialog.value.mode === 'edit' && taskDialog.value.task) {
-      // Update existing task
-      console.log('💾 Updating existing task:', taskDialog.value.task.id)
-      const updatedTask = await tasksApi.update(props.projectId || 0, String(taskDialog.value.task.id), taskData)
+    console.log('💾 Saving task in Gantt:', {
+      fromMilestone,
+      dialogMode,
+      taskId,
+      taskData,
+    })
+
+    if (dialogMode === 'edit' && taskId) {
+      const updatedTask = await tasksApi.update(
+        props.projectId || 0,
+        String(taskId),
+        taskData,
+      )
       console.log('✅ Task updated successfully:', updatedTask)
+      patchLocalTask(updatedTask)
       emit('task-updated', updatedTask)
     } else {
-      // Create new task
       console.log('💾 Creating new task')
       const newTask = await tasksApi.create(props.projectId || 0, taskData)
       console.log('✅ Task created successfully:', newTask)
+      localTasks.value = [...localTasks.value, newTask]
       emit('task-created', newTask)
     }
 
-    console.log('💾 Closing dialog after successful save')
-    closeTaskDialog()
+    if (fromMilestone) {
+      closeMilestoneDialog()
+    } else {
+      closeTaskDialog()
+    }
   } catch (error) {
     console.error('❌ Error saving task:', error)
     console.error('❌ Error details:', error)
@@ -1406,8 +1465,13 @@ async function handleTaskSave(taskData: TaskCreateUpdate) {
 async function handleTaskDelete(taskId: string) {
   try {
     await tasksApi.delete(props.projectId || 0, taskId)
+    localTasks.value = localTasks.value.filter((task) => String(task.id) !== String(taskId))
     emit('task-deleted', taskId)
-    closeTaskDialog()
+    if (milestoneDialog.value.isOpen) {
+      closeMilestoneDialog()
+    } else {
+      closeTaskDialog()
+    }
   } catch (error) {
     console.error('Error deleting task:', error)
   }
@@ -2149,7 +2213,7 @@ function createDependencyLine(fromTaskId: number, toTaskId: number, dependencyTy
   updateSvgOffset()
 
   // Get current scroll position
-  const scrollLeft = rightPanelRef.value?.scrollLeft || 0
+  const scrollLeft = rightBodyRef.value?.scrollLeft || 0
 
   // Update test dependency line with global SVG offset correction and scroll
   testDependencyLine.value = {
@@ -2378,7 +2442,7 @@ function loadRealDependencies() {
 
 // Function to update real dependencies on scroll
 function updateRealDependenciesOnScroll() {
-  const scrollLeft = rightPanelRef.value?.scrollLeft || 0
+  const scrollLeft = rightBodyRef.value?.scrollLeft || 0
 
   realDependencies.value.forEach(dependency => {
     const fromTask = mappedTasks.value.find(t => t.id === dependency.fromTaskId)
@@ -2485,7 +2549,7 @@ function updateDependencyLinePositions() {
   updateSvgOffset()
 
   // Get current scroll position
-  const scrollLeft = rightPanelRef.value?.scrollLeft || 0
+  const scrollLeft = rightBodyRef.value?.scrollLeft || 0
 
   // Use the stored dependency type from the line
   const dependencyType = testDependencyLine.value.type
@@ -2573,33 +2637,94 @@ window.addEventListener('resize', () => {
   }, 100) // 100ms debounce
 })
 
-// Scroll synchronization between left and right panels
-const leftPanelRef = ref<HTMLElement>()
-const rightPanelRef = ref<HTMLElement>()
+// Scroll synchronization between left list and right grid
+const leftBodyRef = ref<HTMLElement>()
+const rightBodyRef = ref<HTMLElement>()
+const rightHeaderRef = ref<HTMLElement>()
 
-// Watch for scroll events to update dependency lines
-watch(() => rightPanelRef.value?.scrollLeft, () => {
+watch(
+  () => props.tasks,
+  (newTasks) => {
+    if (!newTasks) return
+
+    captureGanttPanelScroll()
+
+    localTasks.value = [...newTasks]
+
+    restoreGanttPanelScroll()
+  },
+  { immediate: true },
+)
+
+watch(
+  () => projectRange.value?.totalWidth,
+  () => {
+    restoreGanttPanelScroll()
+  },
+)
+
+watch(() => rightBodyRef.value?.scrollLeft, () => {
   if (testDependencyLine.value.visible) {
-    console.log('🔄 Panel scrolled, updating dependency line')
     updateDependencyLinePositions()
   }
 
-  // Update real dependencies on scroll
   if (realDependencies.value.length > 0) {
-    console.log('🔄 Panel scrolled, updating real dependencies')
     updateRealDependenciesOnScroll()
   }
 })
 
-// Handle scroll events to update dependency line positions
-function handleDependencyLineScroll() {
-  if (testDependencyLine.value.visible) {
-    // Get current scroll position
-    const scrollLeft = rightPanelRef.value?.scrollLeft || 0
-    console.log('🔄 Scrolling dependency line, scrollLeft:', scrollLeft)
+let isSyncingGanttVerticalScroll = false
+let isSyncingGanttHorizontalScroll = false
 
-    // Update line positions with scroll offset
-    updateDependencyLineWithScroll(scrollLeft)
+function syncGanttVerticalScroll(source: HTMLElement, target: HTMLElement) {
+  if (isSyncingGanttVerticalScroll) return
+  if (target.scrollTop === source.scrollTop) return
+  isSyncingGanttVerticalScroll = true
+  target.scrollTop = source.scrollTop
+  requestAnimationFrame(() => {
+    isSyncingGanttVerticalScroll = false
+  })
+}
+
+function syncGanttHorizontalScroll(source: HTMLElement, target: HTMLElement) {
+  if (isSyncingGanttHorizontalScroll) return
+  if (target.scrollLeft === source.scrollLeft) return
+  isSyncingGanttHorizontalScroll = true
+  target.scrollLeft = source.scrollLeft
+  requestAnimationFrame(() => {
+    isSyncingGanttHorizontalScroll = false
+  })
+}
+
+function handleRightBodyScroll(event: Event) {
+  captureGanttPanelScroll()
+
+  const source = event.target as HTMLElement
+  if (leftBodyRef.value) {
+    syncGanttVerticalScroll(source, leftBodyRef.value)
+  }
+  if (rightHeaderRef.value) {
+    syncGanttHorizontalScroll(source, rightHeaderRef.value)
+  }
+
+  if (testDependencyLine.value.visible) {
+    updateDependencyLineWithScroll(source.scrollLeft)
+  }
+
+  if (realDependencies.value.length > 0) {
+    updateRealDependenciesOnScroll()
+  }
+}
+
+function handleLeftBodyWheel(event: WheelEvent) {
+  if (!rightBodyRef.value) return
+  rightBodyRef.value.scrollTop += event.deltaY
+}
+
+function handleRightHeaderScroll(event: Event) {
+  const source = event.target as HTMLElement
+  if (rightBodyRef.value) {
+    syncGanttHorizontalScroll(source, rightBodyRef.value)
   }
 }
 
@@ -2681,7 +2806,7 @@ function scrollToTask(task: GanttTask) {
   const taskCenterPosition = taskStartPosition + (task.duration * 33) / 2
 
   // Get the scrollable container (right panel with Gantt grid)
-  const scrollContainer = rightPanelRef.value
+  const scrollContainer = rightBodyRef.value
   if (!scrollContainer) return
 
   // Check if task is already visible in viewport
@@ -3101,20 +3226,6 @@ const syncScroll = (source: HTMLElement, target: HTMLElement) => {
   target.scrollTop = source.scrollTop
 }
 
-const handleLeftPanelScroll = (event: Event) => {
-  const target = event.target as HTMLElement
-  if (rightPanelRef.value) {
-    syncScroll(target, rightPanelRef.value)
-  }
-}
-
-const handleRightPanelScroll = (event: Event) => {
-  const target = event.target as HTMLElement
-  if (leftPanelRef.value) {
-    syncScroll(target, leftPanelRef.value)
-  }
-}
-
 // Toggle sort by start date
 const toggleSortByStartDate = () => {
   sortByStartDate.value = !sortByStartDate.value
@@ -3280,27 +3391,10 @@ const saveTaskChanges = async (taskId: string, newStart: string, newEnd: string)
 
 // Add scroll event listeners when component mounts
 onMounted(() => {
-  // DISABLED: Scroll synchronization causes unwanted scroll resets
-  // if (leftPanelRef.value) {
-  //   leftPanelRef.value.addEventListener('scroll', handleLeftPanelScroll)
-  // }
-  // if (rightPanelRef.value) {
-  //   rightPanelRef.value.addEventListener('scroll', handleRightPanelScroll)
-  // }
-
-  // Add keyboard event listener for Escape key
   document.addEventListener('keydown', handleKeyDown)
 })
 
 onUnmounted(() => {
-  if (leftPanelRef.value) {
-    leftPanelRef.value.removeEventListener('scroll', handleLeftPanelScroll)
-  }
-  if (rightPanelRef.value) {
-    rightPanelRef.value.removeEventListener('scroll', handleRightPanelScroll)
-  }
-
-  // Remove keyboard event listener
   document.removeEventListener('keydown', handleKeyDown)
 })
 </script>
@@ -3308,6 +3402,7 @@ onUnmounted(() => {
 <style scoped>
 .project-gantt {
   gap: 0.75rem;
+  padding-bottom: 1.25rem;
 }
 
 /* Gantt Main Container */
@@ -3315,8 +3410,9 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 240px 1fr;
   width: 100%;
-  height: calc(100vh - 350px); /* Full height minus header, margins and bottom padding */
-  min-height: 400px; /* Minimum height */
+  height: calc(100vh - 390px);
+  min-height: 400px;
+  margin-bottom: 0.5rem;
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
   overflow: hidden;
@@ -3334,13 +3430,40 @@ onUnmounted(() => {
   z-index: 20; /* Above everything */
 }
 
+.gantt-left-header {
+  flex-shrink: 0;
+}
+
+.gantt-left-body {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
 /* Right Panel: Gantt Grid */
 .gantt-right-panel {
   display: flex;
   flex-direction: column;
-  overflow-x: auto;
-  overflow-y: auto; /* Enable vertical scroll for both panels */
+  overflow: hidden;
   min-width: 0;
+}
+
+.gantt-right-header {
+  flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.gantt-right-header::-webkit-scrollbar {
+  display: none;
+}
+
+.gantt-right-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 /* Header Row */
@@ -3385,9 +3508,7 @@ onUnmounted(() => {
 
 /* Task List */
 .gantt-task-list {
-  flex: 1;
-  overflow-y: hidden; /* Disable individual scroll */
-  overflow-x: hidden;
+  min-height: min-content;
   position: relative;
   z-index: 15; /* Above dependency arrows */
 }
@@ -3473,10 +3594,9 @@ onUnmounted(() => {
 
 /* Grid Content */
 .gantt-grid-content {
-  flex: 1;
-  overflow-y: hidden; /* Disable individual scroll */
-  overflow-x: hidden;
+  position: relative;
   min-width: max-content;
+  min-height: min-content;
 }
 
 .gantt-day-cell {
@@ -3500,7 +3620,7 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .gantt-main-container {
     grid-template-columns: 200px 1fr;
-    height: calc(100vh - 300px); /* Adjusted for mobile with bottom padding */
+    height: calc(100vh - 320px);
   }
 
   .gantt-day-header {
@@ -3518,7 +3638,7 @@ onUnmounted(() => {
 @media (max-width: 480px) {
   .gantt-main-container {
     grid-template-columns: 180px 1fr;
-    height: calc(100vh - 250px); /* Adjusted for small mobile with bottom padding */
+    height: calc(100vh - 270px);
   }
 
   .gantt-day-header {

@@ -370,7 +370,7 @@ async function loadProjects() {
   }
 }
 
-async function loadProject() {
+async function loadProject(options?: { silent?: boolean }) {
   const projectId = route.params.id as string
 
   if (!projectId) {
@@ -378,7 +378,10 @@ async function loadProject() {
     return
   }
 
-  loading.value = true
+  const silent = options?.silent === true
+  if (!silent) {
+    loading.value = true
+  }
   error.value = null
 
   try {
@@ -422,7 +425,9 @@ async function loadProject() {
     console.error('❌ Error loading project:', apiError)
     error.value = 'Failed to load project'
   } finally {
-    loading.value = false
+    if (!silent) {
+      loading.value = false
+    }
   }
 }
 
@@ -2084,17 +2089,8 @@ async function removeTeamMember(member: ProjectTeamMember) {
 async function handleTaskUpdate(task: unknown) {
   console.log('📝 Task updated:', task)
 
-  // Backend auto-updates project dates from tasks - reload to get fresh dates
-  if (project.value?.id) {
-    await loadProject()
-  }
-
-  // Update the selected task in the calendar if it's the same task
-  if (tasksSectionRef.value?.calendarRef?.value) {
-    const calendar = tasksSectionRef.value.calendarRef.value
-    if (calendar.updateSelectedTask) {
-      calendar.updateSelectedTask(task)
-    }
+  if (tasksSectionRef.value?.calendarRef?.value?.updateSelectedTask) {
+    tasksSectionRef.value.calendarRef.value.updateSelectedTask(task)
   }
 }
 
@@ -2102,9 +2098,8 @@ async function handleTaskUpdate(task: unknown) {
 async function handleTaskDuplicate(task: unknown) {
   console.log('📋 Task duplicated:', task)
 
-  // Backend auto-updates project dates - reload to get fresh dates
-  if (project.value?.id) {
-    await loadProject()
+  if (tasksSectionRef.value?.calendarRef?.value?.updateSelectedTask) {
+    tasksSectionRef.value.calendarRef.value.updateSelectedTask(task)
   }
 }
 
@@ -2845,7 +2840,7 @@ watch(
             </svg>
             <p class="text-red-600 mb-4">{{ error }}</p>
             <button
-              @click="loadProject"
+              @click="() => loadProject()"
               class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             >
               Try Again

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldWire — тестирование: запись на звонок через SMS</title>
+  <style>
+    :root { --text:#1a1a1a; --muted:#555; --border:#ccc; --bg-alt:#f7f7f7; --accent:#0d9488; }
+    * { box-sizing:border-box; }
+    body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.55; color:var(--text); max-width:52rem; margin:0 auto; padding:1.25rem 1rem 3rem; font-size:15px; }
+    .howto-open { background:#f0fdfa; border:1px solid #99f6e4; border-radius:8px; padding:.75rem 1rem; margin-bottom:1.5rem; font-size:14px; }
+    .howto-open strong { color:var(--accent); }
+    .howto-open code { font-size:12px; word-break:break-all; background:#fff; padding:.1rem .35rem; border-radius:4px; border:1px solid #99f6e4; }
+    h1 { font-size:1.55rem; margin:0 0 .5rem; }
+    .subtitle { color:var(--muted); margin:0 0 1.25rem; font-size:14px; }
+    h2 { font-size:1.15rem; margin:1.75rem 0 .75rem; padding-bottom:.25rem; border-bottom:2px solid var(--border); }
+    h3 { font-size:1rem; margin:1rem 0 .5rem; }
+    p,li { margin:.4rem 0; }
+    ul,ol { padding-left:1.35rem; }
+    table { width:100%; border-collapse:collapse; margin:.75rem 0 1rem; font-size:12px; }
+    th,td { border:1px solid var(--border); padding:.45rem .5rem; text-align:left; vertical-align:top; }
+    th { background:var(--bg-alt); }
+    tr:nth-child(even) td { background:#fafafa; }
+    .rule-box { background:var(--bg-alt); border-left:4px solid var(--accent); padding:.65rem 1rem; margin:1rem 0; }
+    .warn-box { background:#fffbeb; border-left:4px solid #f59e0b; padding:.65rem 1rem; margin:1rem 0; }
+    .signoff { border:1px solid var(--border); border-radius:8px; padding:1rem; margin:1.5rem 0; background:#fafafa; }
+    .signoff p { margin:.75rem 0; }
+    .line { border-bottom:1px solid #999; min-width:12rem; display:inline-block; }
+    a { color:var(--accent); }
+    @media print { body { max-width:none; font-size:11pt; } h2 { break-after:avoid; } table { break-inside:avoid; } }
+  </style>
+</head>
+<body>
+
+  <div class="howto-open">
+    <strong>Документ для тестирования заказчиком</strong> — запись на звонок через SMS (Schedule call via SMS).
+    <br /><br />
+    <strong>URL:</strong> <code id="self-url">…</code> (вход не требуется).
+    <br /><br />
+    <strong>English:</strong> <a id="en-url" href="/SMS_MEETING_INVITE_TESTING_GUIDE.html">SMS_MEETING_INVITE_TESTING_GUIDE.html</a>
+    &nbsp;·&nbsp;
+    <strong>User guide:</strong> <a href="/SMS_MEETING_INVITE_USER_GUIDE_RU.html">SMS_MEETING_INVITE_USER_GUIDE_RU.html</a>
+    <br /><br />
+    <strong>Приложение:</strong> <a href="https://fieldwire.medicalcontractor.ca">fieldwire.medicalcontractor.ca</a> → Clients
+    <br /><br />
+    <strong>PDF:</strong> Печать (Ctrl/Cmd+P) → Сохранить как PDF — удобно для подписи заказчика.
+  </div>
+  <script>
+    (function () {
+      try {
+        var el = document.getElementById('self-url')
+        var en = document.getElementById('en-url')
+        if (el && window.location && window.location.origin) {
+          el.textContent = window.location.origin + '/SMS_MEETING_INVITE_TESTING_GUIDE_RU.html'
+          if (en) en.href = window.location.origin + '/SMS_MEETING_INVITE_TESTING_GUIDE.html'
+        }
+      } catch (e) {}
+    })()
+  </script>
+
+  <h1>Тестирование: запись на звонок через SMS</h1>
+  <p class="subtitle">FieldWire · версия 2.0 · PM выбирает дату и слоты · удержание 3 дня · Calendar + Twilio SMS</p>
+
+  <div class="rule-box">
+    <strong>Цель теста:</strong> убедиться, что PM может предложить клиенту время звонка через SMS, клиент подтвержает ответом, а событие появляется в Calendar PM.
+  </div>
+
+  <h2>1. Что реализовано</h2>
+  <table>
+    <thead><tr><th>#</th><th>Функция</th><th>Описание</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Schedule call via SMS</td><td>Действие в списке Clients для клиента с телефоном</td></tr>
+      <tr><td>2</td><td>Выбор даты PM</td><td>Минимум <strong>+3 дня</strong> от сегодня; без лимита «неделя»</td></tr>
+      <tr><td>3</td><td>Расписание дня</td><td>Сетка <strong>30 мин</strong>, 9:00–17:00; занятое помечено</td></tr>
+      <tr><td>4</td><td>Выбор слотов</td><td>PM отмечает <strong>1–3</strong> свободных слота</td></tr>
+      <tr><td>5</td><td>Удержание</td><td>Слоты зарезервированы <strong>3 дня</strong> до ответа клиента</td></tr>
+      <tr><td>6</td><td>SMS клиенту</td><td>Имя PM, тема, дата, длительность, варианты времени</td></tr>
+      <tr><td>7</td><td>Ответ 1/2/3</td><td>Клиент отвечает SMS; Calendar PM обновляется</td></tr>
+    </tbody>
+  </table>
+
+  <h2>2. Подготовка</h2>
+  <ul>
+    <li>Учётная запись <strong>Admin</strong> или <strong>Project Manager</strong></li>
+    <li>Клиент с <strong>телефоном</strong> в карточке</li>
+    <li>Доступ к телефону для чтения/ответа SMS</li>
+    <li>Тестовая дата: <strong>сегодня + 3 дня</strong> или позже</li>
+  </ul>
+  <div class="warn-box">
+    Production: SMS уходят на <strong>реальные номера</strong> клиентов (Twilio). Тестовый redirect отключён.
+  </div>
+
+  <h2>3. Инструкция PM (кратко)</h2>
+  <ol>
+    <li>Clients → клиент с телефоном → <strong>Schedule call via SMS</strong></li>
+    <li>Выбрать <strong>Meeting date</strong> (≥ +3 дня)</li>
+    <li>В сетке <strong>Day schedule</strong> выбрать 1–3 свободных слота</li>
+    <li>Проверить <strong>SMS preview</strong> → <strong>Send meeting invite</strong></li>
+    <li>Клиент отвечает SMS → проверить <strong>Calendar</strong></li>
+  </ol>
+
+  <h2>4. Чеклист тестирования</h2>
+  <p><strong>Тестировщик:</strong> <span class="line">&nbsp;</span> &nbsp; <strong>Дата:</strong> <span class="line">&nbsp;</span></p>
+  <p><strong>PM (логин):</strong> <span class="line">&nbsp;</span> &nbsp; <strong>Клиент:</strong> <span class="line">&nbsp;</span> &nbsp; <strong>Телефон:</strong> <span class="line">&nbsp;</span></p>
+
+  <h3>★ Сценарий 1 — полный цикл (обязательный)</h3>
+  <table>
+    <thead><tr><th>☐</th><th>Шаг</th><th>Действие</th><th>Ожидаемый результат</th><th>OK/Fail</th></tr></thead>
+    <tbody>
+      <tr><td>☐</td><td>1</td><td>Открыть Schedule call via SMS</td><td>Диалог: дата, сетка слотов, SMS preview</td><td></td></tr>
+      <tr><td>☐</td><td>2</td><td>Дата = сегодня + 3 дня</td><td>Загружается расписание дня</td><td></td></tr>
+      <tr><td>☐</td><td>3</td><td>Просмотреть сетку 9:00–17:00</td><td>30-мин слоты; занятые с причиной</td><td></td></tr>
+      <tr><td>☐</td><td>4</td><td>Выбрать 3 свободных слота</td><td>selected 3/3; preview обновлён</td><td></td></tr>
+      <tr><td>☐</td><td>5</td><td>Send meeting invite</td><td>SMS на телефон клиента</td><td></td></tr>
+      <tr><td>☐</td><td>6</td><td>Прочитать SMS</td><td>PM, тема, дата, 3 времени, «Text back 1, 2, or 3»</td><td></td></tr>
+      <tr><td>☐</td><td>7</td><td>Ответить <strong>2</strong></td><td>SMS-подтверждение</td><td></td></tr>
+      <tr><td>☐</td><td>8</td><td>Calendar PM</td><td>Событие на время 2-го слота</td><td></td></tr>
+      <tr><td>☐</td><td>9</td><td>Снова открыть диалог</td><td>Статус <strong>Confirmed</strong></td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Сценарий 2 — минимальная дата (+3 дня)</h3>
+  <table>
+    <thead><tr><th>☐</th><th>Действие</th><th>Ожидание</th><th>OK/Fail</th></tr></thead>
+    <tbody>
+      <tr><td>☐</td><td>Дата завтра / +1 / +2 дня</td><td>Нельзя выбрать (min date)</td><td></td></tr>
+      <tr><td>☐</td><td>Дата +3 дня</td><td>Расписание загружается</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Сценарий 3 — смена даты при занятом календаре</h3>
+  <table>
+    <thead><tr><th>☐</th><th>Действие</th><th>Ожидание</th><th>OK/Fail</th></tr></thead>
+    <tbody>
+      <tr><td>☐</td><td>Дата с почти полным Calendar</td><td>Мало свободных слотов</td><td></td></tr>
+      <tr><td>☐</td><td>Другая дата</td><td>Достаточно свободных слотов</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Сценарий 4 — удержание слотов 3 дня</h3>
+  <table>
+    <thead><tr><th>☐</th><th>Действие</th><th>Ожидание</th><th>OK/Fail</th></tr></thead>
+    <tbody>
+      <tr><td>☐</td><td>Отправить инвайт; не отвечать SMS</td><td>Слоты «Held for SMS invite» для другого клиента на ту же дату</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Сценарий 5 — 1 или 2 слота</h3>
+  <table>
+    <thead><tr><th>☐</th><th>Действие</th><th>Ожидание</th><th>OK/Fail</th></tr></thead>
+    <tbody>
+      <tr><td>☐</td><td>Выбрать 1 слот → Send</td><td>SMS «Text back 1 to confirm»</td><td></td></tr>
+      <tr><td>☐</td><td>Выбрать 2 слота → Send</td><td>SMS «Text back 1 or 2»</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Сценарий 6 — неверный ответ SMS</h3>
+  <table>
+    <thead><tr><th>☐</th><th>Действие</th><th>Ожидание</th><th>OK/Fail</th></tr></thead>
+    <tbody>
+      <tr><td>☐</td><td>Ответить <strong>hello</strong></td><td>Просьба ответить 1, 2 или 3</td><td></td></tr>
+      <tr><td>☐</td><td>Ответить корректной цифрой</td><td>Подтверждение + Calendar</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Сценарий 7 — пересечение с Calendar</h3>
+  <table>
+    <thead><tr><th>☐</th><th>Действие</th><th>Ожидание</th><th>OK/Fail</th></tr></thead>
+    <tbody>
+      <tr><td>☐</td><td>Событие 11:00–11:30 в Calendar PM</td><td>Слот 11:00 недоступен в сетке</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Сценарий 8 — права доступа</h3>
+  <table>
+    <thead><tr><th>☐</th><th>Роль</th><th>Ожидание</th><th>OK/Fail</th></tr></thead>
+    <tbody>
+      <tr><td>☐</td><td>Worker / Foreman</td><td>Нет Schedule call via SMS</td><td></td></tr>
+      <tr><td>☐</td><td>PM / Admin</td><td>Функция доступна</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h2>5. Решение проблем</h2>
+  <table>
+    <thead><tr><th>Проблема</th><th>Что проверить</th></tr></thead>
+    <tbody>
+      <tr><td>Failed to send SMS</td><td>Телефон в карточке; Twilio</td></tr>
+      <tr><td>Нет свободных слотов</td><td>Calendar; другая дата</td></tr>
+      <tr><td>Ответ SMS не работает</td><td>Тот же телефон; цифры 1–3</td></tr>
+      <tr><td>Нет события в Calendar</td><td>Тот же PM отправил инвайт</td></tr>
+    </tbody>
+  </table>
+
+  <h2>6. Итог и подпись заказчика</h2>
+  <div class="signoff">
+    <p>☐ Сценарий 1 (полный цикл) — пройден &nbsp; ☐ не пройден</p>
+    <p>☐ Выбор даты и сетка слотов — пройден &nbsp; ☐ не пройден</p>
+    <p>☐ Удержание 3 дня — пройден &nbsp; ☐ не пройден</p>
+    <p>☐ SMS и Calendar — пройден &nbsp; ☐ не пройден</p>
+    <p><strong>Комментарии:</strong></p>
+    <p class="line" style="width:100%; display:block;">&nbsp;</p>
+    <p class="line" style="width:100%; display:block;">&nbsp;</p>
+    <p><strong>Подпись:</strong> <span class="line">&nbsp;</span> &nbsp; <strong>Дата:</strong> <span class="line">&nbsp;</span></p>
+  </div>
+
+  <hr />
+  <p class="subtitle">Версия 2.0 · документ для приёмочного тестирования заказчиком</p>
+
+</body>
+</html>

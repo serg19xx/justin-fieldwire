@@ -264,25 +264,21 @@ interface TasksResponse {
 // }
 
 // Tasks API object
+const PROJECT_TASKS_PAGE_SIZE = 500
+
 export const tasksApi = {
-  // Get all tasks for a project
-  async getAll(
+  async fetchProjectTasksPage(
     projectId: number,
-    page?: number,
+    page: number,
     limit?: number,
     filters?: TaskFilter,
   ): Promise<TasksResponse> {
     try {
-      console.log('🔍 Tasks API: Attempting to fetch tasks for project:', projectId)
-
       const params = new URLSearchParams()
-
-      // Add pagination only if provided
-      if (page) {
-        params.append('page', page.toString())
-      }
-      if (limit) {
-        params.append('limit', limit.toString())
+      // Omit page/limit so the API returns every row (backward compatible with unbounded getTasks).
+      if (limit != null && limit > 0) {
+        params.append('page', String(page))
+        params.append('limit', String(limit))
       }
 
       if (filters?.status?.length) {
@@ -295,8 +291,6 @@ export const tasksApi = {
         params.append('date_start', filters.dateRange.start)
         params.append('date_end', filters.dateRange.end)
       }
-
-      // Add sorting parameters
       if (filters?.sortBy) {
         params.append('sort_by', filters.sortBy)
       }
@@ -307,33 +301,18 @@ export const tasksApi = {
         params.append('user_id', String(filters.workerId))
       }
 
-      const url = params.toString()
-        ? `/api/v1/projects/${projectId}/tasks?${params.toString()}`
-        : `/api/v1/projects/${projectId}/tasks`
-      console.log('📡 Tasks API: Making request to:', url)
-
-      const response = await api.get(url)
-      console.log('✅ Tasks API: Response received:', response.data)
+      const url = `/api/v1/projects/${projectId}/tasks?${params.toString()}`
+      const response = await api.get(url, { timeout: 60000 })
 
       if (response.data == null) {
         throw new Error('Empty response from tasks API')
       }
 
       const { rows, pagination } = extractTaskRowsAndPagination(response.data)
-      if (rows.length === 0) {
-        console.warn(
-          '⚠️ Tasks API: No task rows parsed from response (check envelope: data.tasks, tasks, results).',
-          { projectId, url },
-        )
-      }
-
-      const transformedTasks = rows.map((task) => {
-        console.log('🔍 Raw task from API:', task.name, 'dependencies:', task.dependencies)
-        return transformTaskFromApiRow(task)
-      })
+      const transformedTasks = rows.map((task) => transformTaskFromApiRow(task))
 
       const pag = pagination || {
-        current_page: page ?? 1,
+        current_page: page,
         per_page: transformedTasks.length,
         total: transformedTasks.length,
         last_page: 1,
@@ -347,7 +326,8 @@ export const tasksApi = {
       return {
         tasks: transformedTasks,
         pagination: {
-          current_page: Number.isFinite(currentPageParsed) && currentPageParsed > 0 ? currentPageParsed : page ?? 1,
+          current_page:
+            Number.isFinite(currentPageParsed) && currentPageParsed > 0 ? currentPageParsed : page,
           per_page:
             Number.isFinite(perPageParsed) && perPageParsed > 0 ? perPageParsed : transformedTasks.length,
           total: Number.isFinite(totalParsed) ? totalParsed : transformedTasks.length,
@@ -355,8 +335,92 @@ export const tasksApi = {
         },
       }
     } catch (error) {
+      console.error('❌ Tasks API: Error fetching tasks page:', error)
+      throw error
+    }
+  },
+
+  // Get all tasks for a project (follows pagination until every row is loaded)
+  async getAll(
+    projectId: number,
+    page?: number,
+    limit?: number,
+    filters?: TaskFilter,
+  ): Promise<TasksResponse> {
+    try {
+      console.log('🔍 Tasks API: Fetching all tasks for project:', projectId)
+
+      const usePagination = limit != null && limit > 0
+      const pageSize = usePagination ? limit : 0
+      let currentPage = page ?? 1
+      const aggregated: Task[] = []
+      const seenIds = new Set<string>()
+      let lastPagination: TasksResponse['pagination'] = {
+        current_page: 1,
+        per_page: pageSize,
+        total: 0,
+        last_page: 1,
+      }
+
+      while (currentPage <= 100) {
+        const batch = await this.fetchProjectTasksPage(
+          projectId,
+          currentPage,
+          usePagination ? pageSize : undefined,
+          filters,
+        )
+        lastPagination = batch.pagination
+
+        let newTasks = 0
+        for (const task of batch.tasks) {
+          const taskId = String(task.id)
+          if (seenIds.has(taskId)) continue
+          seenIds.add(taskId)
+          aggregated.push(task)
+          newTasks++
+        }
+
+        const total = batch.pagination.total
+        const lastPage = batch.pagination.last_page
+
+        if (newTasks === 0) {
+          break
+        }
+
+        if (!usePagination) {
+          break
+        }
+
+        if (total > 0 && aggregated.length >= total) {
+          break
+        }
+
+        if (currentPage >= lastPage) {
+          break
+        }
+
+        currentPage++
+      }
+
+      if (lastPagination.total > aggregated.length) {
+        console.warn(
+          `⚠️ Tasks API: Loaded ${aggregated.length} tasks but API reports ${lastPagination.total} total`,
+        )
+      }
+
+      console.log(`✅ Tasks API: Loaded ${aggregated.length} tasks for project ${projectId}`)
+
+      return {
+        tasks: aggregated,
+        pagination: {
+          current_page: 1,
+          per_page: aggregated.length,
+          total: Math.max(lastPagination.total, aggregated.length),
+          last_page: 1,
+        },
+      }
+    } catch (error) {
       console.error('❌ Tasks API: Error fetching tasks:', error)
-      // Check if it's a 404 (endpoint doesn't exist yet)
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as { response?: { status?: number } }
         if (axiosError.response?.status === 404) {

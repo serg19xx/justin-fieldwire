@@ -514,8 +514,9 @@ const projectBoundsExtension = ref({
   reason: '',
 })
 
-// Use projectInfo from props or load it
-const projectInfo = computed(() => props.projectInfo)
+// Use projectInfo from props or load it asynchronously
+const loadedProjectInfo = ref<Project | null>(null)
+const projectInfo = computed(() => props.projectInfo ?? loadedProjectInfo.value)
 
 // Initialize form when dialog opens
 watch(
@@ -876,28 +877,27 @@ const invitedPersonForm = ref({
 async function loadProjectInfo() {
   if (!props.projectId) return
 
-  // If projectInfo is already provided via props, use it
   if (props.projectInfo) {
+    loadedProjectInfo.value = null
     console.log('📋 Using project info from props:', props.projectInfo)
-    // Validate milestone data after project info is available
     if (form.value.start_planned) {
       validateMilestoneData()
     }
     return
   }
 
-  // Fallback: load project info if not provided
   try {
     console.log('📋 Loading project info for validation:', props.projectId)
     const response = await projectApi.getById(props.projectId)
+    loadedProjectInfo.value = response
     console.log('✅ Project info loaded:', response)
 
-    // Validate milestone data after project info is loaded
     if (form.value.start_planned) {
       validateMilestoneData()
     }
   } catch (error) {
     console.error('❌ Error loading project info:', error)
+    loadedProjectInfo.value = null
   }
 }
 
@@ -912,7 +912,7 @@ watch(
     })
 
     if (props.isOpen) {
-      loadProjectInfo()
+      await loadProjectInfo()
       // For edit mode with task, load task team first (will be reused for available people)
       if ((props.mode === 'edit' || props.mode === 'view') && props.task?.id && props.projectId) {
         console.log('📋 Loading data for edit/view mode')
@@ -928,6 +928,7 @@ watch(
       // Clear cache when dialog closes
       taskTeamMembersCache.value = null
       invitedPeople.value = []
+      loadedProjectInfo.value = null
     }
   },
   { immediate: true },
@@ -1028,16 +1029,23 @@ function handleSubmit() {
   console.log('💾 Submitting milestone form:', form.value)
   console.log('🔍 Form validation state:', validationResult.value)
 
-  // Validate milestone data before submission
-  if (!validateMilestoneData()) {
-    console.log('❌ Milestone validation failed, not submitting')
-    console.log('❌ Validation errors:', validationResult.value.errors)
-    console.log('❌ Validation warnings:', validationResult.value.warnings)
-    return
-  }
+  void (async () => {
+    if (!projectInfo.value) {
+      await loadProjectInfo()
+    }
 
-  console.log('✅ Milestone validation passed, proceeding with save')
+    if (!validateMilestoneData()) {
+      console.log('❌ Milestone validation failed, not submitting')
+      console.log('❌ Validation errors:', validationResult.value.errors)
+      console.log('❌ Validation warnings:', validationResult.value.warnings)
+      return
+    }
 
+    await submitMilestone()
+  })()
+}
+
+async function submitMilestone() {
   // Prepare invited people data for API
   // For milestones, always send array (empty [] if no invited people, never null)
   const invitedPeopleData = invitedPeople.value

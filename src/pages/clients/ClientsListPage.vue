@@ -574,13 +574,31 @@ onMounted(async () => {
         <div class="min-w-0 shrink-0">
           <h1 class="text-xl font-semibold text-gray-900 truncate">{{ pageTitle }}</h1>
           <a
-            href="/CLIENT_COMMUNICATIONS_USER_GUIDE_RU.html"
+            href="/CLIENT_COMMUNICATIONS_USER_GUIDE.html"
             target="_blank"
             rel="noopener noreferrer"
             class="mt-1 inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
           >
             <AppIcon icon="mdi:book-open-page-variant-outline" :size="16" />
             SMS, Email &amp; Fax guide
+          </a>
+          <a
+            href="/SMS_MEETING_INVITE_USER_GUIDE.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mt-1 inline-flex items-center gap-1 text-sm text-teal-700 hover:underline"
+          >
+            <AppIcon icon="mdi:calendar-clock-outline" :size="16" />
+            Schedule call via SMS guide
+          </a>
+          <a
+            href="/SMS_MEETING_INVITE_TESTING_GUIDE.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mt-1 inline-flex items-center gap-1 text-sm text-amber-800 hover:underline"
+          >
+            <AppIcon icon="mdi:clipboard-check-outline" :size="16" />
+            Schedule call via SMS — testing guide
           </a>
         </div>
         <div class="flex flex-wrap items-center gap-3 text-sm min-w-0">

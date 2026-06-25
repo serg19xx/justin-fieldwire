@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldWire — Testing: Schedule a call via SMS</title>
+  <style>
+    :root { --text:#1a1a1a; --muted:#555; --border:#ccc; --bg-alt:#f7f7f7; --accent:#0d9488; }
+    * { box-sizing:border-box; }
+    body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.55; color:var(--text); max-width:52rem; margin:0 auto; padding:1.25rem 1rem 3rem; font-size:15px; }
+    .howto-open { background:#f0fdfa; border:1px solid #99f6e4; border-radius:8px; padding:.75rem 1rem; margin-bottom:1.5rem; font-size:14px; }
+    .howto-open strong { color:var(--accent); }
+    .howto-open code { font-size:12px; word-break:break-all; background:#fff; padding:.1rem .35rem; border-radius:4px; border:1px solid #99f6e4; }
+    h1 { font-size:1.55rem; margin:0 0 .5rem; }
+    .subtitle { color:var(--muted); margin:0 0 1.25rem; font-size:14px; }
+    h2 { font-size:1.15rem; margin:1.75rem 0 .75rem; padding-bottom:.25rem; border-bottom:2px solid var(--border); }
+    h3 { font-size:1rem; margin:1rem 0 .5rem; }
+    table { width:100%; border-collapse:collapse; margin:.75rem 0 1rem; font-size:12px; }
+    th,td { border:1px solid var(--border); padding:.45rem .5rem; text-align:left; vertical-align:top; }
+    th { background:var(--bg-alt); }
+    .rule-box { background:var(--bg-alt); border-left:4px solid var(--accent); padding:.65rem 1rem; margin:1rem 0; }
+    .signoff { border:1px solid var(--border); border-radius:8px; padding:1rem; margin:1.5rem 0; background:#fafafa; }
+    .line { border-bottom:1px solid #999; min-width:12rem; display:inline-block; }
+    a { color:var(--accent); }
+    @media print { body { max-width:none; font-size:11pt; } }
+  </style>
+</head>
+<body>
+
+  <div class="howto-open">
+    <strong>Client acceptance testing document</strong> — Schedule a call via SMS.
+    <br /><br />
+    <strong>URL:</strong> <code id="self-url">…</code>
+    <br /><br />
+    <strong>Russian:</strong> <a id="ru-url" href="/SMS_MEETING_INVITE_TESTING_GUIDE_RU.html">SMS_MEETING_INVITE_TESTING_GUIDE_RU.html</a>
+    &nbsp;·&nbsp;
+    <strong>User guide:</strong> <a href="/SMS_MEETING_INVITE_USER_GUIDE.html">SMS_MEETING_INVITE_USER_GUIDE.html</a>
+    <br /><br />
+    <strong>App:</strong> <a href="https://fieldwire.medicalcontractor.ca">fieldwire.medicalcontractor.ca</a> → Clients
+    <br /><br />
+    <strong>PDF:</strong> Print (Ctrl/Cmd+P) → Save as PDF
+  </div>
+  <script>
+    (function () {
+      try {
+        var el = document.getElementById('self-url')
+        var ru = document.getElementById('ru-url')
+        if (el && window.location && window.location.origin) {
+          el.textContent = window.location.origin + '/SMS_MEETING_INVITE_TESTING_GUIDE.html'
+          if (ru) ru.href = window.location.origin + '/SMS_MEETING_INVITE_TESTING_GUIDE_RU.html'
+        }
+      } catch (e) {}
+    })()
+  </script>
+
+  <h1>Testing: Schedule a call via SMS</h1>
+  <p class="subtitle">FieldWire · v2.0 · PM picks date and slots · 3-day hold · Calendar + Twilio</p>
+
+  <div class="rule-box">
+    <strong>Goal:</strong> PM offers call times by SMS; client confirms by reply; event appears in PM Calendar.
+  </div>
+
+  <h2>1. What was delivered</h2>
+  <ul>
+    <li>PM picks <strong>meeting date</strong> (min <strong>+3 days</strong>, no one-week cap)</li>
+    <li><strong>Day schedule</strong> grid: 30-min steps, 9 AM–5 PM; busy blocks marked</li>
+    <li>PM selects <strong>1–3 free slots</strong>; held <strong>3 days</strong> until client reply</li>
+    <li>Clear SMS; client reply <strong>1 / 2 / 3</strong>; Calendar event on confirm</li>
+  </ul>
+
+  <h2>2. Prerequisites</h2>
+  <ul>
+    <li>Admin or Project Manager account</li>
+    <li>Client with phone on record</li>
+    <li>Mobile to read/reply SMS</li>
+    <li>Test date ≥ today + 3 days</li>
+  </ul>
+
+  <h2>3. Required test — full flow</h2>
+  <table>
+    <thead><tr><th>☐</th><th>Step</th><th>Action</th><th>Expected</th></tr></thead>
+    <tbody>
+      <tr><td>☐</td><td>1</td><td>Schedule call via SMS</td><td>Dialog with date, grid, preview</td></tr>
+      <tr><td>☐</td><td>2</td><td>Date = today + 3 days</td><td>Schedule loads</td></tr>
+      <tr><td>☐</td><td>3</td><td>Select 3 free slots → Send</td><td>SMS delivered</td></tr>
+      <tr><td>☐</td><td>4</td><td>Client replies <strong>2</strong></td><td>Confirmation SMS</td></tr>
+      <tr><td>☐</td><td>5</td><td>PM Calendar</td><td>Event at slot 2 time</td></tr>
+      <tr><td>☐</td><td>6</td><td>Reopen dialog</td><td>Status Confirmed</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4. Additional scenarios</h2>
+  <ul>
+    <li><strong>Min date:</strong> cannot pick tomorrow; +3 days works</li>
+    <li><strong>Busy date:</strong> pick another date with free slots</li>
+    <li><strong>Hold:</strong> sent slots show Held for SMS invite for other clients</li>
+    <li><strong>1–2 slots:</strong> SMS says «1» or «1 or 2»</li>
+    <li><strong>Invalid reply:</strong> hello → prompt; then valid digit → confirm</li>
+    <li><strong>Calendar overlap:</strong> event blocks matching grid slot</li>
+    <li><strong>Roles:</strong> Worker no access; PM/Admin yes</li>
+  </ul>
+
+  <h2>5. Sign-off</h2>
+  <div class="signoff">
+    <p>☐ Full flow passed &nbsp; ☐ Failed</p>
+    <p>☐ Date + grid + hold passed &nbsp; ☐ Failed</p>
+    <p>☐ SMS + Calendar passed &nbsp; ☐ Failed</p>
+    <p><strong>Comments:</strong> <span class="line" style="width:100%;display:block;">&nbsp;</span></p>
+    <p><strong>Signature:</strong> <span class="line">&nbsp;</span> <strong>Date:</strong> <span class="line">&nbsp;</span></p>
+  </div>
+
+  <hr />
+  <p class="subtitle">Version 2.0 · client acceptance testing</p>
+
+</body>
+</html>

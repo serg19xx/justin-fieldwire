@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldWire — запись на звонок через SMS</title>
+  <style>
+    :root {
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ccc;
+      --bg-alt: #f7f7f7;
+      --accent: #0d9488;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.55;
+      color: var(--text);
+      max-width: 50rem;
+      margin: 0 auto;
+      padding: 1.25rem 1rem 3rem;
+      font-size: 15px;
+    }
+    .howto-open {
+      background: #f0fdfa;
+      border: 1px solid #99f6e4;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 14px;
+    }
+    .howto-open strong { color: var(--accent); }
+    .howto-open code {
+      font-size: 12px;
+      word-break: break-all;
+      background: #fff;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      border: 1px solid #99f6e4;
+    }
+    h1 { font-size: 1.55rem; margin: 0 0 0.5rem; line-height: 1.25; }
+    .subtitle { color: var(--muted); margin: 0 0 1.25rem; font-size: 14px; }
+    h2 {
+      font-size: 1.15rem;
+      margin: 1.75rem 0 0.75rem;
+      padding-bottom: 0.25rem;
+      border-bottom: 2px solid var(--border);
+    }
+    h3 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+    p { margin: 0.5rem 0; }
+    ul, ol { margin: 0.5rem 0; padding-left: 1.35rem; }
+    li { margin: 0.3rem 0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.75rem 0 1rem;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--bg-alt); font-weight: 600; }
+    tr:nth-child(even) td { background: #fafafa; }
+    .rule-box {
+      background: var(--bg-alt);
+      border-left: 4px solid var(--accent);
+      padding: 0.65rem 1rem;
+      margin: 1rem 0;
+    }
+    .warn-box {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      padding: 0.65rem 1rem;
+      margin: 1rem 0;
+    }
+    .sms-sample {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      white-space: pre-line;
+      line-height: 1.45;
+      margin: 0.75rem 0 1rem;
+    }
+    .flow {
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 13px;
+      margin: 0.75rem 0 1rem;
+    }
+    a { color: var(--accent); }
+    @media print {
+      body { max-width: none; padding: 0; font-size: 11pt; }
+      .howto-open { break-inside: avoid; }
+      h2 { break-after: avoid; }
+      table { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="howto-open">
+    <strong>Как открыть:</strong> страница доступна по адресу
+    <code id="self-url">…</code>
+    (вход не требуется).
+    <br /><br />
+    <strong>English:</strong> <a id="en-url" href="/SMS_MEETING_INVITE_USER_GUIDE.html">SMS_MEETING_INVITE_USER_GUIDE.html</a>
+    <br /><br />
+    <strong>Связанное руководство:</strong> <a href="/CLIENT_COMMUNICATIONS_USER_GUIDE_RU.html">SMS, Email и Fax из Clients</a>
+    <br /><br />
+    <strong>В приложении:</strong> Clients → любой список → ссылка <strong>Schedule call via SMS guide</strong> в шапке.
+    <br /><br />
+    <strong>Тестирование заказчиком:</strong> <a href="/SMS_MEETING_INVITE_TESTING_GUIDE_RU.html">SMS_MEETING_INVITE_TESTING_GUIDE_RU.html</a>
+    <br /><br />
+    <strong>PDF:</strong> Печать (Ctrl/Cmd+P) → Сохранить как PDF.
+  </div>
+  <script>
+    (function () {
+      try {
+        var el = document.getElementById('self-url')
+        var en = document.getElementById('en-url')
+        if (el && window.location && window.location.origin) {
+          el.textContent = window.location.origin + '/SMS_MEETING_INVITE_USER_GUIDE_RU.html'
+          if (en) en.href = window.location.origin + '/SMS_MEETING_INVITE_USER_GUIDE.html'
+        }
+      } catch (e) { /* ignore */ }
+    })()
+  </script>
+
+  <h1>Запись на звонок через SMS</h1>
+  <p class="subtitle">FieldWire — Project Manager предлагает клиенту три времени; клиент отвечает 1, 2 или 3; событие попадает в Calendar</p>
+
+  <div class="rule-box">
+    Новая функция в разделе <strong>Clients</strong>: согласование времени звонка по SMS без ручной переписки. После подтверждения клиентом слота у PM автоматически создаётся событие в календаре.
+  </div>
+
+  <h2>Что сделано и зачем</h2>
+  <table>
+    <thead><tr><th>Возможность</th><th>Назначение</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Schedule call via SMS</strong></td><td>Быстро предложить клиенту 3 варианта времени звонка</td></tr>
+      <tr><td><strong>Понятное SMS</strong></td><td>Клиент видит имя и роль PM, тему, дату, длительность и варианты времени</td></tr>
+      <tr><td><strong>Ответ 1 / 2 / 3</strong></td><td>Выбор слота обычным SMS с телефона клиента</td></tr>
+      <tr><td><strong>Calendar</strong></td><td>Автоматическое событие у отправившего PM</td></tr>
+      <tr><td><strong>Статус в диалоге</strong></td><td>PM видит: ожидается ответ / подтверждено / истекло</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Кто может пользоваться</h2>
+  <table>
+    <thead><tr><th>Роль</th><th>Доступ</th></tr></thead>
+    <tbody>
+      <tr><td>Administrator</td><td>Да</td></tr>
+      <tr><td>Project Manager</td><td>Да</td></tr>
+      <tr><td>Другие роли</td><td>Нет</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Как подбираются слоты</h2>
+  <p>PM <strong>сам выбирает дату</strong> (не раньше чем через <strong>3 дня</strong> от сегодня, без ограничения «неделей»).</p>
+  <p>FieldWire показывает <strong>полное расписание дня</strong> с шагом 30 минут (9:00–17:00). Занятые окна помечены как недоступные (событие в Calendar или слот уже удержан другим SMS-инвайтом).</p>
+  <p>PM отмечает <strong>от 1 до 3 свободных слотов</strong> для клиента. После отправки они <strong>удерживаются 3 дня</strong> до ответа клиента или истечения срока.</p>
+
+  <h2>Как это работает</h2>
+  <div class="flow">
+    PM → FieldWire → SMS клиенту (3 слота)<br />
+    Клиент → ответ SMS: <strong>1</strong>, <strong>2</strong> или <strong>3</strong><br />
+    FieldWire → событие в Calendar PM + SMS-подтверждение клиенту
+  </div>
+  <ul>
+    <li>Приглашение действует <strong>72 часа</strong>.</li>
+    <li>Новый инвайт тому же клиенту отменяет предыдущий неподтверждённый.</li>
+    <li>Ответ должен прийти с <strong>того же номера</strong>, на который отправлено SMS.</li>
+    <li>Часовой пояс слотов по умолчанию: <strong>America/Toronto</strong>.</li>
+  </ul>
+
+  <h2>Где найти в приложении</h2>
+  <ol>
+    <li>Войдите как Admin или Project Manager.</li>
+    <li><strong>Clients</strong> → список (Pharmacies, Physicians, Pharmacists, Medical clinics).</li>
+    <li>В строке клиента с телефоном — <strong>Schedule call via SMS</strong>.</li>
+    <li>Заполните дату, три слота, длительность → <strong>Send meeting invite</strong>.</li>
+  </ol>
+  <div class="warn-box">
+    У клиента в карточке должен быть телефон (cell / office / phone в зависимости от типа списка).
+  </div>
+
+  <h2>Пример SMS клиенту</h2>
+  <div class="sms-sample">FieldWire — meeting request
+
+Hi Dr. Smith,
+
+Jane Doe (Project Manager) would like to schedule a call with you.
+
+Topic: Call with Dr. Smith
+Date: Jun 22, 2026 (30 min)
+
+Reply with your preferred time:
+1) 10 AM
+2) 2 PM
+3) 3:30 PM
+
+Text back 1, 2, or 3.</div>
+
+  <h2>Пример подтверждения (ответ клиента «2»)</h2>
+  <div class="sms-sample">FieldWire — confirmed
+
+Thank you, Dr. Smith!
+
+Call with Dr. Smith
+Jun 22, 2026 at 2 PM
+
+— Jane Doe, Project Manager</div>
+
+  <h2>Инструкция для Project Manager</h2>
+  <ol>
+    <li>Выберите клиента с телефоном → <strong>Schedule call via SMS</strong>.</li>
+    <li>Проверьте тему, дату, три времени и длительность.</li>
+    <li>Сверьте блок <strong>SMS preview</strong> с тем, что увидит клиент.</li>
+    <li><strong>Send meeting invite</strong>.</li>
+    <li>После ответа клиента откройте <strong>Calendar</strong> — должно появиться событие.</li>
+  </ol>
+
+  <h2>Как протестировать (для заказчика)</h2>
+  <h3>Сценарий A — полный цикл</h3>
+  <table>
+    <thead><tr><th>Шаг</th><th>Действие</th><th>Ожидание</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Clients → клиент с телефоном → Schedule call via SMS</td><td>Форма с превью SMS</td></tr>
+      <tr><td>2</td><td>Дата завтра, слоты 10:00 / 14:00 / 15:30 → Send</td><td>SMS на телефон клиента</td></tr>
+      <tr><td>3</td><td>Прочитать SMS</td><td>Имя PM, тема, дата, 3 слота</td></tr>
+      <tr><td>4</td><td>Ответить <strong>2</strong></td><td>SMS-подтверждение; событие в Calendar PM в 14:00</td></tr>
+      <tr><td>5</td><td>Снова открыть диалог для клиента</td><td>Статус <strong>Confirmed: slot 2</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Сценарий B — неверный ответ</h3>
+  <p>Ответить <strong>hello</strong> → SMS с просьбой ответить 1, 2 или 3. Затем ответить <strong>2</strong> → подтверждение и календарь.</p>
+
+  <h3>Сценарий C — поиск клиентов с телефоном</h3>
+  <p>Filter: <strong>Phone</strong> → <strong>Has value</strong>.</p>
+
+  <h2>Production-режим</h2>
+  <p>SMS отправляются на <strong>реальные номера</strong> из карточек клиентов через Twilio. Тестовый режим перенаправления отключён.</p>
+
+  <h2>Решение проблем</h2>
+  <table>
+    <thead><tr><th>Проблема</th><th>Что проверить</th></tr></thead>
+    <tbody>
+      <tr><td>Failed to send SMS</td><td>Телефон в карточке; корректность номера</td></tr>
+      <tr><td>SMS есть, ответ не работает</td><td>Ответ с того же телефона; только 1, 2 или 3</td></tr>
+      <tr><td>Нет события в Calendar</td><td>Войти под тем PM, который отправил инвайт</td></tr>
+      <tr><td>No active meeting request</td><td>Истекло 72 ч или отправлен новый инвайт</td></tr>
+    </tbody>
+  </table>
+
+  <hr />
+  <p class="subtitle">Версия документа 1.0 — запись на звонок через SMS (Clients + Calendar + Twilio)</p>
+
+</body>
+</html>

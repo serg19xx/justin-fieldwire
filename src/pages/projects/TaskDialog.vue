@@ -552,8 +552,9 @@ const validationResult = ref<ValidationResult>({ isValid: true, errors: [], warn
 const showValidationErrors = ref(false)
 const projectBoundsExtension = ref({ needsExtension: false, suggestedStart: '', suggestedEnd: '', reason: '' })
 
-// Use projectInfo from props or load it
-const projectInfo = computed(() => props.projectInfo)
+// Use projectInfo from props or load it asynchronously
+const loadedProjectInfo = ref<Project | null>(null)
+const projectInfo = computed(() => props.projectInfo ?? loadedProjectInfo.value)
 
 // Initialize form when dialog opens
 watch(() => props.isOpen, async (isOpen) => {
@@ -878,8 +879,8 @@ function hasDateValidationError(dateType: 'start' | 'end'): boolean {
 async function loadProjectInfo() {
   if (!props.projectId) return
 
-  // If projectInfo is already provided via props, use it
   if (props.projectInfo) {
+    loadedProjectInfo.value = null
     console.log('📋 Using project info from props:', props.projectInfo)
     console.log('🔍 Project bounds check:', {
       date_start: props.projectInfo?.date_start,
@@ -891,20 +892,19 @@ async function loadProjectInfo() {
       date_start_undefined: props.projectInfo?.date_start === undefined,
       date_end_undefined: props.projectInfo?.date_end === undefined,
       date_start_empty: props.projectInfo?.date_start === '',
-      date_end_empty: props.projectInfo?.date_end === ''
+      date_end_empty: props.projectInfo?.date_end === '',
     })
 
-    // Validate task data after project info is available
     if (form.value.start_planned) {
       validateTaskData()
     }
     return
   }
 
-  // Fallback: load project info if not provided
   try {
     console.log('📋 Loading project info for validation:', props.projectId)
     const response = await projectApi.getById(props.projectId)
+    loadedProjectInfo.value = response
     console.log('✅ Project info loaded:', response)
     console.log('🔍 Project bounds check:', {
       date_start: response?.date_start,
@@ -916,15 +916,15 @@ async function loadProjectInfo() {
       date_start_undefined: response?.date_start === undefined,
       date_end_undefined: response?.date_end === undefined,
       date_start_empty: response?.date_start === '',
-      date_end_empty: response?.date_end === ''
+      date_end_empty: response?.date_end === '',
     })
 
-    // Validate task data after project info is loaded
     if (form.value.start_planned) {
       validateTaskData()
     }
   } catch (error) {
     console.error('❌ Error loading project info:', error)
+    loadedProjectInfo.value = null
   }
 }
 
@@ -933,8 +933,10 @@ watch(
   async () => {
     if (props.isOpen) {
       resetForm()
-      loadProjectInfo()
+      await loadProjectInfo()
       await loadAvailablePeople()
+    } else {
+      loadedProjectInfo.value = null
     }
   },
   { immediate: true },

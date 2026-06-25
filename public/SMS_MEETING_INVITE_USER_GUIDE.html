@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldWire — Schedule a call via SMS</title>
+  <style>
+    :root {
+      --text: #1a1a1a;
+      --muted: #555;
+      --border: #ccc;
+      --bg-alt: #f7f7f7;
+      --accent: #0d9488;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.55;
+      color: var(--text);
+      max-width: 50rem;
+      margin: 0 auto;
+      padding: 1.25rem 1rem 3rem;
+      font-size: 15px;
+    }
+    .howto-open {
+      background: #f0fdfa;
+      border: 1px solid #99f6e4;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 14px;
+    }
+    .howto-open strong { color: var(--accent); }
+    .howto-open code {
+      font-size: 12px;
+      word-break: break-all;
+      background: #fff;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      border: 1px solid #99f6e4;
+    }
+    h1 { font-size: 1.55rem; margin: 0 0 0.5rem; line-height: 1.25; }
+    .subtitle { color: var(--muted); margin: 0 0 1.25rem; font-size: 14px; }
+    h2 {
+      font-size: 1.15rem;
+      margin: 1.75rem 0 0.75rem;
+      padding-bottom: 0.25rem;
+      border-bottom: 2px solid var(--border);
+    }
+    h3 { font-size: 1rem; margin: 1rem 0 0.5rem; }
+    p { margin: 0.5rem 0; }
+    ul, ol { margin: 0.5rem 0; padding-left: 1.35rem; }
+    li { margin: 0.3rem 0; }
+    hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.75rem 0 1rem;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.6rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: var(--bg-alt); font-weight: 600; }
+    tr:nth-child(even) td { background: #fafafa; }
+    .rule-box {
+      background: var(--bg-alt);
+      border-left: 4px solid var(--accent);
+      padding: 0.65rem 1rem;
+      margin: 1rem 0;
+    }
+    .warn-box {
+      background: #fffbeb;
+      border-left: 4px solid #f59e0b;
+      padding: 0.65rem 1rem;
+      margin: 1rem 0;
+    }
+    .sms-sample {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 12px;
+      white-space: pre-line;
+      line-height: 1.45;
+      margin: 0.75rem 0 1rem;
+    }
+    .flow {
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 13px;
+      margin: 0.75rem 0 1rem;
+    }
+    a { color: var(--accent); }
+    @media print {
+      body { max-width: none; padding: 0; font-size: 11pt; }
+      .howto-open { break-inside: avoid; }
+      h2 { break-after: avoid; }
+      table { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="howto-open">
+    <strong>How to open:</strong> this page is available at
+    <code id="self-url">…</code>
+    (no login required).
+    <br /><br />
+    <strong>Russian:</strong> <a id="ru-url" href="/SMS_MEETING_INVITE_USER_GUIDE_RU.html">SMS_MEETING_INVITE_USER_GUIDE_RU.html</a>
+    <br /><br />
+    <strong>Related guide:</strong> <a href="/CLIENT_COMMUNICATIONS_USER_GUIDE.html">Clients SMS, Email &amp; Fax</a>
+    <br /><br />
+    <strong>Testing guide (for client):</strong> <a href="/SMS_MEETING_INVITE_TESTING_GUIDE.html">SMS_MEETING_INVITE_TESTING_GUIDE.html</a>
+    <br /><br />
+    <strong>In the app:</strong> Clients → any list → <strong>Schedule call via SMS guide</strong> in the page header.
+    <br /><br />
+    <strong>PDF:</strong> Print (Ctrl/Cmd+P) → Save as PDF.
+  </div>
+  <script>
+    (function () {
+      try {
+        var el = document.getElementById('self-url')
+        var ru = document.getElementById('ru-url')
+        if (el && window.location && window.location.origin) {
+          el.textContent = window.location.origin + '/SMS_MEETING_INVITE_USER_GUIDE.html'
+          if (ru) ru.href = window.location.origin + '/SMS_MEETING_INVITE_USER_GUIDE_RU.html'
+        }
+      } catch (e) { /* ignore */ }
+    })()
+  </script>
+
+  <h1>Schedule a call via SMS</h1>
+  <p class="subtitle">FieldWire — PM offers three time slots; client replies 1, 2, or 3; event is created in Calendar</p>
+
+  <div class="rule-box">
+    New <strong>Clients</strong> workflow: agree on a call time by SMS without manual back-and-forth. When the client confirms a slot, a calendar event is created automatically for the PM.
+  </div>
+
+  <h2>What was delivered and why</h2>
+  <table>
+    <thead><tr><th>Feature</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Schedule call via SMS</strong></td><td>Offer three call times quickly</td></tr>
+      <tr><td><strong>Clear SMS text</strong></td><td>Client sees PM name/role, topic, date, duration, and options</td></tr>
+      <tr><td><strong>Reply 1 / 2 / 3</strong></td><td>Slot selection via normal SMS</td></tr>
+      <tr><td><strong>Calendar</strong></td><td>Automatic event for the sending PM</td></tr>
+      <tr><td><strong>Status in dialog</strong></td><td>Pending / confirmed / expired</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Who can use it</h2>
+  <table>
+    <thead><tr><th>Role</th><th>Access</th></tr></thead>
+    <tbody>
+      <tr><td>Administrator</td><td>Yes</td></tr>
+      <tr><td>Project Manager</td><td>Yes</td></tr>
+      <tr><td>Other roles</td><td>No</td></tr>
+    </tbody>
+  </table>
+
+  <h2>How time slots are chosen</h2>
+  <p>The PM <strong>picks the date</strong> (at least <strong>3 days</strong> from today, no one-week cap).</p>
+  <p>FieldWire shows the <strong>full day schedule</strong> in 30-minute steps (9:00 AM–5:00 PM). Busy blocks are marked unavailable (Calendar events or slots held by another pending SMS invite).</p>
+  <p>The PM selects <strong>1 to 3 free slots</strong> for the client. After sending, they are <strong>held for 3 days</strong> until the client replies or the invite expires.</p>
+
+  <h2>How it works</h2>
+  <div class="flow">
+    PM → FieldWire → SMS to client (3 slots)<br />
+    Client → SMS reply: <strong>1</strong>, <strong>2</strong>, or <strong>3</strong><br />
+    FieldWire → PM Calendar event + confirmation SMS
+  </div>
+  <ul>
+    <li>Invites expire after <strong>72 hours</strong>.</li>
+    <li>A new invite cancels any previous pending invite for the same client.</li>
+    <li>Reply must come from the <strong>same phone</strong> that received the SMS.</li>
+    <li>Default timezone: <strong>America/Toronto</strong>.</li>
+  </ul>
+
+  <h2>Where to find it</h2>
+  <ol>
+    <li>Sign in as Admin or Project Manager.</li>
+    <li><strong>Clients</strong> → choose a list.</li>
+    <li>Row action <strong>Schedule call via SMS</strong> (client must have a phone).</li>
+    <li>Fill date, three slots, duration → <strong>Send meeting invite</strong>.</li>
+  </ol>
+
+  <h2>Sample invite SMS</h2>
+  <div class="sms-sample">FieldWire — meeting request
+
+Hi Dr. Smith,
+
+Jane Doe (Project Manager) would like to schedule a call with you.
+
+Topic: Call with Dr. Smith
+Date: Jun 22, 2026 (30 min)
+
+Reply with your preferred time:
+1) 10 AM
+2) 2 PM
+3) 3:30 PM
+
+Text back 1, 2, or 3.</div>
+
+  <h2>Sample confirmation (client replies 2)</h2>
+  <div class="sms-sample">FieldWire — confirmed
+
+Thank you, Dr. Smith!
+
+Call with Dr. Smith
+Jun 22, 2026 at 2 PM
+
+— Jane Doe, Project Manager</div>
+
+  <h2>Testing checklist</h2>
+  <table>
+    <thead><tr><th>Step</th><th>Action</th><th>Expected</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Clients → client with phone → Schedule call via SMS</td><td>Form with SMS preview</td></tr>
+      <tr><td>2</td><td>Tomorrow, slots 10:00 / 14:00 / 15:30 → Send</td><td>SMS on client phone</td></tr>
+      <tr><td>3</td><td>Read SMS</td><td>PM name, topic, date, 3 slots</td></tr>
+      <tr><td>4</td><td>Reply <strong>2</strong></td><td>Confirmation SMS; Calendar event at 14:00</td></tr>
+      <tr><td>5</td><td>Reopen dialog</td><td>Status <strong>Confirmed: slot 2</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h2>Production mode</h2>
+  <p>SMS are sent to <strong>real numbers</strong> from client records via Twilio. Test redirect mode is disabled.</p>
+
+  <h2>Troubleshooting</h2>
+  <table>
+    <thead><tr><th>Issue</th><th>Check</th></tr></thead>
+    <tbody>
+      <tr><td>Failed to send SMS</td><td>Phone on client record</td></tr>
+      <tr><td>SMS received, reply ignored</td><td>Same phone; reply 1, 2, or 3 only</td></tr>
+      <tr><td>No calendar event</td><td>Same PM who sent the invite</td></tr>
+      <tr><td>No active meeting request</td><td>Expired (72 h) or replaced by newer invite</td></tr>
+    </tbody>
+  </table>
+
+  <hr />
+  <p class="subtitle">Document version 1.0 — Schedule a call via SMS (Clients + Calendar + Twilio)</p>
+
+</body>
+</html>

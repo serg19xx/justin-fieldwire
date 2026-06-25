@@ -12,7 +12,7 @@
     </div>
 
     <!-- Task List -->
-    <div class="flex-1 overflow-y-auto">
+    <div ref="listContainerRef" class="flex-1 overflow-y-auto" @scroll="handleListScroll">
       <div v-if="filteredTasks.length === 0" class="p-4 text-center text-gray-500">
         <div class="text-2xl mb-2">📋</div>
         <p class="text-xs">No tasks found</p>
@@ -22,8 +22,9 @@
       </div>
       <div v-else class="divide-y divide-gray-100">
         <button
-          v-for="task in filteredTasks"
+          v-for="(task, index) in filteredTasks"
           :key="task.id"
+          :data-task-id="task.id"
           @click="selectTask(task)"
           :class="[
             'w-full text-left p-3 transition-all relative border-l-4',
@@ -36,6 +37,12 @@
             <div class="flex-1 min-w-0">
               <!-- Task Name -->
               <div class="flex items-center gap-2 mb-1">
+                <span
+                  class="text-xs text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded flex-shrink-0 font-mono"
+                  :title="`Task #${index + 1}`"
+                >
+                  {{ index + 1 }}
+                </span>
                 <span v-if="isMilestone(task.milestone)" class="text-xs text-amber-600 font-bold">{{ MILESTONE_ICON }}</span>
                 <span class="text-sm font-medium text-gray-900 truncate">{{ task.name }}</span>
               </div>
@@ -70,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { isMilestone } from '@/core/types/task'
 import { MILESTONE_ICON } from '@/core/utils/task-utils'
 import type { Task, TaskStatus } from '@/core/types/task'
@@ -79,13 +86,89 @@ interface Props {
   filteredTasks: Task[]
   selectedTaskId?: string | number | null
   activeFiltersCount: number
+  initialScrollTop?: number
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  initialScrollTop: 0,
+})
 
 const emit = defineEmits<{
   'task-selected': [task: Task]
+  'scroll-position': [scrollTop: number]
 }>()
+
+const listContainerRef = ref<HTMLElement | null>(null)
+const savedScrollTop = ref(props.initialScrollTop)
+
+function emitScrollPosition() {
+  const scrollTop = listContainerRef.value?.scrollTop ?? savedScrollTop.value
+  savedScrollTop.value = scrollTop
+  emit('scroll-position', scrollTop)
+}
+
+function handleListScroll() {
+  emitScrollPosition()
+}
+
+function restoreScrollPosition() {
+  const container = listContainerRef.value
+  if (!container) return
+  const top = props.initialScrollTop ?? savedScrollTop.value
+  container.scrollTop = top
+  savedScrollTop.value = top
+}
+
+function scrollSelectedIntoView(behavior: ScrollBehavior = 'auto') {
+  const container = listContainerRef.value
+  const selectedId = normalizedSelectedId.value
+  if (!container || !selectedId) return
+
+  const selectedEl = container.querySelector<HTMLElement>(`[data-task-id="${selectedId}"]`)
+  selectedEl?.scrollIntoView({ block: 'nearest', behavior })
+}
+
+watch(
+  () => props.filteredTasks,
+  async () => {
+    await nextTick()
+    restoreScrollPosition()
+    scrollSelectedIntoView()
+  },
+  { flush: 'post' },
+)
+
+watch(
+  () => props.initialScrollTop,
+  async () => {
+    savedScrollTop.value = props.initialScrollTop
+    await nextTick()
+    restoreScrollPosition()
+  },
+)
+
+watch(
+  () => props.selectedTaskId,
+  async () => {
+    await nextTick()
+    scrollSelectedIntoView('auto')
+  },
+)
+
+onMounted(async () => {
+  await nextTick()
+  restoreScrollPosition()
+  scrollSelectedIntoView('auto')
+})
+
+onBeforeUnmount(() => {
+  emitScrollPosition()
+})
+
+defineExpose({
+  scrollSelectedIntoView,
+  preserveScrollTop: emitScrollPosition,
+})
 
 // Normalize selectedTaskId to string for consistent comparison
 const normalizedSelectedId = computed(() => {
