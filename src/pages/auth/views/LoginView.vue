@@ -98,7 +98,8 @@
 
         <div
           v-if="successMessage"
-          class="mt-4 p-3 bg-green-50 border border-green-200 text-green-800 rounded-lg"
+          class="mt-4 p-4 bg-green-50 border-2 border-green-300 text-green-900 rounded-lg text-sm leading-relaxed"
+          role="status"
         >
           {{ successMessage }}
         </div>
@@ -124,7 +125,6 @@
 import { ref, reactive, nextTick, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
-import { api } from '@/core/utils/api'
 import LoginForm from '../components/LoginForm.vue'
 import TwoFactorDialog from '@/components/TwoFactorDialog.vue'
 
@@ -187,117 +187,16 @@ async function handleRecovery() {
   successMessage.value = ''
 
   try {
-    console.log('📧 Sending password recovery request for:', recoveryForm.email)
-    console.log('🔧 Using direct API call as workaround')
+    const result = await authStore.requestPasswordRecovery(recoveryForm.email.trim())
 
-    // Try different possible endpoints
-    const possibleEndpoints = [
-      '/api/v1/auth/forgot-password',
-      '/api/v1/auth/password-reset',
-      '/api/v1/auth/reset-password',
-      '/api/v1/password/forgot',
-      '/api/v1/password/reset'
-    ]
-
-    let response
-    let usedEndpoint = ''
-
-    for (const endpoint of possibleEndpoints) {
-      try {
-        console.log('🌐 Trying endpoint:', endpoint)
-        console.log('📧 Request payload:', { email: recoveryForm.email })
-
-        // Try different request formats
-        const requestFormats = [
-          { email: recoveryForm.email },
-          { user_email: recoveryForm.email },
-          { username: recoveryForm.email },
-          { user: { email: recoveryForm.email } },
-          { data: { email: recoveryForm.email } }
-        ]
-
-        let success = false
-        for (const format of requestFormats) {
-          try {
-            console.log('📧 Trying request format:', format)
-            response = await api.post(endpoint, format)
-            success = true
-            break
-          } catch (error: unknown) {
-            console.log('❌ Failed with format:', format, error)
-            const err = error as { response?: { status?: number } }
-            if (err.response?.status !== 404) {
-              throw error
-            }
-          }
-        }
-
-        if (!success) {
-          throw new Error('No working request format found')
-        }
-
-        usedEndpoint = endpoint
-        console.log('✅ Success with endpoint:', endpoint)
-        break
-      } catch (error: unknown) {
-        console.log('❌ Failed with endpoint:', endpoint, error)
-        const err = error as { response?: { status?: number } }
-        if (err.response?.status === 404) {
-          continue // Try next endpoint
-        } else {
-          throw error // Re-throw if it's not a 404
-        }
-      }
-    }
-
-    if (!response) {
-      throw new Error('No working endpoint found for password recovery')
-    }
-
-    console.log('✅ Password recovery response:', response.data)
-    console.log('🔍 Response status:', response.status)
-    console.log('🔍 Response headers:', response.headers)
-    console.log('🔍 Content-Type:', response.headers['content-type'])
-
-    // Handle different response formats
-    if (response.status === 200 || response.status === 201) {
-      const contentType = response.headers['content-type'] || ''
-
-      if (contentType.includes('application/json')) {
-        // JSON response
-        if (response.data && typeof response.data === 'object' && response.data.status === 'success') {
-          successMessage.value = 'Password recovery link has been sent to your email'
-          console.log('✅ Password recovery email sent successfully (JSON)')
-        } else if (response.data && typeof response.data === 'object' && response.data.message) {
-          errorMessage.value = response.data.message
-          console.log('❌ Password recovery failed (JSON):', response.data.message)
-        } else {
-          successMessage.value = 'Password recovery link has been sent to your email'
-          console.log('✅ Password recovery email sent successfully (JSON empty)')
-        }
-      } else if (contentType.includes('text/html')) {
-        // HTML response - likely means the request was processed
-        successMessage.value = 'Password recovery link has been sent to your email'
-        console.log('✅ Password recovery email sent successfully (HTML response)')
-        console.log('📄 HTML response preview:', response.data.substring(0, 200) + '...')
-      } else {
-        // Other content types or empty response
-        successMessage.value = 'Password recovery link has been sent to your email'
-        console.log('✅ Password recovery email sent successfully (other format)')
-      }
-
-      // Clear the form and hide recovery form after 3 seconds
-      setTimeout(() => {
-        showRecovery.value = false
-        successMessage.value = ''
-        recoveryForm.email = ''
-      }, 3000)
+    if (result.success) {
+      const email = recoveryForm.email.trim()
+      successMessage.value = `Email sent to ${email} from FieldWire (noreply@medicalcontractor.ca). Check your Inbox and Spam for "FieldWire password reset".`
     } else {
-      errorMessage.value = 'Failed to send recovery email'
-      console.log('❌ Password recovery failed with status:', response.status)
+      errorMessage.value = result.error || 'Failed to send recovery email'
     }
   } catch (error) {
-    console.error('❌ Recovery error:', error)
+    console.error('Recovery error:', error)
     errorMessage.value = 'An error occurred while sending the recovery link'
   } finally {
     isLoading.value = false

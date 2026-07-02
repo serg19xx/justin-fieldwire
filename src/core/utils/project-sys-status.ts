@@ -81,3 +81,22 @@ export function resolveProjectSysStatus(project: Pick<Project, 'sys_status'>): P
 export function isProjectSysStatusDone(project: Pick<Project, 'sys_status'>): boolean {
   return resolveProjectSysStatus(project) === 'done'
 }
+
+/** Field-role project list: in execution (not draft/design, not archived). */
+export type TaskRoleProjectBucket = 'in_work' | 'archived' | 'hidden'
+
+export function getTaskRoleProjectListBucket(
+  project: Pick<Project, 'sys_status'>,
+): TaskRoleProjectBucket {
+  const s = resolveProjectSysStatus(project)
+  if (s === 'done') return 'archived'
+  if (s === 'draft' || s === 'suspended') return 'hidden'
+  return 'in_work'
+}
+
+export function filterProjectsForTaskRoleList(
+  projects: Project[],
+  bucket: Exclude<TaskRoleProjectBucket, 'hidden'>,
+): Project[] {
+  return projects.filter((p) => getTaskRoleProjectListBucket(p) === bucket)
+}

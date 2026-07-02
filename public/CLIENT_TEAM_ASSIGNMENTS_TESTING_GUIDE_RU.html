@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldWire — Назначение сотрудников на задачи</title>
+  <style>
+    :root { --text:#1a1a1a; --muted:#555; --border:#ccc; --bg-alt:#f7f7f7; --accent:#2563eb; }
+    * { box-sizing:border-box; }
+    body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.55; color:var(--text); max-width:50rem; margin:0 auto; padding:1.25rem 1rem 3rem; font-size:15px; }
+    .howto-open { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.5rem; font-size:14px; }
+    .howto-open strong { color:var(--accent); }
+    .howto-open code { font-size:12px; word-break:break-all; background:#fff; padding:0.1rem 0.35rem; border-radius:4px; border:1px solid #bfdbfe; }
+    h1 { font-size:1.55rem; margin:0 0 0.5rem; line-height:1.25; }
+    h2 { font-size:1.15rem; margin:1.75rem 0 0.75rem; padding-bottom:0.25rem; border-bottom:2px solid var(--border); }
+    h3 { font-size:1rem; margin:1rem 0 0.5rem; }
+    p { margin:0.5rem 0; }
+    ul,ol { margin:0.5rem 0; padding-left:1.35rem; }
+    li { margin:0.3rem 0; }
+    hr { border:none; border-top:1px solid var(--border); margin:1.5rem 0; }
+    table { width:100%; border-collapse:collapse; margin:0.75rem 0 1rem; font-size:13px; }
+    th,td { border:1px solid var(--border); padding:0.5rem 0.6rem; text-align:left; vertical-align:top; }
+    th { background:var(--bg-alt); font-weight:600; }
+    tr:nth-child(even) td { background:#fafafa; }
+    code { font-size:0.9em; background:#f3f4f6; padding:0.1rem 0.3rem; border-radius:3px; }
+    @media print { body { max-width:none; padding:0; font-size:11pt; } }
+  </style>
+</head>
+<body>
+  <div class="howto-open">
+    <strong>Как открыть:</strong> страница доступна по адресу
+    <code id="self-url">…</code>
+    (без входа в систему).
+    <br /><br />
+    <strong>PDF:</strong> Печать (Ctrl/Cmd+P) → Сохранить как PDF.
+  </div>
+  <script>
+    (function(){ try { var el=document.getElementById('self-url'); if(el&&window.location&&window.location.origin) el.textContent=window.location.origin+'/CLIENT_TEAM_ASSIGNMENTS_TESTING_GUIDE_RU.html'; } catch(e){} })();
+  </script>
+  <h1>Руководство для заказчика: назначение сотрудников на задачи и проверка по ролям</h1>
+<p><strong>Аудитория:</strong> заказчик, QA, менеджеры проектов.</p>
+<p><strong>Версия:</strong> 1.0</p>
+<p><strong>Сайт:</strong> https://fieldwire.medicalcontractor.ca</p>
+<p><strong>Веб (после деплоя):</strong> https://fieldwire.medicalcontractor.ca/CLIENT_TEAM_ASSIGNMENTS_TESTING_GUIDE_RU.html</p>
+<p><strong>English:</strong> https://fieldwire.medicalcontractor.ca/CLIENT_TEAM_ASSIGNMENTS_TESTING_GUIDE.html</p>
+<hr />
+<h2>Что проверяем в этом документе</h2>
+<p>Пошаговая проверка <strong>назначения людей на задачи проекта</strong> и того, <strong>что видит каждая роль</strong> в веб-интерфейсе PM и в мобильном интерфейсе бригадира / работника.</p>
+<p><strong>Не входит в это руководство</strong> (заказчик уже умеет, в системе есть тестовые данные):</p>
+<ul>
+<li>приглашение и добавление людей в команду проекта;</li>
+<li>создание проектов;</li>
+<li>создание задач с нуля.</li>
+</ul>
+<p><strong>Отдельно — недоделанная часть:</strong> система <strong>сообщений и push/email-уведомлений</strong> о назначениях. Интерфейс чата по слотам расписания может быть виден, но <strong>реальная доставка SMS, push и email по событиям назначения пока не считается готовой к приёмке</strong>. Это описано в разделе 8.</p>
+<hr />
+<h2>1. Два уровня «команды»</h2>
+<table><thead><tr>
+<th>Уровень</th>
+<th>Где задаётся</th>
+<th>Зачем</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>Команда проекта</strong></td>
+<td>Проект → <strong>Team</strong></td>
+<td>Кто вообще допущен к проекту (общий состав).</td>
+</tr>
+<tr>
+<td><strong>Назначение на задачу</strong></td>
+<td>Проект → <strong>Tasks</strong> → карточка задачи</td>
+<td>Кто <strong>конкретно</strong> работает на <strong>этой</strong> задаче.</td>
+</tr>
+</tbody></table>
+<p>Для полевых ролей важен <strong>второй уровень</strong>: работник или бригадир увидит задачу в своём приложении только если он указан на задаче как <strong>участник</strong> или <strong>бригадир задачи</strong>.</p>
+<hr />
+<h2>2. Роли на задаче (назначение сотрудников)</h2>
+<p>Откройте проект → <strong>Tasks</strong> → выберите задачу (из списка или из <strong>Gantt</strong>).</p>
+<p>В панели редактирования задачи:</p>
+<h3>2.1 Foreman / Brigadier (бригадир задачи)</h3>
+<ul>
+<li>Поле на вкладке <strong>General</strong>: <strong>Foreman / Brigadier</strong>.</li>
+<li>Сохраняется как <strong>task lead</strong> (ответственный бригадир <strong>на этой задаче</strong>).</li>
+<li>Может обновлять прогресс и полевые данные по задаче, если он назначен lead.</li>
+</ul>
+<h3>2.2 Assigned Team Members (участники задачи)</h3>
+<ul>
+<li>Вкладка <strong>Team</strong> → <strong>+ Add Team Member</strong>.</li>
+<li>Список людей из команды проекта (и доступных работников).</li>
+<li>Сохраняется как <strong>team_members</strong> — обычные исполнители на задаче.</li>
+<li>Видят задачу в своём приложении, но <strong>не могут</strong> менять прогресс (только просмотр), если они не task lead.</li>
+</ul>
+<h3>2.3 Как это отображается у PM в Team → Tasks</h3>
+<p>В режиме просмотра <strong>Tasks</strong> у сотрудника каждая строка помечена:</p>
+<ul>
+<li><strong>Task lead</strong> — человек назначен бригадиром задачи;</li>
+<li><strong>Team member</strong> — человек в составе задачи без роли lead.</li>
+</ul>
+<hr />
+<h2>3. Статусы задачи и где они видны</h2>
+<p>Система группирует статусы по-разному для <strong>PM (расписание сотрудника)</strong> и для <strong>полевых ролей (вкладки в /tasks)</strong>.</p>
+<h3>3.1 Статусы в базе (кратко)</h3>
+<table><thead><tr>
+<th>Статус задачи</th>
+<th>Смысл для проверки</th>
+</tr></thead><tbody>
+<tr>
+<td><code>planned</code></td>
+<td>Запланировано, ещё не в работе</td>
+</tr>
+<tr>
+<td><code>scheduled</code></td>
+<td>Запланировано с привязкой к расписанию</td>
+</tr>
+<tr>
+<td><code>scheduled_accepted</code></td>
+<td>Запланировано, принято исполнителем</td>
+</tr>
+<tr>
+<td><code>in_progress</code></td>
+<td>В работе</td>
+</tr>
+<tr>
+<td><code>partially_completed</code></td>
+<td>Частично выполнено</td>
+</tr>
+<tr>
+<td><code>delayed_due_to_issue</code></td>
+<td>Задержка</td>
+</tr>
+<tr>
+<td><code>ready_for_inspection</code></td>
+<td>Готово к проверке</td>
+</tr>
+<tr>
+<td><code>completed</code></td>
+<td>Завершено (архив)</td>
+</tr>
+</tbody></table>
+<h3>3.2 PM: Team → <strong>Tasks</strong> → вкладки Planned | Current | Archive</h3>
+<table><thead><tr>
+<th>Вкладка PM</th>
+<th>Какие статусы попадают</th>
+<th>Что означает</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>Planned</strong></td>
+<td><code>planned</code>, <code>scheduled</code>, <code>scheduled_accepted</code></td>
+<td>Планирование и подготовка — <strong>полная картина для PM</strong>, в том числе пока задача ещё «на бумаге».</td>
+</tr>
+<tr>
+<td><strong>Current</strong></td>
+<td>Все активные (<code>in_progress</code>, <code>partially_completed</code>, задержки, inspection и т.д.)</td>
+<td><strong>Current</strong> — одна «главная» активная задача; <strong>Upcoming</strong> — остальные активные по датам.</td>
+</tr>
+<tr>
+<td><strong>Archive</strong></td>
+<td><code>completed</code></td>
+<td>Завершённые назначения.</td>
+</tr>
+</tbody></table>
+<p>Режим <strong>только просмотр</strong>: PM здесь <strong>не</strong> добавляет и <strong>не</strong> снимает людей с задач — назначение делается в <strong>Tasks</strong> / <strong>Gantt</strong>.</p>
+<h3>3.3 Бригадир / работник: <code>/tasks/projects/{id}</code> → Planned | In progress | Closed</h3>
+<table><thead><tr>
+<th>Вкладка поля</th>
+<th>Какие статусы</th>
+<th>Примечание</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>Planned</strong></td>
+<td><code>planned</code>, <code>scheduled</code>, <code>scheduled_accepted</code></td>
+<td>Предстоящая работа <strong>по уже назначенным</strong> задачам</td>
+</tr>
+<tr>
+<td><strong>In progress</strong></td>
+<td><code>in_progress</code>, <code>partially_completed</code>, <code>delayed_due_to_issue</code>, <code>ready_for_inspection</code> и др. активные</td>
+<td>Текущая работа</td>
+</tr>
+<tr>
+<td><strong>Closed</strong></td>
+<td><code>completed</code></td>
+<td>Закрытые задачи</td>
+</tr>
+</tbody></table>
+<p><strong>Важно:</strong> работник <strong>не</strong> видит задачи, на которые он <strong>не назначен</strong> (ни lead, ни member). Бригадир в режиме <strong>All tasks</strong> видит <strong>все задачи проекта</strong>; в <strong>My tasks</strong> — только где он участник или lead.</p>
+<h3>3.4 Сводная таблица «кто что видит»</h3>
+<table><thead><tr>
+<th>Статус задачи</th>
+<th>PM Team → Tasks (Planned / Current / Archive)</th>
+<th>Работник (если назначен)</th>
+<th>Бригадир My tasks</th>
+<th>Бригадир All tasks</th>
+</tr></thead><tbody>
+<tr>
+<td>planned</td>
+<td>Planned</td>
+<td>Planned</td>
+<td>Planned</td>
+<td>Planned</td>
+</tr>
+<tr>
+<td>scheduled</td>
+<td>Planned</td>
+<td>Planned</td>
+<td>Planned</td>
+<td>Planned</td>
+</tr>
+<tr>
+<td>scheduled_accepted</td>
+<td>Planned</td>
+<td>Planned</td>
+<td>Planned</td>
+<td>Planned</td>
+</tr>
+<tr>
+<td>in_progress</td>
+<td>Current</td>
+<td>In progress</td>
+<td>In progress</td>
+<td>In progress</td>
+</tr>
+<tr>
+<td>partially_completed</td>
+<td>Current</td>
+<td>In progress</td>
+<td>In progress</td>
+<td>In progress</td>
+</tr>
+<tr>
+<td>ready_for_inspection</td>
+<td>Current</td>
+<td>In progress</td>
+<td>In progress</td>
+<td>In progress</td>
+</tr>
+<tr>
+<td>delayed_due_to_issue</td>
+<td>Current</td>
+<td>In progress</td>
+<td>In progress</td>
+<td>In progress</td>
+</tr>
+<tr>
+<td>completed</td>
+<td>Archive</td>
+<td>Closed</td>
+<td>Closed</td>
+<td>Closed</td>
+</tr>
+<tr>
+<td>Не назначен на задачу</td>
+<td>Не попадает в Tasks сотрудника</td>
+<td><strong>Не видит</strong></td>
+<td><strong>Не видит</strong> (My)</td>
+<td><strong>Видит</strong> (All)</td>
+</tr>
+</tbody></table>
+<hr />
+<h2>4. Что видит PM: Gantt, Tasks, Team</h2>
+<h3>4.1 Gantt (диаграмма в разделе Tasks)</h3>
+<p><strong>Где:</strong> Проект → <strong>Tasks</strong> → переключатель вида <strong>Gantt</strong>.</p>
+<p><strong>Зачем PM:</strong></p>
+<ul>
+<li>видеть <strong>сроки всех задач</strong> проекта на временной шкале;</li>
+<li>понимать <strong>пересечения и зависимости</strong>;</li>
+<li>быстро открыть задачу и <strong>назначить бригадира и команду</strong> через ту же панель редактирования.</li>
+</ul>
+<p><strong>Gantt не заменяет Team:</strong> на полосках Gantt <strong>нет</strong> персонального «расписания работника» — там <strong>задачи проекта</strong>. Кто на какой задаче — задаётся в карточке задачи; сводка <strong>по человеку</strong> — в <strong>Team → Tasks</strong>.</p>
+<h3>4.2 Tasks (список + карточка задачи)</h3>
+<p><strong>Где:</strong> Проект → <strong>Tasks</strong> → список или Gantt → клик по задаче.</p>
+<p><strong>Зачем PM:</strong> единственное место <strong>назначения</strong> Foreman / Team members и смены статуса задачи.</p>
+<h3>4.3 Team — глобальный и проектный</h3>
+<table><thead><tr>
+<th>Место</th>
+<th>Путь</th>
+<th>Что показывает</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>Глобальный Team</strong></td>
+<td>Верхнее меню → <strong>Team</strong></td>
+<td>Все работники / подрядчики по доступным проектам (та же таблица, что в проекте).</td>
+</tr>
+<tr>
+<td><strong>Team проекта</strong></td>
+<td>Проект → боковое меню <strong>Team</strong></td>
+<td>Только люди, привязанные к <strong>этому</strong> проекту.</td>
+</tr>
+</tbody></table>
+<p><strong>Кнопки в строке сотрудника:</strong></p>
+<table><thead><tr>
+<th>Кнопка</th>
+<th>Назначение</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>Details</strong></td>
+<td>Профиль: контакты, профессия, языки, экстренный контакт (<strong>без</strong> списка проектов).</td>
+</tr>
+<tr>
+<td><strong>Tasks</strong></td>
+<td><strong>Расписание задач сотрудника (view only)</strong> — вкладки Planned / Current / Archive.</td>
+</tr>
+</tbody></table>
+<p><strong>Глобальный Team → Tasks:</strong> если у человека назначения в <strong>нескольких</strong> проектах — проекты в <strong>аккордеоне</strong> (раскрыть нужный проект).</p>
+<p><strong>Team проекта → Tasks:</strong> сразу три вкладки <strong>без</strong> аккордеона — только этот проект.</p>
+<p><strong>Зачем два Team:</strong> глобальный — «кто где занят по всей компании»; проектный — быстрая проверка <strong>только этого объекта</strong>.</p>
+<hr />
+<h2>5. Что видит бригадир (мобильный / task-layout)</h2>
+<p><strong>Вход:</strong> учётная запись с ролью <strong>Foreman</strong> (бригадир).</p>
+<p><strong>Главный экран:</strong> дашборд с обзором проектов, открытых задач, размера команды.</p>
+<p><strong>Маршруты:</strong> меню <strong>Tasks</strong> → <strong>My projects</strong> → проект.</p>
+<h3>5.1 Дашборд бригадира</h3>
+<ul>
+<li><strong>Active projects</strong>, <strong>Open tasks</strong>, <strong>Team (unique)</strong> — агрегаты по доступным проектам.</li>
+<li>Блок <strong>Recent projects</strong> → ссылка <strong>View tasks</strong> в список проектов.</li>
+</ul>
+<h3>5.2 Список задач в проекте</h3>
+<p>Переключатель (только у бригадира):</p>
+<table><thead><tr>
+<th>Режим</th>
+<th>Содержимое</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>My tasks</strong></td>
+<td>Задачи, где он <strong>task lead</strong> или <strong>team member</strong></td>
+</tr>
+<tr>
+<td><strong>All tasks</strong></td>
+<td><strong>Все</strong> задачи проекта (контроль бригадира на объекте)</td>
+</tr>
+</tbody></table>
+<p>Вкладки статуса: <strong>Planned | In progress | Closed</strong> (см. таблицу в §3).</p>
+<h3>5.3 Права на задаче</h3>
+<ul>
+<li>Если бригадир — <strong>task lead</strong> на задаче → может менять <strong>прогресс</strong> и полевые поля.</li>
+<li>Если только <strong>team member</strong> → задача <strong>только для просмотра</strong> (как у работника).</li>
+</ul>
+<hr />
+<h2>6. Что видит работник (мобильный / task-layout)</h2>
+<p><strong>Вход:</strong> учётная запись <strong>Worker</strong> или <strong>Contractor</strong>.</p>
+<p><strong>Главный экран:</strong> <strong>Your projects</strong> — проекты, где есть назначения на задачи.</p>
+<h3>6.1 Навигация</h3>
+<ol>
+<li><strong>Tasks</strong> → <strong>My projects</strong> (вкладки <strong>Current project</strong> / <strong>Planned</strong> по жизненному циклу <strong>проектов</strong>).</li>
+<li>Открыть проект → вкладки <strong>Planned | In progress | Closed</strong> по <strong>задачам</strong>, где пользователь назначен.</li>
+</ol>
+<h3>6.2 Ограничения</h3>
+<ul>
+<li><strong>Нет</strong> списка «все задачи проекта» — только <strong>свои</strong> назначения.</li>
+<li><strong>Нет</strong> PM-вкладки Archive с тем же смыслом — у работника закрытые в <strong>Closed</strong>.</li>
+<li>Назначение и снятие с задачи — <strong>только у PM</strong> в веб-проекте.</li>
+</ul>
+<hr />
+<h2>7. Пошаговые сценарии тестирования</h2>
+<p>Используйте <strong>готовые тестовые проекты, задачи и пользователей</strong>. Для каждого сценария — <strong>отдельный браузер / режим инкognito</strong> или разные устройства.</p>
+<h3>Предусловия</h3>
+<ol>
+<li>Есть проект с командой и несколькими задачами в разных статусах.</li>
+<li>Есть минимум три учётки: <strong>PM</strong>, <strong>Foreman</strong>, <strong>Worker</strong> — все уже в команде проекта.</li>
+<li>PM может открыть веб-приложение; бригадир и работник — тот же сайт, но интерфейс <strong>Tasks</strong> (мобильная вёрстка).</li>
+</ol>
+<hr />
+<h3>Тест A — PM назначает бригадира и работника на задачу</h3>
+<ol>
+<li>Войти как <strong>PM</strong>.</li>
+<li>Открыть проект → <strong>Tasks</strong> → выбрать задачу со статусом <strong>planned</strong>.</li>
+<li>В <strong>General</strong> выбрать <strong>Foreman / Brigadier</strong> (тестовый бригадир) → <strong>Save</strong>.</li>
+<li>Вкладка <strong>Team</strong> → <strong>+ Add Team Member</strong> → добавить тестового <strong>Worker</strong> → <strong>Save</strong>.</li>
+<li><strong>Ожидание:</strong> задача сохранена без ошибки; при повторном открытии lead и member на месте.</li>
+</ol>
+<hr />
+<h3>Тест B — PM видит назначение в Team → Tasks (проект)</h3>
+<ol>
+<li>Оставаясь PM: проект → <strong>Team</strong>.</li>
+<li>В строке <strong>Worker</strong> нажать <strong>Tasks</strong>.</li>
+<li><strong>Ожидание:</strong> открывается экран <strong>Worker schedule (view only)</strong> с именем работника.</li>
+<li>Вкладка <strong>Planned</strong> — назначенная задача из теста A (статус planned).</li>
+<li><strong>Back to team list</strong> — возврат к таблице без перезагрузки страницы.</li>
+<li>В строке задачи — метка <strong>Team member</strong>.</li>
+</ol>
+<ol>
+<li>То же для <strong>Foreman</strong> → <strong>Tasks</strong> → та же задача с меткой <strong>Task lead</strong>.</li>
+</ol>
+<hr />
+<h3>Тест C — PM: глобальный Team vs проектный Team</h3>
+<ol>
+<li>PM → верхнее меню <strong>Team</strong> → <strong>Tasks</strong> у того же Worker.</li>
+<li><strong>Ожидание:</strong> если назначения только в одном проекте — один блок с вкладками; если в нескольких — <strong>аккордеон по проектам</strong>.</li>
+<li>PM → тот же Worker → проект → <strong>Team</strong> → <strong>Tasks</strong>.</li>
+<li><strong>Ожидание:</strong> только задачи <strong>этого</strong> проекта, без лишних проектов.</li>
+</ol>
+<hr />
+<h3>Тест D — Gantt и назначение</h3>
+<ol>
+<li>PM → проект → <strong>Tasks</strong> → <strong>Gantt</strong>.</li>
+<li><strong>Ожидание:</strong> полоски задач по датам; клик по задаче открывает панель редактирования.</li>
+<li>Убедиться, что <strong>Foreman</strong> и <strong>Team</strong> те же, что в списке Tasks.</li>
+<li>PM → <strong>Team</strong> → <strong>Tasks</strong> у worker — данные <strong>согласованы</strong> с карточкой задачи.</li>
+</ol>
+<hr />
+<h3>Тест E — смена статуса и вкладки PM</h3>
+<ol>
+<li>PM → <strong>Tasks</strong> → задачу из теста A перевести в <strong>in_progress</strong> → Save.</li>
+<li>PM → <strong>Team</strong> → Worker → <strong>Tasks</strong>.</li>
+<li><strong>Ожидание:</strong> задача ушла из <strong>Planned</strong>, появилась в <strong>Current</strong> (Current / Upcoming).</li>
+<li>PM → перевести задачу в <strong>completed</strong>.</li>
+<li><strong>Ожидание:</strong> задача в <strong>Archive</strong> у PM; у Worker — в <strong>Closed</strong> (тест F).</li>
+</ol>
+<hr />
+<h3>Тест F — работник видит только свои назначения</h3>
+<ol>
+<li>Войти как <strong>Worker</strong> (не PM).</li>
+<li><strong>Tasks</strong> → <strong>My projects</strong> → открыть проект.</li>
+<li><strong>Ожидание:</strong> в <strong>Planned</strong> или <strong>In progress</strong> — задача из теста A (пока не completed).</li>
+<li>Открыть карточку задачи — имя, адрес, статус, даты; <strong>нет</strong> кнопок назначения команды.</li>
+<li><strong>Ожидание:</strong> задачи, где Worker <strong>не</strong> в team_members и не lead — <strong>отсутствуют</strong>.</li>
+</ol>
+<hr />
+<h3>Тест G — бригадир: My tasks vs All tasks</h3>
+<ol>
+<li>Войти как <strong>Foreman</strong> из теста A.</li>
+<li><strong>Tasks</strong> → проект → <strong>My tasks</strong> → <strong>Planned</strong> — задача, где он <strong>lead</strong>.</li>
+<li>Переключить <strong>All tasks</strong>.</li>
+<li><strong>Ожидание:</strong> видны <strong>все</strong> задачи проекта, включая те, где бригадир не назначен.</li>
+<li>Открыть задачу, где он <strong>lead</strong> → проверить возможность изменить <strong>progress</strong> (если UI доступен).</li>
+<li>Открыть задачу, где он <strong>не</strong> назначен → только просмотр.</li>
+</ol>
+<hr />
+<h3>Тест H — Details без лишнего</h3>
+<ol>
+<li>PM → <strong>Team</strong> → <strong>Details</strong> у любого работника.</li>
+<li><strong>Ожидание:</strong> профиль, профессия, языки, emergency contact.</li>
+<li><strong>Ожидание:</strong> <strong>нет</strong> блока «Current Projects» / списка проектов в этом окне.</li>
+</ol>
+<hr />
+<h3>Тест I — сквозная матрица (рекомендуется для приёмки)</h3>
+<p>Подготовить <strong>одну задачу на worker</strong> и прогнать статусы по таблице §3.4, отмечая галочкой PM / Worker / Foreman (My) / Foreman (All).</p>
+<hr />
+<h2>8. Сообщения и уведомления (не для приёмки сейчас)</h2>
+<table><thead><tr>
+<th>Что</th>
+<th>Статус</th>
+</tr></thead><tbody>
+<tr>
+<td>Чат <strong>Foreman / PM</strong> в слоте недельного <strong>Schedule</strong></td>
+<td>UI и контракт API описаны; проверка <strong>отдельным</strong> гайдом по расписанию</td>
+</tr>
+<tr>
+<td>Email / SMS / push «вас назначили на задачу»</td>
+<td><strong>Не готово</strong> — нет production-рассылающего контура</td>
+</tr>
+<tr>
+<td>Еженедельные digest-уведомления</td>
+<td>В ТЗ (<code>docs/TZ_FIELD_VISITS_NOTIFICATIONS.md</code>); <strong>не MVP</strong></td>
+</tr>
+</tbody></table>
+<p><strong>При тестировании назначений:</strong> не ожидайте письмо или push на телефон — проверяйте <strong>только экраны</strong> в веб и <code>/tasks</code>.</p>
+<hr />
+<h2>9. Чеклист если что-то не сходится</h2>
+<table><thead><tr>
+<th>Симптом</th>
+<th>Что проверить</th>
+</tr></thead><tbody>
+<tr>
+<td>Worker не видит задачу</td>
+<td>Назначен ли в <strong>Team</strong> вкладке задачи; сохранена ли задача PM</td>
+</tr>
+<tr>
+<td>Дубликаты строк в Team</td>
+<td>Обновить страницу; при повторе — сообщить разработчикам (исправление dedupe)</td>
+</tr>
+<tr>
+<td>PM Tasks пустой</td>
+<td>У человека нет ни одной задачи как lead или member</td>
+</tr>
+<tr>
+<td>Foreman не меняет progress</td>
+<td>Он должен быть <strong>task lead</strong>, не только member</td>
+</tr>
+<tr>
+<td>Gantt и Team расходятся</td>
+<td>Gantt показывает <strong>задачи</strong>; Team → Tasks — <strong>назначения по людям</strong></td>
+</tr>
+</tbody></table>
+<hr />
+<h2>10. Связанные документы</h2>
+<table><thead><tr>
+<th>Документ</th>
+<th>Тема</th>
+</tr></thead><tbody>
+<tr>
+<td><code>docs/CLIENT_TEAM_ASSIGNMENTS_TESTING_GUIDE.md</code></td>
+<td>English version of this guide</td>
+</tr>
+<tr>
+<td><code>docs/CLIENT_SCHEDULE_TESTING_GUIDE.md</code></td>
+<td>Недельное расписание PM (Schedule)</td>
+</tr>
+<tr>
+<td><code>docs/SCHEDULE_ENTRY_MESSAGES_FOREMAN_PM.md</code></td>
+<td>Чат foreman/pm в слоте расписания</td>
+</tr>
+<tr>
+<td><code>docs/TZ_FIELD_VISITS_NOTIFICATIONS.md</code></td>
+<td>ТЗ на уведомления (будущие релизы)</td>
+</tr>
+</tbody></table>
+<hr />
+<h2>Контроль версий</h2>
+<table><thead><tr>
+<th>Версия</th>
+<th>Примечание</th>
+</tr></thead><tbody>
+<tr>
+<td>1.0</td>
+<td>Первое руководство: назначения на задачи, Team → Tasks, Gantt, роли PM / Foreman / Worker</td>
+</tr>
+</tbody></table>
+</body>
+</html>

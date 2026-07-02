@@ -2926,7 +2926,10 @@ function closeTaskEditPanel() {
   emit('editPanelOpen', false, null, undefined)
 }
 
-async function handleTaskEditPanelSave(taskData: (Partial<TaskCreateUpdate> | Partial<Task>) & { id?: string }) {
+async function handleTaskEditPanelSave(
+  taskData: (Partial<TaskCreateUpdate> | Partial<Task>) & { id?: string },
+  options?: { keepPanelOpen?: boolean },
+) {
   console.log('='.repeat(80))
   console.log('📥 ProjectCalendar: handleTaskEditPanelSave called')
   console.log('📋 Edit panel mode:', taskEditPanel.value.mode)
@@ -2959,8 +2962,17 @@ async function handleTaskEditPanelSave(taskData: (Partial<TaskCreateUpdate> | Pa
       await handleTaskSave(taskData as TaskCreateUpdate)
     }
 
-    // Only close panel on success
-    closeTaskEditPanel()
+    if (options?.keepPanelOpen && taskId) {
+      try {
+        const fresh = await tasksApi.getById(props.projectId, String(taskId))
+        taskEditPanel.value.task = fresh
+        emit('editPanelOpen', true, fresh, taskEditPanel.value.mode)
+      } catch {
+        // Panel stays open with current form state
+      }
+    } else {
+      closeTaskEditPanel()
+    }
   } catch (error) {
     console.error('❌ Error saving task from edit panel:', error)
     // Error message is already shown by handleTaskSave
@@ -3521,9 +3533,9 @@ defineExpose({
 </script>
 
 <template>
-  <div class="relative flex-1 flex flex-col h-full overflow-x-clip max-w-full">
+  <div class="relative flex-1 flex flex-col h-full min-h-[calc(100vh-12rem)] overflow-x-clip max-w-full">
     <!-- Legend Section -->
-    <div class="px-4 py-1 bg-transparent text-xs text-gray-600 mb-2">
+    <div v-show="!taskEditPanel.isOpen" class="px-4 py-1 bg-transparent text-xs text-gray-600 mb-2">
       <div class="flex items-start justify-center space-x-6 flex-wrap">
         <!-- Status Legend -->
         <div
@@ -3671,7 +3683,7 @@ defineExpose({
 
 
       <!-- Task Count -->
-      <div class="p-4 border-b border-gray-200">
+      <div v-show="!taskEditPanel.isOpen" class="p-4 border-b border-gray-200">
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-4">
             <!-- Add Task/Milestone Buttons -->
@@ -3873,7 +3885,7 @@ defineExpose({
         </div>
 
         <!-- Calendar View -->
-        <div v-if="isCalendarViewActive" class="flex h-[calc(100vh-300px)] min-h-[600px] overflow-x-clip max-w-full">
+        <div v-show="!taskEditPanel.isOpen && isCalendarViewActive" class="flex h-[calc(100vh-300px)] min-h-[600px] overflow-x-clip max-w-full">
         <!-- Task List Sidebar -->
         <div class="w-80 flex-shrink-0 flex flex-col border-r border-gray-200 sticky left-0 z-20 bg-white">
           <TaskListSidebar
@@ -3897,7 +3909,7 @@ defineExpose({
         </div>
 
         <!-- Task List View -->
-        <div v-show="viewMode === 'list'" class="flex h-[calc(100vh-300px)] min-h-[600px] overflow-x-clip max-w-full">
+        <div v-show="!taskEditPanel.isOpen && viewMode === 'list'" class="flex h-[calc(100vh-300px)] min-h-[600px] overflow-x-clip max-w-full">
         <!-- Task List Sidebar -->
         <div class="w-80 flex-shrink-0 flex flex-col border-r border-gray-200 sticky left-0 z-20 bg-white">
           <TaskListSidebar
@@ -4057,7 +4069,7 @@ defineExpose({
         </div>
 
         <!-- Gantt View -->
-        <div v-show="viewMode === 'gantt'" class="px-4 pt-4 pb-8 overflow-hidden" style="max-width: 100%; width: 100%;">
+        <div v-show="!taskEditPanel.isOpen && viewMode === 'gantt'" class="px-4 pt-4 pb-8 overflow-hidden" style="max-width: 100%; width: 100%;">
          <!-- Gantt Chart -->
          <ProjectGantt
            :project-id="projectId"
@@ -4076,6 +4088,7 @@ defineExpose({
            @sort-changed="handleSortChanged"
            @task-order-updated="handleTaskOrderUpdated"
            @task-selected="handleTaskSelected"
+           @edit-task="editTask"
          />
         </div>
       </div>

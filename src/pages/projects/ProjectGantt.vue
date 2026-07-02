@@ -415,20 +415,6 @@
       </div>
     </div>
 
-    <!-- Task Dialog -->
-    <TaskDialog
-      :is-open="taskDialog.isOpen"
-      :mode="taskDialog.mode"
-      :task="taskDialog.task"
-      :project-id="projectId || 0"
-      :available-tasks="props.tasks || []"
-      :initial-date="taskDialog.initialDate"
-      @close="closeTaskDialog"
-      @save="(taskData: Partial<Task>) => handleTaskSave(taskData as TaskCreateUpdate)"
-      @delete="handleTaskDelete"
-      @duplicate="handleTaskDuplicate"
-    />
-
     <!-- Task View Dialog -->
     <TaskViewDialog
       :is-open="taskViewDialog.isOpen"
@@ -437,20 +423,6 @@
       :project-team-members="props.projectTeamMembers"
       :can-edit="canEdit"
       @close="closeTaskViewDialog"
-    />
-
-    <!-- Milestone Dialog -->
-    <MilestoneDialog
-      :is-open="milestoneDialog.isOpen"
-      :mode="milestoneDialog.mode"
-      :task="milestoneDialog.task"
-      :project-id="projectId || 0"
-      :available-tasks="props.tasks || []"
-      :initial-date="milestoneDialog.initialDate"
-      @close="closeMilestoneDialog"
-      @save="(taskData: Partial<Task>) => handleTaskSave(taskData as TaskCreateUpdate)"
-      @delete="handleTaskDelete"
-      @duplicate="handleTaskDuplicate"
     />
 
     <!-- Context Menu -->
@@ -503,14 +475,12 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import type { Task, TaskCreateUpdate, MilestoneType } from '@/core/types/task'
+import type { Task, MilestoneType } from '@/core/types/task'
 import { tasksApi } from '@/core/utils/tasks-api'
 import { MILESTONE_ICON } from '@/core/utils/task-utils'
 import { projectApi, type ProjectTeamMember } from '@/core/utils/project-api'
 import { computeExtendedProjectDates } from '@/core/utils/project-bounds-checker'
-import TaskDialog from './TaskDialog.vue'
 import TaskViewDialog from './TaskViewDialog.vue'
-import MilestoneDialog from './MilestoneDialog.vue'
 
 defineOptions({ name: 'ProjectGantt' })
 
@@ -739,24 +709,10 @@ const isReordering = ref(false)
 const draggedTask = ref<GanttTask | null>(null)
 const dragOverTask = ref<GanttTask | null>(null)
 
-// Modal dialog states
-const taskDialog = ref({
-  isOpen: false,
-  mode: 'create' as 'create' | 'edit' | 'view',
-  task: null as Task | null,
-  initialDate: undefined as string | undefined,
-})
-
+// View dialog state
 const taskViewDialog = ref({
   isOpen: false,
   task: null as Task | null,
-})
-
-const milestoneDialog = ref({
-  isOpen: false,
-  mode: 'create' as 'create' | 'edit' | 'view',
-  task: null as Task | null,
-  initialDate: undefined as string | undefined,
 })
 
 // Context menu state
@@ -776,6 +732,7 @@ const emit = defineEmits<{
   'task-deleted': [taskId: string]
   'task-selected': [task: Task | null]
   'project-bounds-updated': []
+  'edit-task': [task: Task]
 }>()
 
 const days = computed<Date[]>(() => {
@@ -1299,11 +1256,7 @@ function addDays(date: Date, daysToAdd: number): Date {
 
 // Interactive handlers
 function handleTaskDoubleClick(task: GanttTask) {
-  if (task.milestone) {
-    openMilestoneDialog('edit', task.id)
-  } else {
-    openTaskDialog('edit', task.id)
-  }
+  requestTaskEdit(task.id)
 }
 
 function handleTaskClick(task: GanttTask) {
@@ -1340,24 +1293,14 @@ function handleTaskClick(task: GanttTask) {
 
 // Modal dialog functions
 
-function openTaskDialog(mode: 'create' | 'edit' | 'view', taskId?: string | number | null, initialDate?: string) {
-  if (taskId) {
-    const task = props.tasks?.find(t => String(t.id) === String(taskId))
-    if (task) {
-      taskDialog.value = {
-        isOpen: true,
-        mode,
-        task,
-        initialDate: undefined,
-      }
-    }
-  } else {
-    taskDialog.value = {
-      isOpen: true,
-      mode,
-      task: null,
-      initialDate,
-    }
+function resolveFullTask(taskId: string | number): Task | undefined {
+  return props.tasks?.find((t) => String(t.id) === String(taskId))
+}
+
+function requestTaskEdit(taskId: string | number) {
+  const fullTask = resolveFullTask(taskId)
+  if (fullTask) {
+    emit('edit-task', fullTask)
   }
 }
 
@@ -1371,95 +1314,9 @@ function openTaskViewDialog(task: GanttTask) {
   }
 }
 
-function closeTaskDialog() {
-  taskDialog.value.isOpen = false
-  taskDialog.value.task = null
-}
-
 function closeTaskViewDialog() {
   taskViewDialog.value.isOpen = false
   taskViewDialog.value.task = null
-}
-
-function closeMilestoneDialog() {
-  milestoneDialog.value.isOpen = false
-  milestoneDialog.value.task = null
-}
-
-function openMilestoneDialog(mode: 'create' | 'edit' | 'view', taskId?: string | number | null, initialDate?: string) {
-  if (taskId) {
-    const task = props.tasks?.find(t => String(t.id) === String(taskId))
-    if (task) {
-      milestoneDialog.value = {
-        isOpen: true,
-        mode,
-        task,
-        initialDate: undefined,
-      }
-    }
-  } else {
-    milestoneDialog.value = {
-      isOpen: true,
-      mode: 'create',
-      task: null,
-      initialDate,
-    }
-  }
-}
-
-// Task management handlers
-async function handleTaskSave(taskData: TaskCreateUpdate & { id?: string }) {
-  try {
-    const fromMilestone = milestoneDialog.value.isOpen
-    const dialogMode = fromMilestone ? milestoneDialog.value.mode : taskDialog.value.mode
-    const dialogTask = fromMilestone ? milestoneDialog.value.task : taskDialog.value.task
-    const taskId = taskData.id ?? dialogTask?.id
-
-    console.log('💾 Saving task in Gantt:', {
-      fromMilestone,
-      dialogMode,
-      taskId,
-      taskData,
-    })
-
-    if (dialogMode === 'edit' && taskId) {
-      const updatedTask = await tasksApi.update(
-        props.projectId || 0,
-        String(taskId),
-        taskData,
-      )
-      console.log('✅ Task updated successfully:', updatedTask)
-      patchLocalTask(updatedTask)
-      emit('task-updated', updatedTask)
-    } else {
-      console.log('💾 Creating new task')
-      const newTask = await tasksApi.create(props.projectId || 0, taskData)
-      console.log('✅ Task created successfully:', newTask)
-      localTasks.value = [...localTasks.value, newTask]
-      emit('task-created', newTask)
-    }
-
-    if (fromMilestone) {
-      closeMilestoneDialog()
-    } else {
-      closeTaskDialog()
-    }
-  } catch (error) {
-    console.error('❌ Error saving task:', error)
-    console.error('❌ Error details:', error)
-
-    // Extract error message from server response
-    let errorMessage = 'Failed to save task. Please try again.'
-    if (error && typeof error === 'object' && 'response' in error) {
-      const axiosError = error as { response?: { data?: { message?: string; error_code?: number } } }
-      if (axiosError.response?.data?.message) {
-        errorMessage = axiosError.response.data.message
-      }
-    }
-
-    alert(`❌ ${errorMessage}`)
-    // Don't close dialog on error so user can retry
-  }
 }
 
 async function handleTaskDelete(taskId: string) {
@@ -1467,40 +1324,8 @@ async function handleTaskDelete(taskId: string) {
     await tasksApi.delete(props.projectId || 0, taskId)
     localTasks.value = localTasks.value.filter((task) => String(task.id) !== String(taskId))
     emit('task-deleted', taskId)
-    if (milestoneDialog.value.isOpen) {
-      closeMilestoneDialog()
-    } else {
-      closeTaskDialog()
-    }
   } catch (error) {
     console.error('Error deleting task:', error)
-  }
-}
-
-async function handleTaskDuplicate(task: Task) {
-  try {
-    const duplicateData: TaskCreateUpdate = {
-      name: `${task.name} (Copy)`,
-      start_planned: task.start_planned,
-      end_planned: task.end_planned,
-      duration_days: task.duration_days,
-      milestone: task.milestone,
-      milestone_type: task.milestone_type,
-      status: task.status,
-      progress_pct: task.progress_pct,
-      notes: task.notes,
-      task_lead_id: task.task_lead_id,
-      team_members: task.team_members,
-      resources: task.resources,
-      dependencies: Array.isArray(task.dependencies) && task.dependencies.length > 0 && typeof task.dependencies[0] === 'object'
-        ? task.dependencies as Array<{ predecessor_id: number; type: string; lag_days: number }>
-        : undefined,
-    }
-    const newTask = await tasksApi.create(props.projectId || 0, duplicateData)
-    emit('task-created', newTask)
-    closeTaskDialog()
-  } catch (error) {
-    console.error('Error duplicating task:', error)
   }
 }
 
@@ -1522,11 +1347,7 @@ function closeContextMenu() {
 
 function handleContextMenuEdit() {
   if (contextMenu.value.task) {
-    if (contextMenu.value.task.milestone) {
-      openMilestoneDialog('edit', contextMenu.value.task.id)
-    } else {
-      openTaskDialog('edit', String(contextMenu.value.task.id))
-    }
+    requestTaskEdit(contextMenu.value.task.id)
   }
   closeContextMenu()
 }

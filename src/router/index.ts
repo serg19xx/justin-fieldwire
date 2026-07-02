@@ -76,7 +76,7 @@ const router = createRouter({
       beforeEnter: (to, _from, next) => {
         const authStore = useAuthStore()
         if (authStore.currentUser?.role_category === 'task') {
-          next({ path: '/tasks/schedule', replace: true, query: to.query })
+          next({ path: '/tasks/projects', replace: true, query: to.query })
           return
         }
         next()
@@ -84,8 +84,20 @@ const router = createRouter({
       component: () => import('../pages/projects/ProjectsPrj.vue'),
     },
     {
+      path: '/tasks/projects',
+      component: () => import('../pages/task-role/TaskProjectsList.vue'),
+    },
+    {
+      path: '/tasks/projects/:projectId',
+      component: () => import('../pages/task-role/TaskProjectDetail.vue'),
+    },
+    {
+      path: '/tasks/projects/:projectId/tasks/:taskId',
+      component: () => import('../pages/task-role/TaskProjectTaskDetail.vue'),
+    },
+    {
       path: '/tasks/my-week',
-      redirect: '/tasks/schedule',
+      redirect: '/tasks/projects',
     },
     {
       path: '/tasks/schedule',
@@ -101,12 +113,12 @@ const router = createRouter({
     },
     {
       path: '/tasks/project/:id',
-      redirect: '/tasks/schedule',
+      redirect: (to) => `/tasks/projects/${String(to.params.id)}`,
     },
     {
       path: '/tasks/project/:projectId/task/:taskId',
       redirect: (to) => ({
-        path: `/tasks/schedule/task/${String(to.params.projectId)}/${String(to.params.taskId)}`,
+        path: `/tasks/projects/${String(to.params.projectId)}/tasks/${String(to.params.taskId)}`,
         query: to.query,
       }),
     },

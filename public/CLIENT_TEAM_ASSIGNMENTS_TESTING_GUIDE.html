@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldWire — Task assignments testing guide</title>
+  <style>
+    :root { --text:#1a1a1a; --muted:#555; --border:#ccc; --bg-alt:#f7f7f7; --accent:#2563eb; }
+    * { box-sizing:border-box; }
+    body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.55; color:var(--text); max-width:50rem; margin:0 auto; padding:1.25rem 1rem 3rem; font-size:15px; }
+    .howto-open { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.5rem; font-size:14px; }
+    .howto-open strong { color:var(--accent); }
+    .howto-open code { font-size:12px; word-break:break-all; background:#fff; padding:0.1rem 0.35rem; border-radius:4px; border:1px solid #bfdbfe; }
+    h1 { font-size:1.55rem; margin:0 0 0.5rem; line-height:1.25; }
+    h2 { font-size:1.15rem; margin:1.75rem 0 0.75rem; padding-bottom:0.25rem; border-bottom:2px solid var(--border); }
+    h3 { font-size:1rem; margin:1rem 0 0.5rem; }
+    p { margin:0.5rem 0; }
+    ul,ol { margin:0.5rem 0; padding-left:1.35rem; }
+    li { margin:0.3rem 0; }
+    hr { border:none; border-top:1px solid var(--border); margin:1.5rem 0; }
+    table { width:100%; border-collapse:collapse; margin:0.75rem 0 1rem; font-size:13px; }
+    th,td { border:1px solid var(--border); padding:0.5rem 0.6rem; text-align:left; vertical-align:top; }
+    th { background:var(--bg-alt); font-weight:600; }
+    tr:nth-child(even) td { background:#fafafa; }
+    code { font-size:0.9em; background:#f3f4f6; padding:0.1rem 0.3rem; border-radius:3px; }
+    @media print { body { max-width:none; padding:0; font-size:11pt; } }
+  </style>
+</head>
+<body>
+  <div class="howto-open">
+    <strong>How to open:</strong> this page is available at
+    <code id="self-url">…</code>
+    (no login required).
+    <br /><br />
+    <strong>PDF:</strong> Print (Ctrl/Cmd+P) → Save as PDF.
+  </div>
+  <script>
+    (function(){ try { var el=document.getElementById('self-url'); if(el&&window.location&&window.location.origin) el.textContent=window.location.origin+'/CLIENT_TEAM_ASSIGNMENTS_TESTING_GUIDE.html'; } catch(e){} })();
+  </script>
+  <h1>Client guide: task assignments and role-based visibility</h1>
+<p><strong>Audience:</strong> Product owner, QA, or project managers testing the FieldWire-style app.</p>
+<p><strong>Language:</strong> This document is for stakeholders who review features in English.</p>
+<p><strong>Version:</strong> 1.0</p>
+<p><strong>Site:</strong> https://fieldwire.medicalcontractor.ca</p>
+<p><strong>Web (after deploy):</strong> https://fieldwire.medicalcontractor.ca/CLIENT_TEAM_ASSIGNMENTS_TESTING_GUIDE.html</p>
+<p><strong>Russian:</strong> https://fieldwire.medicalcontractor.ca/CLIENT_TEAM_ASSIGNMENTS_TESTING_GUIDE_RU.html</p>
+<hr />
+<h2>Scope of this guide</h2>
+<p>Step-by-step verification of <strong>assigning people to project tasks</strong> and <strong>what each role sees</strong> in the PM web UI and in the foreman / worker mobile-style UI.</p>
+<p><strong>Out of scope</strong> (the client already knows how; test data exists in the system):</p>
+<ul>
+<li>inviting and adding people to the project team;</li>
+<li>creating projects;</li>
+<li>creating tasks from scratch.</li>
+</ul>
+<p><strong>Not ready for acceptance:</strong> <strong>messaging and push/email notifications</strong> about assignments. Schedule-slot chat UI may be visible, but <strong>real SMS, push, and email delivery for assignment events is not production-ready</strong>. See section 8.</p>
+<hr />
+<h2>1. Two levels of “team”</h2>
+<table><thead><tr>
+<th>Level</th>
+<th>Where it is set</th>
+<th>Purpose</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>Project team</strong></td>
+<td>Project → <strong>Team</strong></td>
+<td>Who is allowed on the project (overall roster).</td>
+</tr>
+<tr>
+<td><strong>Task assignment</strong></td>
+<td>Project → <strong>Tasks</strong> → task panel</td>
+<td>Who <strong>specifically</strong> works on <strong>this</strong> task.</td>
+</tr>
+</tbody></table>
+<p>Field roles care about the <strong>second level</strong>: a worker or foreman sees a task in their app only if they are on the task as <strong>member</strong> or <strong>task lead</strong>.</p>
+<hr />
+<h2>2. Roles on a task (assigning staff)</h2>
+<p>Open a project → <strong>Tasks</strong> → select a task (from the list or <strong>Gantt</strong>).</p>
+<p>In the task edit panel:</p>
+<h3>2.1 Foreman / Brigadier (task lead)</h3>
+<ul>
+<li>Field on the <strong>General</strong> tab: <strong>Foreman / Brigadier</strong>.</li>
+<li>Stored as <strong>task lead</strong> (responsible foreman <strong>for this task</strong>).</li>
+<li>Can update progress and field data when assigned as lead.</li>
+</ul>
+<h3>2.2 Assigned Team Members</h3>
+<ul>
+<li><strong>Team</strong> tab → <strong>+ Add Team Member</strong>.</li>
+<li>People from the project team (and available workers).</li>
+<li>Stored as <strong>team_members</strong> — regular executors on the task.</li>
+<li>They see the task in their app but <strong>cannot</strong> change progress (view only) unless they are task lead.</li>
+</ul>
+<h3>2.3 How PM sees this in Team → Tasks</h3>
+<p>In the worker <strong>Tasks</strong> view, each row is labeled:</p>
+<ul>
+<li><strong>Task lead</strong> — assigned foreman on the task;</li>
+<li><strong>Team member</strong> — on the task team without lead role.</li>
+</ul>
+<hr />
+<h2>3. Task status and where it appears</h2>
+<p>The system groups statuses differently for <strong>PM (worker schedule)</strong> and <strong>field roles (/tasks tabs)</strong>.</p>
+<h3>3.1 Task statuses (reference)</h3>
+<table><thead><tr>
+<th>Task status</th>
+<th>Meaning for testing</th>
+</tr></thead><tbody>
+<tr>
+<td><code>planned</code></td>
+<td>Planned, not yet in execution</td>
+</tr>
+<tr>
+<td><code>scheduled</code></td>
+<td>Planned with schedule linkage</td>
+</tr>
+<tr>
+<td><code>scheduled_accepted</code></td>
+<td>Planned, accepted by assignee</td>
+</tr>
+<tr>
+<td><code>in_progress</code></td>
+<td>In progress</td>
+</tr>
+<tr>
+<td><code>partially_completed</code></td>
+<td>Partially complete</td>
+</tr>
+<tr>
+<td><code>delayed_due_to_issue</code></td>
+<td>Delayed</td>
+</tr>
+<tr>
+<td><code>ready_for_inspection</code></td>
+<td>Ready for inspection</td>
+</tr>
+<tr>
+<td><code>completed</code></td>
+<td>Finished (archive)</td>
+</tr>
+</tbody></table>
+<h3>3.2 PM: Team → <strong>Tasks</strong> → Planned | Current | Archive</h3>
+<table><thead><tr>
+<th>PM tab</th>
+<th>Statuses included</th>
+<th>Meaning</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>Planned</strong></td>
+<td><code>planned</code>, <code>scheduled</code>, <code>scheduled_accepted</code></td>
+<td>Planning and prep — <strong>full PM picture</strong>, including work still “on paper”.</td>
+</tr>
+<tr>
+<td><strong>Current</strong></td>
+<td>All active (<code>in_progress</code>, <code>partially_completed</code>, delays, inspection, etc.)</td>
+<td><strong>Current</strong> — one primary active task; <strong>Upcoming</strong> — other active tasks by date.</td>
+</tr>
+<tr>
+<td><strong>Archive</strong></td>
+<td><code>completed</code></td>
+<td>Finished assignments.</td>
+</tr>
+</tbody></table>
+<p><strong>View only:</strong> PM does <strong>not</strong> add or remove people from tasks here — assignment is done in <strong>Tasks</strong> / <strong>Gantt</strong>.</p>
+<h3>3.3 Foreman / worker: <code>/tasks/projects/{id}</code> → Planned | In progress | Closed</h3>
+<table><thead><tr>
+<th>Field tab</th>
+<th>Statuses</th>
+<th>Note</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>Planned</strong></td>
+<td><code>planned</code>, <code>scheduled</code>, <code>scheduled_accepted</code></td>
+<td>Upcoming work on <strong>already assigned</strong> tasks</td>
+</tr>
+<tr>
+<td><strong>In progress</strong></td>
+<td><code>in_progress</code>, <code>partially_completed</code>, <code>delayed_due_to_issue</code>, <code>ready_for_inspection</code>, other active</td>
+<td>Current work</td>
+</tr>
+<tr>
+<td><strong>Closed</strong></td>
+<td><code>completed</code></td>
+<td>Closed tasks</td>
+</tr>
+</tbody></table>
+<p><strong>Important:</strong> a worker does <strong>not</strong> see tasks they are <strong>not</strong> assigned to (neither lead nor member). A foreman in <strong>All tasks</strong> sees <strong>all project tasks</strong>; in <strong>My tasks</strong> — only tasks where they are member or lead.</p>
+<h3>3.4 Visibility matrix</h3>
+<table><thead><tr>
+<th>Task status</th>
+<th>PM Team → Tasks (Planned / Current / Archive)</th>
+<th>Worker (if assigned)</th>
+<th>Foreman My tasks</th>
+<th>Foreman All tasks</th>
+</tr></thead><tbody>
+<tr>
+<td>planned</td>
+<td>Planned</td>
+<td>Planned</td>
+<td>Planned</td>
+<td>Planned</td>
+</tr>
+<tr>
+<td>scheduled</td>
+<td>Planned</td>
+<td>Planned</td>
+<td>Planned</td>
+<td>Planned</td>
+</tr>
+<tr>
+<td>scheduled_accepted</td>
+<td>Planned</td>
+<td>Planned</td>
+<td>Planned</td>
+<td>Planned</td>
+</tr>
+<tr>
+<td>in_progress</td>
+<td>Current</td>
+<td>In progress</td>
+<td>In progress</td>
+<td>In progress</td>
+</tr>
+<tr>
+<td>partially_completed</td>
+<td>Current</td>
+<td>In progress</td>
+<td>In progress</td>
+<td>In progress</td>
+</tr>
+<tr>
+<td>ready_for_inspection</td>
+<td>Current</td>
+<td>In progress</td>
+<td>In progress</td>
+<td>In progress</td>
+</tr>
+<tr>
+<td>delayed_due_to_issue</td>
+<td>Current</td>
+<td>In progress</td>
+<td>In progress</td>
+<td>In progress</td>
+</tr>
+<tr>
+<td>completed</td>
+<td>Archive</td>
+<td>Closed</td>
+<td>Closed</td>
+<td>Closed</td>
+</tr>
+<tr>
+<td>Not assigned to task</td>
+<td>Not in worker’s Tasks</td>
+<td><strong>Not visible</strong></td>
+<td><strong>Not visible</strong> (My)</td>
+<td><strong>Visible</strong> (All)</td>
+</tr>
+</tbody></table>
+<hr />
+<h2>4. What the PM sees: Gantt, Tasks, Team</h2>
+<h3>4.1 Gantt (chart under Tasks)</h3>
+<p><strong>Where:</strong> Project → <strong>Tasks</strong> → <strong>Gantt</strong> view.</p>
+<p><strong>Why PM uses it:</strong></p>
+<ul>
+<li>see <strong>dates of all project tasks</strong> on a timeline;</li>
+<li>understand <strong>overlaps and dependencies</strong>;</li>
+<li>open a task quickly and <strong>assign foreman and team</strong> in the same edit panel.</li>
+</ul>
+<p><strong>Gantt does not replace Team:</strong> bars show <strong>project tasks</strong>, not a person’s schedule. Who is on which task is set in the task panel; the <strong>per-person</strong> summary is <strong>Team → Tasks</strong>.</p>
+<h3>4.2 Tasks (list + task panel)</h3>
+<p><strong>Where:</strong> Project → <strong>Tasks</strong> → list or Gantt → click a task.</p>
+<p><strong>Why PM uses it:</strong> the only place to <strong>assign</strong> Foreman / team members and change task status.</p>
+<h3>4.3 Team — global and project</h3>
+<table><thead><tr>
+<th>Place</th>
+<th>Path</th>
+<th>What it shows</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>Global Team</strong></td>
+<td>Top menu → <strong>Team</strong></td>
+<td>Workers / contractors across accessible projects (same table as in a project).</td>
+</tr>
+<tr>
+<td><strong>Project Team</strong></td>
+<td>Project → sidebar <strong>Team</strong></td>
+<td>People linked to <strong>this</strong> project only.</td>
+</tr>
+</tbody></table>
+<p><strong>Buttons per worker row:</strong></p>
+<table><thead><tr>
+<th>Button</th>
+<th>Purpose</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>Details</strong></td>
+<td>Profile: contacts, profession, languages, emergency contact (<strong>no</strong> project list).</td>
+</tr>
+<tr>
+<td><strong>Tasks</strong></td>
+<td><strong>Worker task schedule (view only)</strong> — Planned / Current / Archive tabs.</td>
+</tr>
+</tbody></table>
+<p><strong>Global Team → Tasks:</strong> if the person has assignments in <strong>multiple</strong> projects — <strong>accordion</strong> per project.</p>
+<p><strong>Project Team → Tasks:</strong> three tabs <strong>without</strong> accordion — this project only.</p>
+<p><strong>Why two Team views:</strong> global — “who is busy where company-wide”; project — quick check <strong>for this site only</strong>.</p>
+<hr />
+<h2>5. What the foreman sees (mobile / task layout)</h2>
+<p><strong>Login:</strong> account with <strong>Foreman</strong> role.</p>
+<p><strong>Home:</strong> dashboard with project overview, open tasks, team size.</p>
+<p><strong>Routes:</strong> <strong>Tasks</strong> menu → <strong>My projects</strong> → project.</p>
+<h3>5.1 Foreman dashboard</h3>
+<ul>
+<li><strong>Active projects</strong>, <strong>Open tasks</strong>, <strong>Team (unique)</strong> — aggregates across accessible projects.</li>
+<li><strong>Recent projects</strong> block → <strong>View tasks</strong> link to the project list.</li>
+</ul>
+<h3>5.2 Task list inside a project</h3>
+<p>Toggle (foreman only):</p>
+<table><thead><tr>
+<th>Mode</th>
+<th>Content</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>My tasks</strong></td>
+<td>Tasks where user is <strong>task lead</strong> or <strong>team member</strong></td>
+</tr>
+<tr>
+<td><strong>All tasks</strong></td>
+<td><strong>All</strong> project tasks (foreman oversight on site)</td>
+</tr>
+</tbody></table>
+<p>Status tabs: <strong>Planned | In progress | Closed</strong> (see section 3).</p>
+<h3>5.3 Permissions on a task</h3>
+<ul>
+<li>Foreman is <strong>task lead</strong> → can change <strong>progress</strong> and field fields.</li>
+<li>Foreman is <strong>team member</strong> only → <strong>view only</strong> (same as worker).</li>
+</ul>
+<hr />
+<h2>6. What the worker sees (mobile / task layout)</h2>
+<p><strong>Login:</strong> <strong>Worker</strong> or <strong>Contractor</strong> account.</p>
+<p><strong>Home:</strong> <strong>Your projects</strong> — projects where the user has task assignments.</p>
+<h3>6.1 Navigation</h3>
+<ol>
+<li><strong>Tasks</strong> → <strong>My projects</strong> (tabs <strong>Current project</strong> / <strong>Planned</strong> for <strong>project</strong> lifecycle).</li>
+<li>Open a project → <strong>Planned | In progress | Closed</strong> for <strong>tasks</strong> where the user is assigned.</li>
+</ol>
+<h3>6.2 Limitations</h3>
+<ul>
+<li><strong>No</strong> “all project tasks” list — <strong>own</strong> assignments only.</li>
+<li><strong>No</strong> PM-style <strong>Archive</strong> tab — closed tasks are under <strong>Closed</strong>.</li>
+<li>Assign / unassign — <strong>PM only</strong> in the web project UI.</li>
+</ul>
+<hr />
+<h2>7. Step-by-step test scenarios</h2>
+<p>Use <strong>existing test projects, tasks, and users</strong>. For each scenario, use a <strong>separate browser / incognito window</strong> or different devices.</p>
+<h3>Preconditions</h3>
+<ol>
+<li>A project with a team and several tasks in different statuses.</li>
+<li>At least three accounts: <strong>PM</strong>, <strong>Foreman</strong>, <strong>Worker</strong> — all already on the project team.</li>
+<li>PM uses the web app; foreman and worker use the same site with the <strong>Tasks</strong> UI (mobile layout).</li>
+</ol>
+<hr />
+<h3>Test A — PM assigns foreman and worker to a task</h3>
+<ol>
+<li>Sign in as <strong>PM</strong>.</li>
+<li>Open project → <strong>Tasks</strong> → pick a task with status <strong>planned</strong>.</li>
+<li>On <strong>General</strong>, select <strong>Foreman / Brigadier</strong> (test foreman) → <strong>Save</strong>.</li>
+<li><strong>Team</strong> tab → <strong>+ Add Team Member</strong> → add test <strong>Worker</strong> → <strong>Save</strong>.</li>
+<li><strong>Expect:</strong> task saves without error; lead and member persist on reopen.</li>
+</ol>
+<hr />
+<h3>Test B — PM sees assignment in Team → Tasks (project)</h3>
+<ol>
+<li>Still as PM: project → <strong>Team</strong>.</li>
+<li>On the <strong>Worker</strong> row, click <strong>Tasks</strong>.</li>
+<li><strong>Expect:</strong> <strong>Worker schedule (view only)</strong> screen with the worker’s name.</li>
+<li><strong>Planned</strong> tab — task from test A (planned status).</li>
+<li><strong>Back to team list</strong> — returns to the table without full page reload.</li>
+<li>Task row shows <strong>Team member</strong>.</li>
+</ol>
+<ol>
+<li>Repeat for <strong>Foreman</strong> → <strong>Tasks</strong> → same task with <strong>Task lead</strong> label.</li>
+</ol>
+<hr />
+<h3>Test C — PM: global Team vs project Team</h3>
+<ol>
+<li>PM → top menu <strong>Team</strong> → <strong>Tasks</strong> for the same worker.</li>
+<li><strong>Expect:</strong> one tabbed block if assignments are in one project; <strong>accordion by project</strong> if multiple.</li>
+<li>PM → same worker → project → <strong>Team</strong> → <strong>Tasks</strong>.</li>
+<li><strong>Expect:</strong> tasks for <strong>this</strong> project only.</li>
+</ol>
+<hr />
+<h3>Test D — Gantt and assignment</h3>
+<ol>
+<li>PM → project → <strong>Tasks</strong> → <strong>Gantt</strong>.</li>
+<li><strong>Expect:</strong> task bars by date; click opens edit panel.</li>
+<li>Confirm <strong>Foreman</strong> and <strong>Team</strong> match the Tasks list.</li>
+<li>PM → <strong>Team</strong> → worker <strong>Tasks</strong> — data <strong>matches</strong> the task panel.</li>
+</ol>
+<hr />
+<h3>Test E — status change and PM tabs</h3>
+<ol>
+<li>PM → <strong>Tasks</strong> → move task from test A to <strong>in_progress</strong> → Save.</li>
+<li>PM → <strong>Team</strong> → Worker → <strong>Tasks</strong>.</li>
+<li><strong>Expect:</strong> task leaves <strong>Planned</strong>, appears under <strong>Current</strong> (Current / Upcoming).</li>
+<li>PM → set task to <strong>completed</strong>.</li>
+<li><strong>Expect:</strong> task in PM <strong>Archive</strong>; worker sees it under <strong>Closed</strong> (test F).</li>
+</ol>
+<hr />
+<h3>Test F — worker sees only own assignments</h3>
+<ol>
+<li>Sign in as <strong>Worker</strong> (not PM).</li>
+<li><strong>Tasks</strong> → <strong>My projects</strong> → open project.</li>
+<li><strong>Expect:</strong> task from test A under <strong>Planned</strong> or <strong>In progress</strong> (until completed).</li>
+<li>Open task detail — name, address, status, dates; <strong>no</strong> team assignment controls.</li>
+<li><strong>Expect:</strong> tasks where worker is <strong>not</strong> on team_members and not lead — <strong>absent</strong>.</li>
+</ol>
+<hr />
+<h3>Test G — foreman: My tasks vs All tasks</h3>
+<ol>
+<li>Sign in as <strong>Foreman</strong> from test A.</li>
+<li><strong>Tasks</strong> → project → <strong>My tasks</strong> → <strong>Planned</strong> — task where user is <strong>lead</strong>.</li>
+<li>Switch to <strong>All tasks</strong>.</li>
+<li><strong>Expect:</strong> <strong>all</strong> project tasks visible, including tasks where foreman is not assigned.</li>
+<li>Open task where user is <strong>lead</strong> → verify <strong>progress</strong> can be changed (if UI is available).</li>
+<li>Open task where user is <strong>not</strong> assigned → view only.</li>
+</ol>
+<hr />
+<h3>Test H — Details without extra blocks</h3>
+<ol>
+<li>PM → <strong>Team</strong> → <strong>Details</strong> for any worker.</li>
+<li><strong>Expect:</strong> profile, profession, languages, emergency contact.</li>
+<li><strong>Expect:</strong> <strong>no</strong> “Current Projects” block in this dialog.</li>
+</ol>
+<hr />
+<h3>Test I — end-to-end matrix (recommended for acceptance)</h3>
+<p>Use <strong>one task assigned to a worker</strong> and walk statuses through the table in section 3.4, checking PM / Worker / Foreman (My) / Foreman (All).</p>
+<hr />
+<h2>8. Messaging and notifications (not for acceptance now)</h2>
+<table><thead><tr>
+<th>Item</th>
+<th>Status</th>
+</tr></thead><tbody>
+<tr>
+<td><strong>Foreman / PM</strong> chat on weekly <strong>Schedule</strong> slot</td>
+<td>UI and API contract exist; test with the <strong>schedule</strong> guide separately</td>
+</tr>
+<tr>
+<td>Email / SMS / push “you were assigned to a task”</td>
+<td><strong>Not ready</strong> — no production send pipeline</td>
+</tr>
+<tr>
+<td>Weekly digest notifications</td>
+<td>In TZ (<code>docs/TZ_FIELD_VISITS_NOTIFICATIONS.md</code>); <strong>not MVP</strong></td>
+</tr>
+</tbody></table>
+<p><strong>When testing assignments:</strong> do not expect email or phone push — verify <strong>screens only</strong> in web and <code>/tasks</code>.</p>
+<hr />
+<h2>9. Troubleshooting checklist</h2>
+<table><thead><tr>
+<th>Symptom</th>
+<th>What to check</th>
+</tr></thead><tbody>
+<tr>
+<td>Worker does not see task</td>
+<td>Assigned on task <strong>Team</strong> tab; task saved by PM</td>
+</tr>
+<tr>
+<td>Duplicate rows in Team</td>
+<td>Refresh page; if it persists, report to developers (dedupe fix)</td>
+</tr>
+<tr>
+<td>PM Tasks empty</td>
+<td>Person has no tasks as lead or member</td>
+</tr>
+<tr>
+<td>Foreman cannot change progress</td>
+<td>Must be <strong>task lead</strong>, not member only</td>
+</tr>
+<tr>
+<td>Gantt vs Team mismatch</td>
+<td>Gantt shows <strong>tasks</strong>; Team → Tasks shows <strong>assignments by person</strong></td>
+</tr>
+</tbody></table>
+<hr />
+<h2>10. Related documents</h2>
+<table><thead><tr>
+<th>Document</th>
+<th>Topic</th>
+</tr></thead><tbody>
+<tr>
+<td><code>docs/CLIENT_SCHEDULE_TESTING_GUIDE.md</code></td>
+<td>PM weekly schedule</td>
+</tr>
+<tr>
+<td><code>docs/CLIENT_TEAM_ASSIGNMENTS_TESTING_GUIDE_RU.md</code></td>
+<td>Russian version of this guide</td>
+</tr>
+<tr>
+<td><code>docs/SCHEDULE_ENTRY_MESSAGES_FOREMAN_PM.md</code></td>
+<td>Foreman/PM chat on schedule slot</td>
+</tr>
+<tr>
+<td><code>docs/TZ_FIELD_VISITS_NOTIFICATIONS.md</code></td>
+<td>Notifications TZ (future releases)</td>
+</tr>
+</tbody></table>
+<hr />
+<h2>Document control</h2>
+<table><thead><tr>
+<th>Version</th>
+<th>Note</th>
+</tr></thead><tbody>
+<tr>
+<td>1.0</td>
+<td>Initial guide: task assignments, Team → Tasks, Gantt, PM / Foreman / Worker roles</td>
+</tr>
+</tbody></table>
+</body>
+</html>

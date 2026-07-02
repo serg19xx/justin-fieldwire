@@ -1,8 +1,5 @@
 <template>
-  <div v-if="isOpen" class="absolute inset-0 bg-white z-50 flex flex-col">
-    <!-- Header - Simplified (controls moved to ProjectDetailPrj header) -->
-    <div class="border-b border-gray-200 bg-gray-50" style="height: 1px"></div>
-
+  <div v-if="isOpen" class="flex-1 flex flex-col bg-white w-full min-h-[calc(100vh-12rem)]">
     <!-- Content -->
     <div class="flex-1 overflow-y-auto p-6">
       <div class="max-w-5xl mx-auto">
@@ -757,7 +754,7 @@ const props = withDefaults(defineProps<Props>(), {
 // Emits
 const emit = defineEmits<{
   close: []
-  save: [task: Partial<Task>]
+  save: [task: Partial<Task>, options?: { keepPanelOpen?: boolean }]
   delete: [taskId: string]
   duplicate: [task: Task]
 }>()
@@ -1542,9 +1539,13 @@ watch(
             isArray: Array.isArray(members),
             length: Array.isArray(members) ? members.length : 'N/A',
           })
-          // Ensure it's an array of numbers
+          // Ensure it's an array of numbers; exclude task_lead (shown in Project Lead field)
+          const leadId =
+            props.task.task_lead_id != null ? Number(props.task.task_lead_id) : null
           if (Array.isArray(members)) {
-            return members.map((m: unknown) => Number(m)).filter((m: number) => !isNaN(m) && m > 0)
+            return members
+              .map((m: unknown) => Number(m))
+              .filter((m: number) => !isNaN(m) && m > 0 && (leadId == null || m !== leadId))
           }
           return []
         })(),
@@ -1952,7 +1953,33 @@ function removeResource(index: number) {
   form.value.resources.splice(index, 1)
 }
 
-// Team members methods
+function buildTeamMembersSavePayload(): Partial<Task> {
+  return {
+    id: props.task!.id,
+    name: props.task!.name,
+    start_planned: props.task!.start_planned,
+    end_planned: props.task!.end_planned,
+    status: props.task!.status,
+    progress_pct: props.task!.progress_pct || 0,
+    project_id: props.projectId,
+    task_lead_id: props.task!.task_lead_id,
+    team_members: [...form.value.team_members],
+    resources: props.task!.resources || [],
+    address: props.task!.address,
+    notes: props.task!.notes,
+    milestone: props.task!.milestone,
+    milestone_type:
+      typeof props.task!.milestone === 'string'
+        ? props.task!.milestone
+        : props.task!.milestone_type,
+  }
+}
+
+async function persistTeamMembersChange(): Promise<void> {
+  if (props.mode !== 'edit' || !props.task?.id) return
+  emit('save', buildTeamMembersSavePayload(), { keepPanelOpen: true })
+}
+
 function openTeamMemberDialog() {
   showTeamMemberDialog.value = true
 }
@@ -1994,75 +2021,16 @@ async function addTeamMember(memberIds: number[]) {
 
   showTeamMemberDialog.value = false
 
-  // If task already exists (edit mode), save changes immediately
   if (props.mode === 'edit' && props.task?.id) {
-    console.log('💾 Auto-saving task after adding team members')
-    console.log('💾 Current team_members:', form.value.team_members)
-    console.log('💾 Task ID:', props.task.id)
-
-    try {
-      // Save only team_members update for existing task
-      const taskData: Partial<Task> = {
-        id: props.task.id,
-        name: props.task.name, // Use existing name
-        start_planned: props.task.start_planned, // Use existing dates
-        end_planned: props.task.end_planned,
-        status: props.task.status,
-        progress_pct: props.task.progress_pct || 0,
-        project_id: props.projectId,
-        task_lead_id: props.task.task_lead_id,
-        team_members: form.value.team_members, // Updated team members
-        resources: props.task.resources || [],
-        address: props.task.address,
-        notes: props.task.notes,
-        milestone: props.task.milestone,
-        milestone_type: typeof props.task.milestone === 'string' ? props.task.milestone : props.task.milestone_type,
-      }
-
-      console.log('📤 Emitting save event with team members update:', taskData)
-      console.log('📤 Team members in payload:', taskData.team_members)
-      emit('save', taskData)
-      console.log('✅ Save event emitted successfully')
-    } catch (error) {
-      console.error('❌ Error auto-saving task after adding team members:', error)
-    }
-  } else {
-    console.log('⚠️ Not in edit mode or no task ID, skipping auto-save')
+    await persistTeamMembersChange()
   }
 }
 
 function removeTeamMember(index: number) {
   form.value.team_members.splice(index, 1)
 
-  // If task already exists (edit mode), save changes immediately
   if (props.mode === 'edit' && props.task?.id) {
-    console.log('💾 Auto-saving task after removing team member')
-    console.log('💾 Current team_members:', form.value.team_members)
-
-    try {
-      // Save only team_members update for existing task
-      const taskData: Partial<Task> = {
-        id: props.task.id,
-        name: props.task.name, // Use existing name
-        start_planned: props.task.start_planned, // Use existing dates
-        end_planned: props.task.end_planned,
-        status: props.task.status,
-        progress_pct: props.task.progress_pct || 0,
-        project_id: props.projectId,
-        task_lead_id: props.task.task_lead_id,
-        team_members: form.value.team_members, // Updated team members
-        resources: props.task.resources || [],
-        address: props.task.address,
-        notes: props.task.notes,
-        milestone: props.task.milestone,
-        milestone_type: typeof props.task.milestone === 'string' ? props.task.milestone : props.task.milestone_type,
-      }
-
-      console.log('📤 Emitting save event with team members update:', taskData)
-      emit('save', taskData)
-    } catch (error) {
-      console.error('❌ Error auto-saving task after removing team member:', error)
-    }
+    void persistTeamMembersChange()
   }
 }
 

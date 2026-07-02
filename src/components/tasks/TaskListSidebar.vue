@@ -22,7 +22,7 @@
       </div>
       <div v-else class="divide-y divide-gray-100">
         <button
-          v-for="(task, index) in filteredTasks"
+          v-for="task in filteredTasks"
           :key="task.id"
           :data-task-id="task.id"
           @click="selectTask(task)"
@@ -36,36 +36,37 @@
           <div class="flex items-start justify-between gap-2">
             <div class="flex-1 min-w-0">
               <!-- Task Name -->
-              <div class="flex items-center gap-2 mb-1">
-                <span
-                  class="text-xs text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded flex-shrink-0 font-mono"
-                  :title="`Task #${index + 1}`"
-                >
-                  {{ index + 1 }}
-                </span>
-                <span v-if="isMilestone(task.milestone)" class="text-xs text-amber-600 font-bold">{{ MILESTONE_ICON }}</span>
-                <span class="text-sm font-medium text-gray-900 truncate">{{ task.name }}</span>
+              <div class="mb-1">
+                <span class="text-sm font-medium text-gray-900 truncate block">{{ task.name }}</span>
               </div>
 
               <!-- Dates -->
-              <div class="text-xs text-gray-500 space-y-0.5">
-                <div v-if="task.start_planned" class="flex items-center gap-1">
-                  <span>📅</span>
+              <div class="text-xs text-gray-500">
+                <div v-if="task.start_planned">
                   <span>{{ formatDate(task.start_planned) }}</span>
-                  <span v-if="task.end_planned">- {{ formatDate(task.end_planned) }}</span>
+                  <span v-if="task.end_planned"> - {{ formatDate(task.end_planned) }}</span>
                 </div>
                 <div v-else class="text-gray-400">No dates</div>
               </div>
 
-              <!-- Status Badge -->
-              <div class="mt-1.5">
+              <!-- Type icon, status & progress -->
+              <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+                <span
+                  class="text-base leading-none flex-shrink-0"
+                  :title="isMilestone(task.milestone) ? getMilestoneSubtype(task) || 'Milestone' : 'Task'"
+                >
+                  {{ getTaskTypeIcon(task) }}
+                </span>
                 <span
                   :class="[
                     'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
-                    getStatusClass(task.status),
+                    getTaskStatusClass(task.status),
                   ]"
                 >
-                  {{ getStatusLabel(task.status) }}
+                  {{ getTaskStatusLabel(task.status) }}
+                </span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                  {{ task.progress_pct ?? 0 }}%
                 </span>
               </div>
             </div>
@@ -78,9 +79,13 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { isMilestone } from '@/core/types/task'
-import { MILESTONE_ICON } from '@/core/utils/task-utils'
-import type { Task, TaskStatus } from '@/core/types/task'
+import { isMilestone, type MilestoneType, type Task } from '@/core/types/task'
+import {
+  getMilestoneTypeIcon,
+  getMilestoneTypeLabel,
+  getTaskStatusClass,
+  getTaskStatusLabel,
+} from '@/core/utils/task-utils'
 
 interface Props {
   filteredTasks: Task[]
@@ -194,32 +199,22 @@ function formatDate(dateString: string): string {
   })
 }
 
-function getStatusLabel(status: TaskStatus): string {
-  const labels: Record<TaskStatus, string> = {
-    planned: 'Planned',
-    scheduled: 'Scheduled',
-    scheduled_accepted: 'Scheduled',
-    in_progress: 'In Progress',
-    partially_completed: 'Partial',
-    delayed_due_to_issue: 'Delayed',
-    ready_for_inspection: 'Ready',
-    completed: 'Done',
-  }
-  return labels[status] || status
+function getMilestoneSubtype(task: Task): string | null {
+  if (!isMilestone(task.milestone)) return null
+  const milestoneType =
+    typeof task.milestone === 'string'
+      ? task.milestone
+      : task.milestone_type
+  return getMilestoneTypeLabel(milestoneType as MilestoneType)
 }
 
-function getStatusClass(status: TaskStatus): string {
-  const classes: Record<TaskStatus, string> = {
-    planned: 'bg-blue-100 text-blue-800',
-    scheduled: 'bg-purple-100 text-purple-800',
-    scheduled_accepted: 'bg-purple-100 text-purple-800',
-    in_progress: 'bg-yellow-100 text-yellow-800',
-    partially_completed: 'bg-orange-100 text-orange-800',
-    delayed_due_to_issue: 'bg-red-100 text-red-800',
-    ready_for_inspection: 'bg-green-100 text-green-800',
-    completed: 'bg-gray-100 text-gray-800',
-  }
-  return classes[status] || 'bg-gray-100 text-gray-800'
+function getTaskTypeIcon(task: Task): string {
+  if (!isMilestone(task.milestone)) return '📝'
+  const milestoneType =
+    typeof task.milestone === 'string'
+      ? task.milestone
+      : task.milestone_type
+  return getMilestoneTypeIcon(milestoneType as MilestoneType)
 }
 </script>
 

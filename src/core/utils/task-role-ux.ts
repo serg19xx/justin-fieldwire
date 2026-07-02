@@ -207,3 +207,128 @@ export function orderTasksForTaskRolePanel(tasks: Task[], userId?: number | null
   const { primary, planned } = splitTasksForTaskRolePanel(tasks, userId)
   return primary ? [primary, ...planned] : planned
 }
+
+const WORKER_ROLE_CODES = ['worker', 'contractor'] as const
+
+export function isTaskRoleWorker(roleCode?: string | null): boolean {
+  return WORKER_ROLE_CODES.includes((roleCode || '').toLowerCase() as (typeof WORKER_ROLE_CODES)[number])
+}
+
+export function isUserTaskLead(task: Task, userId: number | string | null | undefined): boolean {
+  const uid = typeof userId === 'number' && Number.isFinite(userId) ? userId : Number(userId)
+  if (!Number.isFinite(uid) || uid <= 0) return false
+  return task.task_lead_id != null && Number(task.task_lead_id) === uid
+}
+
+/**
+ * Task lead on this task may update field progress (global foreman role alone is not enough).
+ */
+export function canEditTaskProgress(
+  task: Task,
+  userId: number | string | null | undefined,
+): boolean {
+  return isUserTaskLead(task, userId)
+}
+
+/**
+ * Workers and contractors assigned as members are read-only for task field data.
+ */
+export function isFieldTaskReadOnly(task: Task, userId: number | string | null | undefined): boolean {
+  const uid = typeof userId === 'number' && Number.isFinite(userId) ? userId : Number(userId)
+  if (!Number.isFinite(uid) || uid <= 0) return true
+  if (isUserTaskLead(task, uid)) return false
+  return isUserInvolvedInTask(task, uid)
+}
+
+export function formatBackendTaskStatus(status: string | undefined | null): string {
+  if (!status) return 'Planned'
+  const map: Record<string, string> = {
+    planned: 'Planned',
+    in_progress: 'In progress',
+    done: 'Closed',
+    blocked: 'Blocked',
+    delayed: 'Delayed',
+    completed: 'Closed',
+    scheduled: 'Planned',
+    scheduled_accepted: 'Planned',
+    partially_completed: 'In progress',
+    ready_for_inspection: 'In progress',
+    delayed_due_to_issue: 'Delayed',
+  }
+  const key = status.toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_')
+  return map[key] ?? status
+}
+
+/** Task list buckets for field-role project task tabs */
+export type TaskRoleStatusBucket = 'active' | 'planned' | 'finished'
+
+export function getTaskRoleStatusBucket(status: string | undefined | null): TaskRoleStatusBucket {
+  const key = (status || 'planned').toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_')
+  if (['done', 'completed'].includes(key)) {
+    return 'finished'
+  }
+  if (['planned', 'scheduled', 'scheduled_accepted'].includes(key)) {
+    return 'planned'
+  }
+  return 'active'
+}
+
+export function sortTasksForRoleBucket(tasks: Task[], bucket: TaskRoleStatusBucket): Task[] {
+  const list = [...tasks]
+  if (bucket === 'planned') {
+    return list.sort((a, b) => {
+      const as = a.start_planned ? new Date(a.start_planned).getTime() : Infinity
+      const bs = b.start_planned ? new Date(b.start_planned).getTime() : Infinity
+      if (as !== bs) return as - bs
+      return String(a.name).localeCompare(String(b.name))
+    })
+  }
+  if (bucket === 'finished') {
+    return list.sort((a, b) => {
+      const ae = a.end_planned ? new Date(a.end_planned).getTime() : 0
+      const be = b.end_planned ? new Date(b.end_planned).getTime() : 0
+      if (ae !== be) return be - ae
+      return String(a.name).localeCompare(String(b.name))
+    })
+  }
+  // active: in_progress first, then higher progress, then sooner start
+  const weight = (s: string | undefined) => {
+    const b = getTaskRoleStatusBucket(s)
+    if (b !== 'active') return 99
+    const k = (s || '').toLowerCase()
+    if (k === 'in_progress' || k === 'partially_completed') return 0
+    if (k === 'ready_for_inspection') return 1
+    return 2
+  }
+  return list.sort((a, b) => {
+    const wa = weight(String(a.status))
+    const wb = weight(String(b.status))
+    if (wa !== wb) return wa - wb
+    const pa = a.progress_pct ?? 0
+    const pb = b.progress_pct ?? 0
+    if (pa !== pb) return pb - pa
+    const as = a.start_planned ? new Date(a.start_planned).getTime() : Infinity
+    const bs = b.start_planned ? new Date(b.start_planned).getTime() : Infinity
+    return as - bs
+  })
+}
+
+/**
+ * Field UI: one project = one site/object. `prj_name` is the site label (e.g. pharmacy name).
+ * Task `address` is the work location; falls back to project address when empty.
+ */
+export function resolveTaskSiteName(
+  project: Pick<Project, 'prj_name'> | null | undefined,
+): string {
+  const name = (project?.prj_name ?? '').trim()
+  return name || 'Site'
+}
+
+export function resolveTaskSiteAddress(
+  task: Pick<Task, 'address'> | null | undefined,
+  project: Pick<Project, 'address'> | null | undefined,
+): string {
+  const taskAddr = (task?.address ?? '').trim()
+  if (taskAddr) return taskAddr
+  return (project?.address ?? '').trim()
+}

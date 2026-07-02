@@ -1,34 +1,40 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '@/core/stores/auth'
 import InviteBuilderDialog from '@/components/InviteBuilderDialog.vue'
-import { hrResourcesApi } from '@/core/utils/hr-api'
 import { type WorkerUser } from '@/core/utils/hr-api'
 import { type UserType } from '@/core/utils/constants'
+import { useWorkerListLoader } from '@/composables/useWorkerListLoader'
 
-// Store (removed unused variables)
 const authStore = useAuthStore()
 
-// Project workers data
-const builders = ref<WorkerUser[]>([])
-const loading = ref(false)
-const error = ref<string | null>(null)
+const {
+  builders,
+  loading,
+  error,
+  searchQuery,
+  userTypeFilter,
+  statusFilter,
+  invitationStatusFilter,
+  viewMode,
+  currentPage,
+  itemsPerPage,
+  pageSizeOptions,
+  totalItems,
+  totalPages,
+  startIndex,
+  endIndex,
+  paginatedBuilders,
+  loadBuilders,
+  goToPage,
+  changePageSize,
+} = useWorkerListLoader('registered', 50)
 
-// Filters
-const searchQuery = ref('')
-const userTypeFilter = ref('')
-const statusFilter = ref('')
-const invitationStatusFilter = ref('')
 const isFiltersOpen = ref(false)
+const isInviteDialogOpen = ref(false)
 
-// View mode (Registered/Pending)
-const viewMode = ref<'registered' | 'pending'>('registered')
-
-// Computed filtered builders - теперь просто возвращаем данные с сервера
-const filteredBuilders = computed(() => {
-  return builders.value
-})
+const filteredBuilders = computed(() => paginatedBuilders.value)
 
 // Computed для проверки активных фильтров
 const hasActiveFilters = computed(() => {
@@ -37,91 +43,8 @@ const hasActiveFilters = computed(() => {
   )
 })
 
-// Функция загрузки данных с базы данных
-async function loadBuilders() {
-  loading.value = true
-  error.value = null
-
-  try {
-    console.log('🚀 Loading workers from database for mode:', viewMode.value)
-
-    // Формируем фильтры только для выбранных значений
-    const filters: {
-      sort_by: string
-      sort_order: 'ASC' | 'DESC'
-      status?: string
-      invitation_status?: string
-      view_mode?: string
-      role_code?: string
-      search?: string
-      project_id?: number
-      prj_mngr_id?: number
-    } = {
-      sort_by: 'created_at',
-      sort_order: 'DESC',
-    }
-
-    // Добавляем фильтры только если они выбраны
-    if (statusFilter.value && statusFilter.value !== '') {
-      filters.status = statusFilter.value
-    }
-
-    if (invitationStatusFilter.value && invitationStatusFilter.value !== '') {
-      filters.invitation_status = invitationStatusFilter.value
-    } else {
-      // Если фильтр по статусу приглашения не выбран, используем режим просмотра
-      filters.view_mode = viewMode.value
-    }
-
-    if (userTypeFilter.value && userTypeFilter.value !== '') {
-      filters.role_code = userTypeFilter.value
-    }
-
-    if (searchQuery.value && searchQuery.value.trim() !== '') {
-      filters.search = searchQuery.value.trim()
-    }
-
-    // Для админов - показываем всех работников без фильтрации по проекту
-    // Админы видят глобальную базу всех работников
-
-    console.log('🔍 Filters being sent to API:', filters)
-
-    const response = await hrResourcesApi.getAllWorkerUsers(1, 50, filters)
-
-    if ('workers' in response && Array.isArray(response.workers)) {
-      builders.value = response.workers
-
-      console.log('✅ All workers loaded from database:', builders.value.length)
-
-      // Логируем статусы приглашений для отладки
-      const statusCounts = builders.value.reduce(
-        (acc: Record<string, number>, builder: WorkerUser) => {
-          acc[builder.invitation_status] = (acc[builder.invitation_status] || 0) + 1
-          return acc
-        },
-        {} as Record<string, number>,
-      )
-      console.log('📊 Invitation status counts:', statusCounts)
-    } else {
-      throw new Error('Invalid response format')
-    }
-  } catch (apiError: unknown) {
-    console.error('❌ Database error:', apiError)
-    error.value = 'Failed to load data from database'
-    builders.value = []
-  } finally {
-    loading.value = false
-  }
-}
-
-// Сброс при изменении фильтров
-watch([searchQuery, userTypeFilter, statusFilter, invitationStatusFilter], () => {
-  loadBuilders()
-})
-
-// Загрузка данных при монтировании
 onMounted(() => {
-  loadBuilders()
+  void loadBuilders()
 })
 
 // User type options for filter
@@ -135,8 +58,7 @@ const userTypeOptions = [
 
 // Get role display name from API data
 function getRoleDisplayName(roleCode: string): string {
-  // Найдем роль в данных и вернем role_name
-  const builder = builders.value.find((b) => b.role_code === roleCode)
+  const builder = paginatedBuilders.value.find((b) => b.role_code === roleCode)
   return builder?.role_name || roleCode
 }
 

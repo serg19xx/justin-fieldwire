@@ -739,6 +739,19 @@ const canEditProject = computed(() => {
   return true
 })
 
+const projectTeamHint = computed(() => {
+  const p = project.value
+  if (!p) return null
+  return {
+    id: p.id,
+    prj_name: p.name,
+    address: p.address,
+    sys_status: p.sys_status ?? null,
+  }
+})
+
+const teamListRefreshKey = ref(0)
+
 // Team functions
 async function loadTeamMembers() {
   if (!project.value) return
@@ -1967,8 +1980,8 @@ function handleTaskSelect(task: Task) {
 // Handle team member added
 function handleTeamMemberAdded(newMember: ProjectTeamMember) {
   console.log('👥 Team member added:', newMember)
-  // Add new member to local data without full reload
   teamMembers.value.push(newMember)
+  teamListRefreshKey.value++
 }
 
 // Edit role dialog state
@@ -2501,8 +2514,10 @@ watch(
     <!-- Main Content Area: do not use overflow-x-clip here — it clips position:fixed descendants (toolbar). -->
     <div class="flex-1 flex flex-col ml-64 max-w-full min-w-0">
       <!-- Content Header -->
-      <div class="bg-white shadow-sm border-b border-gray-200 px-6 py-2 fixed top-12 left-64 right-0 z-40" style="margin-top: 0; padding-top: 0.5rem; padding-bottom: 0.5rem;">
-        <div class="flex items-center justify-between gap-2 min-w-0">
+      <div
+        class="bg-white shadow-sm border-b border-gray-200 px-6 fixed top-12 left-64 right-0 z-40 flex items-center min-h-[4.5rem]"
+      >
+        <div class="flex items-center justify-between gap-2 min-w-0 w-full">
           <!-- Dynamic Action Buttons -->
           <div class="flex-1 min-w-0 overflow-x-auto overflow-y-visible flex items-center [&::-webkit-scrollbar]:h-1.5">
             <!-- Plans Section Buttons -->
@@ -2795,7 +2810,7 @@ watch(
       <!-- Content Body: avoid overflow-x-hidden on this ancestor — it also clips fixed siblings in some browsers. -->
       <div class="flex-1 overflow-y-auto min-w-0 px-6" style="padding-bottom: 0;">
         <!-- Spacer for fixed toolbar -->
-        <div class="h-16"></div>
+        <div class="h-[4.5rem]"></div>
         <!-- Loading State -->
         <div v-if="loading" class="flex items-center justify-center h-full">
           <div class="text-center">
@@ -2906,16 +2921,13 @@ watch(
           <!-- Team Section -->
           <TeamSection
             v-else-if="activeSection === 'team'"
-            :team-members="teamMembers"
-            :tasks="projectTasks"
-            :loading-team="loadingTeam || loadingTasks"
-            :can-edit="canEditProject"
             :project-id="project?.id || 0"
-            @member-details="(member: unknown) => openMemberDetails(member as ProjectTeamMember)"
-            @remove-team-member="(member: unknown) => removeTeamMember(member as ProjectTeamMember)"
+            :project-name="project?.name || ''"
+            :project-tasks="projectTasks"
+            :project-hint="projectTeamHint"
+            :can-add-worker="canEditProject"
+            :refresh-key="teamListRefreshKey"
             @add-team-member="addTeamMember"
-            @remove-worker-from-task="handleRemoveWorkerFromTask"
-            @add-worker-to-task="handleAddWorkerToTask"
           />
 
           <!-- Settings Section -->

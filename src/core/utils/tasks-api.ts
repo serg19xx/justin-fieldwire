@@ -156,6 +156,22 @@ function readTaskAddressFromApi(task: Record<string, unknown>): string {
   return raw != null && String(raw).length > 0 ? String(raw) : ''
 }
 
+function parseTaskFromApiEnvelope(responseData: unknown): Task {
+  const body = responseData as Record<string, unknown> | undefined
+  if (body?.status === 'error' || body?.error_code) {
+    throw new Error(String(body.message ?? 'Task request failed'))
+  }
+  const envelope = body?.data
+  const raw =
+    envelope && typeof envelope === 'object' && !Array.isArray(envelope)
+      ? (envelope as Record<string, unknown>).task
+      : undefined
+  if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new Error('Malformed task response')
+  }
+  return transformTaskFromApiRow(raw as Record<string, unknown>)
+}
+
 function transformTaskFromApiRow(task: Record<string, unknown>): Task {
   const legacyAssigneeOrder = coerceParticipantIds(task.assignees)
   const allParticipantIds = extractAllParticipantUserIds(task)
@@ -245,6 +261,12 @@ function transformTaskFromApiRow(task: Record<string, unknown>): Task {
     actual_end: task.actual_end != null ? String(task.actual_end) : undefined,
     slack_days: typeof task.slack_days === 'number' ? task.slack_days : undefined,
     task_order: typeof task.task_order === 'number' ? task.task_order : undefined,
+    field_submitted_at:
+      task.field_submitted_at != null ? String(task.field_submitted_at) : null,
+    field_submitted_by:
+      task.field_submitted_by != null && Number(task.field_submitted_by) > 0
+        ? Number(task.field_submitted_by)
+        : null,
   }
 }
 
@@ -785,28 +807,46 @@ export const tasksApi = {
     }
   },
 
-  // Update task progress
+  // Update task progress (task lead or PM via PUT)
   async updateProgress(projectId: number, taskId: string, progressPct: number): Promise<Task> {
     try {
-      const response = await api.patch(`/api/v1/projects/${projectId}/tasks/${taskId}/progress`, {
-        progressPct,
+      const response = await api.put(`/api/v1/projects/${projectId}/tasks/${taskId}`, {
+        progress_pct: Math.min(100, Math.max(0, Math.round(progressPct))),
       })
-      return response.data.data.task
+      return parseTaskFromApiEnvelope(response.data)
     } catch (error) {
       console.error('Error updating task progress:', error)
       throw error
     }
   },
 
-  // Update task status
+  // Update task status (PM only — use full update from project UI)
   async updateStatus(projectId: number, taskId: string, status: string): Promise<Task> {
     try {
-      const response = await api.patch(`/api/v1/projects/${projectId}/tasks/${taskId}/status`, {
+      const response = await api.put(`/api/v1/projects/${projectId}/tasks/${taskId}`, {
         status: mapStatusToBackend(status),
       })
-      return response.data.data.task
+      return parseTaskFromApiEnvelope(response.data)
     } catch (error) {
       console.error('Error updating task status:', error)
+      throw error
+    }
+  },
+
+  /** Task lead submits field work for PM review (does not close the task). */
+  async submitTask(
+    projectId: number,
+    taskId: string,
+    payload?: { notes?: string },
+  ): Promise<Task> {
+    try {
+      const response = await api.post(
+        `/api/v1/projects/${projectId}/tasks/${taskId}/submit`,
+        payload ?? {},
+      )
+      return parseTaskFromApiEnvelope(response.data)
+    } catch (error) {
+      console.error('Error submitting task work:', error)
       throw error
     }
   },

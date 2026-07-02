@@ -312,6 +312,38 @@ export function getTaskStatusLabel(status: TaskStatus): string {
   }
 }
 
+export function getTaskStatusClass(status: TaskStatus): string {
+  switch (status) {
+    case 'planned':
+      return 'bg-blue-100 text-blue-800'
+    case 'scheduled':
+    case 'scheduled_accepted':
+      return 'bg-purple-100 text-purple-800'
+    case 'in_progress':
+      return 'bg-yellow-100 text-yellow-800'
+    case 'partially_completed':
+      return 'bg-orange-100 text-orange-800'
+    case 'delayed_due_to_issue':
+      return 'bg-red-100 text-red-800'
+    case 'ready_for_inspection':
+      return 'bg-green-100 text-green-800'
+    case 'completed':
+      return 'bg-gray-100 text-gray-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
+}
+
+export function getTaskTypeLabel(milestone: Task['milestone']): 'Task' | 'Milestone' {
+  return isMilestone(milestone) ? 'Milestone' : 'Task'
+}
+
+export function getTaskTypeBadgeClass(milestone: Task['milestone']): string {
+  return isMilestone(milestone)
+    ? 'bg-amber-100 text-amber-800'
+    : 'bg-slate-100 text-slate-700'
+}
+
 // Calculate task duration in days (inclusive of both start and end dates)
 export function calculateTaskDuration(startDate: string, endDate?: string): number {
   if (!endDate) return 1

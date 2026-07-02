@@ -68,14 +68,14 @@
         <span class="text-[10px] sm:text-xs mt-0.5 truncate w-full text-center px-0.5 leading-tight">Home</span>
       </RouterLink>
       <RouterLink
-        to="/tasks/schedule"
+        to="/tasks/projects"
         class="flex flex-col items-center justify-center flex-1 py-2 min-w-0"
-        :class="isScheduleTabActive ? 'text-orange-600 bg-orange-50 font-medium' : 'text-gray-500 hover:bg-gray-50'"
+        :class="isTasksTabActive ? 'text-orange-600 bg-orange-50 font-medium' : 'text-gray-500 hover:bg-gray-50'"
       >
         <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
         </svg>
-        <span class="text-[10px] sm:text-xs mt-0.5 truncate w-full text-center px-0.5 leading-tight">Schedule</span>
+        <span class="text-[10px] sm:text-xs mt-0.5 truncate w-full text-center px-0.5 leading-tight">Tasks</span>
       </RouterLink>
       <RouterLink
         to="/calendar"
@@ -122,7 +122,9 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
-const isScheduleTabActive = computed(() => route.path === '/tasks/schedule' || route.path.startsWith('/tasks/schedule/'))
+const isTasksTabActive = computed(
+  () => route.path === '/tasks/projects' || route.path.startsWith('/tasks/projects/'),
+)
 
 const displayRole = computed(() => {
   const u = authStore.currentUser

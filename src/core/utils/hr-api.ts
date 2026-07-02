@@ -1,6 +1,5 @@
 import { api } from './api'
 import type { ProjectTeamMember } from './project-api'
-import { useAuthStore } from '../stores/auth'
 
 // Professional data interface
 export interface ProfessionalData {
@@ -289,6 +288,7 @@ export const hrResourcesApi = {
     page: number = 1,
     limit: number = 20,
     filters: {
+      id?: number
       status?: string
       user_status?: string
       role_code?: string
@@ -303,6 +303,8 @@ export const hrResourcesApi = {
       prj_mngr_id?: number
       sort_by?: string
       sort_order?: 'ASC' | 'DESC'
+      /** list = table row only (fast); full = profile + projects + professional data */
+      fields?: 'list' | 'full'
     } = {},
   ): Promise<{
     workers: WorkerUser[]
@@ -320,25 +322,12 @@ export const hrResourcesApi = {
     }
   }> {
     try {
-      console.log('🔍 Getting all workers from global system')
-      console.log('📋 Parameters:', { page, limit, filters })
-
-      // Check current user info
-      const authStore = useAuthStore()
-      console.log('👤 Current user info:', {
-        id: authStore.currentUser?.id,
-        email: authStore.currentUser?.email,
-        role_code: authStore.currentUser?.role_code,
-        role_category: authStore.currentUser?.role_category,
-        isAuthenticated: authStore.isAuthenticated,
-      })
-
-      // Строим query параметры
       const params = new URLSearchParams()
       params.append('page', page.toString())
       params.append('limit', limit.toString())
 
-      // Добавляем фильтры
+      if (filters.id != null) params.append('id', String(filters.id))
+      if (filters.fields) params.append('fields', filters.fields)
       if (filters.status) params.append('status', filters.status)
       if (filters.user_status) params.append('user_status', filters.user_status)
       if (filters.role_code) params.append('role_code', filters.role_code)
@@ -355,17 +344,11 @@ export const hrResourcesApi = {
       if (filters.sort_by) params.append('sort_by', filters.sort_by)
       if (filters.sort_order) params.append('sort_order', filters.sort_order)
 
-      console.log('🔍 Making request to workers endpoint with params:', params.toString())
-      console.log('🔍 Full URL:', `/api/v1/workers?${params.toString()}`)
-
       const response = await api.get(`/api/v1/workers?${params.toString()}`)
-      console.log('✅ All workers response:', response.data)
 
-      // Обрабатываем правильную структуру ответа
       if (response.data && response.data.data && response.data.data.workers) {
         const workers = response.data.data.workers
         const pagination = response.data.data.pagination
-        console.log('📊 Found workers:', workers.length, 'Total:', pagination.total)
 
         return {
           workers: workers,
@@ -477,6 +460,33 @@ export const hrResourcesApi = {
       }
       throw error
     }
+  },
+
+  /** Fetch every worker page from the API (backend caps limit at 100 per request). */
+  async fetchAllWorkerUsers(
+    filters: Parameters<typeof hrResourcesApi.getAllWorkerUsers>[2] = {},
+  ): Promise<WorkerUser[]> {
+    const allWorkers: WorkerUser[] = []
+    const pageLimit = 100
+    let page = 1
+
+    while (page <= 50) {
+      const { workers, pagination } = await hrResourcesApi.getAllWorkerUsers(page, pageLimit, filters)
+      allWorkers.push(...workers)
+      if (!pagination.has_next_page) break
+      page += 1
+    }
+
+    return allWorkers
+  },
+
+  /** Full worker profile for Details modal (not the lightweight list row). */
+  async getWorkerById(userId: number): Promise<WorkerUser | null> {
+    const { workers } = await hrResourcesApi.getAllWorkerUsers(1, 1, {
+      id: userId,
+      fields: 'full',
+    })
+    return workers[0] ?? null
   },
 
   // Get project team members

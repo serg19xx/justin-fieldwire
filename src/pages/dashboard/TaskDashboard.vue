@@ -15,10 +15,10 @@
       <div class="flex items-center justify-between mb-3">
         <h2 class="text-base font-semibold text-gray-900">Your projects</h2>
         <RouterLink
-          to="/tasks/schedule"
+          to="/tasks/projects"
           class="text-sm font-medium text-orange-600 hover:text-orange-700"
         >
-          Open schedule
+          View tasks
         </RouterLink>
       </div>
 
@@ -29,14 +29,14 @@
 
       <div v-else-if="projects.length === 0" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
         <p class="text-gray-500 text-sm">No projects yet.</p>
-        <p class="text-gray-400 text-xs mt-1">Assignments appear on your schedule when published.</p>
+        <p class="text-gray-400 text-xs mt-1">Assignments appear when you are added to project tasks.</p>
       </div>
 
       <div v-else class="space-y-3">
         <RouterLink
           v-for="project in displayProjects"
           :key="project.id"
-          to="/tasks/schedule"
+          :to="`/tasks/projects/${project.id}`"
           class="block bg-white rounded-xl shadow-sm border border-gray-200 p-4 active:bg-gray-50"
         >
           <div class="flex justify-between items-start gap-2">
@@ -44,10 +44,12 @@
             <span
               :class="[
                 'flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full',
-                project.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700',
+                resolveProjectSysStatus(project) === 'active'
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-gray-100 text-gray-700',
               ]"
             >
-              {{ project.status || '—' }}
+              {{ PROJECT_SYS_STATUS_LABELS[resolveProjectSysStatus(project)] }}
             </span>
           </div>
           <p v-if="project.address" class="text-xs text-gray-500 mt-1 truncate">
@@ -57,8 +59,8 @@
       </div>
 
       <div v-if="!isLoading && projects.length > 3" class="mt-3 text-center">
-        <RouterLink to="/tasks/schedule" class="text-sm text-orange-600 hover:text-orange-700 font-medium">
-          Open schedule ({{ projects.length }} sites)
+        <RouterLink to="/tasks/projects" class="text-sm text-orange-600 hover:text-orange-700 font-medium">
+          All projects ({{ projects.length }})
         </RouterLink>
       </div>
     </section>
@@ -68,11 +70,11 @@
       <h2 class="text-base font-semibold text-gray-900 mb-3">Quick actions</h2>
       <div class="grid grid-cols-2 gap-3">
         <RouterLink
-          to="/tasks/schedule"
+          to="/tasks/projects"
           class="flex flex-col items-center justify-center p-4 bg-white rounded-xl shadow-sm border border-gray-200 active:bg-orange-50"
         >
-          <span class="text-2xl mb-1" aria-hidden="true">📅</span>
-          <span class="text-sm font-medium text-gray-900">Schedule</span>
+          <span class="text-2xl mb-1" aria-hidden="true">📋</span>
+          <span class="text-sm font-medium text-gray-900">My tasks</span>
         </RouterLink>
         <RouterLink
           to="/reports"
@@ -92,6 +94,11 @@ import { useAuthStore } from '@/core/stores/auth'
 import { getDisplayRole } from '@/core/utils/role-utils'
 import type { Project } from '@/core/utils/project-api'
 import { fetchProjectsForTaskScope } from '@/core/utils/project-list-for-user'
+import {
+  filterProjectsForTaskRoleList,
+  PROJECT_SYS_STATUS_LABELS,
+  resolveProjectSysStatus,
+} from '@/core/utils/project-sys-status'
 
 const authStore = useAuthStore()
 
@@ -120,7 +127,9 @@ const greeting = computed(() => {
 const projects = ref<Project[]>([])
 const isLoading = ref(true)
 
-const displayProjects = computed(() => projects.value.slice(0, 3))
+const displayProjects = computed(() =>
+  filterProjectsForTaskRoleList(projects.value, 'in_work').slice(0, 3),
+)
 
 onMounted(async () => {
   try {

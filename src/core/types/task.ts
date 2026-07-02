@@ -71,6 +71,9 @@ export interface Task {
   actual_start?: string
   actual_end?: string
   slack_days?: number
+  /** Set when task lead submits field work for PM review */
+  field_submitted_at?: string | null
+  field_submitted_by?: number | null
   // For future use
   deps?: TaskDependency[]
   calendarId?: string

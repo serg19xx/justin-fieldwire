@@ -39,13 +39,13 @@ export const ROLES: Record<string, Role> = {
     code: 'foreman',
     name: 'Foreman',
     category: 'task',
-    permissions: ['tasks.view', 'tasks.edit', 'photos.upload'],
+    permissions: ['tasks.view', 'tasks.update_progress', 'photos.upload'],
   },
   worker: {
     code: 'worker',
     name: 'Worker',
     category: 'task',
-    permissions: ['tasks.view', 'photos.upload'],
+    permissions: ['tasks.view'],
   },
   contractor: {
     code: 'contractor',
