@@ -129,16 +129,9 @@ function clearFilters() {
   invitationStatusFilter.value = ''
 }
 
-// Dialog state
-const isInviteDialogOpen = ref(false)
-
-// View mode state (duplicate removed)
-
 // HR Resource Manager state
 const showHRManager = ref(false)
 const hrManagerMode = ref<'project' | 'task'>('project')
-
-// Computed properties
 
 function openInviteDialog() {
   isInviteDialogOpen.value = true
