@@ -633,6 +633,7 @@ import {
   isFolderReadOnlyInPlanUi,
   isFolderUnderScheduleSlotDocumentsPlanBranch,
   isPlanFolderInboundContentBlocked,
+  isTaskFieldPhotoPlanFile,
 } from '@/core/utils/files-api'
 import { scheduleSlotDocumentsApi } from '@/core/utils/schedule-slot-documents-api'
 import { isLikelyPdfDocument } from '@/core/utils/pdf-preview-detect'
@@ -669,6 +670,10 @@ function canLoadPlanTreeFileViaSlotDocumentsApi(file: FileUpload): boolean {
     return Number.isFinite(abs) && abs > 0
   }
   return false
+}
+
+function canLoadPlanTreeVirtualFile(file: FileUpload): boolean {
+  return canLoadPlanTreeFileViaSlotDocumentsApi(file) || isTaskFieldPhotoPlanFile(file)
 }
 
 function initialScheduleSlotDocumentIdCandidate(file: FileUpload): number {
@@ -1551,9 +1556,9 @@ async function downloadFile(file: FileUpload) {
     console.log('📄 File ID:', file.id)
     console.log('📄 Original name:', file.original_name)
 
-    if (file.id < 0 && !canLoadPlanTreeFileViaSlotDocumentsApi(file)) {
+    if (file.id < 0 && !canLoadPlanTreeVirtualFile(file)) {
       alert(
-        'This file is linked from the schedule but the server did not send schedule_entry_id (and a resolvable document id). Ask the API team to include schedule_entry_id on virtual plan-tree files.',
+        'This virtual plan-tree file is missing metadata required to load it from the server.',
       )
       return
     }
@@ -1633,9 +1638,9 @@ async function previewFile(file: FileUpload) {
     console.log('📄 File mime_type:', file.mime_type)
     console.log('📄 File extension:', file.file_name.split('.').pop())
 
-    if (file.id < 0 && !canLoadPlanTreeFileViaSlotDocumentsApi(file)) {
+    if (file.id < 0 && !canLoadPlanTreeVirtualFile(file)) {
       alert(
-        'This file is linked from the schedule but the server did not send schedule_entry_id (and a resolvable document id). Ask the API team to include schedule_entry_id on virtual plan-tree files.',
+        'This virtual plan-tree file is missing metadata required to load it from the server.',
       )
       return
     }
@@ -1690,9 +1695,9 @@ async function deleteFile(file: FileUpload) {
     return
   }
 
-  if (file.id < 0 && !canLoadPlanTreeFileViaSlotDocumentsApi(file)) {
+  if (file.id < 0 && !canLoadPlanTreeVirtualFile(file)) {
     alert(
-      'This file is linked from the schedule but the server did not send schedule_entry_id (and a resolvable document id). Ask the API team to include schedule_entry_id on virtual plan-tree files.',
+      'This virtual plan-tree file is missing metadata required to delete it from the server.',
     )
     return
   }

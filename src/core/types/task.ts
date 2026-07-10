@@ -74,6 +74,14 @@ export interface Task {
   /** Set when task lead submits field work for PM review */
   field_submitted_at?: string | null
   field_submitted_by?: number | null
+  /** Foreman-recorded work start (site clock) */
+  field_work_started_at?: string | null
+  /** Foreman-recorded work end (site clock) */
+  field_work_ended_at?: string | null
+  /** Foreman notes / additions (does not replace PM task description) */
+  field_notes?: string | null
+  field_work_start_reason?: string | null
+  field_work_end_reason?: string | null
   // For future use
   deps?: TaskDependency[]
   calendarId?: string
@@ -122,6 +130,11 @@ export interface TaskCreateUpdate {
   resources?: string[]
   dependencies?: Array<{ predecessor_id: number; type: string; lag_days: number }>
   task_order?: number // Order for manual sorting in Gantt chart
+  field_work_started_at?: string | null
+  field_work_ended_at?: string | null
+  field_notes?: string | null
+  field_work_start_reason?: string | null
+  field_work_end_reason?: string | null
   // Legacy fields for backward compatibility
   startPlanned?: string
   endPlanned?: string

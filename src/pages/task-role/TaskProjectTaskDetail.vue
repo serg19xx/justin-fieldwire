@@ -25,14 +25,44 @@
 
     <template v-else>
       <header class="mb-5">
-        <h1 class="text-xl font-semibold text-gray-900">{{ task.name }}</h1>
-        <p class="text-sm text-gray-500 mt-1">{{ dateRange }}</p>
-        <TaskSiteLocation
-          class="mt-3"
-          :site-name="siteName"
-          :site-address="siteAddress"
-        />
+        <p class="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Project</p>
+        <p class="text-sm text-gray-600 mb-2">{{ projectName }}</p>
+        <h1 class="text-xl font-semibold text-gray-900 leading-snug">{{ task.name }}</h1>
+        <TaskSiteLocation class="mt-3" :site-name="siteName" :site-address="siteAddress" />
       </header>
+
+      <!-- Task details -->
+      <section class="mb-5 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Task details</h2>
+        <dl class="space-y-2.5 text-sm">
+          <div class="flex justify-between gap-4">
+            <dt class="text-gray-500 shrink-0">Status</dt>
+            <dd class="font-medium text-gray-900 text-right">{{ statusLabel }}</dd>
+          </div>
+          <div class="flex justify-between gap-4">
+            <dt class="text-gray-500 shrink-0">Planned dates</dt>
+            <dd class="text-gray-900 text-right">{{ dateRange || '—' }}</dd>
+          </div>
+          <div v-if="plannedTimeRange" class="flex justify-between gap-4">
+            <dt class="text-gray-500 shrink-0">Planned time</dt>
+            <dd class="text-gray-900 text-right">{{ plannedTimeRange }}</dd>
+          </div>
+          <div class="flex justify-between gap-4">
+            <dt class="text-gray-500 shrink-0">Your role</dt>
+            <dd class="text-gray-900 text-right">{{ roleOnTaskLabel }}</dd>
+          </div>
+          <div v-if="task.address?.trim()" class="pt-2 border-t border-gray-100">
+            <dt class="text-gray-500 text-xs mb-1">Work location</dt>
+            <dd class="text-gray-900 whitespace-pre-wrap break-words">{{ task.address }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section v-if="task.notes?.trim()" class="mb-5 rounded-xl border border-gray-200 bg-gray-50/90 p-4">
+        <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">PM task description</h2>
+        <p class="text-sm text-gray-800 whitespace-pre-wrap break-words">{{ task.notes }}</p>
+        <p class="text-xs text-gray-500 mt-2">Set by project manager — read only.</p>
+      </section>
 
       <section class="mb-5 rounded-xl border border-gray-200 bg-gray-50/90 p-4">
         <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Official status</h2>
@@ -54,7 +84,7 @@
             max="100"
             step="1"
             class="w-full accent-orange-600"
-            :disabled="isSavingProgress"
+            :disabled="isSavingProgress || isWorkLocked"
             @change="saveProgress"
           />
           <p v-if="progressMessage" class="text-xs mt-2" :class="progressError ? 'text-red-700' : 'text-green-700'">
@@ -66,8 +96,45 @@
           <div class="h-2 rounded-full bg-gray-200 overflow-hidden">
             <div class="h-full bg-orange-500 transition-all" :style="{ width: `${progressValue}%` }" />
           </div>
-          <p v-if="readOnly" class="text-xs text-gray-500 mt-2">View only — field updates are done by your foreman.</p>
+          <p v-if="readOnly" class="text-xs text-gray-500 mt-2">{{ readOnlyHint }}</p>
         </template>
+      </section>
+
+      <!-- Foreman field work -->
+      <TaskFieldWorkPanel
+        v-if="showFieldWorkPanel"
+        ref="fieldWorkRef"
+        class="mb-5"
+        :project-id="projectId"
+        :task-id="taskId"
+        :task="task"
+        :can-edit="canEditProgress"
+        :is-locked="isWorkLocked"
+        @updated="onFieldWorkUpdated"
+      />
+
+      <section
+        v-else-if="hasFieldWorkRecord"
+        class="mb-5 rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-700 space-y-2"
+      >
+        <h2 class="text-sm font-semibold text-gray-900">Field work record</h2>
+        <div v-if="task.field_work_started_at">
+          <p>
+            <span class="text-gray-500">Started:</span> {{ formatDateTime(task.field_work_started_at) }}
+          </p>
+          <p v-if="task.field_work_start_reason?.trim()" class="text-xs text-gray-600 mt-0.5 whitespace-pre-wrap break-words">
+            <span class="font-medium text-gray-500">Reason:</span> {{ task.field_work_start_reason }}
+          </p>
+        </div>
+        <div v-if="task.field_work_ended_at">
+          <p>
+            <span class="text-gray-500">Ended:</span> {{ formatDateTime(task.field_work_ended_at) }}
+          </p>
+          <p v-if="task.field_work_end_reason?.trim()" class="text-xs text-gray-600 mt-0.5 whitespace-pre-wrap break-words">
+            <span class="font-medium text-gray-500">Reason:</span> {{ task.field_work_end_reason }}
+          </p>
+        </div>
+        <p v-if="task.field_notes" class="whitespace-pre-wrap break-words">{{ task.field_notes }}</p>
       </section>
 
       <section
@@ -75,26 +142,24 @@
         class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4"
       >
         <p class="text-sm font-medium text-emerald-900">Submitted for PM review</p>
-        <p class="text-xs text-emerald-800 mt-1">{{ formatSubmittedAt(fieldSubmittedAt) }}</p>
+        <p class="text-xs text-emerald-800 mt-1">{{ formatDateTime(fieldSubmittedAt) }}</p>
       </section>
 
       <section v-if="canSubmitWork" class="mb-5">
         <button
           type="button"
           class="w-full rounded-xl bg-orange-600 px-4 py-3 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-60"
-          :disabled="isSubmitting || Boolean(fieldSubmittedAt)"
+          :disabled="isSubmitting || Boolean(fieldSubmittedAt) || !canSubmitNow"
           @click="submitWork"
         >
-          {{ fieldSubmittedAt ? 'Already submitted' : isSubmitting ? 'Submitting…' : 'Submit work for review' }}
+          {{ submitButtonLabel }}
         </button>
+        <p v-if="!canSubmitNow && !fieldSubmittedAt && canEditProgress" class="text-xs text-amber-800 mt-2">
+          Record <strong>Start work</strong> and <strong>End work</strong> before submitting.
+        </p>
         <p v-if="submitMessage" class="text-xs mt-2" :class="submitError ? 'text-red-700' : 'text-green-700'">
           {{ submitMessage }}
         </p>
-      </section>
-
-      <section v-if="task.notes" class="rounded-xl border border-gray-200 bg-white p-4">
-        <h2 class="text-sm font-semibold text-gray-900 mb-2">Notes</h2>
-        <p class="text-sm text-gray-700 whitespace-pre-wrap break-words">{{ task.notes }}</p>
       </section>
     </template>
   </div>
@@ -109,23 +174,31 @@ import { projectApi } from '@/core/utils/project-api'
 import { resolveSessionUserId } from '@/core/utils/session-user-id'
 import {
   canEditTaskProgress,
+  fieldTaskReadOnlyHint,
   formatBackendTaskStatus,
   isFieldTaskReadOnly,
+  isTaskRoleContractor,
   isTaskRoleForeman,
+  isTaskRoleWorker,
   isUserInvolvedInTask,
+  isUserTaskLead,
   resolveTaskSiteAddress,
   resolveTaskSiteName,
 } from '@/core/utils/task-role-ux'
+import { formatTaskDateTimeDisplay } from '@/core/utils/task-field-work-datetime'
 import { tasksApi } from '@/core/utils/tasks-api'
 import TaskSiteLocation from '@/components/task-role/TaskSiteLocation.vue'
+import TaskFieldWorkPanel from '@/components/task-role/TaskFieldWorkPanel.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
+const fieldWorkRef = ref<InstanceType<typeof TaskFieldWorkPanel> | null>(null)
 
 const projectId = computed(() => Number(route.params.projectId))
 const taskId = computed(() => String(route.params.taskId ?? ''))
 
 const task = ref<Task | null>(null)
+const projectName = ref('')
 const siteName = ref('')
 const siteAddress = ref('')
 const isLoading = ref(true)
@@ -141,15 +214,42 @@ const uid = computed(() => resolveSessionUserId(authStore.currentUser))
 
 const readOnly = computed(() => {
   if (!task.value || uid.value == null) return true
-  return isFieldTaskReadOnly(task.value, uid.value)
+  return isFieldTaskReadOnly(
+    task.value,
+    uid.value,
+    authStore.currentUser?.role_code,
+    authStore.currentUser?.role_id,
+  )
 })
+
+const readOnlyHint = computed(() => fieldTaskReadOnlyHint(authStore.currentUser?.role_code))
 
 const canEditProgress = computed(() => {
   if (!task.value || uid.value == null) return false
-  return canEditTaskProgress(task.value, uid.value)
+  return canEditTaskProgress(
+    task.value,
+    uid.value,
+    authStore.currentUser?.role_code,
+    authStore.currentUser?.role_id,
+  )
 })
 
+const showFieldWorkPanel = computed(() => canEditProgress.value)
+
 const canSubmitWork = computed(() => canEditProgress.value)
+
+const isWorkLocked = computed(() => Boolean(fieldSubmittedAt.value))
+
+const canSubmitNow = computed(() => {
+  if (task.value?.field_work_started_at && task.value?.field_work_ended_at) return true
+  return fieldWorkRef.value?.hasRequiredWorkTimes?.() ?? false
+})
+
+const submitButtonLabel = computed(() => {
+  if (fieldSubmittedAt.value) return 'Already submitted'
+  if (isSubmitting.value) return 'Submitting…'
+  return 'Submit work for review'
+})
 
 const progressValue = computed(() => {
   const n = task.value?.progress_pct
@@ -160,12 +260,50 @@ const statusLabel = computed(() => formatBackendTaskStatus(String(task.value?.st
 
 const fieldSubmittedAt = computed(() => task.value?.field_submitted_at ?? null)
 
+const hasFieldWorkRecord = computed(() => {
+  const t = task.value
+  if (!t) return false
+  return Boolean(
+    t.field_work_started_at ||
+      t.field_work_ended_at ||
+      t.field_work_start_reason?.trim() ||
+      t.field_work_end_reason?.trim() ||
+      t.field_notes?.trim(),
+  )
+})
+
+const roleOnTaskLabel = computed(() => {
+  if (!task.value || uid.value == null) return '—'
+  if (isUserTaskLead(task.value, uid.value)) return 'Task lead (foreman)'
+  if (
+    isTaskRoleForeman(authStore.currentUser?.role_code, authStore.currentUser?.role_id) &&
+    isUserInvolvedInTask(task.value, uid.value)
+  ) {
+    return 'Foreman'
+  }
+  if (isTaskRoleContractor(authStore.currentUser?.role_code) && isUserInvolvedInTask(task.value, uid.value)) {
+    return 'Contractor'
+  }
+  if (isTaskRoleWorker(authStore.currentUser?.role_code) && isUserInvolvedInTask(task.value, uid.value)) {
+    return 'Worker'
+  }
+  if (isUserInvolvedInTask(task.value, uid.value)) return 'Team member'
+  if (isTaskRoleForeman(authStore.currentUser?.role_code, authStore.currentUser?.role_id)) {
+    return 'Foreman (viewing project task)'
+  }
+  return '—'
+})
+
 const dateRange = computed(() => {
   const t = task.value
   if (!t?.start_planned && !t?.end_planned) return ''
   const fmt = (d: string) => {
     try {
-      return new Date(d + 'T12:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+      return new Date(d + 'T12:00:00').toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
     } catch {
       return d
     }
@@ -174,12 +312,20 @@ const dateRange = computed(() => {
   return t.start_planned ? fmt(t.start_planned) : t.end_planned ? fmt(t.end_planned) : ''
 })
 
-function formatSubmittedAt(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString()
-  } catch {
-    return iso
-  }
+const plannedTimeRange = computed(() => {
+  const t = task.value
+  if (!t?.start_time && !t?.end_time) return ''
+  const fmt = (time: string) => time.slice(0, 5)
+  if (t.start_time && t.end_time) return `${fmt(t.start_time)} – ${fmt(t.end_time)}`
+  return t.start_time ? `From ${fmt(t.start_time)}` : t.end_time ? `Until ${fmt(t.end_time)}` : ''
+})
+
+function formatDateTime(iso: string): string {
+  return formatTaskDateTimeDisplay(iso)
+}
+
+function onFieldWorkUpdated(updated: Task): void {
+  task.value = updated
 }
 
 async function loadTask(): Promise<void> {
@@ -194,6 +340,7 @@ async function loadTask(): Promise<void> {
       tasksApi.getById(pid, tid),
       projectApi.getById(pid).catch(() => null),
     ])
+    projectName.value = project?.prj_name ?? 'Project'
     siteName.value = resolveTaskSiteName(project)
     siteAddress.value = resolveTaskSiteAddress(loaded, project)
     const foreman = isTaskRoleForeman(authStore.currentUser?.role_code, authStore.currentUser?.role_id)
@@ -235,16 +382,22 @@ async function submitWork(): Promise<void> {
   const pid = projectId.value
   const tid = taskId.value
   if (!task.value || !canSubmitWork.value) return
+  if (!canSubmitNow.value) {
+    submitError.value = true
+    submitMessage.value = 'Start and end work times are required.'
+    return
+  }
   isSubmitting.value = true
   submitMessage.value = ''
   submitError.value = false
+  const notes = fieldWorkRef.value?.getFieldNotes?.()
   try {
-    const updated = await tasksApi.submitTask(pid, tid)
+    const updated = await tasksApi.submitTask(pid, tid, notes ? { field_notes: notes } : undefined)
     task.value = updated
     submitMessage.value = 'Work submitted. Waiting for PM review.'
   } catch {
     submitError.value = true
-    submitMessage.value = 'Could not submit work. Try again.'
+    submitMessage.value = 'Could not submit work. Record start/end times and try again.'
   } finally {
     isSubmitting.value = false
   }

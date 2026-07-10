@@ -187,8 +187,7 @@ function transformTaskFromApiRow(task: Record<string, unknown>): Task {
     asPositiveUserId(task.assigned_user_id) ??
     (leadObj ? asPositiveUserId(leadObj.user_id) ?? asPositiveUserId(leadObj.userId) : null)
 
-  const task_lead_id =
-    explicitLead ?? (legacyAssigneeOrder.length > 0 ? legacyAssigneeOrder[0] : null) ?? (allParticipantIds[0] ?? null)
+  const task_lead_id = explicitLead ?? undefined
 
   const teamFromField = coerceParticipantIds(task.team_members)
   let team_members: number[]
@@ -267,6 +266,15 @@ function transformTaskFromApiRow(task: Record<string, unknown>): Task {
       task.field_submitted_by != null && Number(task.field_submitted_by) > 0
         ? Number(task.field_submitted_by)
         : null,
+    field_work_started_at:
+      task.field_work_started_at != null ? String(task.field_work_started_at) : null,
+    field_work_ended_at:
+      task.field_work_ended_at != null ? String(task.field_work_ended_at) : null,
+    field_notes: task.field_notes != null ? String(task.field_notes) : null,
+    field_work_start_reason:
+      task.field_work_start_reason != null ? String(task.field_work_start_reason) : null,
+    field_work_end_reason:
+      task.field_work_end_reason != null ? String(task.field_work_end_reason) : null,
   }
 }
 
@@ -820,6 +828,27 @@ export const tasksApi = {
     }
   },
 
+  async updateFieldWork(
+    projectId: number,
+    taskId: string,
+    payload: {
+      field_work_started_at?: string | null
+      field_work_ended_at?: string | null
+      field_work_start_reason?: string | null
+      field_work_end_reason?: string | null
+      field_notes?: string | null
+      progress_pct?: number
+    },
+  ): Promise<Task> {
+    try {
+      const response = await api.put(`/api/v1/projects/${projectId}/tasks/${taskId}`, payload)
+      return parseTaskFromApiEnvelope(response.data)
+    } catch (error) {
+      console.error('Error updating field work:', error)
+      throw error
+    }
+  },
+
   // Update task status (PM only — use full update from project UI)
   async updateStatus(projectId: number, taskId: string, status: string): Promise<Task> {
     try {
@@ -837,7 +866,7 @@ export const tasksApi = {
   async submitTask(
     projectId: number,
     taskId: string,
-    payload?: { notes?: string },
+    payload?: { field_notes?: string },
   ): Promise<Task> {
     try {
       const response = await api.post(

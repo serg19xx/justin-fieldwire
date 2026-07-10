@@ -24,6 +24,15 @@ export interface FileUpload {
   schedule_entry_id?: number
   /** Real document id from `GET .../schedule-entries/:scheduleEntryId/documents`. */
   schedule_document_id?: number
+  /**
+   * Task field work photos mirrored under Execution Logs in the plan tree.
+   * Load via `GET .../tasks/:taskId/field-photos/:photoId/download`.
+   */
+  field_work_photo_id?: number
+  task_id?: number
+  project_id?: number
+  slot?: 'before' | 'after'
+  work_date?: string
 }
 
 export interface Folder {
@@ -374,6 +383,17 @@ export function isFileUnderScheduleSlotDocumentsPlanBranch(allFolders: Folder[],
   return isFolderUnderScheduleSlotDocumentsPlanBranch(allFolders, file.folder_id)
 }
 
+/** Synthetic negative plan-tree file ids for task field photos (see PlanController). */
+export const TASK_FIELD_PHOTO_PLAN_FILE_ID_OFFSET = 1_000_000_000
+
+export function isTaskFieldPhotoPlanFile(file: FileUpload): boolean {
+  return file.category === 'task_field_photo' || file.id <= -TASK_FIELD_PHOTO_PLAN_FILE_ID_OFFSET
+}
+
+export function isFileUnderTaskFieldPhotosPlanBranch(file: FileUpload): boolean {
+  return isTaskFieldPhotoPlanFile(file)
+}
+
 /**
  * Folder row is locked for structural ops (rename / delete / move / copy folder) when the folder is
  * under the schedule mirror branch or is a predefined plan folder (`edited !== 1`).
@@ -385,17 +405,20 @@ export function isFolderReadOnlyInPlanUi(folder: Folder, allFolders: Folder[]): 
   )
 }
 
-/** File mutations blocked only under the Schedule slot documents mirror branch (not by parent `edited`). */
+/** File mutations blocked under virtual plan-tree branches (schedule mirror or task field photos). */
 export function isFileReadOnlyInPlanUi(file: FileUpload, allFolders: Folder[]): boolean {
-  return isFileUnderScheduleSlotDocumentsPlanBranch(allFolders, file)
+  return (
+    isFileUnderScheduleSlotDocumentsPlanBranch(allFolders, file) ||
+    isFileUnderTaskFieldPhotosPlanBranch(file)
+  )
 }
 
 /**
- * Blocks adding content (upload, paste, create subfolder) only under the schedule mirror branch.
+ * Blocks adding content (upload, paste, create subfolder) under virtual plan-tree mirror branches.
  * Predefined Home folders (`edited !== 1`) still accept uploads and paste.
  */
 export function isPlanFolderInboundContentBlocked(folder: Folder, allFolders: Folder[]): boolean {
-  return isFolderUnderScheduleSlotDocumentsPlanBranch(allFolders, folder.id)
+  return isFolderUnderScheduleSlotDocumentsPlanBranch(allFolders, folder.id) || folder.id < 0
 }
 
 // Utility function to format file size

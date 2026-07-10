@@ -214,6 +214,10 @@ export function isTaskRoleWorker(roleCode?: string | null): boolean {
   return WORKER_ROLE_CODES.includes((roleCode || '').toLowerCase() as (typeof WORKER_ROLE_CODES)[number])
 }
 
+export function isTaskRoleContractor(roleCode?: string | null): boolean {
+  return (roleCode || '').toLowerCase() === 'contractor'
+}
+
 export function isUserTaskLead(task: Task, userId: number | string | null | undefined): boolean {
   const uid = typeof userId === 'number' && Number.isFinite(userId) ? userId : Number(userId)
   if (!Number.isFinite(uid) || uid <= 0) return false
@@ -221,23 +225,68 @@ export function isUserTaskLead(task: Task, userId: number | string | null | unde
 }
 
 /**
- * Task lead on this task may update field progress (global foreman role alone is not enough).
+ * Assigned foreman or worker (global role) may update field progress and work report on site.
+ * Contractors remain read-only even when assigned to the task.
+ */
+export function canActAsFieldCrewOnTask(
+  task: Task,
+  userId: number | string | null | undefined,
+  roleCode?: string | null,
+  roleId?: number | null,
+): boolean {
+  if (isTaskRoleContractor(roleCode)) return false
+  const uid = typeof userId === 'number' && Number.isFinite(userId) ? userId : Number(userId)
+  if (!Number.isFinite(uid) || uid <= 0) return false
+  if (!isUserInvolvedInTask(task, uid)) return false
+  if (isTaskRoleForeman(roleCode, roleId)) return true
+  return (roleCode || '').toLowerCase() === 'worker'
+}
+
+/**
+ * Task lead, or assigned foreman/worker, may update field progress and work report.
+ */
+export function canEditTaskFieldWork(
+  task: Task,
+  userId: number | string | null | undefined,
+  roleCode?: string | null,
+  roleId?: number | null,
+): boolean {
+  if (isUserTaskLead(task, userId)) return true
+  return canActAsFieldCrewOnTask(task, userId, roleCode, roleId)
+}
+
+/**
+ * @deprecated Prefer {@link canEditTaskFieldWork} — same rules for progress slider and field work.
  */
 export function canEditTaskProgress(
   task: Task,
   userId: number | string | null | undefined,
+  roleCode?: string | null,
+  roleId?: number | null,
 ): boolean {
-  return isUserTaskLead(task, userId)
+  return canEditTaskFieldWork(task, userId, roleCode, roleId)
 }
 
 /**
- * Workers and contractors assigned as members are read-only for task field data.
+ * Assigned users without field-work edit rights (e.g. contractors) see read-only task field data.
  */
-export function isFieldTaskReadOnly(task: Task, userId: number | string | null | undefined): boolean {
+export function isFieldTaskReadOnly(
+  task: Task,
+  userId: number | string | null | undefined,
+  roleCode?: string | null,
+  roleId?: number | null,
+): boolean {
   const uid = typeof userId === 'number' && Number.isFinite(userId) ? userId : Number(userId)
   if (!Number.isFinite(uid) || uid <= 0) return true
-  if (isUserTaskLead(task, uid)) return false
+  if (canEditTaskFieldWork(task, uid, roleCode, roleId)) return false
   return isUserInvolvedInTask(task, uid)
+}
+
+export function fieldTaskReadOnlyHint(roleCode?: string | null): string {
+  if (isTaskRoleContractor(roleCode)) {
+    return 'View only — contractors can follow progress; site updates are recorded by foreman or crew.'
+  }
+  return 'View only — field updates are done by your foreman or an assigned crew member.'
 }
 
 export function formatBackendTaskStatus(status: string | undefined | null): string {
