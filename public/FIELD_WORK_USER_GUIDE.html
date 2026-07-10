@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldWire — Field work on site (foreman &amp; PM)</title>
+  <style>
+    :root { --text:#1a1a1a; --muted:#555; --border:#ccc; --bg-alt:#f7f7f7; --accent:#2563eb; }
+    * { box-sizing:border-box; }
+    body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.55; color:var(--text); max-width:50rem; margin:0 auto; padding:1.25rem 1rem 3rem; font-size:15px; }
+    .howto-open { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.5rem; font-size:14px; }
+    .howto-open strong { color:var(--accent); }
+    .howto-open code { font-size:12px; word-break:break-all; background:#fff; padding:0.1rem 0.35rem; border-radius:4px; border:1px solid #bfdbfe; }
+    h1 { font-size:1.55rem; margin:0 0 0.5rem; line-height:1.25; }
+    h2 { font-size:1.15rem; margin:1.75rem 0 0.75rem; padding-bottom:0.25rem; border-bottom:2px solid var(--border); }
+    h3 { font-size:1rem; margin:1rem 0 0.5rem; }
+    p { margin:0.5rem 0; }
+    ul,ol { margin:0.5rem 0; padding-left:1.35rem; }
+    li { margin:0.3rem 0; }
+    hr { border:none; border-top:1px solid var(--border); margin:1.5rem 0; }
+    table { width:100%; border-collapse:collapse; margin:0.75rem 0 1rem; font-size:13px; }
+    th,td { border:1px solid var(--border); padding:0.5rem 0.6rem; text-align:left; vertical-align:top; }
+    th { background:var(--bg-alt); font-weight:600; }
+    tr:nth-child(even) td { background:#fafafa; }
+    code { font-size:0.9em; background:#f3f4f6; padding:0.1rem 0.3rem; border-radius:3px; }
+    pre { background:#f8fafc; border:1px solid var(--border); border-radius:6px; padding:0.75rem 1rem; font-size:13px; overflow-x:auto; }
+    a { color:var(--accent); }
+    @media print { body { max-width:none; padding:0; font-size:11pt; } }
+  </style>
+</head>
+<body>
+  <div class="howto-open">
+    <strong>How to open:</strong> this page is available at
+    <code id="self-url">…</code>
+    (no login required).
+    <br /><br />
+    <strong>PDF:</strong> Print (Ctrl/Cmd+P) → Save as PDF.
+  </div>
+  <script>
+    (function(){ try { var el=document.getElementById('self-url'); if(el&&window.location&&window.location.origin) el.textContent=window.location.origin+'/FIELD_WORK_USER_GUIDE.html'; } catch(e){} })();
+  </script>
+
+  <h1>Field work on site — foreman, crew, and PM visibility</h1>
+  <p><strong>Audience:</strong> Product owner, project managers, foremen, and QA.</p>
+  <p><strong>Version:</strong> 1.0</p>
+  <p><strong>Site:</strong> <a href="https://fieldwire.medicalcontractor.ca">fieldwire.medicalcontractor.ca</a></p>
+
+  <hr />
+
+  <h2>What this feature is</h2>
+  <p>When work happens on site, the <strong>foreman or assigned crew</strong> records what actually happened on a <strong>task</strong>: start/end times, progress, notes, and before/after photos. They then <strong>submit</strong> that package for <strong>PM review</strong>.</p>
+  <p>This does <strong>not</strong> change the official PM task status (<code>planned</code>, <code>in_progress</code>, <code>done</code>, etc.). Only the <strong>project manager</strong> changes official status in the PM web app.</p>
+
+  <hr />
+
+  <h2>Who can record field work</h2>
+  <table>
+    <thead><tr><th>Role</th><th>Assigned to task</th><th>Can record field work</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Task lead (foreman on task)</strong></td><td>Yes, as foreman/brigadier</td><td>Yes — full field work panel</td></tr>
+      <tr><td><strong>Global foreman</strong></td><td>Yes, as team member</td><td>Yes</td></tr>
+      <tr><td><strong>Worker</strong></td><td>Yes, as team member</td><td>Yes — same as foreman when assigned (e.g. foreman off site)</td></tr>
+      <tr><td><strong>Contractor</strong></td><td>Yes</td><td><strong>View only</strong> (pending final client decision)</td></tr>
+      <tr><td><strong>Project manager / admin</strong></td><td>Any</td><td>Full task edit in PM UI (not the mobile field panel)</td></tr>
+    </tbody>
+  </table>
+  <p>When a <strong>worker</strong> submits work instead of the task lead, the system stores <strong>who actually submitted</strong> and links the event to the <strong>task lead</strong> for audit (<code>submitted_on_behalf_of_lead</code> in the event log).</p>
+
+  <hr />
+
+  <h2>Where the foreman / crew works (mobile Tasks UI)</h2>
+  <p><strong>Path:</strong> Log in → <strong>Tasks</strong> → open project → open a task.</p>
+
+  <h3>1. Progress</h3>
+  <ul>
+    <li>Slider <strong>0–100%</strong> while work is editable.</li>
+    <li>Locked after <strong>Submit work for review</strong>.</li>
+  </ul>
+
+  <h3>2. Work times (required before submit)</h3>
+  <ul>
+    <li><strong>Start work</strong> — date/time dialog; optional <strong>reason</strong> if different from planned start.</li>
+    <li><strong>End work</strong> — same pattern for end time.</li>
+    <li>Times are stored as entered (wall-clock, no timezone shift).</li>
+  </ul>
+
+  <h3>3. Site photos (optional)</h3>
+  <ul>
+    <li><strong>Before work</strong> and <strong>After work</strong> sections.</li>
+    <li>Up to <strong>15 photos</strong> per section; images are compressed on the device and saved on the <strong>server</strong>.</li>
+    <li><code>work_date</code> for filing = date of <code>field_work_started_at</code>, or <strong>today</strong> if start not set yet.</li>
+  </ul>
+
+  <h3>4. Foreman notes</h3>
+  <ul>
+    <li>Free-text <strong>site report</strong> for the PM (materials, access issues, handoff).</li>
+    <li>Separate from start/end <strong>reason</strong> fields.</li>
+  </ul>
+
+  <h3>5. Submit work for review</h3>
+  <ul>
+    <li>Requires <strong>start</strong> and <strong>end</strong> times.</li>
+    <li>Sets <code>field_submitted_at</code> / <code>field_submitted_by</code>.</li>
+    <li>PM sees <strong>“Submitted for PM review”</strong> on the task; official status unchanged.</li>
+  </ul>
+  <p><strong>Official status</strong> on the same screen is <strong>read-only</strong> for field roles: <em>“Only the project manager can change task status.”</em></p>
+
+  <hr />
+
+  <h2>Where the PM sees field work</h2>
+
+  <h3>A. Task detail (PM web — Tasks / Gantt)</h3>
+  <p>The PM sees field data on the task when opened in the project:</p>
+  <ul>
+    <li>Progress %</li>
+    <li>Field work started / ended (and reasons if any)</li>
+    <li>Field notes</li>
+    <li>Submission timestamp</li>
+  </ul>
+
+  <h3>B. Plans → Execution Logs (file manager)</h3>
+  <p>Field photos appear under the project’s <strong>Execution Logs</strong> folder. Structure:</p>
+  <pre>Execution Logs
+  └─ {planned dates} · {task name}     e.g. "25 Jun – 29 Jun · Framing"
+       └─ {work day}                   e.g. "10 Jul, Fri"
+            → Right panel: two groups
+                 Before work   [photos…]
+                 After work    [photos…]</pre>
+  <ul>
+    <li>Task folder name includes a <strong>short planned date range</strong> + task name.</li>
+    <li>Work-day folders use a <strong>short date + weekday</strong> label.</li>
+    <li>Photos are <strong>read-only</strong> in Plans (download/preview OK).</li>
+  </ul>
+
+  <h3>C. Event log (backend)</h3>
+  <p>Submitting field work writes a <strong>TASK_FOREMAN_SUBMITTED</strong> (or crew variant) event with task id, submission time, submitter, and task lead id when applicable.</p>
+
+  <hr />
+
+  <h2>End-to-end flow (typical day)</h2>
+  <ol>
+    <li><strong>PM</strong> creates task, sets planned dates, assigns <strong>foreman (task lead)</strong> and <strong>crew</strong>.</li>
+    <li><strong>Foreman</strong> opens task on phone → <strong>Start work</strong> → <strong>before</strong> photos → <strong>progress</strong> → <strong>End work</strong> → <strong>after</strong> photos → <strong>notes</strong> → <strong>Submit work for review</strong>.</li>
+    <li><strong>PM</strong> opens <strong>Plans → Execution Logs</strong> to review photos; checks progress and notes on the task; updates <strong>official status</strong> when appropriate.</li>
+  </ol>
+  <p>If the foreman is not on site, an assigned <strong>worker</strong> can perform steps 2–3; submission is attributed to that user with task lead on record.</p>
+
+  <hr />
+
+  <h2>What contractors see today</h2>
+  <p>Contractors assigned to a task see task details and progress <strong>read-only</strong>:</p>
+  <ul>
+    <li>Role label: <strong>Contractor</strong></li>
+    <li>Message: site updates are recorded by foreman or crew.</li>
+    <li>No field work panel until product owner confirms otherwise.</li>
+  </ul>
+
+  <hr />
+
+  <h2>Related guides</h2>
+  <ul>
+    <li><a href="/CLIENT_TEAM_ASSIGNMENTS_TESTING_GUIDE.html">Task assignments and roles</a></li>
+    <li><a href="/USER_TESTING_MANUAL_SCHEDULE_AND_PHOTOS.html">Schedule and photos testing manual</a> (schedule slot documents — separate from Execution Logs field photos)</li>
+  </ul>
+</body>
+</html>

@@ -394,6 +394,46 @@ export function isFileUnderTaskFieldPhotosPlanBranch(file: FileUpload): boolean 
   return isTaskFieldPhotoPlanFile(file)
 }
 
+export interface TaskFieldPhotoSlotGroup {
+  id: 'before' | 'after'
+  label: string
+  files: FileUpload[]
+}
+
+/** Work-day folder shows all field photos flat; UI groups by slot metadata. */
+export function isTaskFieldPhotoWorkDayFolderContent(
+  files: FileUpload[],
+  subfolders: Folder[],
+): boolean {
+  if (subfolders.length > 0) return false
+  if (files.length === 0) return false
+  return files.every((f) => isTaskFieldPhotoPlanFile(f))
+}
+
+export function groupTaskFieldPhotosBySlot(files: FileUpload[]): TaskFieldPhotoSlotGroup[] {
+  const before: FileUpload[] = []
+  const after: FileUpload[] = []
+  for (const file of files) {
+    if (file.slot === 'after') {
+      after.push(file)
+    } else {
+      before.push(file)
+    }
+  }
+  const sortByUploaded = (list: FileUpload[]) =>
+    [...list].sort((a, b) => {
+      const ta = Date.parse(a.uploaded_at) || 0
+      const tb = Date.parse(b.uploaded_at) || 0
+      if (ta !== tb) return ta - tb
+      return a.id - b.id
+    })
+
+  return [
+    { id: 'before', label: 'Before work', files: sortByUploaded(before) },
+    { id: 'after', label: 'After work', files: sortByUploaded(after) },
+  ]
+}
+
 /**
  * Folder row is locked for structural ops (rename / delete / move / copy folder) when the folder is
  * under the schedule mirror branch or is a predefined plan folder (`edited !== 1`).

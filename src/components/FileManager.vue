@@ -26,7 +26,59 @@
         <!-- Content Area -->
         <div class="flex-1 overflow-y-auto overflow-x-auto p-3">
           <!-- Icons View -->
-          <div v-if="props.viewMode === 'icons'" class="flex flex-wrap gap-3">
+          <div v-if="props.viewMode === 'icons'">
+            <div v-if="isTaskFieldPhotoWorkDayView" class="space-y-6">
+              <section v-for="group in taskFieldPhotoGroups" :key="group.id">
+                <h3 class="text-sm font-semibold text-gray-800 mb-3">{{ group.label }}</h3>
+                <p v-if="group.files.length === 0" class="text-xs text-gray-500 italic mb-2">No photos</p>
+                <div v-else class="flex flex-wrap gap-3">
+                  <div
+                    v-for="file in group.files"
+                    :key="file.id"
+                    @click="handleFileClick(file)"
+                    @dblclick="openFile(file)"
+                    @contextmenu.prevent="showFileContextMenu($event, file)"
+                    :class="[
+                      'bg-white rounded-lg shadow-sm border p-3 hover:shadow-md transition-shadow cursor-pointer group h-24 w-24',
+                      selectedItems.some((item) => item.id === file.id && item.type === 'file')
+                        ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                        : 'border-gray-200',
+                    ]"
+                  >
+                    <div class="flex flex-col items-center text-center h-full">
+                      <div class="relative mb-2 flex-shrink-0">
+                        <div class="text-3xl">
+                          {{ getFileIcon(file.mime_type, file.file_name).icon }}
+                        </div>
+                        <div
+                          class="absolute -bottom-1 -right-1 text-xs font-bold px-1 py-0.5 rounded shadow-sm"
+                          :class="[
+                            getFileIcon(file.mime_type, file.file_name).label === 'CSV'
+                              ? 'bg-emerald-500 text-white'
+                              : getFileIcon(file.mime_type, file.file_name)
+                                  .color.replace('text-', 'bg-')
+                                  .replace('-600', '-500') + ' text-white',
+                          ]"
+                        >
+                          {{ getFileIcon(file.mime_type, file.file_name).label }}
+                        </div>
+                      </div>
+                      <h3
+                        class="text-xs font-medium text-gray-900 truncate w-full flex-shrink-0"
+                        :title="file.original_name || file.file_name"
+                      >
+                        {{ file.original_name || file.file_name }}
+                      </h3>
+                      <p class="text-xs text-gray-500 mt-1 flex-shrink-0">
+                        {{ formatFileSize(file.file_size) }}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div v-else class="flex flex-wrap gap-3">
             <!-- Folders -->
             <div
               v-for="folder in currentFolders"
@@ -99,6 +151,7 @@
                 <p class="text-xs text-gray-500 mt-1 flex-shrink-0">
                   {{ formatFileSize(file.file_size) }}
                 </p>
+              </div>
               </div>
             </div>
           </div>
@@ -263,6 +316,120 @@
                 </div>
 
                 <!-- Files -->
+                <template v-if="isTaskFieldPhotoWorkDayView">
+                  <template v-for="group in taskFieldPhotoGroups" :key="`tfp-group-${group.id}`">
+                    <div
+                      style="
+                        display: flex;
+                        background-color: #f3f4f6;
+                        border-bottom: 1px solid #e5e7eb;
+                        width: 100%;
+                        padding: 10px 12px;
+                        font-weight: 600;
+                        color: #374151;
+                      "
+                    >
+                      {{ group.label }}
+                    </div>
+                    <div
+                      v-if="group.files.length === 0"
+                      style="padding: 12px; color: #6b7280; font-size: 13px; border-bottom: 1px solid #eee"
+                    >
+                      No photos
+                    </div>
+                    <div
+                      v-for="file in group.files"
+                      :key="`file-${file.id}`"
+                      @click="handleFileClick(file)"
+                      @dblclick="openFile(file)"
+                      @contextmenu.prevent="showFileContextMenu($event, file)"
+                      :class="
+                        selectedItems.some((item) => item.id === file.id && item.type === 'file')
+                          ? 'bg-blue-50'
+                          : 'hover:bg-gray-50'
+                      "
+                      style="
+                        display: flex;
+                        cursor: pointer;
+                        border-bottom: 1px solid #eee;
+                        width: 100%;
+                      "
+                    >
+                      <div style="flex: 1; padding: 8px; display: flex; align-items: center">
+                        <span style="margin-right: 12px; font-size: 18px">{{
+                          getFileIcon(file.mime_type, file.file_name).icon
+                        }}</span>
+                        <span
+                          style="
+                            font-weight: 500;
+                            color: #111827;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
+                            flex: 1;
+                          "
+                          :title="file.original_name || file.file_name"
+                          >{{ truncateFileName(file.original_name || file.file_name, 35) }}</span
+                        >
+                      </div>
+                      <div style="width: 100px; min-width: 100px; text-align: right; padding: 8px; color: #111827">
+                        {{ formatFileSize(file.file_size) }}
+                      </div>
+                      <div style="width: 120px; min-width: 120px; text-align: right; padding: 8px">
+                        <span
+                          class="text-xs font-bold px-2 py-1 rounded shadow-sm"
+                          :class="[
+                            getFileIcon(file.mime_type, file.file_name).label === 'CSV'
+                              ? 'bg-emerald-500 text-white'
+                              : getFileIcon(file.mime_type, file.file_name)
+                                  .color.replace('text-', 'bg-')
+                                  .replace('-600', '-500') + ' text-white',
+                          ]"
+                        >
+                          {{ getFileIcon(file.mime_type, file.file_name).label }}
+                        </span>
+                      </div>
+                      <div style="width: 180px; min-width: 180px; text-align: right; padding: 8px; color: #6b7280">
+                        {{ formatDate(file.updated_at) }}
+                      </div>
+                      <div style="width: 300px; min-width: 300px; padding: 8px; color: #6b7280">
+                        <span v-if="file.description" style="color: #6b7280">{{
+                          file.description.length <= 30
+                            ? file.description
+                            : file.description.substring(0, 30) + '...'
+                        }}</span>
+                      </div>
+                      <div style="width: 100px; min-width: 100px; text-align: right; padding: 8px">
+                        <button
+                          type="button"
+                          style="
+                            color: #2563eb;
+                            padding: 4px;
+                            border-radius: 4px;
+                            background: none;
+                            border: none;
+                            cursor: pointer;
+                          "
+                          :disabled="fileUiReadOnly(file)"
+                          class="disabled:opacity-40 disabled:cursor-not-allowed"
+                          title="Rename file"
+                          @click.stop="
+                            !fileUiReadOnly(file) &&
+                              startDescriptionEdit({
+                                id: file.id,
+                                type: 'file',
+                                name: file.file_name,
+                                description: file.description,
+                              })
+                          "
+                        >
+                          ✏️
+                        </button>
+                      </div>
+                    </div>
+                  </template>
+                </template>
+                <template v-else>
                 <div
                   v-for="file in currentFiles"
                   :key="`file-${file.id}`"
@@ -385,6 +552,7 @@
                     </button>
                   </div>
                 </div>
+                </template>
               </div>
             </div>
 
@@ -633,6 +801,8 @@ import {
   isFolderReadOnlyInPlanUi,
   isFolderUnderScheduleSlotDocumentsPlanBranch,
   isPlanFolderInboundContentBlocked,
+  groupTaskFieldPhotosBySlot,
+  isTaskFieldPhotoWorkDayFolderContent,
   isTaskFieldPhotoPlanFile,
 } from '@/core/utils/files-api'
 import { scheduleSlotDocumentsApi } from '@/core/utils/schedule-slot-documents-api'
@@ -841,6 +1011,15 @@ const currentFiles = computed(() => {
 
 const currentItems = computed(() => {
   return [...currentFolders.value, ...currentFiles.value]
+})
+
+const isTaskFieldPhotoWorkDayView = computed(() =>
+  isTaskFieldPhotoWorkDayFolderContent(currentFiles.value, currentFolders.value),
+)
+
+const taskFieldPhotoGroups = computed(() => {
+  if (!isTaskFieldPhotoWorkDayView.value) return []
+  return groupTaskFieldPhotosBySlot(currentFiles.value)
 })
 
 const PLAN_FOLDER_OPS_LOCK_MSG =
