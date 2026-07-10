@@ -415,6 +415,8 @@ async function loadProject(options?: { silent?: boolean }) {
         ? JSON.parse((apiResponse as unknown as { client2_data: string }).client2_data)
         : (apiResponse as { client2_data?: Record<string, unknown> | null }).client2_data,
       projectManager: apiResponse.prj_manager || undefined,
+      project_foreman_id: apiResponse.project_foreman_id ?? null,
+      project_foreman_name: apiResponse.project_foreman_name ?? null,
       description: apiResponse.description || '',
       createdAt: apiResponse.created_at,
       updatedAt: apiResponse.updated_at,
@@ -554,6 +556,9 @@ async function saveSettings() {
       client2_type: formData?.client2_type !== undefined ? formData.client2_type : null,
       client2_table: formData?.client2_table !== undefined ? formData.client2_table : null,
       client2_data: formData?.client2_data !== undefined ? formData.client2_data : null,
+      project_foreman_id:
+        formData?.project_foreman_id != null ? Number(formData.project_foreman_id) : null,
+      update_task_foreman_on_all_tasks: Boolean(formData?.update_task_foreman_on_all_tasks),
       date_start: project.value.startDate || null,
       date_end: project.value.endDate || null,
     }
@@ -634,6 +639,8 @@ async function saveSettings() {
         client2_name: (updatedProject as { client2_name?: string | null }).client2_name ?? null,
         client2_data: parseClientData((updatedProject as { client2_data?: unknown }).client2_data),
         projectManager: updatedProject.prj_manager || undefined,
+        project_foreman_id: updatedProject.project_foreman_id ?? null,
+        project_foreman_name: updatedProject.project_foreman_name ?? null,
         description: updatedProject.description || '',
         createdAt: updatedProject.created_at,
         updatedAt: updatedProject.updated_at,
@@ -716,10 +723,35 @@ async function saveSettings() {
       console.log('🔄 Updated project in dropdown list:', projects.value[projectIndex])
     }
 
+    if (updateData.update_task_foreman_on_all_tasks) {
+      const cal =
+        tasksSectionRef.value?.calendarRef?.value ?? tasksSectionRef.value?.calendarRef
+      if (cal && typeof cal.loadTasks === 'function') {
+        await cal.loadTasks()
+      }
+    }
+
     alert('Project settings saved successfully!')
   } catch (error: unknown) {
     console.error('❌ Error saving project:', error)
-    alert('Failed to save project settings. Please try again.')
+    const apiMessage =
+      error &&
+      typeof error === 'object' &&
+      'response' in error &&
+      error.response &&
+      typeof error.response === 'object' &&
+      'data' in error.response &&
+      error.response.data &&
+      typeof error.response.data === 'object' &&
+      'message' in error.response.data &&
+      typeof error.response.data.message === 'string'
+        ? error.response.data.message
+        : null
+    alert(
+      apiMessage
+        ? `Failed to save project settings: ${apiMessage}`
+        : 'Failed to save project settings. Please try again.',
+    )
   } finally {
     isSavingSettings.value = false
   }

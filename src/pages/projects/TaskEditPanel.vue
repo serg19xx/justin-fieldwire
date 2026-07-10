@@ -90,6 +90,12 @@
                     </option>
                   </select>
                   <p class="mt-1 text-xs text-gray-500">Select a foreman or brigadier responsible for this task</p>
+                  <p
+                    v-if="isForemanOverriddenOnTask"
+                    class="mt-1 text-xs font-medium text-amber-700"
+                  >
+                    Overridden — project foreman differs from this task lead
+                  </p>
                 </div>
               </div>
 
@@ -723,7 +729,7 @@
 import { ref, watch, computed, nextTick } from 'vue'
 import { isMilestone } from '@/core/types/task'
 import type { Task, TaskStatus, MilestoneType, TaskCreateUpdate } from '@/core/types/task'
-import type { ProjectTeamMember } from '@/core/utils/project-api'
+import type { Project, ProjectTeamMember } from '@/core/utils/project-api'
 import type { WorkerUser } from '@/core/utils/hr-api'
 import DependencyDialog from './DependencyDialog.vue'
 import ResourceSelectorDialog from './ResourceSelectorDialog.vue'
@@ -732,6 +738,10 @@ import { createDependency, getTaskDependencies } from '@/core/utils/dependencies
 import { useAuthStore } from '@/core/stores/auth'
 import { projectApi } from '@/core/utils/project-api'
 import { tasksApi } from '@/core/utils/tasks-api'
+import {
+  isTaskForemanOverridden,
+  resolveDefaultTaskForemanId,
+} from '@/core/utils/project-foreman'
 
 // Props
 interface Props {
@@ -741,6 +751,7 @@ interface Props {
   projectId: number
   availableTasks?: Task[]
   canManageProject?: boolean
+  projectInfo?: Project | null
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -749,6 +760,7 @@ const props = withDefaults(defineProps<Props>(), {
   task: null,
   availableTasks: () => [],
   canManageProject: true,
+  projectInfo: null,
 })
 
 // Emits
@@ -809,6 +821,22 @@ const authStore = useAuthStore()
 const isProjectManager = computed(() => {
   return authStore.currentUser?.role_code === 'project_manager'
 })
+
+const loadedProjectInfo = ref<Project | null>(null)
+const projectInfo = computed(() => props.projectInfo ?? loadedProjectInfo.value)
+
+const isForemanOverriddenOnTask = computed(() =>
+  isTaskForemanOverridden(projectInfo.value?.project_foreman_id, form.value.project_lead),
+)
+
+async function loadProjectInfoIfNeeded() {
+  if (props.projectInfo || !props.projectId) return
+  try {
+    loadedProjectInfo.value = await projectApi.getById(props.projectId)
+  } catch {
+    loadedProjectInfo.value = null
+  }
+}
 
 // Available data
 // Available data for dropdowns - loaded from API
@@ -1440,6 +1468,7 @@ watch(
   () => [props.isOpen, props.task, props.projectId],
   async ([isOpen]) => {
     if (isOpen) {
+      await loadProjectInfoIfNeeded()
       // Load available people when panel opens
       // Reset last load params to ensure fresh load
       lastLoadParams.value = null
@@ -1447,15 +1476,12 @@ watch(
     }
 
     if (isOpen && props.mode === 'create') {
-      // Reset form for create mode
-      // For PM creating milestone, automatically set project_lead to current user
-      // For regular tasks, PM can select project lead (foreman/brigadier)
-      const defaultProjectLead = null // Always start with null for tasks, PM can select
+      const defaultProjectLead = resolveDefaultTaskForemanId(projectInfo.value)
 
       form.value = {
         name: '',
         address: '',
-        start_planned: '',
+        start_planned: new Date().toISOString().split('T')[0],
         start_time: '08:00', // Default start time 08:00
         end_planned: '',
         end_time: '17:00', // Default end time 17:00
@@ -1471,6 +1497,7 @@ watch(
         team_members: [],
       }
       invitedPeople.value = []
+      await ensureProjectLeadInList(defaultProjectLead)
     } else if (isOpen && props.task) {
       // Initialize form with task data for edit mode
       // Convert time from HH:mm:ss to HH:mm for input field

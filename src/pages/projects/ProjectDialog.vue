@@ -167,6 +167,31 @@
             <!-- Manager ID is already set in form.prj_manager during initialization -->
           </div>
 
+          <!-- Project foreman (required) -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Project foreman / brigadier <span class="text-red-500">*</span>
+            </label>
+            <select
+              v-model="form.project_foreman_id"
+              :class="[
+                'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
+                validationErrors.project_foreman_id ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300'
+              ]"
+            >
+              <option value="">Select foreman</option>
+              <option v-for="foreman in availableForemen" :key="foreman.id" :value="String(foreman.id)">
+                {{ foreman.name }} ({{ foreman.email }})
+              </option>
+            </select>
+            <p v-if="validationErrors.project_foreman_id" class="mt-1 text-sm text-red-600">
+              {{ validationErrors.project_foreman_id }}
+            </p>
+            <p class="mt-1 text-xs text-gray-500">
+              Default foreman for all tasks in this project (can be overridden per task).
+            </p>
+          </div>
+
           <!-- Description -->
           <div class="mb-4">
             <label class="block text-sm font-medium text-gray-700 mb-2"> Description </label>
@@ -313,6 +338,7 @@ import {
   PROJECT_SYS_STATUS_OPTIONS,
   type ProjectSysStatus,
 } from '@/core/utils/project-sys-status'
+import { FOREMAN_ROLE_DB_ID } from '@/config/roles'
 
 const projectSysStatusOptions = PROJECT_SYS_STATUS_OPTIONS
 
@@ -351,6 +377,7 @@ const form = ref({
   client2_table: null as ClientTableType | null,
   client2_data: null as Record<string, unknown> | null,
   prj_manager: '',
+  project_foreman_id: '',
   description: '',
   area: null as number | null,
   level: null as string | null,
@@ -365,6 +392,7 @@ const selectedClient2 = ref<Client | null>(null)
 // State
 const isSubmitting = ref(false)
 const availableManagers = ref<Array<{ id: number; name: string; email: string }>>([])
+const availableForemen = ref<Array<{ id: number; name: string; email: string }>>([])
 const validationErrors = ref<Record<string, string>>({})
 
 // Client display name
@@ -458,6 +486,10 @@ function validateForm() {
     errors.client = 'Client is required'
   }
 
+  if (!form.value.project_foreman_id) {
+    errors.project_foreman_id = 'Project foreman is required'
+  }
+
   validationErrors.value = errors
   return Object.keys(errors).length === 0
 }
@@ -509,6 +541,7 @@ watch(
         client2_table: null,
         client2_data: null,
         prj_manager: shouldAutoAssign ? String(authStore.currentUser?.id || '') : '',
+        project_foreman_id: '',
         description: '',
         area: null,
         level: null,
@@ -707,6 +740,7 @@ async function handleSubmit() {
       client2_table: form.value.client2_table || null,
       client2_data: form.value.client2_data || null,
       prj_manager: form.value.prj_manager ? Number(form.value.prj_manager) : null,
+      project_foreman_id: form.value.project_foreman_id ? Number(form.value.project_foreman_id) : null,
       created_by: authStore.currentUser?.id || null,
       description: form.value.description || null,
       area: form.value.area ?? null,
@@ -753,9 +787,26 @@ async function handleSubmit() {
   }
 }
 
+async function loadForemen() {
+  try {
+    const response = await hrResourcesApi.getAllWorkerUsers(1, 100, {
+      role_id: FOREMAN_ROLE_DB_ID,
+    })
+    availableForemen.value = response.workers.map((worker: WorkerUser) => ({
+      id: worker.id,
+      name: `${worker.first_name} ${worker.last_name}`.trim() || worker.email,
+      email: worker.email,
+    }))
+  } catch (error) {
+    console.error('Failed to load foremen:', error)
+    availableForemen.value = []
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   loadManagers()
+  loadForemen()
 })
 
 defineOptions({

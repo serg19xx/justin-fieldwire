@@ -76,6 +76,12 @@
                 </option>
               </select>
               <p class="mt-1 text-xs text-gray-500">Select a foreman or brigadier responsible for this task</p>
+              <p
+                v-if="isForemanOverriddenOnTask"
+                class="mt-1 text-xs font-medium text-amber-700"
+              >
+                Overridden — project foreman differs from this task lead
+              </p>
             </div>
           </div>
 
@@ -460,6 +466,7 @@ import type { Task, TaskStatus, MilestoneType } from '@/core/types/task'
 import { isMilestone } from '@/core/types/task'
 import { validateTask, suggestProjectBoundsExtension, type ValidationResult } from '@/core/utils/task-validation'
 import { projectApi, type Project, type ProjectTeamMember } from '@/core/utils/project-api'
+import { isTaskForemanOverridden, resolveDefaultTaskForemanId } from '@/core/utils/project-foreman'
 import type { WorkerUser } from '@/core/utils/hr-api'
 import { useAuthStore } from '@/core/stores/auth'
 
@@ -556,6 +563,10 @@ const projectBoundsExtension = ref({ needsExtension: false, suggestedStart: '', 
 const loadedProjectInfo = ref<Project | null>(null)
 const projectInfo = computed(() => props.projectInfo ?? loadedProjectInfo.value)
 
+const isForemanOverriddenOnTask = computed(() =>
+  isTaskForemanOverridden(projectInfo.value?.project_foreman_id, form.value.project_lead),
+)
+
 // Initialize form when dialog opens
 watch(() => props.isOpen, async (isOpen) => {
   console.log('🔍 TaskDialog watch triggered:', {
@@ -575,7 +586,9 @@ watch(() => props.isOpen, async (isOpen) => {
       startDate
     })
 
-    // Reset form for create mode
+    // Initialize form for create mode
+    const defaultForemanId = resolveDefaultTaskForemanId(projectInfo.value)
+
     form.value = {
       name: '',
       address: '',
@@ -590,9 +603,7 @@ watch(() => props.isOpen, async (isOpen) => {
       notes: '',
       dependencies: [] as Array<{ taskId: string; type: string; lagDays: number }>,
       resources: [] as string[],
-      // For regular tasks, PM can select project lead (foreman/brigadier)
-      // Don't auto-set for regular tasks - let PM choose
-      project_lead: null as number | null,
+      project_lead: defaultForemanId,
       team_members: [] as number[],
     }
 
@@ -749,6 +760,36 @@ async function loadAvailablePeople() {
     console.error('❌ Error loading project team members:', error)
     // Fallback to all system users
     await loadAllSystemUsers()
+  }
+}
+
+async function ensureProjectLeadInList(leadId: number) {
+  if (availablePeople.value.some((p) => Number(p.id) === Number(leadId))) return
+
+  try {
+    const { hrResourcesApi } = await import('@/core/utils/hr-api')
+    const { getDisplayRole } = await import('@/core/utils/role-utils')
+    const response = await hrResourcesApi.getAllWorkerUsers(1, 1000, {
+      status: '1',
+      invitation_status: 'registered',
+    })
+    const worker = response.workers?.find((w) => Number(w.id) === Number(leadId))
+    if (worker) {
+      availablePeople.value.push({
+        id: leadId,
+        name: `${worker.first_name || ''} ${worker.last_name || ''}`.trim() || worker.email,
+        role: getDisplayRole({
+          role_name: worker.role_name,
+          role_code: worker.role_code,
+          role:
+            typeof worker.role === 'object' && worker.role
+              ? { name: worker.role.name || undefined, code: worker.role.code || undefined }
+              : undefined,
+        }),
+      })
+    }
+  } catch (error) {
+    console.warn('Failed to load default foreman for task dialog:', error)
   }
 }
 
@@ -935,6 +976,14 @@ watch(
       resetForm()
       await loadProjectInfo()
       await loadAvailablePeople()
+      const leadId = form.value.project_lead
+      if (
+        props.mode === 'create' &&
+        leadId != null &&
+        !availablePeople.value.some((p) => Number(p.id) === Number(leadId))
+      ) {
+        await ensureProjectLeadInList(leadId)
+      }
     } else {
       loadedProjectInfo.value = null
     }
@@ -1097,10 +1146,11 @@ function resetForm() {
     }
   } else {
     // Reset to default values for create mode
+    const defaultForemanId = resolveDefaultTaskForemanId(projectInfo.value)
     form.value = {
       name: '',
       address: '',
-      start_planned: new Date().toISOString().split('T')[0], // Today's date
+      start_planned: props.initialDate || new Date().toISOString().split('T')[0],
       start_time: '08:00', // Default start time 08:00
       end_planned: '',
       end_time: '17:00', // Default end time 17:00
@@ -1111,7 +1161,7 @@ function resetForm() {
       notes: '',
       dependencies: [],
       resources: [],
-      project_lead: null,
+      project_lead: defaultForemanId,
       team_members: [],
     }
   }

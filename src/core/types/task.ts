@@ -76,8 +76,10 @@ export interface Task {
   field_submitted_by?: number | null
   /** Foreman-recorded work start (site clock) */
   field_work_started_at?: string | null
+  field_work_started_by?: number | null
   /** Foreman-recorded work end (site clock) */
   field_work_ended_at?: string | null
+  field_work_ended_by?: number | null
   /** Foreman notes / additions (does not replace PM task description) */
   field_notes?: string | null
   field_work_start_reason?: string | null

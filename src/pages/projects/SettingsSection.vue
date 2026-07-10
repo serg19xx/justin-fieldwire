@@ -57,6 +57,35 @@
           </p>
         </div>
 
+        <!-- Project foreman -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Project foreman / brigadier <span class="text-red-500">*</span>
+          </label>
+          <select
+            v-model="settingsForm.project_foreman_id"
+            :disabled="!canEdit"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+          >
+            <option :value="null">Select foreman</option>
+            <option v-for="foreman in availableForemen" :key="foreman.id" :value="foreman.id">
+              {{ foreman.name }}
+            </option>
+          </select>
+          <p v-if="foremanValidationError" class="mt-1 text-sm text-red-600">{{ foremanValidationError }}</p>
+          <label
+            v-if="canEdit && showPropagateForemanCheckbox"
+            class="mt-3 flex items-start gap-2 text-sm text-gray-700 cursor-pointer"
+          >
+            <input
+              v-model="settingsForm.update_task_foreman_on_all_tasks"
+              type="checkbox"
+              class="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span>Update task foreman on all existing tasks</span>
+          </label>
+        </div>
+
         <!-- Client -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2"> Client <span class="text-red-500">*</span> </label>
@@ -284,6 +313,8 @@ import {
   resolveProjectSysStatus,
   type ProjectSysStatus,
 } from '@/core/utils/project-sys-status'
+import { hrResourcesApi, type WorkerUser } from '@/core/utils/hr-api'
+import { FOREMAN_ROLE_DB_ID } from '@/config/roles'
 
 defineOptions({
   name: 'SettingsSection',
@@ -314,6 +345,7 @@ interface ProjectData {
   client2_table?: string | null
   client2_data?: Record<string, unknown> | null
   client2_name?: string | null
+  project_foreman_id?: number | null
 }
 
 interface Props {
@@ -338,6 +370,15 @@ const selectedClient = ref<Client | null>(null)
 const showClient2Selector = ref(false)
 const selectedClient2 = ref<Client | null>(null)
 const clientValidationError = ref('')
+const foremanValidationError = ref('')
+const availableForemen = ref<Array<{ id: number; name: string }>>([])
+const initialProjectForemanId = ref<number | null>(null)
+
+const showPropagateForemanCheckbox = computed(() => {
+  const current = settingsForm.project_foreman_id
+  const initial = initialProjectForemanId.value
+  return current != null && initial != null && Number(current) !== Number(initial)
+})
 
 // Settings form
 const settingsForm = reactive({
@@ -360,6 +401,8 @@ const settingsForm = reactive({
   client2_table: null as ClientTableType | null,
   client2_data: null as Record<string, unknown> | null,
   client2_name: null as string | null,
+  project_foreman_id: null as number | null,
+  update_task_foreman_on_all_tasks: false,
 })
 
 // Client display name
@@ -427,7 +470,12 @@ function initializeForm() {
     settingsForm.client2_table = (project.client2_table as ClientTableType | null) ?? null
     settingsForm.client2_data = project.client2_data ?? null
     settingsForm.client2_name = (project as any).client2_name ?? null
+    settingsForm.project_foreman_id =
+      (project as { project_foreman_id?: number | null }).project_foreman_id ?? null
+    initialProjectForemanId.value = settingsForm.project_foreman_id
+    settingsForm.update_task_foreman_on_all_tasks = false
     clientValidationError.value = ''
+    foremanValidationError.value = ''
 
     const validClientTables: ClientTableType[] = ['pharma', 'physician', 'pharmacist', 'medical_clinic']
     if (project.client_id && project.client_table && validClientTables.includes(project.client_table as ClientTableType)) {
@@ -457,6 +505,7 @@ watch(
 // Initialize form on mount
 onMounted(() => {
   initializeForm()
+  loadForemen()
 })
 
 // Methods
@@ -562,6 +611,20 @@ function handleClient2Clear() {
   clearClient2()
 }
 
+async function loadForemen() {
+  try {
+    const response = await hrResourcesApi.getAllWorkerUsers(1, 100, {
+      role_id: FOREMAN_ROLE_DB_ID,
+    })
+    availableForemen.value = response.workers.map((worker: WorkerUser) => ({
+      id: worker.id,
+      name: `${worker.first_name} ${worker.last_name}`.trim() || worker.email,
+    }))
+  } catch {
+    availableForemen.value = []
+  }
+}
+
 const handleSubmit = () => {
   if (isSaving.value) {
     return // Prevent double submission
@@ -573,6 +636,12 @@ const handleSubmit = () => {
     return
   }
   clientValidationError.value = ''
+
+  if (!settingsForm.project_foreman_id) {
+    foremanValidationError.value = 'Project foreman is required'
+    return
+  }
+  foremanValidationError.value = ''
 
   isSaving.value = true
   emit('saveSettings')

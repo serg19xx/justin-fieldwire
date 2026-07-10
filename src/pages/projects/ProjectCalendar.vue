@@ -4126,6 +4126,7 @@ defineExpose({
         :mode="taskEditPanel.mode"
         :task="taskEditPanel.task"
         :project-id="projectId"
+        :project-info="projectInfo"
         :available-tasks="tasks"
         :can-manage-project="canEdit"
         @close="closeTaskEditPanel"

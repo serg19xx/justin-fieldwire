@@ -67,6 +67,8 @@ export interface Project {
   client2_data?: Record<string, unknown> | null
   client2_name?: string | null // Secondary client name from server
   prj_manager?: number
+  project_foreman_id?: number | null
+  project_foreman_name?: string | null
   manager_name?: string
   created_by?: number
   created_by_name?: string

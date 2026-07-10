@@ -268,8 +268,16 @@ function transformTaskFromApiRow(task: Record<string, unknown>): Task {
         : null,
     field_work_started_at:
       task.field_work_started_at != null ? String(task.field_work_started_at) : null,
+    field_work_started_by:
+      task.field_work_started_by != null && Number(task.field_work_started_by) > 0
+        ? Number(task.field_work_started_by)
+        : null,
     field_work_ended_at:
       task.field_work_ended_at != null ? String(task.field_work_ended_at) : null,
+    field_work_ended_by:
+      task.field_work_ended_by != null && Number(task.field_work_ended_by) > 0
+        ? Number(task.field_work_ended_by)
+        : null,
     field_notes: task.field_notes != null ? String(task.field_notes) : null,
     field_work_start_reason:
       task.field_work_start_reason != null ? String(task.field_work_start_reason) : null,
