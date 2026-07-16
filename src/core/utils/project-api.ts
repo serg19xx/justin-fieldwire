@@ -37,6 +37,17 @@ export type ClientTableType = 'pharma' | 'physician' | 'pharmacist' | 'medical_c
 /** Project level enum (DB: level) */
 export type ProjectLevel = 'Basics' | 'Full Service' | 'Medical Nice' | 'High End' | 'Extravagant'
 
+/** Non-primary project clients (API: additional_clients) */
+export interface AdditionalProjectClient {
+  id?: number | null
+  client_id: number
+  client_type?: string | null
+  client_table: ClientTableType
+  client_name?: string | null
+  client_data?: Record<string, unknown> | null
+  sort_order?: number
+}
+
 export interface Project {
   id: number
   prj_name: string
@@ -56,6 +67,16 @@ export interface Project {
   area?: number | null
   /** Project level enum */
   level?: ProjectLevel | null
+  /** Clinic model type (FFS Solo, FHG, …) */
+  clinic_model_type?: string | null
+  /** Healthcare services category (Primary Care, Pharmacy, …) */
+  healthcare_services?: string | null
+  /** Long Term Family Medicine team size (Solo, 1-3, …) */
+  long_term_fm_team_size?: string | null
+  /** Monthly budget in first year (dollars, free text) */
+  monthly_budget_first_year?: string | null
+  /** Selected Canadian FSA codes (first 3 chars of postal code) */
+  locations_of_interest?: string[] | null
   client_id?: number | null
   client_type?: string | null
   client_table?: ClientTableType | null
@@ -65,7 +86,8 @@ export interface Project {
   client2_type?: string | null
   client2_table?: ClientTableType | null
   client2_data?: Record<string, unknown> | null
-  client2_name?: string | null // Secondary client name from server
+  client2_name?: string | null // Secondary client name from server (legacy mirror of first additional)
+  additional_clients?: AdditionalProjectClient[]
   prj_manager?: number
   project_foreman_id?: number | null
   project_foreman_name?: string | null
@@ -186,17 +208,28 @@ export const projectApi = {
   },
 
   async update(id: number, data: Record<string, unknown>) {
-    // Ensure all client and client2 fields are explicitly included in the request
-    const requestData = {
+    // Ensure primary client fields are explicitly included in the request
+    const requestData: Record<string, unknown> = {
       ...data,
       client_id: data.client_id !== undefined ? data.client_id : null,
       client_type: data.client_type !== undefined ? data.client_type : null,
       client_table: data.client_table !== undefined ? data.client_table : null,
       client_data: data.client_data !== undefined ? data.client_data : null,
-      client2_id: data.client2_id !== undefined ? data.client2_id : null,
-      client2_type: data.client2_type !== undefined ? data.client2_type : null,
-      client2_table: data.client2_table !== undefined ? data.client2_table : null,
-      client2_data: data.client2_data !== undefined ? data.client2_data : null,
+    }
+
+    if (Array.isArray(data.additional_clients)) {
+      requestData.additional_clients = data.additional_clients
+      // First additional mirrors legacy client2_* on the server
+      const first = data.additional_clients[0] as Record<string, unknown> | undefined
+      requestData.client2_id = first?.client_id ?? null
+      requestData.client2_type = first?.client_type ?? null
+      requestData.client2_table = first?.client_table ?? null
+      requestData.client2_data = first?.client_data ?? null
+    } else {
+      requestData.client2_id = data.client2_id !== undefined ? data.client2_id : null
+      requestData.client2_type = data.client2_type !== undefined ? data.client2_type : null
+      requestData.client2_table = data.client2_table !== undefined ? data.client2_table : null
+      requestData.client2_data = data.client2_data !== undefined ? data.client2_data : null
     }
 
     const response = await api.put(`/api/v1/projects/${id}`, requestData)

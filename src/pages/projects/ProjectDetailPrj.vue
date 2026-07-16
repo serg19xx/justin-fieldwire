@@ -7,6 +7,7 @@ import {
   type Project as ApiProject,
   type ProjectTeamMember,
   type ClientTableType,
+  type AdditionalProjectClient,
 } from '@/core/utils/project-api'
 
 // API response interfaces
@@ -79,6 +80,10 @@ const settingsForm = ref<{
   purchase_or_lease?: string
   area?: number | null
   level?: string | null
+  clinic_model_type?: string | null
+  healthcare_services?: string | null
+  long_term_fm_team_size?: string | null
+  monthly_budget_first_year?: string | null
   client_id?: number | null
   client_type?: string | null
   client_table?: ClientTableType | null
@@ -101,6 +106,10 @@ const settingsForm = ref<{
   purchase_or_lease: 'Purchase',
   area: null,
   level: null,
+  clinic_model_type: null,
+  healthcare_services: null,
+  long_term_fm_team_size: null,
+  monthly_budget_first_year: null,
   client_id: null,
   client_type: null,
   client_table: null,
@@ -307,6 +316,11 @@ interface Project {
   notes?: string | null
   area?: number | null
   level?: string | null
+  clinic_model_type?: string | null
+  healthcare_services?: string | null
+  long_term_fm_team_size?: string | null
+  monthly_budget_first_year?: string | null
+  locations_of_interest?: string[] | null
   client_id?: number | null
   client_type?: string | null
   client_table?: string | null
@@ -317,7 +331,10 @@ interface Project {
   client2_table?: string | null
   client2_data?: Record<string, unknown> | null
   client2_name?: string | null
+  additional_clients?: AdditionalProjectClient[]
   projectManager?: number
+  project_foreman_id?: number | null
+  project_foreman_name?: string | null
   description?: string
   createdAt: string
   updatedAt: string
@@ -344,6 +361,13 @@ async function loadProjects() {
       notes: apiProject.notes,
       area: (apiProject as ApiProject & { area?: number | null }).area ?? null,
       level: (apiProject as ApiProject & { level?: string | null }).level ?? null,
+      clinic_model_type: (apiProject as ApiProject & { clinic_model_type?: string | null }).clinic_model_type ?? null,
+      healthcare_services: (apiProject as ApiProject & { healthcare_services?: string | null }).healthcare_services ?? null,
+      long_term_fm_team_size: (apiProject as ApiProject & { long_term_fm_team_size?: string | null }).long_term_fm_team_size ?? null,
+      monthly_budget_first_year: (apiProject as ApiProject & { monthly_budget_first_year?: string | null }).monthly_budget_first_year ?? null,
+      locations_of_interest: Array.isArray(apiProject.locations_of_interest)
+        ? apiProject.locations_of_interest
+        : [],
       client_id: apiProject.client_id,
       client_type: apiProject.client_type,
       client_table: apiProject.client_table,
@@ -355,6 +379,9 @@ async function loadProjects() {
       client2_type: apiProject.client2_type,
       client2_table: apiProject.client2_table,
       client2_name: apiProject.client2_name,
+      additional_clients: Array.isArray(apiProject.additional_clients)
+        ? apiProject.additional_clients
+        : [],
       client2_data: typeof (apiProject as ApiProject & { client2_data?: unknown }).client2_data === 'string'
         ? JSON.parse((apiProject as ApiProject & { client2_data: string }).client2_data)
         : (apiProject as ApiProject & { client2_data?: Record<string, unknown> | null }).client2_data,
@@ -400,6 +427,13 @@ async function loadProject(options?: { silent?: boolean }) {
       notes: apiResponse.notes,
       area: (apiResponse as { area?: number | null }).area ?? null,
       level: (apiResponse as { level?: string | null }).level ?? null,
+      clinic_model_type: (apiResponse as { clinic_model_type?: string | null }).clinic_model_type ?? null,
+      healthcare_services: (apiResponse as { healthcare_services?: string | null }).healthcare_services ?? null,
+      long_term_fm_team_size: (apiResponse as { long_term_fm_team_size?: string | null }).long_term_fm_team_size ?? null,
+      monthly_budget_first_year: (apiResponse as { monthly_budget_first_year?: string | null }).monthly_budget_first_year ?? null,
+      locations_of_interest: Array.isArray(apiResponse.locations_of_interest)
+        ? apiResponse.locations_of_interest
+        : [],
       client_id: apiResponse.client_id,
       client_type: apiResponse.client_type,
       client_table: apiResponse.client_table,
@@ -414,6 +448,9 @@ async function loadProject(options?: { silent?: boolean }) {
       client2_data: typeof (apiResponse as { client2_data?: unknown }).client2_data === 'string'
         ? JSON.parse((apiResponse as unknown as { client2_data: string }).client2_data)
         : (apiResponse as { client2_data?: Record<string, unknown> | null }).client2_data,
+      additional_clients: Array.isArray(apiResponse.additional_clients)
+        ? apiResponse.additional_clients
+        : [],
       projectManager: apiResponse.prj_manager || undefined,
       project_foreman_id: apiResponse.project_foreman_id ?? null,
       project_foreman_name: apiResponse.project_foreman_name ?? null,
@@ -503,6 +540,10 @@ function loadSettingsForm() {
       purchase_or_lease: (project.value as { purchase_or_lease?: string }).purchase_or_lease || 'Purchase',
       area: (project.value as { area?: number | null }).area ?? null,
       level: (project.value as { level?: string | null }).level ?? null,
+      clinic_model_type: (project.value as { clinic_model_type?: string | null }).clinic_model_type ?? null,
+      healthcare_services: (project.value as { healthcare_services?: string | null }).healthcare_services ?? null,
+      long_term_fm_team_size: (project.value as { long_term_fm_team_size?: string | null }).long_term_fm_team_size ?? null,
+      monthly_budget_first_year: (project.value as { monthly_budget_first_year?: string | null }).monthly_budget_first_year ?? null,
       client_id: project.value.client_id || null,
       client_type: project.value.client_type || null,
       client_table: (project.value.client_table as ClientTableType | null) || null,
@@ -548,17 +589,40 @@ async function saveSettings() {
       notes: formData?.notes?.trim() || null,
       area: formData?.area !== undefined ? formData.area : null,
       level: formData?.level || null,
+      clinic_model_type: formData?.clinic_model_type || null,
+      healthcare_services: formData?.healthcare_services || null,
+      long_term_fm_team_size: formData?.long_term_fm_team_size || null,
+      monthly_budget_first_year:
+        (typeof formData?.monthly_budget_first_year === 'string'
+          ? formData.monthly_budget_first_year.trim()
+          : formData?.monthly_budget_first_year) || null,
+      locations_of_interest: Array.isArray(formData?.locations_of_interest)
+        ? formData.locations_of_interest
+        : [],
       client_id: formData?.client_id !== undefined ? formData.client_id : null,
       client_type: formData?.client_type !== undefined ? formData.client_type : null,
       client_table: formData?.client_table !== undefined ? formData.client_table : null,
       client_data: formData?.client_data !== undefined ? formData.client_data : null,
-      client2_id: formData?.client2_id !== undefined ? formData.client2_id : null,
-      client2_type: formData?.client2_type !== undefined ? formData.client2_type : null,
-      client2_table: formData?.client2_table !== undefined ? formData.client2_table : null,
-      client2_data: formData?.client2_data !== undefined ? formData.client2_data : null,
+      additional_clients: Array.isArray(formData?.additional_clients)
+        ? formData.additional_clients
+        : [],
+      client2_id: Array.isArray(formData?.additional_clients) && formData.additional_clients[0]
+        ? formData.additional_clients[0].client_id
+        : null,
+      client2_type: Array.isArray(formData?.additional_clients) && formData.additional_clients[0]
+        ? formData.additional_clients[0].client_type
+        : null,
+      client2_table: Array.isArray(formData?.additional_clients) && formData.additional_clients[0]
+        ? formData.additional_clients[0].client_table
+        : null,
+      client2_data: Array.isArray(formData?.additional_clients) && formData.additional_clients[0]
+        ? formData.additional_clients[0].client_data
+        : null,
       project_foreman_id:
         formData?.project_foreman_id != null ? Number(formData.project_foreman_id) : null,
       update_task_foreman_on_all_tasks: Boolean(formData?.update_task_foreman_on_all_tasks),
+      prj_manager:
+        formData?.prj_manager != null ? Number(formData.prj_manager) : project.value.projectManager ?? null,
       date_start: project.value.startDate || null,
       date_end: project.value.endDate || null,
     }
@@ -628,6 +692,13 @@ async function saveSettings() {
         notes: updatedProject.notes,
         area: (updatedProject as { area?: number | null }).area ?? null,
         level: (updatedProject as { level?: string | null }).level ?? null,
+        clinic_model_type: (updatedProject as { clinic_model_type?: string | null }).clinic_model_type ?? null,
+        healthcare_services: (updatedProject as { healthcare_services?: string | null }).healthcare_services ?? null,
+        long_term_fm_team_size: (updatedProject as { long_term_fm_team_size?: string | null }).long_term_fm_team_size ?? null,
+        monthly_budget_first_year: (updatedProject as { monthly_budget_first_year?: string | null }).monthly_budget_first_year ?? null,
+        locations_of_interest: Array.isArray(updatedProject.locations_of_interest)
+          ? updatedProject.locations_of_interest
+          : [],
         client_id: updatedProject.client_id !== undefined ? updatedProject.client_id : null,
         client_type: updatedProject.client_type !== undefined ? updatedProject.client_type : null,
         client_table: updatedProject.client_table !== undefined ? updatedProject.client_table : null,
@@ -638,6 +709,9 @@ async function saveSettings() {
         client2_table: (updatedProject as { client2_table?: string | null }).client2_table ?? null,
         client2_name: (updatedProject as { client2_name?: string | null }).client2_name ?? null,
         client2_data: parseClientData((updatedProject as { client2_data?: unknown }).client2_data),
+        additional_clients: Array.isArray(updatedProject.additional_clients)
+          ? updatedProject.additional_clients
+          : [],
         projectManager: updatedProject.prj_manager || undefined,
         project_foreman_id: updatedProject.project_foreman_id ?? null,
         project_foreman_name: updatedProject.project_foreman_name ?? null,
@@ -675,6 +749,10 @@ async function saveSettings() {
         project.value.notes = updateData.notes
         project.value.area = updateData.area !== undefined ? updateData.area : null
         project.value.level = updateData.level ?? null
+        project.value.clinic_model_type = updateData.clinic_model_type ?? null
+        project.value.healthcare_services = updateData.healthcare_services ?? null
+        project.value.long_term_fm_team_size = updateData.long_term_fm_team_size ?? null
+        project.value.monthly_budget_first_year = updateData.monthly_budget_first_year ?? null
         // Update all client fields
         project.value.client_id = updateData.client_id !== undefined ? updateData.client_id : null
         project.value.client_type = updateData.client_type !== undefined ? updateData.client_type : null
@@ -709,6 +787,10 @@ async function saveSettings() {
       projects.value[projectIndex].notes = updateData.notes
       projects.value[projectIndex].area = updateData.area !== undefined ? updateData.area : null
       projects.value[projectIndex].level = updateData.level ?? null
+      projects.value[projectIndex].clinic_model_type = updateData.clinic_model_type ?? null
+      projects.value[projectIndex].healthcare_services = updateData.healthcare_services ?? null
+      projects.value[projectIndex].long_term_fm_team_size = updateData.long_term_fm_team_size ?? null
+      projects.value[projectIndex].monthly_budget_first_year = updateData.monthly_budget_first_year ?? null
       // Update all client fields
       projects.value[projectIndex].client_id = updateData.client_id !== undefined ? updateData.client_id : null
       projects.value[projectIndex].client_type = updateData.client_type !== undefined ? updateData.client_type : null

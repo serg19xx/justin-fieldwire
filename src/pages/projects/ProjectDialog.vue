@@ -25,10 +25,12 @@
 
       <!-- Content -->
       <div class="p-6">
-        <form @submit.prevent="handleSubmit">
-          <!-- Project Name -->
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Project Name <span class="text-red-500">*</span> </label>
+        <form @submit.prevent="handleSubmit" class="space-y-4">
+          <!-- 1. Project Name -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Project Name <span class="text-red-500">*</span>
+            </label>
             <input
               v-model="form.prj_name"
               type="text"
@@ -43,9 +45,11 @@
             </p>
           </div>
 
-          <!-- Address -->
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Address <span class="text-red-500">*</span> </label>
+          <!-- 2. Address -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Address <span class="text-red-500">*</span>
+            </label>
             <textarea
               v-model="form.address"
               rows="3"
@@ -60,167 +64,42 @@
             </p>
           </div>
 
-          <!-- Project dates are auto-calculated from tasks -->
-
-          <!-- Client funnel (informational) -->
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Client stage </label>
-              <select
-                v-model="form.status"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          <!-- 2b. Locations of interest -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Locations of interest <span class="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <div class="flex flex-wrap items-center gap-2 mb-2">
+              <span
+                v-for="code in form.locations_of_interest"
+                :key="code"
+                class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-800"
               >
-                <option value="Initial Contact Lead">Initial Contact Lead</option>
-                <option value="Dead Lead">Dead Lead</option>
-                <option value="Waiting On Direction">Waiting On Direction</option>
-                <option value="Actively Looking For A Location">Actively Looking For A Location</option>
-                <option value="Securing Location">Securing Location</option>
-                <option value="Project Secured">Project Secured</option>
-                <option value="Construction">Construction</option>
-                <option value="Completed Project">Completed Project</option>
-              </select>
-            <p class="mt-1 text-xs text-gray-500">For sales tracking only.</p>
-          </div>
-
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Lifecycle </label>
-            <select
-              v-model="form.sys_status"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option v-for="opt in projectSysStatusOptions" :key="opt.value" :value="opt.value">
-                {{ opt.label }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Purchase or Lease -->
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Purchase or Lease </label>
-            <select
-              v-model="form.purchase_or_lease"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="Purchase">Purchase</option>
-              <option value="Lease">Lease</option>
-            </select>
-          </div>
-
-          <!-- Area -->
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Area </label>
-            <input
-              v-model.number="form.area"
-              type="number"
-              min="0"
-              step="1"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="e.g. square feet"
-            />
-          </div>
-
-          <!-- Level -->
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Level </label>
-            <select
-              v-model="form.level"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">— Select level —</option>
-              <option value="Basics">Basics</option>
-              <option value="Full Service">Full Service</option>
-              <option value="Medical Nice">Medical Nice</option>
-              <option value="High End">High End</option>
-              <option value="Extravagant">Extravagant</option>
-            </select>
-          </div>
-
-          <!-- My Account (visible label only; assigns project manager user id) -->
-          <div v-if="canAssignManager" class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              My Account <span class="text-red-500">*</span>
-            </label>
-            <select
-              v-model="form.prj_manager"
-              :class="[
-                'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
-                validationErrors.prj_manager ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300'
-              ]"
-            >
-              <option value="">Select user</option>
-              <option v-for="manager in availableManagers" :key="manager.id" :value="manager.id">
-                {{ manager.name }} ({{ manager.email }})
-              </option>
-            </select>
-            <p v-if="validationErrors.prj_manager" class="mt-1 text-sm text-red-600">
-              {{ validationErrors.prj_manager }}
-            </p>
-          </div>
-
-          <!-- Auto-assigned account info for Project Managers -->
-          <div v-else class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> My Account </label>
-            <div
-              class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-600"
-            >
-              {{ authStore.currentUser?.name }} ({{ authStore.currentUser?.email }}) - Auto-assigned
+                {{ formatFsaLabel(code) }}
+                <button
+                  type="button"
+                  class="ml-1 text-gray-500 hover:text-red-600"
+                  @click="removeLocationOfInterest(code)"
+                >
+                  ×
+                </button>
+              </span>
+              <button
+                type="button"
+                @click="showLocationsSelector = true"
+                class="px-3 py-1.5 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
+              >
+                + Add
+              </button>
             </div>
-            <!-- Manager ID is already set in form.prj_manager during initialization -->
+            <p class="text-xs text-gray-500">Canadian postal code prefixes (FSA).</p>
           </div>
 
-          <!-- Project foreman (required) -->
-          <div class="mb-4">
+          <!-- 3. Primary Client -->
+          <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Project foreman / brigadier <span class="text-red-500">*</span>
+              Primary Client <span class="text-red-500">*</span>
             </label>
-            <select
-              v-model="form.project_foreman_id"
-              :class="[
-                'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
-                validationErrors.project_foreman_id ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300'
-              ]"
-            >
-              <option value="">Select foreman</option>
-              <option v-for="foreman in availableForemen" :key="foreman.id" :value="String(foreman.id)">
-                {{ foreman.name }} ({{ foreman.email }})
-              </option>
-            </select>
-            <p v-if="validationErrors.project_foreman_id" class="mt-1 text-sm text-red-600">
-              {{ validationErrors.project_foreman_id }}
-            </p>
-            <p class="mt-1 text-xs text-gray-500">
-              Default foreman for all tasks in this project (can be overridden per task).
-            </p>
-          </div>
-
-          <!-- Description -->
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Description </label>
-            <textarea
-              v-model="form.description"
-              rows="4"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter project description (optional)"
-            ></textarea>
-          </div>
-
-          <!-- Notes -->
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Notes </label>
-            <textarea
-              v-model="form.notes"
-              rows="3"
-              maxlength="1000"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter project notes (optional, max 1000 characters)"
-            ></textarea>
-            <p class="mt-1 text-xs text-gray-500">
-              {{ form.notes.length }}/1000 characters
-            </p>
-          </div>
-
-          <!-- Client -->
-          <div class="mb-6">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Client <span class="text-red-500">*</span> </label>
             <div class="flex items-center space-x-2">
               <input
                 :value="clientDisplayName"
@@ -230,7 +109,7 @@
                   'flex-1 px-3 py-2 border rounded-md bg-gray-50 text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500',
                   validationErrors.client ? 'border-red-500' : 'border-gray-300'
                 ]"
-                placeholder="Click to select client"
+                placeholder="Click to select primary client"
                 @click="showClientSelector = true"
               />
               <button
@@ -254,38 +133,264 @@
             </p>
           </div>
 
-          <!-- Secondary Client -->
-          <div class="mb-6">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Secondary Client <span class="text-gray-400 font-normal">(optional)</span> </label>
-            <div class="flex items-center space-x-2">
-              <input
-                :value="client2DisplayName"
-                type="text"
-                readonly
-                class="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Click to select secondary client (optional)"
-                @click="showClient2Selector = true"
-              />
+          <!-- 4. Additional Clients -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Additional Clients <span class="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <div class="flex flex-wrap items-center gap-2 mb-2">
+              <span
+                v-for="(item, idx) in form.additional_clients"
+                :key="`${item.client_table}:${item.client_id}`"
+                class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-800"
+              >
+                {{ item.client_name || `Client #${item.client_id}` }}
+                <span v-if="item.client_type" class="text-gray-500">({{ item.client_type }})</span>
+                <button
+                  type="button"
+                  class="ml-1 text-gray-500 hover:text-red-600"
+                  @click="removeAdditionalClient(idx)"
+                >
+                  ×
+                </button>
+              </span>
               <button
                 type="button"
-                @click="showClient2Selector = true"
-                class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
+                @click="showAdditionalClientsSelector = true"
+                class="px-3 py-1.5 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
               >
-                Select
+                + Add
               </button>
-              <button
-                v-if="form.client2_id"
-                type="button"
-                @click="clearClient2"
-                class="px-4 py-2 border border-red-300 rounded-md text-red-700 hover:bg-red-50 transition-colors text-sm font-medium"
+            </div>
+            <p class="text-xs text-gray-500">Related parties for this project. Primary client is used for reporting.</p>
+          </div>
+
+          <!-- 5. Client stage -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Client stage </label>
+            <select
+              v-model="form.status"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Initial Contact Lead">Initial Contact Lead</option>
+              <option value="Dead Lead">Dead Lead</option>
+              <option value="Waiting On Direction">Waiting On Direction</option>
+              <option value="Actively Looking For A Location">Actively Looking For A Location</option>
+              <option value="Securing Location">Securing Location</option>
+              <option value="Project Secured">Project Secured</option>
+              <option value="Construction">Construction</option>
+              <option value="Completed Project">Completed Project</option>
+            </select>
+            <p class="mt-1 text-xs text-gray-500">For sales tracking only.</p>
+          </div>
+
+          <!-- 6. Lifecycle -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Lifecycle </label>
+            <select
+              v-model="form.sys_status"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option v-for="opt in projectSysStatusOptions" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+          </div>
+
+          <!-- 7. Purchase or Lease -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Purchase or Lease </label>
+            <select
+              v-model="form.purchase_or_lease"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Purchase">Purchase</option>
+              <option value="Lease">Lease</option>
+              <option value="Undecided">Undecided</option>
+            </select>
+          </div>
+
+          <!-- 8. Area -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Area </label>
+            <input
+              v-model.number="form.area"
+              type="number"
+              min="0"
+              step="1"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g. square feet"
+            />
+          </div>
+
+          <!-- 9. Level -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Level </label>
+            <select
+              v-model="form.level"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">— Select level —</option>
+              <option value="Basics">Basics</option>
+              <option value="Full Service">Full Service</option>
+              <option value="Medical Nice">Medical Nice</option>
+              <option value="High End">High End</option>
+              <option value="Extravagant">Extravagant</option>
+            </select>
+          </div>
+
+          <!-- 10. Clinic Model Type -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Clinic Model Type </label>
+            <select
+              v-model="form.clinic_model_type"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">— Select clinic model type —</option>
+              <option
+                v-for="clinicModelType in projectClinicModelTypes"
+                :key="clinicModelType"
+                :value="clinicModelType"
               >
-                Clear
-              </button>
+                {{ clinicModelType }}
+              </option>
+            </select>
+          </div>
+
+          <!-- 11. Healthcare Services -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Healthcare Services </label>
+            <select
+              v-model="form.healthcare_services"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">— Select healthcare services —</option>
+              <option
+                v-for="healthcareService in projectHealthcareServices"
+                :key="healthcareService"
+                :value="healthcareService"
+              >
+                {{ healthcareService }}
+              </option>
+            </select>
+          </div>
+
+          <!-- 12. Long Term Family Medicine Team Size -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Long Term Family Medicine Team Size
+            </label>
+            <select
+              v-model="form.long_term_fm_team_size"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">— Select team size —</option>
+              <option
+                v-for="teamSize in projectLongTermFmTeamSizes"
+                :key="teamSize"
+                :value="teamSize"
+              >
+                {{ teamSize }}
+              </option>
+            </select>
+          </div>
+
+          <!-- 13. Monthly Budget in First Year -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Monthly Budget in First Year
+              <span class="text-gray-400 font-normal">($)</span>
+            </label>
+            <input
+              v-model="form.monthly_budget_first_year"
+              type="text"
+              maxlength="100"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g. 15000"
+            />
+          </div>
+
+          <!-- 14. My Account (project manager) -->
+          <div v-if="canAssignManager">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              My Account <span class="text-red-500">*</span>
+            </label>
+            <select
+              v-model="form.prj_manager"
+              :class="[
+                'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
+                validationErrors.prj_manager ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300'
+              ]"
+            >
+              <option value="">Select user</option>
+              <option v-for="manager in availableManagers" :key="manager.id" :value="manager.id">
+                {{ manager.name }} ({{ manager.email }})
+              </option>
+            </select>
+            <p v-if="validationErrors.prj_manager" class="mt-1 text-sm text-red-600">
+              {{ validationErrors.prj_manager }}
+            </p>
+          </div>
+          <div v-else>
+            <label class="block text-sm font-medium text-gray-700 mb-2"> My Account </label>
+            <div class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-600">
+              {{ authStore.currentUser?.name }} ({{ authStore.currentUser?.email }}) - Auto-assigned
             </div>
           </div>
 
+          <!-- 15. Project foreman -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Project foreman / brigadier <span class="text-red-500">*</span>
+            </label>
+            <select
+              v-model="form.project_foreman_id"
+              :class="[
+                'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
+                validationErrors.project_foreman_id ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300'
+              ]"
+            >
+              <option value="">Select foreman</option>
+              <option v-for="foreman in availableForemen" :key="foreman.id" :value="String(foreman.id)">
+                {{ foreman.name }} ({{ foreman.email }})
+              </option>
+            </select>
+            <p v-if="validationErrors.project_foreman_id" class="mt-1 text-sm text-red-600">
+              {{ validationErrors.project_foreman_id }}
+            </p>
+            <p class="mt-1 text-xs text-gray-500">
+              Default foreman for all tasks in this project (can be overridden per task).
+            </p>
+          </div>
+
+          <!-- 16. Description -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Description </label>
+            <textarea
+              v-model="form.description"
+              rows="4"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter project description (optional)"
+            ></textarea>
+          </div>
+
+          <!-- 17. Notes -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Notes </label>
+            <textarea
+              v-model="form.notes"
+              rows="3"
+              maxlength="1000"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter project notes (optional, max 1000 characters)"
+            ></textarea>
+            <p class="mt-1 text-xs text-gray-500">
+              {{ form.notes.length }}/1000 characters
+            </p>
+          </div>
+
           <!-- Actions -->
-          <div class="flex items-center justify-end space-x-3">
+          <div class="flex items-center justify-end space-x-3 pt-2">
             <button
               type="button"
               @click="closeDialog"
@@ -305,7 +410,13 @@
       </div>
     </div>
 
-    <!-- Client Selector Dialog -->
+    <PostalFsaSelectorDialog
+      :is-open="showLocationsSelector"
+      :selected-codes="form.locations_of_interest"
+      @close="showLocationsSelector = false"
+      @apply="handleLocationsApply"
+    />
+    <!-- Primary Client Selector -->
     <ClientSelectorDialog
       :is-open="showClientSelector"
       :selected-client-id="form.client_id"
@@ -314,33 +425,52 @@
       @select="handleClientSelect"
       @clear="handleClientClear"
     />
-    <!-- Secondary Client Selector Dialog -->
+    <!-- Additional Clients Selector -->
     <ClientSelectorDialog
-      :is-open="showClient2Selector"
-      :selected-client-id="form.client2_id"
-      :selected-client-table="form.client2_table"
-      @close="showClient2Selector = false"
-      @select="handleClient2Select"
-      @clear="handleClient2Clear"
+      :is-open="showAdditionalClientsSelector"
+      multiple
+      :selected-clients="form.additional_clients"
+      :exclude-client-id="form.client_id"
+      :exclude-client-table="form.client_table"
+      @close="showAdditionalClientsSelector = false"
+      @select-many="handleAdditionalClientsSelect"
+      @clear="clearAdditionalClients"
     />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { projectApi, type Project, type ClientTableType } from '@/core/utils/project-api'
+import {
+  projectApi,
+  type Project,
+  type ClientTableType,
+  type AdditionalProjectClient,
+} from '@/core/utils/project-api'
 import { hrResourcesApi, type WorkerUser } from '@/core/utils/hr-api'
 import { useAuthStore } from '@/core/stores/auth'
-import ClientSelectorDialog from '@/components/ClientSelectorDialog.vue'
+import ClientSelectorDialog, {
+  type ClientSelectionItem,
+} from '@/components/ClientSelectorDialog.vue'
+import PostalFsaSelectorDialog from '@/components/PostalFsaSelectorDialog.vue'
 import { clientsApi, type Client } from '@/core/utils/clients-api'
+import { formatFsaLabel } from '@/core/utils/postal-fsa-locations'
 import {
   DEFAULT_PROJECT_SYS_STATUS,
   PROJECT_SYS_STATUS_OPTIONS,
   type ProjectSysStatus,
 } from '@/core/utils/project-sys-status'
+import {
+  PROJECT_CLINIC_MODEL_TYPES,
+  PROJECT_HEALTHCARE_SERVICES,
+  PROJECT_LONG_TERM_FM_TEAM_SIZES,
+} from '@/core/utils/constants'
 import { FOREMAN_ROLE_DB_ID } from '@/config/roles'
 
 const projectSysStatusOptions = PROJECT_SYS_STATUS_OPTIONS
+const projectClinicModelTypes = PROJECT_CLINIC_MODEL_TYPES
+const projectHealthcareServices = PROJECT_HEALTHCARE_SERVICES
+const projectLongTermFmTeamSizes = PROJECT_LONG_TERM_FM_TEAM_SIZES
 
 // Props
 interface Props {
@@ -372,22 +502,24 @@ const form = ref({
   client_type: null as string | null,
   client_table: null as ClientTableType | null,
   client_data: null as Record<string, unknown> | null,
-  client2_id: null as number | null,
-  client2_type: null as string | null,
-  client2_table: null as ClientTableType | null,
-  client2_data: null as Record<string, unknown> | null,
+  additional_clients: [] as AdditionalProjectClient[],
+  locations_of_interest: [] as string[],
   prj_manager: '',
   project_foreman_id: '',
   description: '',
   area: null as number | null,
   level: null as string | null,
+  clinic_model_type: null as string | null,
+  healthcare_services: null as string | null,
+  long_term_fm_team_size: null as string | null,
+  monthly_budget_first_year: null as string | null,
 })
 
 // Client selector state
 const showClientSelector = ref(false)
 const selectedClient = ref<Client | null>(null)
-const showClient2Selector = ref(false)
-const selectedClient2 = ref<Client | null>(null)
+const showAdditionalClientsSelector = ref(false)
+const showLocationsSelector = ref(false)
 
 // State
 const isSubmitting = ref(false)
@@ -411,21 +543,6 @@ const clientDisplayName = computed(() => {
     return `${clientName} (${form.value.client_type})`
   }
   
-  return ''
-})
-
-// Secondary client display name
-const client2DisplayName = computed(() => {
-  if (selectedClient2.value) {
-    const clientType = clientsApi.getClientTypeLabel(form.value.client2_table || null)
-    return `${selectedClient2.value.name} (${clientType})`
-  }
-  if (form.value.client2_id && form.value.client2_type) {
-    const clientName = form.value.client2_data && typeof form.value.client2_data === 'object' && form.value.client2_data.name
-      ? form.value.client2_data.name
-      : `Client ID: ${form.value.client2_id}`
-    return `${clientName} (${form.value.client2_type})`
-  }
   return ''
 })
 
@@ -481,9 +598,9 @@ function validateForm() {
     errors.prj_manager = 'My Account is required for administrators'
   }
 
-  // Client is required
+  // Primary client is required
   if (!form.value.client_id) {
-    errors.client = 'Client is required'
+    errors.client = 'Primary client is required'
   }
 
   if (!form.value.project_foreman_id) {
@@ -536,18 +653,19 @@ watch(
         client_type: null,
         client_table: null,
         client_data: null,
-        client2_id: null,
-        client2_type: null,
-        client2_table: null,
-        client2_data: null,
+        additional_clients: [],
+        locations_of_interest: [],
         prj_manager: shouldAutoAssign ? String(authStore.currentUser?.id || '') : '',
         project_foreman_id: '',
         description: '',
         area: null,
         level: null,
+        clinic_model_type: null,
+        healthcare_services: null,
+        long_term_fm_team_size: null,
+        monthly_budget_first_year: null,
       }
       selectedClient.value = null
-      selectedClient2.value = null
 
       console.log('🔍 Form initialized with prj_manager:', form.value.prj_manager)
 
@@ -659,6 +777,10 @@ function handleClientSelect(client: Client, clientTable: ClientTableType, client
   })
   
   selectedClient.value = client
+  // Primary cannot also be additional
+  form.value.additional_clients = form.value.additional_clients.filter(
+    (c) => !(c.client_id === client.id && c.client_table === clientTable),
+  )
   showClientSelector.value = false
 }
 
@@ -674,32 +796,44 @@ function handleClientClear() {
   clearClient()
 }
 
-function handleClient2Select(client: Client, clientTable: ClientTableType, clientType: string) {
-  if (!client?.id) return
-  form.value.client2_id = client.id
-  form.value.client2_table = clientTable
-  form.value.client2_type = clientType
-  form.value.client2_data =
-    client.data && typeof client.data === 'object'
-      ? client.data
-      : (() => {
-          const { id, name, data, ...rest } = client
-          return Object.keys(rest).length > 0 ? rest : {}
-        })()
-  selectedClient2.value = client
-  showClient2Selector.value = false
+function handleAdditionalClientsSelect(items: ClientSelectionItem[]) {
+  form.value.additional_clients = items
+    .filter(
+      (item) =>
+        !(
+          form.value.client_id != null &&
+          form.value.client_table != null &&
+          item.client.id === form.value.client_id &&
+          item.clientTable === form.value.client_table
+        ),
+    )
+    .map((item, index) => ({
+      client_id: item.client.id,
+      client_table: item.clientTable,
+      client_type: item.clientType,
+      client_name: item.client.name,
+      client_data:
+        item.client.data && typeof item.client.data === 'object' ? item.client.data : {},
+      sort_order: index + 1,
+    }))
+  showAdditionalClientsSelector.value = false
 }
 
-function clearClient2() {
-  form.value.client2_id = null
-  form.value.client2_type = null
-  form.value.client2_table = null
-  form.value.client2_data = null
-  selectedClient2.value = null
+function removeAdditionalClient(index: number) {
+  form.value.additional_clients = form.value.additional_clients.filter((_, i) => i !== index)
 }
 
-function handleClient2Clear() {
-  clearClient2()
+function clearAdditionalClients() {
+  form.value.additional_clients = []
+}
+
+function handleLocationsApply(codes: string[]) {
+  form.value.locations_of_interest = [...codes]
+  showLocationsSelector.value = false
+}
+
+function removeLocationOfInterest(code: string) {
+  form.value.locations_of_interest = form.value.locations_of_interest.filter((c) => c !== code)
 }
 
 async function handleSubmit() {
@@ -720,6 +854,8 @@ async function handleSubmit() {
       isProjectManager: isProjectManager.value,
     })
 
+    const firstAdditional = form.value.additional_clients[0] ?? null
+
     // Prepare API data - project dates are auto-calculated from tasks
     const apiData = {
       prj_name: form.value.prj_name,
@@ -735,16 +871,22 @@ async function handleSubmit() {
       client_type: form.value.client_type || null,
       client_table: form.value.client_table || null,
       client_data: form.value.client_data || null,
-      client2_id: form.value.client2_id || null,
-      client2_type: form.value.client2_type || null,
-      client2_table: form.value.client2_table || null,
-      client2_data: form.value.client2_data || null,
+      additional_clients: form.value.additional_clients,
+      locations_of_interest: form.value.locations_of_interest,
+      client2_id: firstAdditional?.client_id ?? null,
+      client2_type: firstAdditional?.client_type ?? null,
+      client2_table: firstAdditional?.client_table ?? null,
+      client2_data: firstAdditional?.client_data ?? null,
       prj_manager: form.value.prj_manager ? Number(form.value.prj_manager) : null,
       project_foreman_id: form.value.project_foreman_id ? Number(form.value.project_foreman_id) : null,
       created_by: authStore.currentUser?.id || null,
       description: form.value.description || null,
       area: form.value.area ?? null,
       level: form.value.level || null,
+      clinic_model_type: form.value.clinic_model_type || null,
+      healthcare_services: form.value.healthcare_services || null,
+      long_term_fm_team_size: form.value.long_term_fm_team_size || null,
+      monthly_budget_first_year: form.value.monthly_budget_first_year?.trim() || null,
     }
 
     console.log('📤 API payload:', apiData)
