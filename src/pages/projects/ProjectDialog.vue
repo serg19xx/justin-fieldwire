@@ -23,11 +23,34 @@
         </button>
       </div>
 
+      <div class="sticky top-0 z-10 border-b border-gray-200 bg-white px-6">
+        <div class="flex overflow-x-auto" role="tablist" aria-label="Project form sections">
+          <button
+            v-for="section in formSections"
+            :key="section.id"
+            type="button"
+            role="tab"
+            :title="section.title"
+            :aria-label="section.title"
+            :aria-selected="activeSection === section.id"
+            :class="[
+              'shrink-0 border-b-2 px-3 py-3 text-sm font-medium',
+              activeSection === section.id
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700',
+            ]"
+            @click="activeSection = section.id"
+          >
+            {{ section.label }}
+          </button>
+        </div>
+      </div>
+
       <!-- Content -->
       <div class="p-6">
-        <form @submit.prevent="handleSubmit" class="space-y-4">
+        <form @submit.prevent="handleSubmit" class="flex flex-col gap-4">
           <!-- 1. Project Name -->
-          <div>
+          <div v-show="activeSection === 'general'" class="order-1">
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Project Name <span class="text-red-500">*</span>
             </label>
@@ -45,10 +68,10 @@
             </p>
           </div>
 
-          <!-- 2. Address -->
-          <div>
+          <!-- 2. Project Address -->
+          <div v-show="activeSection === 'space'" class="order-4">
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Address <span class="text-red-500">*</span>
+              Project Address <span class="text-red-500">*</span>
             </label>
             <textarea
               v-model="form.address"
@@ -65,7 +88,7 @@
           </div>
 
           <!-- 2b. Locations of interest -->
-          <div>
+          <div v-show="activeSection === 'general'" class="order-3">
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Locations of interest <span class="text-gray-400 font-normal">(optional)</span>
             </label>
@@ -95,10 +118,10 @@
             <p class="text-xs text-gray-500">Canadian postal code prefixes (FSA).</p>
           </div>
 
-          <!-- 3. Primary Client -->
-          <div>
+          <!-- 3. Client -->
+          <div v-show="activeSection === 'general'" class="order-2">
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Primary Client <span class="text-red-500">*</span>
+              Client <span class="text-red-500">*</span>
             </label>
             <div class="flex items-center space-x-2">
               <input
@@ -133,10 +156,10 @@
             </p>
           </div>
 
-          <!-- 4. Additional Clients -->
-          <div>
+          <!-- 4. Secondary Client -->
+          <div v-show="activeSection === 'space'" class="order-5">
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Additional Clients <span class="text-gray-400 font-normal">(optional)</span>
+              Secondary Client <span class="text-gray-400 font-normal">(optional)</span>
             </label>
             <div class="flex flex-wrap items-center gap-2 mb-2">
               <span
@@ -166,8 +189,8 @@
           </div>
 
           <!-- 5. Client stage -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Client stage </label>
+          <div v-show="activeSection === 'general'" class="order-5">
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Stage </label>
             <select
               v-model="form.status"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -185,8 +208,8 @@
           </div>
 
           <!-- 6. Lifecycle -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Lifecycle </label>
+          <div v-show="activeSection === 'general'" class="order-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Client Lifecycle </label>
             <select
               v-model="form.sys_status"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -198,20 +221,21 @@
           </div>
 
           <!-- 7. Purchase or Lease -->
-          <div>
+          <div v-show="activeSection === 'general'" class="order-7">
             <label class="block text-sm font-medium text-gray-700 mb-2"> Purchase or Lease </label>
             <select
               v-model="form.purchase_or_lease"
               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
+              <option value="">— Select purchase or lease —</option>
               <option value="Purchase">Purchase</option>
               <option value="Lease">Lease</option>
               <option value="Undecided">Undecided</option>
             </select>
           </div>
 
-          <!-- 8. Area -->
-          <div>
+          <!-- 8. Project Size -->
+          <div v-show="activeSection === 'space'" class="order-2">
             <label class="block text-sm font-medium text-gray-700 mb-2"> Area </label>
             <input
               v-model.number="form.area"
@@ -224,7 +248,7 @@
           </div>
 
           <!-- 9. Level -->
-          <div>
+          <div v-show="activeSection === 'general'" class="order-8">
             <label class="block text-sm font-medium text-gray-700 mb-2"> Level </label>
             <select
               v-model="form.level"
@@ -240,7 +264,7 @@
           </div>
 
           <!-- 10. Clinic Model Type -->
-          <div>
+          <div v-show="activeSection === 'healthcare'" class="order-1">
             <label class="block text-sm font-medium text-gray-700 mb-2"> Clinic Model Type </label>
             <select
               v-model="form.clinic_model_type"
@@ -258,7 +282,7 @@
           </div>
 
           <!-- 11. Healthcare Services -->
-          <div>
+          <div v-show="activeSection === 'healthcare'" class="order-4">
             <label class="block text-sm font-medium text-gray-700 mb-2"> Healthcare Services </label>
             <select
               v-model="form.healthcare_services"
@@ -275,8 +299,18 @@
             </select>
           </div>
 
+          <div v-show="activeSection === 'healthcare'" class="order-2">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Operational Hours</label>
+            <input
+              v-model="form.operational_hours"
+              type="text"
+              maxlength="100"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
           <!-- 12. Long Term Family Medicine Team Size -->
-          <div>
+          <div v-show="activeSection === 'healthcare'" class="order-5">
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Long Term Family Medicine Team Size
             </label>
@@ -296,7 +330,7 @@
           </div>
 
           <!-- 13. Monthly Budget in First Year -->
-          <div>
+          <div v-show="activeSection === 'marketing'" class="order-2">
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Monthly Budget in First Year
               <span class="text-gray-400 font-normal">($)</span>
@@ -310,8 +344,52 @@
             />
           </div>
 
-          <!-- 14. My Account (project manager) -->
-          <div v-if="canAssignManager">
+          <!-- 14. Est. Clinical Hours Between MD's On Site -->
+          <div v-show="activeSection === 'healthcare'" class="order-3">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Est. Clinical Hours Between MD&rsquo;s On Site
+            </label>
+            <input
+              v-model="form.est_clinical_hours_mds_on_site"
+              type="text"
+              maxlength="100"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g. 20"
+            />
+          </div>
+
+          <!-- 15. HR Vision -->
+          <div v-show="activeSection === 'healthcare'" class="order-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              HR Vision <span class="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <div class="flex flex-wrap items-center gap-2 mb-2">
+              <span
+                v-for="specialty in form.hr_vision"
+                :key="specialty"
+                class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-800"
+              >
+                {{ specialty }}
+                <button
+                  type="button"
+                  class="ml-1 text-gray-500 hover:text-red-600"
+                  @click="removeHrVisionSpecialty(specialty)"
+                >
+                  ×
+                </button>
+              </span>
+              <button
+                type="button"
+                @click="showHrVisionSelector = true"
+                class="px-3 py-1.5 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
+              >
+                + Add
+              </button>
+            </div>
+          </div>
+
+          <!-- 16. My Account (project manager) -->
+          <div v-show="activeSection === 'general'" v-if="canAssignManager" class="order-9">
             <label class="block text-sm font-medium text-gray-700 mb-2">
               My Account <span class="text-red-500">*</span>
             </label>
@@ -331,15 +409,15 @@
               {{ validationErrors.prj_manager }}
             </p>
           </div>
-          <div v-else>
+          <div v-show="activeSection === 'general'" v-else class="order-9">
             <label class="block text-sm font-medium text-gray-700 mb-2"> My Account </label>
             <div class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-600">
               {{ authStore.currentUser?.name }} ({{ authStore.currentUser?.email }}) - Auto-assigned
             </div>
           </div>
 
-          <!-- 15. Project foreman -->
-          <div>
+          <!-- 16. Project foreman -->
+          <div v-show="activeSection === 'general'" class="order-10">
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Project foreman / brigadier <span class="text-red-500">*</span>
             </label>
@@ -363,8 +441,8 @@
             </p>
           </div>
 
-          <!-- 16. Description -->
-          <div>
+          <!-- 17. Description -->
+          <div v-show="activeSection === 'general'" class="order-4">
             <label class="block text-sm font-medium text-gray-700 mb-2"> Description </label>
             <textarea
               v-model="form.description"
@@ -374,8 +452,8 @@
             ></textarea>
           </div>
 
-          <!-- 17. Notes -->
-          <div>
+          <!-- 18. Notes -->
+          <div v-show="activeSection === 'space'" class="order-3">
             <label class="block text-sm font-medium text-gray-700 mb-2"> Notes </label>
             <textarea
               v-model="form.notes"
@@ -389,8 +467,32 @@
             </p>
           </div>
 
+          <div v-show="activeSection === 'space'" class="order-1">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Contents of Space</label>
+            <textarea
+              v-model="form.contents_of_space"
+              rows="4"
+              maxlength="2000"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            ></textarea>
+          </div>
+
+          <div v-show="activeSection === 'marketing'" class="order-1">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Marketing Strategy</label>
+            <div class="space-y-2">
+              <label
+                v-for="strategy in marketingStrategyOptions"
+                :key="strategy"
+                class="flex items-center gap-2 text-sm text-gray-700"
+              >
+                <input v-model="form.marketing_strategy" type="checkbox" :value="strategy" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                {{ strategy }}
+              </label>
+            </div>
+          </div>
+
           <!-- Actions -->
-          <div class="flex items-center justify-end space-x-3 pt-2">
+          <div class="order-last flex items-center justify-end space-x-3 pt-2">
             <button
               type="button"
               @click="closeDialog"
@@ -415,6 +517,12 @@
       :selected-codes="form.locations_of_interest"
       @close="showLocationsSelector = false"
       @apply="handleLocationsApply"
+    />
+    <HrVisionSelectorDialog
+      :is-open="showHrVisionSelector"
+      :selected-specialties="form.hr_vision"
+      @close="showHrVisionSelector = false"
+      @apply="handleHrVisionApply"
     />
     <!-- Primary Client Selector -->
     <ClientSelectorDialog
@@ -453,6 +561,7 @@ import ClientSelectorDialog, {
   type ClientSelectionItem,
 } from '@/components/ClientSelectorDialog.vue'
 import PostalFsaSelectorDialog from '@/components/PostalFsaSelectorDialog.vue'
+import HrVisionSelectorDialog from '@/components/HrVisionSelectorDialog.vue'
 import { clientsApi, type Client } from '@/core/utils/clients-api'
 import { formatFsaLabel } from '@/core/utils/postal-fsa-locations'
 import {
@@ -465,12 +574,21 @@ import {
   PROJECT_HEALTHCARE_SERVICES,
   PROJECT_LONG_TERM_FM_TEAM_SIZES,
 } from '@/core/utils/constants'
+import { MARKETING_STRATEGY_OPTIONS } from '@/core/utils/marketing-strategy-options'
 import { FOREMAN_ROLE_DB_ID } from '@/config/roles'
 
 const projectSysStatusOptions = PROJECT_SYS_STATUS_OPTIONS
 const projectClinicModelTypes = PROJECT_CLINIC_MODEL_TYPES
 const projectHealthcareServices = PROJECT_HEALTHCARE_SERVICES
 const projectLongTermFmTeamSizes = PROJECT_LONG_TERM_FM_TEAM_SIZES
+const marketingStrategyOptions = MARKETING_STRATEGY_OPTIONS
+const activeSection = ref<'general' | 'healthcare' | 'space' | 'marketing'>('general')
+const formSections = [
+  { id: 'general', label: 'General', title: 'General Project Information' },
+  { id: 'healthcare', label: 'Healthcare', title: 'Healthcare Business Vision' },
+  { id: 'space', label: 'Space', title: 'Space Vision' },
+  { id: 'marketing', label: 'Marketing', title: 'Marketing Strategy' },
+] as const
 
 // Props
 interface Props {
@@ -496,7 +614,7 @@ const form = ref({
   address: '',
   status: 'Initial Contact Lead',
   sys_status: DEFAULT_PROJECT_SYS_STATUS satisfies ProjectSysStatus,
-  purchase_or_lease: 'Purchase',
+  purchase_or_lease: '',
   notes: '',
   client_id: null as number | null,
   client_type: null as string | null,
@@ -514,6 +632,11 @@ const form = ref({
   healthcare_services: '' as string,
   long_term_fm_team_size: '' as string,
   monthly_budget_first_year: null as string | null,
+  est_clinical_hours_mds_on_site: null as string | null,
+  hr_vision: [] as string[],
+  operational_hours: '',
+  contents_of_space: '',
+  marketing_strategy: [] as string[],
 })
 
 // Client selector state
@@ -521,6 +644,7 @@ const showClientSelector = ref(false)
 const selectedClient = ref<Client | null>(null)
 const showAdditionalClientsSelector = ref(false)
 const showLocationsSelector = ref(false)
+const showHrVisionSelector = ref(false)
 
 // State
 const isSubmitting = ref(false)
@@ -648,7 +772,7 @@ watch(
         address: '',
         status: 'Initial Contact Lead',
         sys_status: DEFAULT_PROJECT_SYS_STATUS,
-        purchase_or_lease: 'Purchase',
+        purchase_or_lease: '',
         notes: '',
         client_id: null,
         client_type: null,
@@ -665,7 +789,13 @@ watch(
         healthcare_services: '',
         long_term_fm_team_size: '',
         monthly_budget_first_year: null,
+        est_clinical_hours_mds_on_site: null,
+        hr_vision: [],
+        operational_hours: '',
+        contents_of_space: '',
+        marketing_strategy: [],
       }
+      activeSection.value = 'general'
       selectedClient.value = null
 
       console.log('🔍 Form initialized with prj_manager:', form.value.prj_manager)
@@ -837,12 +967,22 @@ function removeLocationOfInterest(code: string) {
   form.value.locations_of_interest = form.value.locations_of_interest.filter((c) => c !== code)
 }
 
+function handleHrVisionApply(specialties: string[]) {
+  form.value.hr_vision = [...specialties]
+  showHrVisionSelector.value = false
+}
+
+function removeHrVisionSpecialty(specialty: string) {
+  form.value.hr_vision = form.value.hr_vision.filter((item) => item !== specialty)
+}
+
 async function handleSubmit() {
   if (isSubmitting.value) return
 
   // Validate form
   if (!validateForm()) {
     console.warn('⚠️ Validation failed:', validationErrors.value)
+    activeSection.value = 'general'
     return
   }
 
@@ -866,7 +1006,7 @@ async function handleSubmit() {
       priority: 'Medium',
       status: form.value.status,
       sys_status: form.value.sys_status,
-      purchase_or_lease: form.value.purchase_or_lease,
+      purchase_or_lease: form.value.purchase_or_lease || null,
       notes: form.value.notes || null,
       client_id: form.value.client_id || null,
       client_type: form.value.client_type || null,
@@ -888,6 +1028,11 @@ async function handleSubmit() {
       healthcare_services: form.value.healthcare_services || null,
       long_term_fm_team_size: form.value.long_term_fm_team_size || null,
       monthly_budget_first_year: form.value.monthly_budget_first_year?.trim() || null,
+      est_clinical_hours_mds_on_site: form.value.est_clinical_hours_mds_on_site?.trim() || null,
+      hr_vision: form.value.hr_vision,
+      operational_hours: form.value.operational_hours.trim() || null,
+      contents_of_space: form.value.contents_of_space.trim() || null,
+      marketing_strategy: form.value.marketing_strategy,
     }
 
     console.log('📤 API payload:', apiData)

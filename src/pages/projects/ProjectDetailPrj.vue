@@ -84,6 +84,11 @@ const settingsForm = ref<{
   healthcare_services?: string | null
   long_term_fm_team_size?: string | null
   monthly_budget_first_year?: string | null
+  est_clinical_hours_mds_on_site?: string | null
+  hr_vision?: string[] | null
+  operational_hours?: string | null
+  contents_of_space?: string | null
+  marketing_strategy?: string[] | null
   client_id?: number | null
   client_type?: string | null
   client_table?: ClientTableType | null
@@ -110,6 +115,11 @@ const settingsForm = ref<{
   healthcare_services: null,
   long_term_fm_team_size: null,
   monthly_budget_first_year: null,
+  est_clinical_hours_mds_on_site: null,
+  hr_vision: [],
+  operational_hours: null,
+  contents_of_space: null,
+  marketing_strategy: [],
   client_id: null,
   client_type: null,
   client_table: null,
@@ -320,6 +330,11 @@ interface Project {
   healthcare_services?: string | null
   long_term_fm_team_size?: string | null
   monthly_budget_first_year?: string | null
+  est_clinical_hours_mds_on_site?: string | null
+  hr_vision?: string[] | null
+  operational_hours?: string | null
+  contents_of_space?: string | null
+  marketing_strategy?: string[] | null
   locations_of_interest?: string[] | null
   client_id?: number | null
   client_type?: string | null
@@ -365,6 +380,11 @@ async function loadProjects() {
       healthcare_services: (apiProject as ApiProject & { healthcare_services?: string | null }).healthcare_services ?? null,
       long_term_fm_team_size: (apiProject as ApiProject & { long_term_fm_team_size?: string | null }).long_term_fm_team_size ?? null,
       monthly_budget_first_year: (apiProject as ApiProject & { monthly_budget_first_year?: string | null }).monthly_budget_first_year ?? null,
+      est_clinical_hours_mds_on_site: (apiProject as ApiProject & { est_clinical_hours_mds_on_site?: string | null }).est_clinical_hours_mds_on_site ?? null,
+      hr_vision: Array.isArray(apiProject.hr_vision) ? apiProject.hr_vision : [],
+      operational_hours: apiProject.operational_hours ?? null,
+      contents_of_space: apiProject.contents_of_space ?? null,
+      marketing_strategy: Array.isArray(apiProject.marketing_strategy) ? apiProject.marketing_strategy : [],
       locations_of_interest: Array.isArray(apiProject.locations_of_interest)
         ? apiProject.locations_of_interest
         : [],
@@ -431,6 +451,11 @@ async function loadProject(options?: { silent?: boolean }) {
       healthcare_services: (apiResponse as { healthcare_services?: string | null }).healthcare_services ?? null,
       long_term_fm_team_size: (apiResponse as { long_term_fm_team_size?: string | null }).long_term_fm_team_size ?? null,
       monthly_budget_first_year: (apiResponse as { monthly_budget_first_year?: string | null }).monthly_budget_first_year ?? null,
+      est_clinical_hours_mds_on_site: (apiResponse as { est_clinical_hours_mds_on_site?: string | null }).est_clinical_hours_mds_on_site ?? null,
+      hr_vision: Array.isArray(apiResponse.hr_vision) ? apiResponse.hr_vision : [],
+      operational_hours: apiResponse.operational_hours ?? null,
+      contents_of_space: apiResponse.contents_of_space ?? null,
+      marketing_strategy: Array.isArray(apiResponse.marketing_strategy) ? apiResponse.marketing_strategy : [],
       locations_of_interest: Array.isArray(apiResponse.locations_of_interest)
         ? apiResponse.locations_of_interest
         : [],
@@ -544,6 +569,11 @@ function loadSettingsForm() {
       healthcare_services: (project.value as { healthcare_services?: string | null }).healthcare_services ?? null,
       long_term_fm_team_size: (project.value as { long_term_fm_team_size?: string | null }).long_term_fm_team_size ?? null,
       monthly_budget_first_year: (project.value as { monthly_budget_first_year?: string | null }).monthly_budget_first_year ?? null,
+      est_clinical_hours_mds_on_site: (project.value as { est_clinical_hours_mds_on_site?: string | null }).est_clinical_hours_mds_on_site ?? null,
+      hr_vision: Array.isArray(project.value.hr_vision) ? project.value.hr_vision : [],
+      operational_hours: project.value.operational_hours ?? null,
+      contents_of_space: project.value.contents_of_space ?? null,
+      marketing_strategy: Array.isArray(project.value.marketing_strategy) ? project.value.marketing_strategy : [],
       client_id: project.value.client_id || null,
       client_type: project.value.client_type || null,
       client_table: (project.value.client_table as ClientTableType | null) || null,
@@ -585,7 +615,7 @@ async function saveSettings() {
       status: formData?.status || 'draft',
       sys_status: formData?.sys_status ?? null,
       priority: (project.value as { priority?: string }).priority ?? 'Medium',
-      purchase_or_lease: formData?.purchase_or_lease || 'Purchase',
+      purchase_or_lease: formData?.purchase_or_lease || null,
       notes: formData?.notes?.trim() || null,
       area: formData?.area !== undefined ? formData.area : null,
       level: formData?.level || null,
@@ -596,6 +626,16 @@ async function saveSettings() {
         (typeof formData?.monthly_budget_first_year === 'string'
           ? formData.monthly_budget_first_year.trim()
           : formData?.monthly_budget_first_year) || null,
+      est_clinical_hours_mds_on_site:
+        (typeof formData?.est_clinical_hours_mds_on_site === 'string'
+          ? formData.est_clinical_hours_mds_on_site.trim()
+          : formData?.est_clinical_hours_mds_on_site) || null,
+      hr_vision: Array.isArray(formData?.hr_vision) ? formData.hr_vision : [],
+      operational_hours:
+        (typeof formData?.operational_hours === 'string' ? formData.operational_hours.trim() : null) || null,
+      contents_of_space:
+        (typeof formData?.contents_of_space === 'string' ? formData.contents_of_space.trim() : null) || null,
+      marketing_strategy: Array.isArray(formData?.marketing_strategy) ? formData.marketing_strategy : [],
       locations_of_interest: Array.isArray(formData?.locations_of_interest)
         ? formData.locations_of_interest
         : [],
@@ -696,6 +736,11 @@ async function saveSettings() {
         healthcare_services: (updatedProject as { healthcare_services?: string | null }).healthcare_services ?? null,
         long_term_fm_team_size: (updatedProject as { long_term_fm_team_size?: string | null }).long_term_fm_team_size ?? null,
         monthly_budget_first_year: (updatedProject as { monthly_budget_first_year?: string | null }).monthly_budget_first_year ?? null,
+        est_clinical_hours_mds_on_site: (updatedProject as { est_clinical_hours_mds_on_site?: string | null }).est_clinical_hours_mds_on_site ?? null,
+        hr_vision: Array.isArray(updatedProject.hr_vision) ? updatedProject.hr_vision : [],
+        operational_hours: updatedProject.operational_hours ?? null,
+        contents_of_space: updatedProject.contents_of_space ?? null,
+        marketing_strategy: Array.isArray(updatedProject.marketing_strategy) ? updatedProject.marketing_strategy : [],
         locations_of_interest: Array.isArray(updatedProject.locations_of_interest)
           ? updatedProject.locations_of_interest
           : [],
@@ -753,6 +798,11 @@ async function saveSettings() {
         project.value.healthcare_services = updateData.healthcare_services ?? null
         project.value.long_term_fm_team_size = updateData.long_term_fm_team_size ?? null
         project.value.monthly_budget_first_year = updateData.monthly_budget_first_year ?? null
+        project.value.est_clinical_hours_mds_on_site = updateData.est_clinical_hours_mds_on_site ?? null
+        project.value.hr_vision = updateData.hr_vision
+        project.value.operational_hours = updateData.operational_hours ?? null
+        project.value.contents_of_space = updateData.contents_of_space ?? null
+        project.value.marketing_strategy = updateData.marketing_strategy
         // Update all client fields
         project.value.client_id = updateData.client_id !== undefined ? updateData.client_id : null
         project.value.client_type = updateData.client_type !== undefined ? updateData.client_type : null
@@ -791,6 +841,11 @@ async function saveSettings() {
       projects.value[projectIndex].healthcare_services = updateData.healthcare_services ?? null
       projects.value[projectIndex].long_term_fm_team_size = updateData.long_term_fm_team_size ?? null
       projects.value[projectIndex].monthly_budget_first_year = updateData.monthly_budget_first_year ?? null
+      projects.value[projectIndex].est_clinical_hours_mds_on_site = updateData.est_clinical_hours_mds_on_site ?? null
+      projects.value[projectIndex].hr_vision = updateData.hr_vision
+      projects.value[projectIndex].operational_hours = updateData.operational_hours ?? null
+      projects.value[projectIndex].contents_of_space = updateData.contents_of_space ?? null
+      projects.value[projectIndex].marketing_strategy = updateData.marketing_strategy
       // Update all client fields
       projects.value[projectIndex].client_id = updateData.client_id !== undefined ? updateData.client_id : null
       projects.value[projectIndex].client_type = updateData.client_type !== undefined ? updateData.client_type : null

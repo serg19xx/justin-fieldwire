@@ -63,7 +63,7 @@ export interface Project {
   notes?: string | null
   /** Note from notes table (fw_notes.note), if API returns it */
   note?: string | null
-  /** Area (e.g. sq ft); mediumint unsigned */
+  /** Project Size (e.g. sq ft); mediumint unsigned; DB column: area */
   area?: number | null
   /** Project level enum */
   level?: ProjectLevel | null
@@ -75,6 +75,16 @@ export interface Project {
   long_term_fm_team_size?: string | null
   /** Monthly budget in first year (dollars, free text) */
   monthly_budget_first_year?: string | null
+  /** Est. clinical hours between MDs on site (free text) */
+  est_clinical_hours_mds_on_site?: string | null
+  /** Selected HR Vision specialties */
+  hr_vision?: string[] | null
+  /** Operational hours (free text) */
+  operational_hours?: string | null
+  /** Contents of space (free text) */
+  contents_of_space?: string | null
+  /** Selected marketing channels */
+  marketing_strategy?: string[] | null
   /** Selected Canadian FSA codes (first 3 chars of postal code) */
   locations_of_interest?: string[] | null
   client_id?: number | null

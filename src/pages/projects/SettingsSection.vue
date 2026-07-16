@@ -2,9 +2,29 @@
   <div class="settings-section flex-1 flex flex-col">
     <!-- Settings Form -->
     <div class="bg-white rounded-lg shadow p-6">
-      <form @submit.prevent="handleSubmit" class="space-y-4">
+      <div class="sticky top-0 z-10 -mx-6 -mt-6 mb-6 border-b border-gray-200 bg-white px-6">
+        <div class="flex overflow-x-auto" role="tablist" aria-label="Project settings sections">
+          <button
+            v-for="section in formSections"
+            :key="section.id"
+            type="button"
+            role="tab"
+            :title="section.title"
+            :aria-label="section.title"
+            :aria-selected="activeSection === section.id"
+            :class="[
+              'shrink-0 border-b-2 px-3 py-3 text-sm font-medium',
+              activeSection === section.id ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700',
+            ]"
+            @click="activeSection = section.id"
+          >
+            {{ section.label }}
+          </button>
+        </div>
+      </div>
+      <form @submit.prevent="handleSubmit" class="flex flex-col gap-4">
         <!-- 1. Project Name -->
-        <div>
+          <div v-show="activeSection === 'general'" class="order-1">
           <label class="block text-sm font-medium text-gray-700 mb-2">
             Project Name <span class="text-red-500">*</span>
           </label>
@@ -18,10 +38,10 @@
           />
         </div>
 
-        <!-- 2. Address -->
-        <div>
+          <!-- 2. Project Address -->
+          <div v-show="activeSection === 'space'" class="order-4">
           <label class="block text-sm font-medium text-gray-700 mb-2">
-            Address <span class="text-red-500">*</span>
+              Project Address <span class="text-red-500">*</span>
           </label>
           <textarea
             v-model="settingsForm.address"
@@ -34,7 +54,7 @@
         </div>
 
         <!-- 2b. Locations of interest -->
-        <div>
+          <div v-show="activeSection === 'general'" class="order-3">
           <label class="block text-sm font-medium text-gray-700 mb-2">
             Locations of interest <span class="text-gray-400 font-normal">(optional)</span>
           </label>
@@ -66,10 +86,10 @@
           <p v-if="canEdit" class="text-xs text-gray-500">Canadian postal code prefixes (FSA).</p>
         </div>
 
-        <!-- 3. Primary Client -->
-        <div>
+          <!-- 3. Client -->
+          <div v-show="activeSection === 'general'" class="order-2">
           <label class="block text-sm font-medium text-gray-700 mb-2">
-            Primary Client <span class="text-red-500">*</span>
+            Client <span class="text-red-500">*</span>
           </label>
           <div class="flex items-center space-x-2">
             <input
@@ -107,10 +127,10 @@
           </p>
         </div>
 
-        <!-- 4. Additional Clients -->
-        <div>
+        <!-- 4. Secondary Client -->
+          <div v-show="activeSection === 'space'" class="order-5">
           <label class="block text-sm font-medium text-gray-700 mb-2">
-            Additional Clients <span class="text-gray-400 font-normal">(optional)</span>
+            Secondary Client <span class="text-gray-400 font-normal">(optional)</span>
           </label>
           <div class="flex flex-wrap items-center gap-2 mb-2">
             <span
@@ -144,8 +164,8 @@
         </div>
 
         <!-- 5. Client stage -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2"> Client stage </label>
+          <div v-show="activeSection === 'general'" class="order-5">
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Stage </label>
           <select
             v-model="settingsForm.status"
             :disabled="!canEdit"
@@ -164,8 +184,8 @@
         </div>
 
         <!-- 6. Lifecycle -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2"> Lifecycle </label>
+          <div v-show="activeSection === 'general'" class="order-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Client Lifecycle </label>
           <select
             v-model="settingsForm.sys_status"
             :disabled="!canEdit"
@@ -178,22 +198,23 @@
         </div>
 
         <!-- 7. Purchase or Lease -->
-        <div>
+          <div v-show="activeSection === 'general'" class="order-7">
           <label class="block text-sm font-medium text-gray-700 mb-2"> Purchase or Lease </label>
           <select
             v-model="settingsForm.purchase_or_lease"
             :disabled="!canEdit"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
           >
+            <option value="">— Select purchase or lease —</option>
             <option value="Purchase">Purchase</option>
             <option value="Lease">Lease</option>
             <option value="Undecided">Undecided</option>
           </select>
         </div>
 
-        <!-- 8. Area -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2"> Area </label>
+        <!-- 8. Project Size -->
+          <div v-show="activeSection === 'space'" class="order-2">
+            <label class="block text-sm font-medium text-gray-700 mb-2"> Area </label>
           <input
             v-model.number="settingsForm.area"
             type="number"
@@ -206,7 +227,7 @@
         </div>
 
         <!-- 9. Level -->
-        <div>
+          <div v-show="activeSection === 'general'" class="order-8">
           <label class="block text-sm font-medium text-gray-700 mb-2"> Level </label>
           <select
             v-model="settingsForm.level"
@@ -223,7 +244,7 @@
         </div>
 
         <!-- 10. Clinic Model Type -->
-        <div>
+          <div v-show="activeSection === 'healthcare'" class="order-1">
           <label class="block text-sm font-medium text-gray-700 mb-2"> Clinic Model Type </label>
           <select
             v-model="settingsForm.clinic_model_type"
@@ -242,7 +263,7 @@
         </div>
 
         <!-- 11. Healthcare Services -->
-        <div>
+          <div v-show="activeSection === 'healthcare'" class="order-4">
           <label class="block text-sm font-medium text-gray-700 mb-2"> Healthcare Services </label>
           <select
             v-model="settingsForm.healthcare_services"
@@ -261,7 +282,7 @@
         </div>
 
         <!-- 12. Long Term Family Medicine Team Size -->
-        <div>
+          <div v-show="activeSection === 'healthcare'" class="order-5">
           <label class="block text-sm font-medium text-gray-700 mb-2">
             Long Term Family Medicine Team Size
           </label>
@@ -282,7 +303,7 @@
         </div>
 
         <!-- 13. Monthly Budget in First Year -->
-        <div>
+          <div v-show="activeSection === 'marketing'" class="order-2">
           <label class="block text-sm font-medium text-gray-700 mb-2">
             Monthly Budget in First Year
             <span class="text-gray-400 font-normal">($)</span>
@@ -297,8 +318,55 @@
           />
         </div>
 
-        <!-- 14. My Account (project manager) -->
-        <div v-if="canAssignManager">
+        <!-- 14. Est. Clinical Hours Between MD's On Site -->
+          <div v-show="activeSection === 'healthcare'" class="order-3">
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Est. Clinical Hours Between MD&rsquo;s On Site
+          </label>
+          <input
+            v-model="settingsForm.est_clinical_hours_mds_on_site"
+            type="text"
+            maxlength="100"
+            :disabled="!canEdit"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            placeholder="e.g. 20"
+          />
+        </div>
+
+        <!-- 15. HR Vision -->
+          <div v-show="activeSection === 'healthcare'" class="order-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            HR Vision <span class="text-gray-400 font-normal">(optional)</span>
+          </label>
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span
+              v-for="specialty in settingsForm.hr_vision"
+              :key="specialty"
+              class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-800"
+            >
+              {{ specialty }}
+              <button
+                v-if="canEdit"
+                type="button"
+                class="ml-1 text-gray-500 hover:text-red-600"
+                @click="removeHrVisionSpecialty(specialty)"
+              >
+                ×
+              </button>
+            </span>
+            <button
+              v-if="canEdit"
+              type="button"
+              @click="showHrVisionSelector = true"
+              class="px-3 py-1.5 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
+            >
+              + Add
+            </button>
+          </div>
+        </div>
+
+        <!-- 16. My Account (project manager) -->
+          <div v-show="activeSection === 'general'" v-if="canAssignManager" class="order-9">
           <label class="block text-sm font-medium text-gray-700 mb-2">
             My Account <span class="text-red-500">*</span>
           </label>
@@ -316,15 +384,15 @@
             {{ managerValidationError }}
           </p>
         </div>
-        <div v-else>
+          <div v-show="activeSection === 'general'" v-else class="order-9">
           <label class="block text-sm font-medium text-gray-700 mb-2"> My Account </label>
           <div class="px-3 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-gray-600">
             {{ projectManagerDisplayName }}
           </div>
         </div>
 
-        <!-- 15. Project foreman -->
-        <div>
+        <!-- 16. Project foreman -->
+          <div v-show="activeSection === 'general'" class="order-10">
           <label class="block text-sm font-medium text-gray-700 mb-2">
             Project foreman / brigadier <span class="text-red-500">*</span>
           </label>
@@ -355,8 +423,8 @@
           </label>
         </div>
 
-        <!-- 16. Description -->
-        <div>
+        <!-- 17. Description -->
+          <div v-show="activeSection === 'general'" class="order-4">
           <label class="block text-sm font-medium text-gray-700 mb-2"> Description </label>
           <textarea
             v-model="settingsForm.description"
@@ -367,8 +435,8 @@
           ></textarea>
         </div>
 
-        <!-- 17. Notes -->
-        <div>
+        <!-- 18. Notes -->
+          <div v-show="activeSection === 'space'" class="order-3">
           <label class="block text-sm font-medium text-gray-700 mb-2"> Notes </label>
           <textarea
             v-model="settingsForm.notes"
@@ -383,10 +451,30 @@
           </p>
         </div>
 
+        <div v-show="activeSection === 'healthcare'" class="order-2">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Operational Hours</label>
+          <input v-model="settingsForm.operational_hours" :disabled="!canEdit" type="text" maxlength="100" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500" />
+        </div>
+
+        <div v-show="activeSection === 'space'" class="order-1">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Contents of Space</label>
+          <textarea v-model="settingsForm.contents_of_space" :disabled="!canEdit" rows="4" maxlength="2000" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"></textarea>
+        </div>
+
+        <div v-show="activeSection === 'marketing'" class="order-1">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Marketing Strategy</label>
+          <div class="space-y-2">
+            <label v-for="strategy in marketingStrategyOptions" :key="strategy" class="flex items-center gap-2 text-sm text-gray-700">
+              <input v-model="settingsForm.marketing_strategy" :disabled="!canEdit" type="checkbox" :value="strategy" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+              {{ strategy }}
+            </label>
+          </div>
+        </div>
+
         <!-- Action Buttons -->
         <div
           v-if="canEdit"
-          class="flex items-center justify-end space-x-4 pt-4 border-t border-gray-200"
+          class="order-last flex items-center justify-end space-x-4 pt-4 border-t border-gray-200"
         >
           <button
             type="submit"
@@ -398,7 +486,7 @@
         </div>
 
         <!-- Read-only notice for non-managers -->
-        <div v-else class="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+        <div v-else class="order-last bg-yellow-50 border border-yellow-200 rounded-md p-4">
           <div class="flex">
             <svg
               class="h-5 w-5 text-yellow-400"
@@ -430,6 +518,12 @@
       @close="showLocationsSelector = false"
       @apply="handleLocationsApply"
     />
+    <HrVisionSelectorDialog
+      :is-open="showHrVisionSelector"
+      :selected-specialties="settingsForm.hr_vision"
+      @close="showHrVisionSelector = false"
+      @apply="handleHrVisionApply"
+    />
     <!-- Primary Client Selector -->
     <ClientSelectorDialog
       :is-open="showClientSelector"
@@ -459,6 +553,7 @@ import ClientSelectorDialog, {
   type ClientSelectionItem,
 } from '@/components/ClientSelectorDialog.vue'
 import PostalFsaSelectorDialog from '@/components/PostalFsaSelectorDialog.vue'
+import HrVisionSelectorDialog from '@/components/HrVisionSelectorDialog.vue'
 import { clientsApi, type Client } from '@/core/utils/clients-api'
 import type { AdditionalProjectClient, ClientTableType } from '@/core/utils/project-api'
 import { formatFsaLabel } from '@/core/utils/postal-fsa-locations'
@@ -473,6 +568,7 @@ import {
   PROJECT_HEALTHCARE_SERVICES,
   PROJECT_LONG_TERM_FM_TEAM_SIZES,
 } from '@/core/utils/constants'
+import { MARKETING_STRATEGY_OPTIONS } from '@/core/utils/marketing-strategy-options'
 import { hrResourcesApi, type WorkerUser } from '@/core/utils/hr-api'
 import { FOREMAN_ROLE_DB_ID } from '@/config/roles'
 import { useAuthStore } from '@/core/stores/auth'
@@ -486,6 +582,14 @@ const projectSysStatusOptions = PROJECT_SYS_STATUS_OPTIONS
 const projectClinicModelTypes = PROJECT_CLINIC_MODEL_TYPES
 const projectHealthcareServices = PROJECT_HEALTHCARE_SERVICES
 const projectLongTermFmTeamSizes = PROJECT_LONG_TERM_FM_TEAM_SIZES
+const marketingStrategyOptions = MARKETING_STRATEGY_OPTIONS
+const activeSection = ref<'general' | 'healthcare' | 'space' | 'marketing'>('general')
+const formSections = [
+  { id: 'general', label: 'General', title: 'General Project Information' },
+  { id: 'healthcare', label: 'Healthcare', title: 'Healthcare Business Vision' },
+  { id: 'space', label: 'Space', title: 'Space Vision' },
+  { id: 'marketing', label: 'Marketing', title: 'Marketing Strategy' },
+] as const
 
 // Props
 interface ProjectData {
@@ -504,6 +608,11 @@ interface ProjectData {
   healthcare_services?: string | null
   long_term_fm_team_size?: string | null
   monthly_budget_first_year?: string | null
+  est_clinical_hours_mds_on_site?: string | null
+  hr_vision?: string[] | null
+  operational_hours?: string | null
+  contents_of_space?: string | null
+  marketing_strategy?: string[] | null
   locations_of_interest?: string[] | null
   client_id?: number | null
   client_type?: string | null
@@ -541,6 +650,7 @@ const showClientSelector = ref(false)
 const selectedClient = ref<Client | null>(null)
 const showAdditionalClientsSelector = ref(false)
 const showLocationsSelector = ref(false)
+const showHrVisionSelector = ref(false)
 const clientValidationError = ref('')
 const foremanValidationError = ref('')
 const managerValidationError = ref('')
@@ -556,7 +666,7 @@ const settingsForm = reactive({
   description: '',
   status: 'draft',
   sys_status: DEFAULT_PROJECT_SYS_STATUS as ProjectSysStatus,
-  purchase_or_lease: 'Purchase',
+  purchase_or_lease: '',
   notes: '',
   area: null as number | null,
   level: '' as string,
@@ -564,6 +674,11 @@ const settingsForm = reactive({
   healthcare_services: '' as string,
   long_term_fm_team_size: '' as string,
   monthly_budget_first_year: '' as string,
+  est_clinical_hours_mds_on_site: '' as string,
+  hr_vision: [] as string[],
+  operational_hours: '' as string,
+  contents_of_space: '' as string,
+  marketing_strategy: [] as string[],
   locations_of_interest: [] as string[],
   client_id: null as number | null,
   client_type: null as string | null,
@@ -675,7 +790,7 @@ function initializeForm() {
     settingsForm.sys_status = resolveProjectSysStatus({
       sys_status: project.sys_status ?? null,
     })
-    settingsForm.purchase_or_lease = String(project.purchase_or_lease || 'Purchase')
+    settingsForm.purchase_or_lease = String(project.purchase_or_lease || '')
     settingsForm.notes = String(project.notes || '')
     settingsForm.area = project.area ?? null
     settingsForm.level = project.level ?? ''
@@ -683,6 +798,13 @@ function initializeForm() {
     settingsForm.healthcare_services = project.healthcare_services ?? ''
     settingsForm.long_term_fm_team_size = project.long_term_fm_team_size ?? ''
     settingsForm.monthly_budget_first_year = project.monthly_budget_first_year ?? ''
+    settingsForm.est_clinical_hours_mds_on_site = project.est_clinical_hours_mds_on_site ?? ''
+    settingsForm.hr_vision = Array.isArray(project.hr_vision) ? [...project.hr_vision] : []
+    settingsForm.operational_hours = project.operational_hours ?? ''
+    settingsForm.contents_of_space = project.contents_of_space ?? ''
+    settingsForm.marketing_strategy = Array.isArray(project.marketing_strategy)
+      ? [...project.marketing_strategy]
+      : []
     settingsForm.locations_of_interest = Array.isArray(project.locations_of_interest)
       ? [...project.locations_of_interest]
       : []
@@ -839,6 +961,15 @@ function removeLocationOfInterest(code: string) {
   settingsForm.locations_of_interest = settingsForm.locations_of_interest.filter((c) => c !== code)
 }
 
+function handleHrVisionApply(specialties: string[]) {
+  settingsForm.hr_vision = [...specialties]
+  showHrVisionSelector.value = false
+}
+
+function removeHrVisionSpecialty(specialty: string) {
+  settingsForm.hr_vision = settingsForm.hr_vision.filter((item) => item !== specialty)
+}
+
 async function loadForemen() {
   try {
     const response = await hrResourcesApi.getAllWorkerUsers(1, 100, {
@@ -902,18 +1033,21 @@ const handleSubmit = () => {
   // Primary client is required
   if (!settingsForm.client_id) {
     clientValidationError.value = 'Primary client is required'
+    activeSection.value = 'general'
     return
   }
   clientValidationError.value = ''
 
   if (canAssignManager.value && !settingsForm.prj_manager) {
     managerValidationError.value = 'My Account is required for administrators'
+    activeSection.value = 'general'
     return
   }
   managerValidationError.value = ''
 
   if (!settingsForm.project_foreman_id) {
     foremanValidationError.value = 'Project foreman is required'
+    activeSection.value = 'general'
     return
   }
   foremanValidationError.value = ''
