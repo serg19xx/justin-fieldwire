@@ -508,10 +508,11 @@ const form = ref({
   project_foreman_id: '',
   description: '',
   area: null as number | null,
-  level: null as string | null,
-  clinic_model_type: null as string | null,
-  healthcare_services: null as string | null,
-  long_term_fm_team_size: null as string | null,
+  // Empty string (not null) so <option value=""> placeholders bind correctly
+  level: '' as string,
+  clinic_model_type: '' as string,
+  healthcare_services: '' as string,
+  long_term_fm_team_size: '' as string,
   monthly_budget_first_year: null as string | null,
 })
 
@@ -659,10 +660,10 @@ watch(
         project_foreman_id: '',
         description: '',
         area: null,
-        level: null,
-        clinic_model_type: null,
-        healthcare_services: null,
-        long_term_fm_team_size: null,
+        level: '',
+        clinic_model_type: '',
+        healthcare_services: '',
+        long_term_fm_team_size: '',
         monthly_budget_first_year: null,
       }
       selectedClient.value = null
