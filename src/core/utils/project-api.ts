@@ -1,5 +1,7 @@
 import { api } from './api'
 import type { ProjectPurchaseLeaseType } from './constants'
+import type { ContentsOfSpaceData } from './contents-of-space'
+import type { OperationalHoursData } from './operational-hours'
 
 // Types
 export interface ProjectTeamMember {
@@ -79,10 +81,10 @@ export interface Project {
   est_clinical_hours_mds_on_site?: string | null
   /** Selected HR Vision specialties */
   hr_vision?: string[] | null
-  /** Operational hours (free text) */
-  operational_hours?: string | null
-  /** Contents of space (free text) */
-  contents_of_space?: string | null
+  /** Operational hours weekly schedule (JSON days) */
+  operational_hours?: OperationalHoursData | null
+  /** Contents of space calculator (JSON rows) */
+  contents_of_space?: ContentsOfSpaceData | null
   /** Selected marketing channels */
   marketing_strategy?: string[] | null
   /** Selected Canadian FSA codes (first 3 chars of postal code) */

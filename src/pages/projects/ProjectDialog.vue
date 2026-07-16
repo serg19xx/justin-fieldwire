@@ -5,7 +5,7 @@
     @click="closeDialog"
   >
     <div
-      class="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+      class="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto"
       @click.stop
     >
       <!-- Header -->
@@ -236,7 +236,7 @@
 
           <!-- 8. Project Size -->
           <div v-show="activeSection === 'space'" class="order-2">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Area </label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Project Size</label>
             <input
               v-model.number="form.area"
               type="number"
@@ -301,12 +301,7 @@
 
           <div v-show="activeSection === 'healthcare'" class="order-2">
             <label class="block text-sm font-medium text-gray-700 mb-2">Operational Hours</label>
-            <input
-              v-model="form.operational_hours"
-              type="text"
-              maxlength="100"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <OperationalHoursEditor v-model="form.operational_hours" />
           </div>
 
           <!-- 12. Long Term Family Medicine Team Size -->
@@ -469,12 +464,7 @@
 
           <div v-show="activeSection === 'space'" class="order-1">
             <label class="block text-sm font-medium text-gray-700 mb-2">Contents of Space</label>
-            <textarea
-              v-model="form.contents_of_space"
-              rows="4"
-              maxlength="2000"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            ></textarea>
+            <ContentsOfSpaceEditor v-model="form.contents_of_space" />
           </div>
 
           <div v-show="activeSection === 'marketing'" class="order-1">
@@ -575,6 +565,19 @@ import {
   PROJECT_LONG_TERM_FM_TEAM_SIZES,
 } from '@/core/utils/constants'
 import { MARKETING_STRATEGY_OPTIONS } from '@/core/utils/marketing-strategy-options'
+import {
+  createEmptyContentsOfSpace,
+  serializeContentsOfSpace,
+  type ContentsOfSpaceData,
+} from '@/core/utils/contents-of-space'
+import {
+  createEmptyOperationalHours,
+  getOperationalHoursValidationError,
+  serializeOperationalHours,
+  type OperationalHoursData,
+} from '@/core/utils/operational-hours'
+import ContentsOfSpaceEditor from '@/components/ContentsOfSpaceEditor.vue'
+import OperationalHoursEditor from '@/components/OperationalHoursEditor.vue'
 import { FOREMAN_ROLE_DB_ID } from '@/config/roles'
 
 const projectSysStatusOptions = PROJECT_SYS_STATUS_OPTIONS
@@ -634,8 +637,8 @@ const form = ref({
   monthly_budget_first_year: null as string | null,
   est_clinical_hours_mds_on_site: null as string | null,
   hr_vision: [] as string[],
-  operational_hours: '',
-  contents_of_space: '',
+  operational_hours: createEmptyOperationalHours() as OperationalHoursData,
+  contents_of_space: createEmptyContentsOfSpace() as ContentsOfSpaceData,
   marketing_strategy: [] as string[],
 })
 
@@ -732,6 +735,11 @@ function validateForm() {
     errors.project_foreman_id = 'Project foreman is required'
   }
 
+  const hoursError = getOperationalHoursValidationError(form.value.operational_hours)
+  if (hoursError) {
+    errors.operational_hours = hoursError
+  }
+
   validationErrors.value = errors
   return Object.keys(errors).length === 0
 }
@@ -791,8 +799,8 @@ watch(
         monthly_budget_first_year: null,
         est_clinical_hours_mds_on_site: null,
         hr_vision: [],
-        operational_hours: '',
-        contents_of_space: '',
+        operational_hours: createEmptyOperationalHours(),
+        contents_of_space: createEmptyContentsOfSpace(),
         marketing_strategy: [],
       }
       activeSection.value = 'general'
@@ -982,7 +990,11 @@ async function handleSubmit() {
   // Validate form
   if (!validateForm()) {
     console.warn('⚠️ Validation failed:', validationErrors.value)
-    activeSection.value = 'general'
+    if (validationErrors.value.operational_hours) {
+      activeSection.value = 'healthcare'
+    } else {
+      activeSection.value = 'general'
+    }
     return
   }
 
@@ -1030,8 +1042,8 @@ async function handleSubmit() {
       monthly_budget_first_year: form.value.monthly_budget_first_year?.trim() || null,
       est_clinical_hours_mds_on_site: form.value.est_clinical_hours_mds_on_site?.trim() || null,
       hr_vision: form.value.hr_vision,
-      operational_hours: form.value.operational_hours.trim() || null,
-      contents_of_space: form.value.contents_of_space.trim() || null,
+      operational_hours: serializeOperationalHours(form.value.operational_hours),
+      contents_of_space: serializeContentsOfSpace(form.value.contents_of_space),
       marketing_strategy: form.value.marketing_strategy,
     }
 

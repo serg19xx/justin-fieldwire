@@ -214,7 +214,7 @@
 
         <!-- 8. Project Size -->
           <div v-show="activeSection === 'space'" class="order-2">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Area </label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Project Size</label>
           <input
             v-model.number="settingsForm.area"
             type="number"
@@ -453,12 +453,12 @@
 
         <div v-show="activeSection === 'healthcare'" class="order-2">
           <label class="block text-sm font-medium text-gray-700 mb-2">Operational Hours</label>
-          <input v-model="settingsForm.operational_hours" :disabled="!canEdit" type="text" maxlength="100" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500" />
+          <OperationalHoursEditor v-model="settingsForm.operational_hours" :disabled="!canEdit" />
         </div>
 
         <div v-show="activeSection === 'space'" class="order-1">
           <label class="block text-sm font-medium text-gray-700 mb-2">Contents of Space</label>
-          <textarea v-model="settingsForm.contents_of_space" :disabled="!canEdit" rows="4" maxlength="2000" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"></textarea>
+          <ContentsOfSpaceEditor v-model="settingsForm.contents_of_space" :disabled="!canEdit" />
         </div>
 
         <div v-show="activeSection === 'marketing'" class="order-1">
@@ -569,6 +569,19 @@ import {
   PROJECT_LONG_TERM_FM_TEAM_SIZES,
 } from '@/core/utils/constants'
 import { MARKETING_STRATEGY_OPTIONS } from '@/core/utils/marketing-strategy-options'
+import {
+  createEmptyContentsOfSpace,
+  normalizeContentsOfSpace,
+  type ContentsOfSpaceData,
+} from '@/core/utils/contents-of-space'
+import {
+  createEmptyOperationalHours,
+  getOperationalHoursValidationError,
+  normalizeOperationalHours,
+  type OperationalHoursData,
+} from '@/core/utils/operational-hours'
+import ContentsOfSpaceEditor from '@/components/ContentsOfSpaceEditor.vue'
+import OperationalHoursEditor from '@/components/OperationalHoursEditor.vue'
 import { hrResourcesApi, type WorkerUser } from '@/core/utils/hr-api'
 import { FOREMAN_ROLE_DB_ID } from '@/config/roles'
 import { useAuthStore } from '@/core/stores/auth'
@@ -610,8 +623,8 @@ interface ProjectData {
   monthly_budget_first_year?: string | null
   est_clinical_hours_mds_on_site?: string | null
   hr_vision?: string[] | null
-  operational_hours?: string | null
-  contents_of_space?: string | null
+  operational_hours?: OperationalHoursData | null
+  contents_of_space?: ContentsOfSpaceData | null
   marketing_strategy?: string[] | null
   locations_of_interest?: string[] | null
   client_id?: number | null
@@ -654,6 +667,7 @@ const showHrVisionSelector = ref(false)
 const clientValidationError = ref('')
 const foremanValidationError = ref('')
 const managerValidationError = ref('')
+const operationalHoursValidationError = ref('')
 const availableForemen = ref<Array<{ id: number; name: string }>>([])
 const availableManagers = ref<Array<{ id: number; name: string; email: string }>>([])
 const initialProjectForemanId = ref<number | null>(null)
@@ -676,8 +690,8 @@ const settingsForm = reactive({
   monthly_budget_first_year: '' as string,
   est_clinical_hours_mds_on_site: '' as string,
   hr_vision: [] as string[],
-  operational_hours: '' as string,
-  contents_of_space: '' as string,
+  operational_hours: createEmptyOperationalHours() as OperationalHoursData,
+  contents_of_space: createEmptyContentsOfSpace() as ContentsOfSpaceData,
   marketing_strategy: [] as string[],
   locations_of_interest: [] as string[],
   client_id: null as number | null,
@@ -800,8 +814,8 @@ function initializeForm() {
     settingsForm.monthly_budget_first_year = project.monthly_budget_first_year ?? ''
     settingsForm.est_clinical_hours_mds_on_site = project.est_clinical_hours_mds_on_site ?? ''
     settingsForm.hr_vision = Array.isArray(project.hr_vision) ? [...project.hr_vision] : []
-    settingsForm.operational_hours = project.operational_hours ?? ''
-    settingsForm.contents_of_space = project.contents_of_space ?? ''
+    settingsForm.operational_hours = normalizeOperationalHours(project.operational_hours)
+    settingsForm.contents_of_space = normalizeContentsOfSpace(project.contents_of_space)
     settingsForm.marketing_strategy = Array.isArray(project.marketing_strategy)
       ? [...project.marketing_strategy]
       : []
@@ -825,6 +839,7 @@ function initializeForm() {
     clientValidationError.value = ''
     foremanValidationError.value = ''
     managerValidationError.value = ''
+    operationalHoursValidationError.value = ''
     void resolveProjectManagerDisplayName()
 
     const validClientTables: ClientTableType[] = ['pharma', 'physician', 'pharmacist', 'medical_clinic']
@@ -1051,6 +1066,14 @@ const handleSubmit = () => {
     return
   }
   foremanValidationError.value = ''
+
+  const hoursError = getOperationalHoursValidationError(settingsForm.operational_hours)
+  if (hoursError) {
+    operationalHoursValidationError.value = hoursError
+    activeSection.value = 'healthcare'
+    return
+  }
+  operationalHoursValidationError.value = ''
 
   isSaving.value = true
   emit('saveSettings')

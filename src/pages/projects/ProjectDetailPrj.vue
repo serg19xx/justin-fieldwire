@@ -49,6 +49,16 @@ import {
   MILESTONE_ICON,
 } from '@/core/utils/task-utils'
 import { filesApi, type FileUpload, type Folder, isFolderReadOnlyInPlanUi, isFileReadOnlyInPlanUi, isFolderUnderScheduleSlotDocumentsPlanBranch, isPlanFolderInboundContentBlocked } from '@/core/utils/files-api'
+import {
+  normalizeContentsOfSpace,
+  serializeContentsOfSpace,
+  type ContentsOfSpaceData,
+} from '@/core/utils/contents-of-space'
+import {
+  normalizeOperationalHours,
+  serializeOperationalHours,
+  type OperationalHoursData,
+} from '@/core/utils/operational-hours'
 
 const route = useRoute()
 const router = useRouter()
@@ -86,8 +96,8 @@ const settingsForm = ref<{
   monthly_budget_first_year?: string | null
   est_clinical_hours_mds_on_site?: string | null
   hr_vision?: string[] | null
-  operational_hours?: string | null
-  contents_of_space?: string | null
+  operational_hours?: OperationalHoursData | null
+  contents_of_space?: ContentsOfSpaceData | null
   marketing_strategy?: string[] | null
   client_id?: number | null
   client_type?: string | null
@@ -332,8 +342,8 @@ interface Project {
   monthly_budget_first_year?: string | null
   est_clinical_hours_mds_on_site?: string | null
   hr_vision?: string[] | null
-  operational_hours?: string | null
-  contents_of_space?: string | null
+  operational_hours?: OperationalHoursData | null
+  contents_of_space?: ContentsOfSpaceData | null
   marketing_strategy?: string[] | null
   locations_of_interest?: string[] | null
   client_id?: number | null
@@ -382,8 +392,8 @@ async function loadProjects() {
       monthly_budget_first_year: (apiProject as ApiProject & { monthly_budget_first_year?: string | null }).monthly_budget_first_year ?? null,
       est_clinical_hours_mds_on_site: (apiProject as ApiProject & { est_clinical_hours_mds_on_site?: string | null }).est_clinical_hours_mds_on_site ?? null,
       hr_vision: Array.isArray(apiProject.hr_vision) ? apiProject.hr_vision : [],
-      operational_hours: apiProject.operational_hours ?? null,
-      contents_of_space: apiProject.contents_of_space ?? null,
+      operational_hours: normalizeOperationalHours(apiProject.operational_hours),
+      contents_of_space: normalizeContentsOfSpace(apiProject.contents_of_space),
       marketing_strategy: Array.isArray(apiProject.marketing_strategy) ? apiProject.marketing_strategy : [],
       locations_of_interest: Array.isArray(apiProject.locations_of_interest)
         ? apiProject.locations_of_interest
@@ -453,8 +463,8 @@ async function loadProject(options?: { silent?: boolean }) {
       monthly_budget_first_year: (apiResponse as { monthly_budget_first_year?: string | null }).monthly_budget_first_year ?? null,
       est_clinical_hours_mds_on_site: (apiResponse as { est_clinical_hours_mds_on_site?: string | null }).est_clinical_hours_mds_on_site ?? null,
       hr_vision: Array.isArray(apiResponse.hr_vision) ? apiResponse.hr_vision : [],
-      operational_hours: apiResponse.operational_hours ?? null,
-      contents_of_space: apiResponse.contents_of_space ?? null,
+      operational_hours: normalizeOperationalHours(apiResponse.operational_hours),
+      contents_of_space: normalizeContentsOfSpace(apiResponse.contents_of_space),
       marketing_strategy: Array.isArray(apiResponse.marketing_strategy) ? apiResponse.marketing_strategy : [],
       locations_of_interest: Array.isArray(apiResponse.locations_of_interest)
         ? apiResponse.locations_of_interest
@@ -571,8 +581,8 @@ function loadSettingsForm() {
       monthly_budget_first_year: (project.value as { monthly_budget_first_year?: string | null }).monthly_budget_first_year ?? null,
       est_clinical_hours_mds_on_site: (project.value as { est_clinical_hours_mds_on_site?: string | null }).est_clinical_hours_mds_on_site ?? null,
       hr_vision: Array.isArray(project.value.hr_vision) ? project.value.hr_vision : [],
-      operational_hours: project.value.operational_hours ?? null,
-      contents_of_space: project.value.contents_of_space ?? null,
+      operational_hours: normalizeOperationalHours(project.value.operational_hours),
+      contents_of_space: normalizeContentsOfSpace(project.value.contents_of_space),
       marketing_strategy: Array.isArray(project.value.marketing_strategy) ? project.value.marketing_strategy : [],
       client_id: project.value.client_id || null,
       client_type: project.value.client_type || null,
@@ -631,10 +641,8 @@ async function saveSettings() {
           ? formData.est_clinical_hours_mds_on_site.trim()
           : formData?.est_clinical_hours_mds_on_site) || null,
       hr_vision: Array.isArray(formData?.hr_vision) ? formData.hr_vision : [],
-      operational_hours:
-        (typeof formData?.operational_hours === 'string' ? formData.operational_hours.trim() : null) || null,
-      contents_of_space:
-        (typeof formData?.contents_of_space === 'string' ? formData.contents_of_space.trim() : null) || null,
+      operational_hours: serializeOperationalHours(formData?.operational_hours ?? null),
+      contents_of_space: serializeContentsOfSpace(formData?.contents_of_space ?? null),
       marketing_strategy: Array.isArray(formData?.marketing_strategy) ? formData.marketing_strategy : [],
       locations_of_interest: Array.isArray(formData?.locations_of_interest)
         ? formData.locations_of_interest
@@ -738,8 +746,8 @@ async function saveSettings() {
         monthly_budget_first_year: (updatedProject as { monthly_budget_first_year?: string | null }).monthly_budget_first_year ?? null,
         est_clinical_hours_mds_on_site: (updatedProject as { est_clinical_hours_mds_on_site?: string | null }).est_clinical_hours_mds_on_site ?? null,
         hr_vision: Array.isArray(updatedProject.hr_vision) ? updatedProject.hr_vision : [],
-        operational_hours: updatedProject.operational_hours ?? null,
-        contents_of_space: updatedProject.contents_of_space ?? null,
+        operational_hours: normalizeOperationalHours(updatedProject.operational_hours),
+        contents_of_space: normalizeContentsOfSpace(updatedProject.contents_of_space),
         marketing_strategy: Array.isArray(updatedProject.marketing_strategy) ? updatedProject.marketing_strategy : [],
         locations_of_interest: Array.isArray(updatedProject.locations_of_interest)
           ? updatedProject.locations_of_interest
@@ -800,8 +808,8 @@ async function saveSettings() {
         project.value.monthly_budget_first_year = updateData.monthly_budget_first_year ?? null
         project.value.est_clinical_hours_mds_on_site = updateData.est_clinical_hours_mds_on_site ?? null
         project.value.hr_vision = updateData.hr_vision
-        project.value.operational_hours = updateData.operational_hours ?? null
-        project.value.contents_of_space = updateData.contents_of_space ?? null
+        project.value.operational_hours = normalizeOperationalHours(updateData.operational_hours)
+        project.value.contents_of_space = normalizeContentsOfSpace(updateData.contents_of_space)
         project.value.marketing_strategy = updateData.marketing_strategy
         // Update all client fields
         project.value.client_id = updateData.client_id !== undefined ? updateData.client_id : null
@@ -843,8 +851,12 @@ async function saveSettings() {
       projects.value[projectIndex].monthly_budget_first_year = updateData.monthly_budget_first_year ?? null
       projects.value[projectIndex].est_clinical_hours_mds_on_site = updateData.est_clinical_hours_mds_on_site ?? null
       projects.value[projectIndex].hr_vision = updateData.hr_vision
-      projects.value[projectIndex].operational_hours = updateData.operational_hours ?? null
-      projects.value[projectIndex].contents_of_space = updateData.contents_of_space ?? null
+      projects.value[projectIndex].operational_hours = normalizeOperationalHours(
+        updateData.operational_hours,
+      )
+      projects.value[projectIndex].contents_of_space = normalizeContentsOfSpace(
+        updateData.contents_of_space,
+      )
       projects.value[projectIndex].marketing_strategy = updateData.marketing_strategy
       // Update all client fields
       projects.value[projectIndex].client_id = updateData.client_id !== undefined ? updateData.client_id : null
