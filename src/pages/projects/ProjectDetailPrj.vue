@@ -91,10 +91,12 @@ const settingsForm = ref<{
   area?: number | null
   level?: string | null
   clinic_model_type?: string | null
-  healthcare_services?: string | null
+  healthcare_services?: string[] | null
+  project_inclusions?: string[] | null
   long_term_fm_team_size?: string | null
   monthly_budget_first_year?: string | null
   est_clinical_hours_mds_on_site?: string | null
+  daily_patient_volumes?: string | null
   hr_vision?: string[] | null
   operational_hours?: OperationalHoursData | null
   contents_of_space?: ContentsOfSpaceData | null
@@ -126,10 +128,12 @@ const settingsForm = ref<{
   area: null,
   level: null,
   clinic_model_type: null,
-  healthcare_services: null,
+  healthcare_services: [],
+  project_inclusions: [],
   long_term_fm_team_size: null,
   monthly_budget_first_year: null,
   est_clinical_hours_mds_on_site: null,
+  daily_patient_volumes: null,
   hr_vision: [],
   operational_hours: null,
   contents_of_space: null,
@@ -345,10 +349,12 @@ interface Project {
   area?: number | null
   level?: string | null
   clinic_model_type?: string | null
-  healthcare_services?: string | null
+  healthcare_services?: string[] | null
+  project_inclusions?: string[] | null
   long_term_fm_team_size?: string | null
   monthly_budget_first_year?: string | null
   est_clinical_hours_mds_on_site?: string | null
+  daily_patient_volumes?: string | null
   hr_vision?: string[] | null
   operational_hours?: OperationalHoursData | null
   contents_of_space?: ContentsOfSpaceData | null
@@ -399,10 +405,12 @@ async function loadProjects() {
       area: (apiProject as ApiProject & { area?: number | null }).area ?? null,
       level: (apiProject as ApiProject & { level?: string | null }).level ?? null,
       clinic_model_type: (apiProject as ApiProject & { clinic_model_type?: string | null }).clinic_model_type ?? null,
-      healthcare_services: (apiProject as ApiProject & { healthcare_services?: string | null }).healthcare_services ?? null,
+      healthcare_services: Array.isArray(apiProject.healthcare_services) ? apiProject.healthcare_services : [],
+      project_inclusions: Array.isArray(apiProject.project_inclusions) ? apiProject.project_inclusions : [],
       long_term_fm_team_size: (apiProject as ApiProject & { long_term_fm_team_size?: string | null }).long_term_fm_team_size ?? null,
       monthly_budget_first_year: (apiProject as ApiProject & { monthly_budget_first_year?: string | null }).monthly_budget_first_year ?? null,
       est_clinical_hours_mds_on_site: (apiProject as ApiProject & { est_clinical_hours_mds_on_site?: string | null }).est_clinical_hours_mds_on_site ?? null,
+      daily_patient_volumes: apiProject.daily_patient_volumes ?? null,
       hr_vision: Array.isArray(apiProject.hr_vision) ? apiProject.hr_vision : [],
       operational_hours: normalizeOperationalHours(apiProject.operational_hours),
       contents_of_space: normalizeContentsOfSpace(apiProject.contents_of_space),
@@ -474,10 +482,12 @@ async function loadProject(options?: { silent?: boolean }) {
       area: (apiResponse as { area?: number | null }).area ?? null,
       level: (apiResponse as { level?: string | null }).level ?? null,
       clinic_model_type: (apiResponse as { clinic_model_type?: string | null }).clinic_model_type ?? null,
-      healthcare_services: (apiResponse as { healthcare_services?: string | null }).healthcare_services ?? null,
+      healthcare_services: Array.isArray(apiResponse.healthcare_services) ? apiResponse.healthcare_services : [],
+      project_inclusions: Array.isArray(apiResponse.project_inclusions) ? apiResponse.project_inclusions : [],
       long_term_fm_team_size: (apiResponse as { long_term_fm_team_size?: string | null }).long_term_fm_team_size ?? null,
       monthly_budget_first_year: (apiResponse as { monthly_budget_first_year?: string | null }).monthly_budget_first_year ?? null,
       est_clinical_hours_mds_on_site: (apiResponse as { est_clinical_hours_mds_on_site?: string | null }).est_clinical_hours_mds_on_site ?? null,
+      daily_patient_volumes: apiResponse.daily_patient_volumes ?? null,
       hr_vision: Array.isArray(apiResponse.hr_vision) ? apiResponse.hr_vision : [],
       operational_hours: normalizeOperationalHours(apiResponse.operational_hours),
       contents_of_space: normalizeContentsOfSpace(apiResponse.contents_of_space),
@@ -596,10 +606,12 @@ function loadSettingsForm() {
       area: (project.value as { area?: number | null }).area ?? null,
       level: (project.value as { level?: string | null }).level ?? null,
       clinic_model_type: (project.value as { clinic_model_type?: string | null }).clinic_model_type ?? null,
-      healthcare_services: (project.value as { healthcare_services?: string | null }).healthcare_services ?? null,
+      healthcare_services: Array.isArray(project.value.healthcare_services) ? project.value.healthcare_services : [],
+      project_inclusions: Array.isArray(project.value.project_inclusions) ? project.value.project_inclusions : [],
       long_term_fm_team_size: (project.value as { long_term_fm_team_size?: string | null }).long_term_fm_team_size ?? null,
       monthly_budget_first_year: (project.value as { monthly_budget_first_year?: string | null }).monthly_budget_first_year ?? null,
       est_clinical_hours_mds_on_site: (project.value as { est_clinical_hours_mds_on_site?: string | null }).est_clinical_hours_mds_on_site ?? null,
+      daily_patient_volumes: project.value.daily_patient_volumes ?? null,
       hr_vision: Array.isArray(project.value.hr_vision) ? project.value.hr_vision : [],
       operational_hours: normalizeOperationalHours(project.value.operational_hours),
       contents_of_space: normalizeContentsOfSpace(project.value.contents_of_space),
@@ -654,7 +666,8 @@ async function saveSettings() {
       area: formData?.area !== undefined ? formData.area : null,
       level: formData?.level || null,
       clinic_model_type: formData?.clinic_model_type || null,
-      healthcare_services: formData?.healthcare_services || null,
+      healthcare_services: Array.isArray(formData?.healthcare_services) ? formData.healthcare_services : [],
+      project_inclusions: Array.isArray(formData?.project_inclusions) ? formData.project_inclusions : [],
       long_term_fm_team_size: formData?.long_term_fm_team_size || null,
       monthly_budget_first_year:
         (typeof formData?.monthly_budget_first_year === 'string'
@@ -664,6 +677,10 @@ async function saveSettings() {
         (typeof formData?.est_clinical_hours_mds_on_site === 'string'
           ? formData.est_clinical_hours_mds_on_site.trim()
           : formData?.est_clinical_hours_mds_on_site) || null,
+      daily_patient_volumes:
+        (typeof formData?.daily_patient_volumes === 'string'
+          ? formData.daily_patient_volumes.trim()
+          : formData?.daily_patient_volumes) || null,
       hr_vision: Array.isArray(formData?.hr_vision) ? formData.hr_vision : [],
       operational_hours: serializeOperationalHours(formData?.operational_hours ?? null),
       contents_of_space: serializeContentsOfSpace(formData?.contents_of_space ?? null),
@@ -774,10 +791,12 @@ async function saveSettings() {
         area: (updatedProject as { area?: number | null }).area ?? null,
         level: (updatedProject as { level?: string | null }).level ?? null,
         clinic_model_type: (updatedProject as { clinic_model_type?: string | null }).clinic_model_type ?? null,
-        healthcare_services: (updatedProject as { healthcare_services?: string | null }).healthcare_services ?? null,
+        healthcare_services: Array.isArray(updatedProject.healthcare_services) ? updatedProject.healthcare_services : [],
+        project_inclusions: Array.isArray(updatedProject.project_inclusions) ? updatedProject.project_inclusions : [],
         long_term_fm_team_size: (updatedProject as { long_term_fm_team_size?: string | null }).long_term_fm_team_size ?? null,
         monthly_budget_first_year: (updatedProject as { monthly_budget_first_year?: string | null }).monthly_budget_first_year ?? null,
         est_clinical_hours_mds_on_site: (updatedProject as { est_clinical_hours_mds_on_site?: string | null }).est_clinical_hours_mds_on_site ?? null,
+        daily_patient_volumes: updatedProject.daily_patient_volumes ?? null,
         hr_vision: Array.isArray(updatedProject.hr_vision) ? updatedProject.hr_vision : [],
         operational_hours: normalizeOperationalHours(updatedProject.operational_hours),
         contents_of_space: normalizeContentsOfSpace(updatedProject.contents_of_space),
@@ -840,10 +859,16 @@ async function saveSettings() {
         project.value.area = updateData.area !== undefined ? updateData.area : null
         project.value.level = updateData.level ?? null
         project.value.clinic_model_type = updateData.clinic_model_type ?? null
-        project.value.healthcare_services = updateData.healthcare_services ?? null
+        project.value.healthcare_services = Array.isArray(updateData.healthcare_services)
+          ? updateData.healthcare_services
+          : []
+        project.value.project_inclusions = Array.isArray(updateData.project_inclusions)
+          ? updateData.project_inclusions
+          : []
         project.value.long_term_fm_team_size = updateData.long_term_fm_team_size ?? null
         project.value.monthly_budget_first_year = updateData.monthly_budget_first_year ?? null
         project.value.est_clinical_hours_mds_on_site = updateData.est_clinical_hours_mds_on_site ?? null
+        project.value.daily_patient_volumes = updateData.daily_patient_volumes ?? null
         project.value.hr_vision = updateData.hr_vision
         project.value.operational_hours = normalizeOperationalHours(updateData.operational_hours)
         project.value.contents_of_space = normalizeContentsOfSpace(updateData.contents_of_space)
@@ -887,10 +912,16 @@ async function saveSettings() {
       projects.value[projectIndex].area = updateData.area !== undefined ? updateData.area : null
       projects.value[projectIndex].level = updateData.level ?? null
       projects.value[projectIndex].clinic_model_type = updateData.clinic_model_type ?? null
-      projects.value[projectIndex].healthcare_services = updateData.healthcare_services ?? null
+      projects.value[projectIndex].healthcare_services = Array.isArray(updateData.healthcare_services)
+        ? updateData.healthcare_services
+        : []
+      projects.value[projectIndex].project_inclusions = Array.isArray(updateData.project_inclusions)
+        ? updateData.project_inclusions
+        : []
       projects.value[projectIndex].long_term_fm_team_size = updateData.long_term_fm_team_size ?? null
       projects.value[projectIndex].monthly_budget_first_year = updateData.monthly_budget_first_year ?? null
       projects.value[projectIndex].est_clinical_hours_mds_on_site = updateData.est_clinical_hours_mds_on_site ?? null
+      projects.value[projectIndex].daily_patient_volumes = updateData.daily_patient_volumes ?? null
       projects.value[projectIndex].hr_vision = updateData.hr_vision
       projects.value[projectIndex].operational_hours = normalizeOperationalHours(
         updateData.operational_hours,

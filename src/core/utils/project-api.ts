@@ -71,14 +71,18 @@ export interface Project {
   level?: ProjectLevel | null
   /** Clinic model type (FFS Solo, FHG, …) */
   clinic_model_type?: string | null
-  /** Healthcare services category (Primary Care, Pharmacy, …) */
-  healthcare_services?: string | null
+  /** Healthcare services (multi-select) */
+  healthcare_services?: string[] | null
+  /** Project inclusions (multi-select) */
+  project_inclusions?: string[] | null
   /** Long Term Family Medicine team size (Solo, 1-3, …) */
   long_term_fm_team_size?: string | null
   /** Monthly budget in first year (dollars, free text) */
   monthly_budget_first_year?: string | null
   /** Est. clinical hours between MDs on site (free text) */
   est_clinical_hours_mds_on_site?: string | null
+  /** Daily patient volumes (free text) */
+  daily_patient_volumes?: string | null
   /** Selected HR Vision specialties */
   hr_vision?: string[] | null
   /** Operational hours weekly schedule (JSON days) */

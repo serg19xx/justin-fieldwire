@@ -274,27 +274,68 @@
           </select>
         </div>
 
-        <!-- 11. Healthcare Services -->
-          <div v-show="activeSection === 'healthcare'" class="order-4">
-          <label class="block text-sm font-medium text-gray-700 mb-2"> Healthcare Services </label>
-          <select
-            v-model="settingsForm.healthcare_services"
-            :disabled="!canEdit"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-          >
-            <option value="">— Select healthcare services —</option>
-            <option
-              v-for="healthcareService in projectHealthcareServices"
-              :key="healthcareService"
-              :value="healthcareService"
+        <!-- 11. Project Inclusions -->
+          <div v-show="activeSection === 'healthcare'" class="order-5">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Project Inclusions</label>
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span
+              v-for="item in settingsForm.project_inclusions"
+              :key="item"
+              class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-800"
             >
-              {{ healthcareService }}
-            </option>
-          </select>
+              {{ item }}
+              <button
+                v-if="canEdit"
+                type="button"
+                class="ml-1 text-gray-500 hover:text-red-600"
+                @click="removeProjectInclusion(item)"
+              >
+                ×
+              </button>
+            </span>
+            <button
+              v-if="canEdit"
+              type="button"
+              @click="showProjectInclusionsSelector = true"
+              class="px-3 py-1.5 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
+            >
+              + Add
+            </button>
+          </div>
+        </div>
+
+        <!-- 12. Healthcare Services -->
+          <div v-show="activeSection === 'healthcare'" class="order-6">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Healthcare Services</label>
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span
+              v-for="service in settingsForm.healthcare_services"
+              :key="service"
+              class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-800"
+            >
+              {{ service }}
+              <button
+                v-if="canEdit"
+                type="button"
+                class="ml-1 text-gray-500 hover:text-red-600"
+                @click="removeHealthcareService(service)"
+              >
+                ×
+              </button>
+            </span>
+            <button
+              v-if="canEdit"
+              type="button"
+              @click="showHealthcareServicesSelector = true"
+              class="px-3 py-1.5 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
+            >
+              + Add
+            </button>
+          </div>
         </div>
 
         <!-- 12. Long Term Family Medicine Team Size -->
-          <div v-show="activeSection === 'healthcare'" class="order-5">
+          <div v-show="activeSection === 'healthcare'" class="order-7">
           <label class="block text-sm font-medium text-gray-700 mb-2">
             Long Term Family Medicine Team Size
           </label>
@@ -330,8 +371,20 @@
           />
         </div>
 
-        <!-- 14. Est. Clinical Hours Between MD's On Site -->
+        <!-- 14. Daily Patient Volumes -->
           <div v-show="activeSection === 'healthcare'" class="order-3">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Daily Patient Volumes</label>
+          <input
+            v-model="settingsForm.daily_patient_volumes"
+            type="text"
+            maxlength="100"
+            :disabled="!canEdit"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+          />
+        </div>
+
+        <!-- 15. Est. Clinical Hours Between MD's On Site -->
+          <div v-show="activeSection === 'healthcare'" class="order-4">
           <label class="block text-sm font-medium text-gray-700 mb-2">
             Est. Clinical Hours Between MD&rsquo;s On Site
           </label>
@@ -346,7 +399,7 @@
         </div>
 
         <!-- 15. HR Vision -->
-          <div v-show="activeSection === 'healthcare'" class="order-6">
+          <div v-show="activeSection === 'healthcare'" class="order-8">
           <label class="block text-sm font-medium text-gray-700 mb-2">
             HR Vision <span class="text-gray-400 font-normal">(optional)</span>
           </label>
@@ -580,6 +633,18 @@
       @close="showHrVisionSelector = false"
       @apply="handleHrVisionApply"
     />
+    <HealthcareServicesSelectorDialog
+      :is-open="showHealthcareServicesSelector"
+      :selected-services="settingsForm.healthcare_services"
+      @close="showHealthcareServicesSelector = false"
+      @apply="handleHealthcareServicesApply"
+    />
+    <ProjectInclusionsSelectorDialog
+      :is-open="showProjectInclusionsSelector"
+      :selected-items="settingsForm.project_inclusions"
+      @close="showProjectInclusionsSelector = false"
+      @apply="handleProjectInclusionsApply"
+    />
     <!-- Primary Client Selector -->
     <ClientSelectorDialog
       :is-open="showClientSelector"
@@ -610,6 +675,8 @@ import ClientSelectorDialog, {
 } from '@/components/ClientSelectorDialog.vue'
 import PostalFsaSelectorDialog from '@/components/PostalFsaSelectorDialog.vue'
 import HrVisionSelectorDialog from '@/components/HrVisionSelectorDialog.vue'
+import HealthcareServicesSelectorDialog from '@/components/HealthcareServicesSelectorDialog.vue'
+import ProjectInclusionsSelectorDialog from '@/components/ProjectInclusionsSelectorDialog.vue'
 import { clientsApi, type Client } from '@/core/utils/clients-api'
 import type { AdditionalProjectClient, ClientTableType } from '@/core/utils/project-api'
 import { formatFsaLabel } from '@/core/utils/postal-fsa-locations'
@@ -621,7 +688,6 @@ import {
 } from '@/core/utils/project-sys-status'
 import {
   PROJECT_CLINIC_MODEL_TYPES,
-  PROJECT_HEALTHCARE_SERVICES,
   PROJECT_LONG_TERM_FM_TEAM_SIZES,
 } from '@/core/utils/constants'
 import { MARKETING_STRATEGY_OPTIONS } from '@/core/utils/marketing-strategy-options'
@@ -653,7 +719,6 @@ defineOptions({
 const authStore = useAuthStore()
 const projectSysStatusOptions = PROJECT_SYS_STATUS_OPTIONS
 const projectClinicModelTypes = PROJECT_CLINIC_MODEL_TYPES
-const projectHealthcareServices = PROJECT_HEALTHCARE_SERVICES
 const projectLongTermFmTeamSizes = PROJECT_LONG_TERM_FM_TEAM_SIZES
 const marketingStrategyOptions = MARKETING_STRATEGY_OPTIONS
 const activeSection = ref<'general' | 'healthcare' | 'space' | 'marketing' | 'financials'>('general')
@@ -679,10 +744,12 @@ interface ProjectData {
   area?: number | null
   level?: string | null
   clinic_model_type?: string | null
-  healthcare_services?: string | null
+  healthcare_services?: string[] | null
+  project_inclusions?: string[] | null
   long_term_fm_team_size?: string | null
   monthly_budget_first_year?: string | null
   est_clinical_hours_mds_on_site?: string | null
+  daily_patient_volumes?: string | null
   hr_vision?: string[] | null
   operational_hours?: OperationalHoursData | null
   contents_of_space?: ContentsOfSpaceData | null
@@ -729,6 +796,8 @@ const selectedClient = ref<Client | null>(null)
 const showAdditionalClientsSelector = ref(false)
 const showLocationsSelector = ref(false)
 const showHrVisionSelector = ref(false)
+const showHealthcareServicesSelector = ref(false)
+const showProjectInclusionsSelector = ref(false)
 const clientValidationError = ref('')
 const foremanValidationError = ref('')
 const managerValidationError = ref('')
@@ -750,10 +819,12 @@ const settingsForm = reactive({
   area: null as number | null,
   level: '' as string,
   clinic_model_type: '' as string,
-  healthcare_services: '' as string,
+  healthcare_services: [] as string[],
+  project_inclusions: [] as string[],
   long_term_fm_team_size: '' as string,
   monthly_budget_first_year: '' as string,
   est_clinical_hours_mds_on_site: '' as string,
+  daily_patient_volumes: '' as string,
   hr_vision: [] as string[],
   operational_hours: createEmptyOperationalHours() as OperationalHoursData,
   contents_of_space: createEmptyContentsOfSpace() as ContentsOfSpaceData,
@@ -890,10 +961,16 @@ function initializeForm() {
     settingsForm.area = project.area ?? null
     settingsForm.level = project.level ?? ''
     settingsForm.clinic_model_type = project.clinic_model_type ?? ''
-    settingsForm.healthcare_services = project.healthcare_services ?? ''
+    settingsForm.healthcare_services = Array.isArray(project.healthcare_services)
+      ? [...project.healthcare_services]
+      : []
+    settingsForm.project_inclusions = Array.isArray(project.project_inclusions)
+      ? [...project.project_inclusions]
+      : []
     settingsForm.long_term_fm_team_size = project.long_term_fm_team_size ?? ''
     settingsForm.monthly_budget_first_year = project.monthly_budget_first_year ?? ''
     settingsForm.est_clinical_hours_mds_on_site = project.est_clinical_hours_mds_on_site ?? ''
+    settingsForm.daily_patient_volumes = project.daily_patient_volumes ?? ''
     settingsForm.hr_vision = Array.isArray(project.hr_vision) ? [...project.hr_vision] : []
     settingsForm.operational_hours = normalizeOperationalHours(project.operational_hours)
     settingsForm.contents_of_space = normalizeContentsOfSpace(project.contents_of_space)
@@ -1068,6 +1145,24 @@ function handleHrVisionApply(specialties: string[]) {
 
 function removeHrVisionSpecialty(specialty: string) {
   settingsForm.hr_vision = settingsForm.hr_vision.filter((item) => item !== specialty)
+}
+
+function handleHealthcareServicesApply(services: string[]) {
+  settingsForm.healthcare_services = [...services]
+  showHealthcareServicesSelector.value = false
+}
+
+function removeHealthcareService(service: string) {
+  settingsForm.healthcare_services = settingsForm.healthcare_services.filter((item) => item !== service)
+}
+
+function handleProjectInclusionsApply(items: string[]) {
+  settingsForm.project_inclusions = [...items]
+  showProjectInclusionsSelector.value = false
+}
+
+function removeProjectInclusion(item: string) {
+  settingsForm.project_inclusions = settingsForm.project_inclusions.filter((i) => i !== item)
 }
 
 async function loadForemen() {

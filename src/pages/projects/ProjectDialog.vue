@@ -292,22 +292,60 @@
             </select>
           </div>
 
-          <!-- 11. Healthcare Services -->
-          <div v-show="activeSection === 'healthcare'" class="order-4">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Healthcare Services </label>
-            <select
-              v-model="form.healthcare_services"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">— Select healthcare services —</option>
-              <option
-                v-for="healthcareService in projectHealthcareServices"
-                :key="healthcareService"
-                :value="healthcareService"
+          <!-- 11. Project Inclusions -->
+          <div v-show="activeSection === 'healthcare'" class="order-5">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Project Inclusions</label>
+            <div class="flex flex-wrap items-center gap-2 mb-2">
+              <span
+                v-for="item in form.project_inclusions"
+                :key="item"
+                class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-800"
               >
-                {{ healthcareService }}
-              </option>
-            </select>
+                {{ item }}
+                <button
+                  type="button"
+                  class="ml-1 text-gray-500 hover:text-red-600"
+                  @click="removeProjectInclusion(item)"
+                >
+                  ×
+                </button>
+              </span>
+              <button
+                type="button"
+                @click="showProjectInclusionsSelector = true"
+                class="px-3 py-1.5 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
+              >
+                + Add
+              </button>
+            </div>
+          </div>
+
+          <!-- 12. Healthcare Services -->
+          <div v-show="activeSection === 'healthcare'" class="order-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Healthcare Services</label>
+            <div class="flex flex-wrap items-center gap-2 mb-2">
+              <span
+                v-for="service in form.healthcare_services"
+                :key="service"
+                class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-800"
+              >
+                {{ service }}
+                <button
+                  type="button"
+                  class="ml-1 text-gray-500 hover:text-red-600"
+                  @click="removeHealthcareService(service)"
+                >
+                  ×
+                </button>
+              </span>
+              <button
+                type="button"
+                @click="showHealthcareServicesSelector = true"
+                class="px-3 py-1.5 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
+              >
+                + Add
+              </button>
+            </div>
           </div>
 
           <div v-show="activeSection === 'healthcare'" class="order-2">
@@ -316,7 +354,7 @@
           </div>
 
           <!-- 12. Long Term Family Medicine Team Size -->
-          <div v-show="activeSection === 'healthcare'" class="order-5">
+          <div v-show="activeSection === 'healthcare'" class="order-7">
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Long Term Family Medicine Team Size
             </label>
@@ -350,8 +388,19 @@
             />
           </div>
 
-          <!-- 14. Est. Clinical Hours Between MD's On Site -->
+          <!-- 14. Daily Patient Volumes -->
           <div v-show="activeSection === 'healthcare'" class="order-3">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Daily Patient Volumes</label>
+            <input
+              v-model="form.daily_patient_volumes"
+              type="text"
+              maxlength="100"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <!-- 15. Est. Clinical Hours Between MD's On Site -->
+          <div v-show="activeSection === 'healthcare'" class="order-4">
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Est. Clinical Hours Between MD&rsquo;s On Site
             </label>
@@ -365,7 +414,7 @@
           </div>
 
           <!-- 15. HR Vision -->
-          <div v-show="activeSection === 'healthcare'" class="order-6">
+          <div v-show="activeSection === 'healthcare'" class="order-8">
             <label class="block text-sm font-medium text-gray-700 mb-2">
               HR Vision <span class="text-gray-400 font-normal">(optional)</span>
             </label>
@@ -566,6 +615,18 @@
       @close="showHrVisionSelector = false"
       @apply="handleHrVisionApply"
     />
+    <HealthcareServicesSelectorDialog
+      :is-open="showHealthcareServicesSelector"
+      :selected-services="form.healthcare_services"
+      @close="showHealthcareServicesSelector = false"
+      @apply="handleHealthcareServicesApply"
+    />
+    <ProjectInclusionsSelectorDialog
+      :is-open="showProjectInclusionsSelector"
+      :selected-items="form.project_inclusions"
+      @close="showProjectInclusionsSelector = false"
+      @apply="handleProjectInclusionsApply"
+    />
     <!-- Primary Client Selector -->
     <ClientSelectorDialog
       :is-open="showClientSelector"
@@ -604,6 +665,8 @@ import ClientSelectorDialog, {
 } from '@/components/ClientSelectorDialog.vue'
 import PostalFsaSelectorDialog from '@/components/PostalFsaSelectorDialog.vue'
 import HrVisionSelectorDialog from '@/components/HrVisionSelectorDialog.vue'
+import HealthcareServicesSelectorDialog from '@/components/HealthcareServicesSelectorDialog.vue'
+import ProjectInclusionsSelectorDialog from '@/components/ProjectInclusionsSelectorDialog.vue'
 import { clientsApi, type Client } from '@/core/utils/clients-api'
 import { formatFsaLabel } from '@/core/utils/postal-fsa-locations'
 import {
@@ -613,7 +676,6 @@ import {
 } from '@/core/utils/project-sys-status'
 import {
   PROJECT_CLINIC_MODEL_TYPES,
-  PROJECT_HEALTHCARE_SERVICES,
   PROJECT_LONG_TERM_FM_TEAM_SIZES,
 } from '@/core/utils/constants'
 import { MARKETING_STRATEGY_OPTIONS } from '@/core/utils/marketing-strategy-options'
@@ -638,7 +700,6 @@ import { FOREMAN_ROLE_DB_ID } from '@/config/roles'
 
 const projectSysStatusOptions = PROJECT_SYS_STATUS_OPTIONS
 const projectClinicModelTypes = PROJECT_CLINIC_MODEL_TYPES
-const projectHealthcareServices = PROJECT_HEALTHCARE_SERVICES
 const projectLongTermFmTeamSizes = PROJECT_LONG_TERM_FM_TEAM_SIZES
 const marketingStrategyOptions = MARKETING_STRATEGY_OPTIONS
 const activeSection = ref<'general' | 'healthcare' | 'space' | 'marketing' | 'financials'>('general')
@@ -689,10 +750,12 @@ const form = ref({
   // Empty string (not null) so <option value=""> placeholders bind correctly
   level: '' as string,
   clinic_model_type: '' as string,
-  healthcare_services: '' as string,
+  healthcare_services: [] as string[],
+  project_inclusions: [] as string[],
   long_term_fm_team_size: '' as string,
   monthly_budget_first_year: null as string | null,
   est_clinical_hours_mds_on_site: null as string | null,
+  daily_patient_volumes: null as string | null,
   hr_vision: [] as string[],
   operational_hours: createEmptyOperationalHours() as OperationalHoursData,
   contents_of_space: createEmptyContentsOfSpace() as ContentsOfSpaceData,
@@ -721,6 +784,8 @@ const selectedClient = ref<Client | null>(null)
 const showAdditionalClientsSelector = ref(false)
 const showLocationsSelector = ref(false)
 const showHrVisionSelector = ref(false)
+const showHealthcareServicesSelector = ref(false)
+const showProjectInclusionsSelector = ref(false)
 
 // State
 const isSubmitting = ref(false)
@@ -867,10 +932,12 @@ watch(
         area: null,
         level: '',
         clinic_model_type: '',
-        healthcare_services: '',
+        healthcare_services: [],
+        project_inclusions: [],
         long_term_fm_team_size: '',
         monthly_budget_first_year: null,
         est_clinical_hours_mds_on_site: null,
+        daily_patient_volumes: null,
         hr_vision: [],
         operational_hours: createEmptyOperationalHours(),
         contents_of_space: createEmptyContentsOfSpace(),
@@ -1061,6 +1128,24 @@ function removeHrVisionSpecialty(specialty: string) {
   form.value.hr_vision = form.value.hr_vision.filter((item) => item !== specialty)
 }
 
+function handleHealthcareServicesApply(services: string[]) {
+  form.value.healthcare_services = [...services]
+  showHealthcareServicesSelector.value = false
+}
+
+function removeHealthcareService(service: string) {
+  form.value.healthcare_services = form.value.healthcare_services.filter((item) => item !== service)
+}
+
+function handleProjectInclusionsApply(items: string[]) {
+  form.value.project_inclusions = [...items]
+  showProjectInclusionsSelector.value = false
+}
+
+function removeProjectInclusion(item: string) {
+  form.value.project_inclusions = form.value.project_inclusions.filter((i) => i !== item)
+}
+
 async function handleSubmit() {
   if (isSubmitting.value) return
 
@@ -1114,10 +1199,12 @@ async function handleSubmit() {
       area: form.value.area ?? null,
       level: form.value.level || null,
       clinic_model_type: form.value.clinic_model_type || null,
-      healthcare_services: form.value.healthcare_services || null,
+      healthcare_services: form.value.healthcare_services,
+      project_inclusions: form.value.project_inclusions,
       long_term_fm_team_size: form.value.long_term_fm_team_size || null,
       monthly_budget_first_year: form.value.monthly_budget_first_year?.trim() || null,
       est_clinical_hours_mds_on_site: form.value.est_clinical_hours_mds_on_site?.trim() || null,
+      daily_patient_volumes: form.value.daily_patient_volumes?.trim() || null,
       hr_vision: form.value.hr_vision,
       operational_hours: serializeOperationalHours(form.value.operational_hours),
       contents_of_space: serializeContentsOfSpace(form.value.contents_of_space),
