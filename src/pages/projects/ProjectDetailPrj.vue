@@ -99,6 +99,10 @@ const settingsForm = ref<{
   operational_hours?: OperationalHoursData | null
   contents_of_space?: ContentsOfSpaceData | null
   marketing_strategy?: string[] | null
+  total_doctors?: string | null
+  project_fee_per_doctor?: string | null
+  cost_per_sq_ft?: string | null
+  mark_up?: string | null
   client_id?: number | null
   client_type?: string | null
   client_table?: ClientTableType | null
@@ -130,6 +134,10 @@ const settingsForm = ref<{
   operational_hours: null,
   contents_of_space: null,
   marketing_strategy: [],
+  total_doctors: null,
+  project_fee_per_doctor: null,
+  cost_per_sq_ft: null,
+  mark_up: null,
   client_id: null,
   client_type: null,
   client_table: null,
@@ -345,6 +353,10 @@ interface Project {
   operational_hours?: OperationalHoursData | null
   contents_of_space?: ContentsOfSpaceData | null
   marketing_strategy?: string[] | null
+  total_doctors?: string | null
+  project_fee_per_doctor?: string | null
+  cost_per_sq_ft?: string | null
+  mark_up?: string | null
   locations_of_interest?: string[] | null
   client_id?: number | null
   client_type?: string | null
@@ -395,6 +407,10 @@ async function loadProjects() {
       operational_hours: normalizeOperationalHours(apiProject.operational_hours),
       contents_of_space: normalizeContentsOfSpace(apiProject.contents_of_space),
       marketing_strategy: Array.isArray(apiProject.marketing_strategy) ? apiProject.marketing_strategy : [],
+      total_doctors: apiProject.total_doctors ?? null,
+      project_fee_per_doctor: apiProject.project_fee_per_doctor ?? null,
+      cost_per_sq_ft: apiProject.cost_per_sq_ft ?? null,
+      mark_up: apiProject.mark_up ?? null,
       locations_of_interest: Array.isArray(apiProject.locations_of_interest)
         ? apiProject.locations_of_interest
         : [],
@@ -466,6 +482,10 @@ async function loadProject(options?: { silent?: boolean }) {
       operational_hours: normalizeOperationalHours(apiResponse.operational_hours),
       contents_of_space: normalizeContentsOfSpace(apiResponse.contents_of_space),
       marketing_strategy: Array.isArray(apiResponse.marketing_strategy) ? apiResponse.marketing_strategy : [],
+      total_doctors: apiResponse.total_doctors ?? null,
+      project_fee_per_doctor: apiResponse.project_fee_per_doctor ?? null,
+      cost_per_sq_ft: apiResponse.cost_per_sq_ft ?? null,
+      mark_up: apiResponse.mark_up ?? null,
       locations_of_interest: Array.isArray(apiResponse.locations_of_interest)
         ? apiResponse.locations_of_interest
         : [],
@@ -584,6 +604,10 @@ function loadSettingsForm() {
       operational_hours: normalizeOperationalHours(project.value.operational_hours),
       contents_of_space: normalizeContentsOfSpace(project.value.contents_of_space),
       marketing_strategy: Array.isArray(project.value.marketing_strategy) ? project.value.marketing_strategy : [],
+      total_doctors: project.value.total_doctors ?? null,
+      project_fee_per_doctor: project.value.project_fee_per_doctor ?? null,
+      cost_per_sq_ft: project.value.cost_per_sq_ft ?? null,
+      mark_up: project.value.mark_up ?? null,
       client_id: project.value.client_id || null,
       client_type: project.value.client_type || null,
       client_table: (project.value.client_table as ClientTableType | null) || null,
@@ -644,6 +668,15 @@ async function saveSettings() {
       operational_hours: serializeOperationalHours(formData?.operational_hours ?? null),
       contents_of_space: serializeContentsOfSpace(formData?.contents_of_space ?? null),
       marketing_strategy: Array.isArray(formData?.marketing_strategy) ? formData.marketing_strategy : [],
+      total_doctors:
+        (typeof formData?.total_doctors === 'string' ? formData.total_doctors.trim() : null) || null,
+      project_fee_per_doctor:
+        (typeof formData?.project_fee_per_doctor === 'string'
+          ? formData.project_fee_per_doctor.trim()
+          : null) || null,
+      cost_per_sq_ft:
+        (typeof formData?.cost_per_sq_ft === 'string' ? formData.cost_per_sq_ft.trim() : null) || null,
+      mark_up: (typeof formData?.mark_up === 'string' ? formData.mark_up.trim() : null) || null,
       locations_of_interest: Array.isArray(formData?.locations_of_interest)
         ? formData.locations_of_interest
         : [],
@@ -749,6 +782,10 @@ async function saveSettings() {
         operational_hours: normalizeOperationalHours(updatedProject.operational_hours),
         contents_of_space: normalizeContentsOfSpace(updatedProject.contents_of_space),
         marketing_strategy: Array.isArray(updatedProject.marketing_strategy) ? updatedProject.marketing_strategy : [],
+        total_doctors: updatedProject.total_doctors ?? null,
+        project_fee_per_doctor: updatedProject.project_fee_per_doctor ?? null,
+        cost_per_sq_ft: updatedProject.cost_per_sq_ft ?? null,
+        mark_up: updatedProject.mark_up ?? null,
         locations_of_interest: Array.isArray(updatedProject.locations_of_interest)
           ? updatedProject.locations_of_interest
           : [],
@@ -811,6 +848,10 @@ async function saveSettings() {
         project.value.operational_hours = normalizeOperationalHours(updateData.operational_hours)
         project.value.contents_of_space = normalizeContentsOfSpace(updateData.contents_of_space)
         project.value.marketing_strategy = updateData.marketing_strategy
+        project.value.total_doctors = updateData.total_doctors ?? null
+        project.value.project_fee_per_doctor = updateData.project_fee_per_doctor ?? null
+        project.value.cost_per_sq_ft = updateData.cost_per_sq_ft ?? null
+        project.value.mark_up = updateData.mark_up ?? null
         // Update all client fields
         project.value.client_id = updateData.client_id !== undefined ? updateData.client_id : null
         project.value.client_type = updateData.client_type !== undefined ? updateData.client_type : null
@@ -858,6 +899,10 @@ async function saveSettings() {
         updateData.contents_of_space,
       )
       projects.value[projectIndex].marketing_strategy = updateData.marketing_strategy
+      projects.value[projectIndex].total_doctors = updateData.total_doctors ?? null
+      projects.value[projectIndex].project_fee_per_doctor = updateData.project_fee_per_doctor ?? null
+      projects.value[projectIndex].cost_per_sq_ft = updateData.cost_per_sq_ft ?? null
+      projects.value[projectIndex].mark_up = updateData.mark_up ?? null
       // Update all client fields
       projects.value[projectIndex].client_id = updateData.client_id !== undefined ? updateData.client_id : null
       projects.value[projectIndex].client_type = updateData.client_type !== undefined ? updateData.client_type : null

@@ -127,6 +127,18 @@
           </p>
         </div>
 
+        <div v-show="activeSection === 'general'" class="order-2">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Total Doctors</label>
+          <input
+            v-model="settingsForm.total_doctors"
+            :disabled="!canEdit"
+            type="text"
+            maxlength="100"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            placeholder="e.g. 4"
+          />
+        </div>
+
         <!-- 4. Secondary Client -->
           <div v-show="activeSection === 'space'" class="order-5">
           <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -471,6 +483,50 @@
           </div>
         </div>
 
+        <div v-show="activeSection === 'financials'" class="order-1 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Project Fee per Doctor</label>
+            <input
+              v-model="settingsForm.project_fee_per_doctor"
+              :disabled="!canEdit"
+              type="text"
+              maxlength="100"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Cost per Sq/Ft</label>
+            <input
+              v-model="settingsForm.cost_per_sq_ft"
+              :disabled="!canEdit"
+              type="text"
+              maxlength="100"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Mark Up</label>
+            <input
+              v-model="settingsForm.mark_up"
+              :disabled="!canEdit"
+              type="text"
+              maxlength="100"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+              placeholder="e.g. 1.15"
+            />
+            <p class="mt-1 text-xs text-gray-500">Multiplier (e.g. 1.15), not a percent.</p>
+          </div>
+          <div class="rounded-md border border-gray-200 bg-gray-50 px-3 py-3">
+            <div class="text-sm font-medium text-gray-700">Estimated Total</div>
+            <div class="mt-1 text-lg font-semibold tabular-nums text-gray-900">
+              {{ financialsTotalDisplay }}
+            </div>
+            <p class="mt-1 text-xs text-gray-500">
+              (Fee × Total Doctors) + (Project Size × Cost per Sq/Ft × Mark Up)
+            </p>
+          </div>
+        </div>
+
         <!-- Action Buttons -->
         <div
           v-if="canEdit"
@@ -580,6 +636,10 @@ import {
   normalizeOperationalHours,
   type OperationalHoursData,
 } from '@/core/utils/operational-hours'
+import {
+  computeFinancialsTotal,
+  formatFinancialsTotal,
+} from '@/core/utils/project-financials'
 import ContentsOfSpaceEditor from '@/components/ContentsOfSpaceEditor.vue'
 import OperationalHoursEditor from '@/components/OperationalHoursEditor.vue'
 import { hrResourcesApi, type WorkerUser } from '@/core/utils/hr-api'
@@ -596,12 +656,13 @@ const projectClinicModelTypes = PROJECT_CLINIC_MODEL_TYPES
 const projectHealthcareServices = PROJECT_HEALTHCARE_SERVICES
 const projectLongTermFmTeamSizes = PROJECT_LONG_TERM_FM_TEAM_SIZES
 const marketingStrategyOptions = MARKETING_STRATEGY_OPTIONS
-const activeSection = ref<'general' | 'healthcare' | 'space' | 'marketing'>('general')
+const activeSection = ref<'general' | 'healthcare' | 'space' | 'marketing' | 'financials'>('general')
 const formSections = [
   { id: 'general', label: 'General', title: 'General Project Information' },
   { id: 'healthcare', label: 'Healthcare', title: 'Healthcare Business Vision' },
   { id: 'space', label: 'Space', title: 'Space Vision' },
   { id: 'marketing', label: 'Marketing', title: 'Marketing Strategy' },
+  { id: 'financials', label: 'Financials', title: 'Financials' },
 ] as const
 
 // Props
@@ -626,6 +687,10 @@ interface ProjectData {
   operational_hours?: OperationalHoursData | null
   contents_of_space?: ContentsOfSpaceData | null
   marketing_strategy?: string[] | null
+  total_doctors?: string | null
+  project_fee_per_doctor?: string | null
+  cost_per_sq_ft?: string | null
+  mark_up?: string | null
   locations_of_interest?: string[] | null
   client_id?: number | null
   client_type?: string | null
@@ -693,6 +758,10 @@ const settingsForm = reactive({
   operational_hours: createEmptyOperationalHours() as OperationalHoursData,
   contents_of_space: createEmptyContentsOfSpace() as ContentsOfSpaceData,
   marketing_strategy: [] as string[],
+  total_doctors: '' as string,
+  project_fee_per_doctor: '' as string,
+  cost_per_sq_ft: '' as string,
+  mark_up: '' as string,
   locations_of_interest: [] as string[],
   client_id: null as number | null,
   client_type: null as string | null,
@@ -707,6 +776,18 @@ const settingsForm = reactive({
 
 const canAssignManager = computed(
   () => authStore.currentUser?.job_title === 'System Administrator',
+)
+
+const financialsTotalDisplay = computed(() =>
+  formatFinancialsTotal(
+    computeFinancialsTotal({
+      projectFeePerDoctor: settingsForm.project_fee_per_doctor,
+      totalDoctors: settingsForm.total_doctors,
+      area: settingsForm.area,
+      costPerSqFt: settingsForm.cost_per_sq_ft,
+      markUp: settingsForm.mark_up,
+    }),
+  ),
 )
 
 const showPropagateForemanCheckbox = computed(() => {
@@ -819,6 +900,10 @@ function initializeForm() {
     settingsForm.marketing_strategy = Array.isArray(project.marketing_strategy)
       ? [...project.marketing_strategy]
       : []
+    settingsForm.total_doctors = project.total_doctors ?? ''
+    settingsForm.project_fee_per_doctor = project.project_fee_per_doctor ?? ''
+    settingsForm.cost_per_sq_ft = project.cost_per_sq_ft ?? ''
+    settingsForm.mark_up = project.mark_up ?? ''
     settingsForm.locations_of_interest = Array.isArray(project.locations_of_interest)
       ? [...project.locations_of_interest]
       : []

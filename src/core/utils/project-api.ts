@@ -87,6 +87,14 @@ export interface Project {
   contents_of_space?: ContentsOfSpaceData | null
   /** Selected marketing channels */
   marketing_strategy?: string[] | null
+  /** Total doctors (free text, used in Financials) */
+  total_doctors?: string | null
+  /** Project fee per doctor (free text) */
+  project_fee_per_doctor?: string | null
+  /** Cost per sq/ft (free text) */
+  cost_per_sq_ft?: string | null
+  /** Mark-up multiplier (free text, e.g. 1.15) */
+  mark_up?: string | null
   /** Selected Canadian FSA codes (first 3 chars of postal code) */
   locations_of_interest?: string[] | null
   client_id?: number | null

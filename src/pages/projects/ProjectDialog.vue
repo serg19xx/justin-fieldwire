@@ -156,6 +156,17 @@
             </p>
           </div>
 
+          <div v-show="activeSection === 'general'" class="order-2">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Total Doctors</label>
+            <input
+              v-model="form.total_doctors"
+              type="text"
+              maxlength="100"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g. 4"
+            />
+          </div>
+
           <!-- 4. Secondary Client -->
           <div v-show="activeSection === 'space'" class="order-5">
             <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -481,6 +492,47 @@
             </div>
           </div>
 
+          <div v-show="activeSection === 'financials'" class="order-1 space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Project Fee per Doctor</label>
+              <input
+                v-model="form.project_fee_per_doctor"
+                type="text"
+                maxlength="100"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Cost per Sq/Ft</label>
+              <input
+                v-model="form.cost_per_sq_ft"
+                type="text"
+                maxlength="100"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Mark Up</label>
+              <input
+                v-model="form.mark_up"
+                type="text"
+                maxlength="100"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. 1.15"
+              />
+              <p class="mt-1 text-xs text-gray-500">Multiplier (e.g. 1.15), not a percent.</p>
+            </div>
+            <div class="rounded-md border border-gray-200 bg-gray-50 px-3 py-3">
+              <div class="text-sm font-medium text-gray-700">Estimated Total</div>
+              <div class="mt-1 text-lg font-semibold tabular-nums text-gray-900">
+                {{ financialsTotalDisplay }}
+              </div>
+              <p class="mt-1 text-xs text-gray-500">
+                (Fee × Total Doctors) + (Project Size × Cost per Sq/Ft × Mark Up)
+              </p>
+            </div>
+          </div>
+
           <!-- Actions -->
           <div class="order-last flex items-center justify-end space-x-3 pt-2">
             <button
@@ -576,6 +628,10 @@ import {
   serializeOperationalHours,
   type OperationalHoursData,
 } from '@/core/utils/operational-hours'
+import {
+  computeFinancialsTotal,
+  formatFinancialsTotal,
+} from '@/core/utils/project-financials'
 import ContentsOfSpaceEditor from '@/components/ContentsOfSpaceEditor.vue'
 import OperationalHoursEditor from '@/components/OperationalHoursEditor.vue'
 import { FOREMAN_ROLE_DB_ID } from '@/config/roles'
@@ -585,12 +641,13 @@ const projectClinicModelTypes = PROJECT_CLINIC_MODEL_TYPES
 const projectHealthcareServices = PROJECT_HEALTHCARE_SERVICES
 const projectLongTermFmTeamSizes = PROJECT_LONG_TERM_FM_TEAM_SIZES
 const marketingStrategyOptions = MARKETING_STRATEGY_OPTIONS
-const activeSection = ref<'general' | 'healthcare' | 'space' | 'marketing'>('general')
+const activeSection = ref<'general' | 'healthcare' | 'space' | 'marketing' | 'financials'>('general')
 const formSections = [
   { id: 'general', label: 'General', title: 'General Project Information' },
   { id: 'healthcare', label: 'Healthcare', title: 'Healthcare Business Vision' },
   { id: 'space', label: 'Space', title: 'Space Vision' },
   { id: 'marketing', label: 'Marketing', title: 'Marketing Strategy' },
+  { id: 'financials', label: 'Financials', title: 'Financials' },
 ] as const
 
 // Props
@@ -640,7 +697,23 @@ const form = ref({
   operational_hours: createEmptyOperationalHours() as OperationalHoursData,
   contents_of_space: createEmptyContentsOfSpace() as ContentsOfSpaceData,
   marketing_strategy: [] as string[],
+  total_doctors: '',
+  project_fee_per_doctor: '',
+  cost_per_sq_ft: '',
+  mark_up: '',
 })
+
+const financialsTotalDisplay = computed(() =>
+  formatFinancialsTotal(
+    computeFinancialsTotal({
+      projectFeePerDoctor: form.value.project_fee_per_doctor,
+      totalDoctors: form.value.total_doctors,
+      area: form.value.area,
+      costPerSqFt: form.value.cost_per_sq_ft,
+      markUp: form.value.mark_up,
+    }),
+  ),
+)
 
 // Client selector state
 const showClientSelector = ref(false)
@@ -802,6 +875,10 @@ watch(
         operational_hours: createEmptyOperationalHours(),
         contents_of_space: createEmptyContentsOfSpace(),
         marketing_strategy: [],
+        total_doctors: '',
+        project_fee_per_doctor: '',
+        cost_per_sq_ft: '',
+        mark_up: '',
       }
       activeSection.value = 'general'
       selectedClient.value = null
@@ -1045,6 +1122,10 @@ async function handleSubmit() {
       operational_hours: serializeOperationalHours(form.value.operational_hours),
       contents_of_space: serializeContentsOfSpace(form.value.contents_of_space),
       marketing_strategy: form.value.marketing_strategy,
+      total_doctors: form.value.total_doctors.trim() || null,
+      project_fee_per_doctor: form.value.project_fee_per_doctor.trim() || null,
+      cost_per_sq_ft: form.value.cost_per_sq_ft.trim() || null,
+      mark_up: form.value.mark_up.trim() || null,
     }
 
     console.log('📤 API payload:', apiData)
