@@ -175,6 +175,8 @@
                   v-if="authStore.currentUser?.role_category === 'task'"
                 />
 
+                <PushNotificationsCard />
+
                 <!-- Status Change Reason (when setting to inactive) -->
                 <div v-if="showInactiveReasonFields" class="space-y-3">
                   <div
@@ -1330,6 +1332,7 @@ import { resolveApiMediaUrl } from '@/config/api'
 import { useProfileStore, AVAILABLE_LANGUAGES, PROFICIENCY_LEVELS } from '@/core/stores/profile'
 import AvatarWidget from './AvatarWidget.vue'
 import NotificationPreferencesCard from '@/components/account/NotificationPreferencesCard.vue'
+import PushNotificationsCard from '@/components/account/PushNotificationsCard.vue'
 
 // Component name
 defineOptions({

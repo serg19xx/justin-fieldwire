@@ -2,6 +2,7 @@ import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { VitePWA } from 'vite-plugin-pwa'
 import tailwindcss from 'tailwindcss'
 import autoprefixer from 'autoprefixer'
 
@@ -11,7 +12,50 @@ function hasWorkingLocalStorage(): boolean {
 
 // https://vite.dev/config/
 export default defineConfig(async ({ mode }) => {
-  const plugins = [vue()]
+  const plugins = [
+    vue(),
+    VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.ico', 'icons/icon-192.png', 'icons/icon-512.png'],
+      manifest: {
+        name: 'FieldWire',
+        short_name: 'FieldWire',
+        description: 'Construction project companion',
+        theme_color: '#2563eb',
+        background_color: '#ffffff',
+        display: 'standalone',
+        start_url: '/',
+        icons: [
+          {
+            src: '/icons/icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: '/icons/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+          },
+          {
+            src: '/icons/icon-512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable',
+          },
+        ],
+      },
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+      },
+      devOptions: {
+        enabled: true,
+        type: 'module',
+      },
+    }),
+  ]
 
   if (mode === 'development' && hasWorkingLocalStorage()) {
     const { default: vueDevTools } = await import('vite-plugin-vue-devtools')
