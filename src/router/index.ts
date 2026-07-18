@@ -145,15 +145,17 @@ const router = createRouter({
     },
     {
       path: '/reports',
-      component: () => {
+      beforeEnter: (to, from, next) => {
         const authStore = useAuthStore()
         const roleCode = authStore.currentUser?.role_code
-
-        console.log('🔍 Router reports debug:', { roleCode })
-
-        // All users get Reports.vue for now
-        return import('../pages/reports/Reports.vue')
+        const allowed = roleCode === 'admin' || roleCode === 'project_manager'
+        if (!allowed) {
+          next('/dashboard')
+          return
+        }
+        next()
       },
+      component: () => import('../pages/reports/Reports.vue'),
     },
     {
       path: '/task-templates',
@@ -185,17 +187,18 @@ const router = createRouter({
       path: '/admin-settings',
       component: () => {
         const authStore = useAuthStore()
-        const jobTitle = authStore.currentUser?.job_title
+        const roleCode = authStore.currentUser?.role_code
+        const canConfigureEvents =
+          roleCode === 'admin' || roleCode === 'project_manager'
 
-        console.log('🔍 Router admin-settings debug:', { jobTitle })
+        console.log('🔍 Router admin-settings debug:', { roleCode, canConfigureEvents })
 
-        // Only System Administrators can access admin settings
-        if (jobTitle === 'System Administrator') {
+        // Admin and PM configure Event Rules / message templates
+        if (canConfigureEvents) {
           return import('../pages/admin/AdminSettings.vue')
-        } else {
-          // Redirect non-admins to dashboard
-          return import('../pages/dashboard/GlobalDashboard.vue')
         }
+
+        return import('../pages/dashboard/GlobalDashboard.vue')
       },
     },
     {

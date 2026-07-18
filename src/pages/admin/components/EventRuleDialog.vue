@@ -43,7 +43,7 @@
                     pattern="^[A-Z_]+$"
                     required
                     :class="[
-                      'w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900',
+                      'w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900',
                       validationErrors.event_type
                         ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
                         : '',
@@ -78,7 +78,7 @@
                 <select
                   v-model="form.severity"
                   required
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
                 >
                   <option value="important">Important</option>
                   <option value="critical">Critical</option>
@@ -91,7 +91,7 @@
                 </label>
                 <select
                   v-model="form.priority"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
                 >
                   <option :value="null">Auto ({{ computedPriority }})</option>
                   <option value="critical">Critical</option>
@@ -107,7 +107,7 @@
                 </label>
                 <select
                   v-model="form.execution_location"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
                 >
                   <option :value="null">Auto</option>
                   <option value="server">Server</option>
@@ -126,7 +126,7 @@
                 v-model="form.comment"
                 rows="3"
                 maxlength="255"
-                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900 resize-none"
+                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900 resize-none"
                 placeholder="Optional comment"
               ></textarea>
             </div>
@@ -215,7 +215,7 @@
                       </label>
                       <select
                         v-model="(action.channel_templates || {})[channel]"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
                       >
                         <option :value="null">Use default template</option>
                         <option
@@ -250,7 +250,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Period *</label>
                     <select
                       v-model="action.period"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
                     >
                       <option value="daily">Daily</option>
                       <option value="weekly">Weekly</option>
@@ -267,7 +267,7 @@
                       type="text"
                       pattern="^P\d+[DM]$"
                       placeholder="P7D (7 days), P1M (1 month)"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
                     />
                   </div>
 
@@ -448,7 +448,7 @@
                     <label class="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
                     <select
                       v-model="form.conditions.time_conditions.value.timezone"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
                   >
                       <option value="America/New_York">America/New_York</option>
                       <option value="America/Los_Angeles">America/Los_Angeles</option>
@@ -463,7 +463,7 @@
                       <input
                         v-model="timeRange.start"
                         type="time"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
                       />
                     </div>
                     <div>
@@ -471,7 +471,7 @@
                       <input
                         v-model="timeRange.end"
                         type="time"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
                       />
                     </div>
                   </div>
@@ -512,7 +512,7 @@
                       v-model.number="form.conditions.project_conditions.value.min_budget"
                       type="number"
                       min="0"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
                     />
                   </div>
                   <div>

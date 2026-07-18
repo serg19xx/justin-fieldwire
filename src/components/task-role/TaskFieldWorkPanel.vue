@@ -83,7 +83,7 @@
     <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <h2 class="text-sm font-semibold text-gray-900 mb-1">Site photos <span class="text-gray-400 font-normal">(optional)</span></h2>
       <p class="text-xs text-gray-500 mb-4">
-        Before and after photos. Saved on the server and visible to the PM under Plans → Execution Logs.
+        Before and after photos. Saved on the server and included in the project daily report.
         On Mac/PC use <strong class="font-medium text-gray-600">JPG or PNG</strong> (if Photos exports HEIC, choose “Export as JPEG”).
       </p>
 
@@ -346,34 +346,43 @@ function openDialog(kind: WorkTimeDialogKind): void {
 
 function buildWorkTimePatch(
   kind: WorkTimeDialogKind,
-  payload: { at: string; reason: string },
+  payload: { at: string; reason: string; urgent: boolean },
 ): {
   field_work_started_at?: string
   field_work_ended_at?: string
   field_work_start_reason?: string | null
   field_work_end_reason?: string | null
+  notify_urgent?: boolean
 } {
   const trimmedReason = payload.reason.trim()
   if (kind === 'start') {
     const patch: {
       field_work_started_at: string
       field_work_start_reason?: string | null
+      notify_urgent?: boolean
     } = { field_work_started_at: payload.at }
     if (trimmedReason) {
       patch.field_work_start_reason = trimmedReason
     } else if (workStartReason.value?.trim()) {
       patch.field_work_start_reason = null
     }
+    if (payload.urgent) {
+      patch.notify_urgent = true
+    }
     return patch
   }
   const patch: {
     field_work_ended_at: string
     field_work_end_reason?: string | null
+    notify_urgent?: boolean
   } = { field_work_ended_at: payload.at }
   if (trimmedReason) {
     patch.field_work_end_reason = trimmedReason
   } else if (workEndReason.value?.trim()) {
     patch.field_work_end_reason = null
+  }
+  if (payload.urgent) {
+    patch.notify_urgent = true
   }
   return patch
 }
@@ -394,7 +403,7 @@ function resolveSaveErrorMessage(error: unknown): string {
   return 'Could not save. Check connection and try again.'
 }
 
-async function onDialogSave(payload: { at: string; reason: string }): Promise<void> {
+async function onDialogSave(payload: { at: string; reason: string; urgent: boolean }): Promise<void> {
   const patch = buildWorkTimePatch(dialogKind.value, payload)
 
   const ok = await persistFieldWork(
@@ -411,6 +420,7 @@ async function persistFieldWork(
     field_work_start_reason?: string | null
     field_work_end_reason?: string | null
     field_notes?: string | null
+    notify_urgent?: boolean
   },
   successMsg: string,
 ): Promise<boolean> {

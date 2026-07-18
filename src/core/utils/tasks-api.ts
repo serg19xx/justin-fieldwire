@@ -846,6 +846,7 @@ export const tasksApi = {
       field_work_end_reason?: string | null
       field_notes?: string | null
       progress_pct?: number
+      notify_urgent?: boolean
     },
   ): Promise<Task> {
     try {

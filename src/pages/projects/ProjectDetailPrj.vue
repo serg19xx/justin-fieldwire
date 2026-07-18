@@ -44,6 +44,7 @@ import PhotosSection from './PhotosSection.vue'
 import SettingsSection from './SettingsSection.vue'
 import ProjectScheduleSection from '@/components/projects/ProjectScheduleSection.vue'
 import ProjectUserCalendarSection from '@/components/projects/ProjectUserCalendarSection.vue'
+import ProjectReportsSection from './ProjectReportsSection.vue'
 import TeamMemberDetailsDialog from './TeamMemberDetailsDialog.vue'
 import {
   MILESTONE_ICON,
@@ -77,7 +78,7 @@ const error = ref<string | null>(null)
 const calendarRef = ref()
 
 // Navigation state
-const activeSection = ref<'plans' | 'tasks' | 'schedule' | 'calendar' | 'photos' | 'team' | 'settings'>('plans')
+const activeSection = ref<'plans' | 'tasks' | 'schedule' | 'calendar' | 'photos' | 'team' | 'reports' | 'settings'>('plans')
 
 // Settings form state
 const settingsForm = ref<{
@@ -535,7 +536,7 @@ async function loadProject(options?: { silent?: boolean }) {
   }
 }
 
-type ProjectSection = 'plans' | 'tasks' | 'schedule' | 'calendar' | 'photos' | 'team' | 'settings'
+type ProjectSection = 'plans' | 'tasks' | 'schedule' | 'calendar' | 'photos' | 'team' | 'reports' | 'settings'
 
 /** Loads lists/forms needed for the active tab (also used when opening a section via ?section= in the URL). */
 function runSectionDataLoads(section: ProjectSection): void {
@@ -2485,6 +2486,7 @@ function applySectionFromRouteQuery(): void {
     s !== 'plans' &&
     s !== 'photos' &&
     s !== 'team' &&
+    s !== 'reports' &&
     s !== 'settings'
   ) {
     return
@@ -2721,6 +2723,30 @@ watch(
                 ></path>
               </svg>
               Team
+            </button>
+            <!-- Reports - admin and PM only -->
+            <button
+              v-if="
+                authStore.currentUser?.role_code === 'admin' ||
+                authStore.currentUser?.role_code === 'project_manager'
+              "
+              @click="setActiveSection('reports')"
+              :class="[
+                'flex items-center px-3 py-2 rounded-md text-sm font-medium w-full text-left',
+                activeSection === 'reports'
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
+              ]"
+            >
+              <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                ></path>
+              </svg>
+              Reports
             </button>
             <button
               @click="setActiveSection('settings')"
@@ -3006,6 +3032,11 @@ watch(
               </button>
             </template>
 
+            <!-- Reports Section Buttons -->
+            <template v-else-if="activeSection === 'reports'">
+              <!-- Read-only archive, no actions -->
+            </template>
+
             <!-- Settings Section Buttons -->
             <template v-else-if="activeSection === 'settings'">
               <!-- Settings form has its own save button -->
@@ -3185,6 +3216,12 @@ watch(
             :can-add-worker="canEditProject"
             :refresh-key="teamListRefreshKey"
             @add-team-member="addTeamMember"
+          />
+
+          <!-- Reports Section -->
+          <ProjectReportsSection
+            v-else-if="activeSection === 'reports'"
+            :project-id="project.id"
           />
 
           <!-- Settings Section -->

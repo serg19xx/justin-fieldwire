@@ -171,12 +171,6 @@
                   </div>
                 </div>
 
-                <NotificationPreferencesCard
-                  v-if="authStore.currentUser?.role_category === 'task'"
-                />
-
-                <PushNotificationsCard />
-
                 <!-- Status Change Reason (when setting to inactive) -->
                 <div v-if="showInactiveReasonFields" class="space-y-3">
                   <div
@@ -1147,10 +1141,50 @@
               </div>
           </div>
 
+          <!-- Notifications Tab -->
+          <div v-if="activeTab === 'notifications'" class="p-6 max-w-4xl mx-auto">
+            <h2 class="text-xl font-semibold text-gray-900 mb-2">Notifications</h2>
+
+            <template v-if="authStore.isAdmin || authStore.isManager">
+              <p class="text-gray-600 mb-6">
+                Mute field work start/end messages from crews. Urgent sends still deliver a push.
+                Other automatic events are turned on or off in Event Rules.
+              </p>
+              <AdminFieldWorkNotificationsCard />
+              <PushNotificationsCard />
+            </template>
+
+            <template v-else>
+              <p class="text-gray-600 mb-6">
+                Choose which system events can reach you, and on which channels. New events stay off
+                until you enable them. Admins define available events in Admin Settings.
+              </p>
+              <NotificationPreferencesCard />
+              <EventNotificationPreferencesCard />
+              <PushNotificationsCard />
+            </template>
+          </div>
+
           <!-- System Tab -->
-        <div v-if="activeTab === 'system'" class="p-6 max-w-4xl mx-auto">
+          <div v-if="activeTab === 'system'" class="p-6 max-w-4xl mx-auto">
             <h2 class="text-xl font-semibold text-gray-900 mb-6">System Settings</h2>
             <p class="text-gray-600 mb-6">Security and account settings</p>
+
+            <div
+              v-if="authStore.isAdmin || authStore.isManager"
+              class="mb-8 rounded-md border border-blue-200 bg-blue-50 p-4"
+            >
+              <h3 class="text-sm font-medium text-blue-900">System event configuration</h3>
+              <p class="mt-1 text-sm text-blue-800">
+                Admins and project managers create and enable notification events for the system.
+                Field users then choose delivery for events available to their role. Configure events
+                in
+                <router-link to="/admin-settings" class="font-medium underline">
+                  Admin Settings → Event Rules
+                </router-link>
+                .
+              </p>
+            </div>
 
             <!-- 2FA Section -->
             <div class="mb-8">
@@ -1332,6 +1366,8 @@ import { resolveApiMediaUrl } from '@/config/api'
 import { useProfileStore, AVAILABLE_LANGUAGES, PROFICIENCY_LEVELS } from '@/core/stores/profile'
 import AvatarWidget from './AvatarWidget.vue'
 import NotificationPreferencesCard from '@/components/account/NotificationPreferencesCard.vue'
+import EventNotificationPreferencesCard from '@/components/account/EventNotificationPreferencesCard.vue'
+import AdminFieldWorkNotificationsCard from '@/components/account/AdminFieldWorkNotificationsCard.vue'
 import PushNotificationsCard from '@/components/account/PushNotificationsCard.vue'
 
 // Component name
@@ -1369,12 +1405,33 @@ const showInactiveReasonFields = ref(false) // New state for showing reason fiel
 
 // Tab management
 const activeTab = ref<string>('basic')
-const tabs = [
-  { id: 'basic', name: 'Basic Info', icon: '👤' },
-  { id: 'professional', name: 'Professional', icon: '💼' },
-  { id: 'emergency', name: 'Emergency', icon: '🚨' },
-  { id: 'system', name: 'System', icon: '⚙️' }
-]
+const tabs = computed(() => {
+  const items = [
+    { id: 'basic', name: 'Basic Info', icon: '👤' },
+    { id: 'professional', name: 'Professional', icon: '💼' },
+    { id: 'emergency', name: 'Emergency', icon: '🚨' },
+  ]
+  // Field roles: opt into events. Admin/PM: mute field-work start/end + device push.
+  if (
+    authStore.currentUser?.role_category === 'task' ||
+    authStore.isAdmin ||
+    authStore.isManager
+  ) {
+    items.push({ id: 'notifications', name: 'Notifications', icon: '🔔' })
+  }
+  items.push({ id: 'system', name: 'System', icon: '⚙️' })
+  return items
+})
+
+watch(
+  () => [authStore.currentUser?.role_category, authStore.isAdmin, authStore.isManager] as const,
+  ([category, isAdmin, isManager]) => {
+    const canSeeNotifications = category === 'task' || isAdmin || isManager
+    if (!canSeeNotifications && activeTab.value === 'notifications') {
+      activeTab.value = 'basic'
+    }
+  },
+)
 
 // Profile form
 const profileForm = reactive({

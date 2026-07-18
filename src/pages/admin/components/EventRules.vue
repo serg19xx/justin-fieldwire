@@ -32,7 +32,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Rule Type</label>
           <select
             v-model="filters.ruleType"
-            class="w-full h-10 px-4 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+            class="w-full h-10 px-4 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
           >
             <option value="">All Types</option>
             <option value="system">System</option>
@@ -45,14 +45,14 @@
             v-model="filters.searchEventType"
             type="text"
             placeholder="Search by event type..."
-            class="w-full h-10 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+            class="w-full h-10 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
           />
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
           <select
             v-model="filters.enabled"
-            class="w-full h-10 px-4 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+            class="w-full h-10 px-4 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
           >
             <option value="">All Statuses</option>
             <option value="true">Active</option>
@@ -63,7 +63,7 @@
           <label class="block text-sm font-medium text-gray-700 mb-1">Execution Location</label>
           <select
             v-model="filters.executionLocation"
-            class="w-full h-10 px-4 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 hover:border-blue-400 text-gray-900"
+            class="w-full h-10 px-4 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
           >
             <option value="">All Locations</option>
             <option value="server">Server</option>

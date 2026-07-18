@@ -49,7 +49,12 @@
           >
             Calendar
           </RouterLink>
+          <!-- Reports - admin and PM only -->
           <RouterLink
+            v-if="
+              authStore.currentUser?.role_code === 'admin' ||
+              authStore.currentUser?.role_code === 'project_manager'
+            "
             to="/reports"
             class="text-sm font-medium text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md"
             :class="{ 'bg-gray-100 text-gray-900': $route.path === '/reports' }"

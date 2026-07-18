@@ -77,11 +77,11 @@
           <span class="text-sm font-medium text-gray-900">My tasks</span>
         </RouterLink>
         <RouterLink
-          to="/reports"
+          to="/calendar"
           class="flex flex-col items-center justify-center p-4 bg-white rounded-xl shadow-sm border border-gray-200 active:bg-orange-50"
         >
-          <span class="text-2xl mb-1" aria-hidden="true">📊</span>
-          <span class="text-sm font-medium text-gray-900">Reports</span>
+          <span class="text-2xl mb-1" aria-hidden="true">📅</span>
+          <span class="text-sm font-medium text-gray-900">Calendar</span>
         </RouterLink>
       </div>
     </section>

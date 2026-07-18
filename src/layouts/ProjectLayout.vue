@@ -58,7 +58,12 @@
           >
             Calendar
           </RouterLink>
+          <!-- Reports - admin and PM only -->
           <RouterLink
+            v-if="
+              authStore.currentUser?.role_code === 'admin' ||
+              authStore.currentUser?.role_code === 'project_manager'
+            "
             to="/reports"
             class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
             :class="{ 'bg-green-700 text-white': $route.path === '/reports' }"
@@ -74,9 +79,12 @@
           >
             Task Templates
           </RouterLink>
-          <!-- Admin Settings - Only visible for System Administrators -->
+          <!-- Admin Settings — Admin and Project Manager configure Event Rules -->
           <RouterLink
-            v-if="authStore.currentUser?.job_title === 'System Administrator'"
+            v-if="
+              authStore.currentUser?.role_code === 'admin' ||
+              authStore.currentUser?.role_code === 'project_manager'
+            "
             to="/admin-settings"
             class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
             :class="{ 'bg-green-700 text-white': $route.path === '/admin-settings' }"
@@ -179,7 +187,12 @@
           >
             Calendar
           </RouterLink>
+          <!-- Reports - admin and PM only -->
           <RouterLink
+            v-if="
+              authStore.currentUser?.role_code === 'admin' ||
+              authStore.currentUser?.role_code === 'project_manager'
+            "
             to="/reports"
             @click="closeMobileMenu"
             class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
@@ -195,9 +208,12 @@
           >
             Task Templates
           </RouterLink>
-          <!-- Admin Settings - Only visible for System Administrators -->
+          <!-- Admin Settings — Admin and Project Manager configure Event Rules -->
           <RouterLink
-            v-if="authStore.currentUser?.job_title === 'System Administrator'"
+            v-if="
+              authStore.currentUser?.role_code === 'admin' ||
+              authStore.currentUser?.role_code === 'project_manager'
+            "
             to="/admin-settings"
             @click="closeMobileMenu"
             class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"

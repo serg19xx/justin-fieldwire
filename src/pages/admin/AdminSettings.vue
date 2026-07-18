@@ -3,6 +3,19 @@
     <!-- Main Content -->
     <div class="px-4 py-6 md:px-6">
       <div class="max-w-7xl mx-auto">
+        <nav class="mb-4" aria-label="Back">
+          <button
+            type="button"
+            class="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800"
+            @click="goBack"
+          >
+            <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            Back
+          </button>
+        </nav>
+
         <!-- Tabs Navigation -->
         <div class="border-b border-gray-200 mb-8">
           <nav class="-mb-px flex space-x-8">
@@ -44,9 +57,20 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
 import EventRules from './components/EventRules.vue'
 import MessageTemplates from './components/MessageTemplates.vue'
+
+const router = useRouter()
+
+function goBack(): void {
+  if (window.history.length > 1) {
+    router.back()
+    return
+  }
+  router.push('/projects')
+}
 
 // Icons
 const EventRulesIcon = {
@@ -94,9 +118,9 @@ onMounted(() => {
     role_category: authStore.currentUser?.role_category,
   })
 
-  // Verify admin access
-  if (authStore.currentUser?.job_title !== 'System Administrator') {
-    console.warn('⚠️ Non-admin user accessed admin settings')
+  const roleCode = authStore.currentUser?.role_code
+  if (roleCode !== 'admin' && roleCode !== 'project_manager') {
+    console.warn('⚠️ Non-configurator user accessed admin settings', { roleCode })
   }
 })
 

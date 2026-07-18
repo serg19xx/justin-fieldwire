@@ -51,6 +51,21 @@
             />
           </div>
 
+          <label class="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
+            <input
+              :id="urgentInputId"
+              v-model="urgentDraft"
+              type="checkbox"
+              class="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+            />
+            <span>
+              <span class="block text-sm font-medium text-gray-900">Urgent</span>
+              <span class="block text-xs text-gray-500 mt-0.5">
+                Also send a push alert to the project manager and admins.
+              </span>
+            </span>
+          </label>
+
           <p v-if="validationError" class="text-xs text-red-700">{{ validationError }}</p>
         </div>
 
@@ -97,15 +112,17 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   close: []
-  save: [payload: { at: string; reason: string }]
+  save: [payload: { at: string; reason: string; urgent: boolean }]
 }>()
 
 const titleId = `work-time-title-${Math.random().toString(36).slice(2, 9)}`
 const datetimeInputId = `work-time-dt-${titleId}`
 const reasonInputId = `work-time-reason-${titleId}`
+const urgentInputId = `work-time-urgent-${titleId}`
 
 const localDateTime = ref('')
 const reasonDraft = ref('')
+const urgentDraft = ref(false)
 const validationError = ref('')
 
 function resetForm(): void {
@@ -113,6 +130,7 @@ function resetForm(): void {
     ? toDatetimeLocalValue(props.initialAt)
     : toDatetimeLocalValue(new Date())
   reasonDraft.value = props.initialReason ?? ''
+  urgentDraft.value = false
   validationError.value = ''
 }
 
@@ -134,7 +152,7 @@ function confirm(): void {
     validationError.value = 'End time must be on or after work start time.'
     return
   }
-  emit('save', { at, reason: reasonDraft.value.trim() })
+  emit('save', { at, reason: reasonDraft.value.trim(), urgent: urgentDraft.value })
 }
 
 const isSaving = computed(() => props.isSaving === true)

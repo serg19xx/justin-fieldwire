@@ -1,9 +1,9 @@
 <template>
   <div class="border-t border-gray-200 pt-6 mt-6">
-    <h3 class="text-lg font-medium text-gray-900 mb-2">Device notifications</h3>
+    <h3 class="text-lg font-medium text-gray-900 mb-2">This device (Push)</h3>
     <p class="text-sm text-gray-600 mb-4">
-      Receive FieldWire alerts in your phone or browser notification tray, even when the app is in
-      the background.
+      Register this phone or browser to receive short push alerts. Channel permission is controlled
+      above; this only enables the current device.
     </p>
 
     <div v-if="state === 'unsupported'" class="rounded-md bg-amber-50 border border-amber-200 p-3">
@@ -44,7 +44,7 @@
             class="px-3 py-1.5 text-sm font-medium rounded-md text-blue-700 border border-blue-300 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
             @click="sendTest"
           >
-            Send test
+            Test my devices
           </button>
         </div>
       </div>
@@ -54,7 +54,8 @@
         again.
       </p>
       <p v-else class="text-xs text-gray-500">
-        On iPhone: Share → Add to Home Screen, open the installed app, then tap Enable.
+        “Test my devices” sends a diagnostic push only to your own account devices — not to other
+        users. On iPhone/iPad: Safari → Add to Home Screen → open the icon → Enable.
       </p>
       <p v-if="message" class="text-sm" :class="messageIsError ? 'text-red-600' : 'text-green-700'">
         {{ message }}
@@ -148,7 +149,7 @@ async function sendTest() {
   setMessage('')
   try {
     await sendTestPushNotification()
-    setMessage('Test notification sent. Check your notification tray.')
+    setMessage('Diagnostic push sent to your devices. Check your notification tray.')
   } catch (error) {
     setMessage(error instanceof Error ? error.message : 'Failed to send test notification', true)
   } finally {
