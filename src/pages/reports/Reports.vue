@@ -4,12 +4,12 @@
       <h1 class="text-xl font-semibold text-slate-900">Reports</h1>
       <button
         class="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1"
-        :disabled="isLoadingGlobal || isLoadingProjects"
-        @click="loadAll"
+        :disabled="isLoadingGlobal"
+        @click="loadGlobal"
       >
         <svg
           class="w-4 h-4"
-          :class="{ 'animate-spin': isLoadingGlobal || isLoadingProjects }"
+          :class="{ 'animate-spin': isLoadingGlobal }"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -27,7 +27,7 @@
 
     <div v-if="hasError" class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 mb-5">
       Failed to load reports.
-      <button class="underline ml-1" @click="loadAll">Retry</button>
+      <button class="underline ml-1" @click="loadGlobal">Retry</button>
     </div>
 
     <!-- Type switcher left · period selector right (period format depends on type) -->
@@ -61,8 +61,8 @@
       </select>
     </div>
 
-    <!-- Global summary -->
-    <section class="mb-8">
+    <!-- Global summary only — project detail lives in Project → Reports -->
+    <section>
       <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
         <h2 class="text-base font-semibold text-slate-800">Global summary</h2>
         <button
@@ -89,53 +89,6 @@
         :show-snapshot-button="false"
       />
     </section>
-
-    <!-- Project summary only on global Reports page; task detail lives in Project → Reports -->
-    <section v-if="activeType === 'daily'">
-      <h2 class="text-base font-semibold text-slate-800 mb-3">Project summary · daily</h2>
-      <p class="text-xs text-slate-500 mb-3">
-        Task activity and photos are available inside the project Reports section.
-      </p>
-
-      <div v-if="isLoadingProjects" class="py-8 text-center text-slate-400 text-sm">Loading…</div>
-
-      <div
-        v-else-if="projectOptions.length === 0"
-        class="bg-white rounded-lg border border-dashed border-slate-200 p-6 text-center text-sm text-slate-400"
-      >
-        No project reports for
-        {{ selectedPeriod ? formatReportPeriod(selectedPeriod, 'daily') : 'this date' }}.
-      </div>
-
-      <template v-else>
-        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
-          <select
-            v-model="selectedProjectId"
-            class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 sm:w-96"
-          >
-            <option v-for="option in projectOptions" :key="option.id" :value="option.id">
-              {{ option.name }}
-            </option>
-          </select>
-          <button
-            v-if="selectedProjectReport"
-            class="text-sm px-3 py-1.5 rounded-md bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-50"
-            :disabled="isOpeningProjectSnapshot"
-            @click="openProjectSnapshot"
-          >
-            {{ isOpeningProjectSnapshot ? 'Opening…' : 'Open snapshot' }}
-          </button>
-        </div>
-
-        <ReportDetailView
-          v-if="selectedProjectReport"
-          :report-id="selectedProjectReport.id"
-          :show-back-button="false"
-          :show-snapshot-button="false"
-          :show-detail="false"
-        />
-      </template>
-    </section>
   </div>
 </template>
 
@@ -155,43 +108,16 @@ const typeTabs = [
 
 const activeType = ref<ReportPeriodType>('daily')
 const globalReports = ref<ReportListItem[]>([])
-const projectReports = ref<ReportListItem[]>([])
 const isLoadingGlobal = ref(false)
-const isLoadingProjects = ref(false)
 const hasError = ref(false)
 
 const selectedPeriod = ref<string | null>(null)
-const selectedProjectId = ref<number | null>(null)
 const isOpeningGlobalSnapshot = ref(false)
-const isOpeningProjectSnapshot = ref(false)
 
-/** Past reports of the active type: daily also includes project report dates. */
-const periodOptions = computed(() => {
-  const dates = new Set<string>()
-  for (const report of globalReports.value) dates.add(report.report_date)
-  if (activeType.value === 'daily') {
-    for (const report of projectReports.value) dates.add(report.report_date)
-  }
-  return [...dates].sort((a, b) => b.localeCompare(a))
-})
-
-const projectOptions = computed(() => {
-  const seen = new Map<number, string>()
-  for (const report of projectReports.value.filter(
-    (item) => item.report_date === selectedPeriod.value,
-  )) {
-    if (!seen.has(report.project_id)) {
-      seen.set(report.project_id, report.project_name || `Project #${report.project_id}`)
-    }
-  }
-  return [...seen.entries()].map(([id, name]) => ({ id, name }))
-})
-
-const selectedProjectReport = computed(() =>
-  projectReports.value.find(
-    (report) =>
-      report.project_id === selectedProjectId.value &&
-      report.report_date === selectedPeriod.value,
+/** Past global reports of the active type. */
+const periodOptions = computed(() =>
+  [...new Set(globalReports.value.map((report) => report.report_date))].sort((a, b) =>
+    b.localeCompare(a),
   ),
 )
 
@@ -211,6 +137,7 @@ const globalEmptyText = computed(() => {
 
 async function loadGlobal(): Promise<void> {
   isLoadingGlobal.value = true
+  hasError.value = false
   try {
     globalReports.value = await reportsApi.list({
       scope: 'global',
@@ -225,23 +152,6 @@ async function loadGlobal(): Promise<void> {
   }
 }
 
-async function loadProjects(): Promise<void> {
-  isLoadingProjects.value = true
-  try {
-    projectReports.value = await reportsApi.list({ scope: 'project', type: 'daily', limit: 200 })
-  } catch {
-    hasError.value = true
-    projectReports.value = []
-  } finally {
-    isLoadingProjects.value = false
-  }
-}
-
-async function loadAll(): Promise<void> {
-  hasError.value = false
-  await Promise.all([loadGlobal(), loadProjects()])
-}
-
 async function openGlobalSnapshot(): Promise<void> {
   if (!selectedGlobalReport.value) return
   isOpeningGlobalSnapshot.value = true
@@ -252,17 +162,6 @@ async function openGlobalSnapshot(): Promise<void> {
   }
 }
 
-async function openProjectSnapshot(): Promise<void> {
-  if (!selectedProjectReport.value) return
-  isOpeningProjectSnapshot.value = true
-  try {
-    await reportsApi.openSnapshot(selectedProjectReport.value.id)
-  } finally {
-    isOpeningProjectSnapshot.value = false
-  }
-}
-
-// Default to the latest period of the active type; reset when type changes.
 watch(periodOptions, (dates) => {
   if (dates.length === 0) {
     selectedPeriod.value = null
@@ -273,19 +172,9 @@ watch(periodOptions, (dates) => {
   }
 })
 
-watch(projectOptions, (options) => {
-  if (options.length === 0) {
-    selectedProjectId.value = null
-    return
-  }
-  if (!options.some((option) => option.id === selectedProjectId.value)) {
-    selectedProjectId.value = options[0].id
-  }
-})
-
 watch(activeType, () => {
   selectedPeriod.value = null
   loadGlobal()
 })
-onMounted(loadAll)
+onMounted(loadGlobal)
 </script>
