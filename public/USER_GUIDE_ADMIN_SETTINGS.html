@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldWire — Admin settings (user guide)</title>
+  <style>
+    :root { --text:#1a1a1a; --muted:#555; --border:#ccc; --bg-alt:#f7f7f7; --accent:#2563eb; }
+    * { box-sizing:border-box; }
+    body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.55; color:var(--text); max-width:50rem; margin:0 auto; padding:1.25rem 1rem 3rem; font-size:15px; }
+    .howto-open { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.5rem; font-size:14px; }
+    .howto-open strong { color:var(--accent); }
+    .howto-open code { font-size:12px; word-break:break-all; background:#fff; padding:0.1rem 0.35rem; border-radius:4px; border:1px solid #bfdbfe; }
+    .tip { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:0.75rem 1rem; margin:1rem 0; }
+    .warn { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:0.75rem 1rem; margin:1rem 0; }
+    h1 { font-size:1.55rem; margin:0 0 0.5rem; line-height:1.25; }
+    h2 { font-size:1.15rem; margin:1.75rem 0 0.75rem; padding-bottom:0.25rem; border-bottom:2px solid var(--border); }
+    h3 { font-size:1rem; margin:1.1rem 0 0.5rem; }
+    p { margin:0.5rem 0; }
+    ul,ol { margin:0.5rem 0; padding-left:1.35rem; }
+    li { margin:0.35rem 0; }
+    hr { border:none; border-top:1px solid var(--border); margin:1.5rem 0; }
+    table { width:100%; border-collapse:collapse; margin:0.75rem 0 1rem; font-size:13px; }
+    th,td { border:1px solid var(--border); padding:0.5rem 0.6rem; text-align:left; vertical-align:top; }
+    th { background:var(--bg-alt); font-weight:600; }
+    code { font-size:0.9em; background:#f3f4f6; padding:0.1rem 0.3rem; border-radius:3px; }
+    a { color:var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="howto-open">
+    <strong>How to open:</strong> this page is available at
+    <code id="self-url">…</code>
+    (no login required).
+  </div>
+  <script>
+    (function(){ try { var el=document.getElementById('self-url'); if(el&&window.location&&window.location.origin) el.textContent=window.location.origin+'/USER_GUIDE_ADMIN_SETTINGS.html'; } catch(e){} })();
+  </script>
+
+  <h1>Admin settings — user guide</h1>
+  <p><strong>Where in the app:</strong> <strong>Settings</strong> → <strong>Admin settings</strong></p>
+  <p><strong>Who can use it:</strong> mainly Admin (and Project Manager if allowed).</p>
+
+  <hr />
+
+  <h2>What is this?</h2>
+  <p>This is the control panel for <strong>automatic messages and rules</strong>.</p>
+  <p>There are two tabs:</p>
+  <ol>
+    <li><strong>Event Rules</strong> — when something happens, what should the system do?</li>
+    <li><strong>Message Templates</strong> — ready-made texts for email/SMS.</li>
+  </ol>
+
+  <div class="tip">
+    <strong>Simple idea:</strong><br />
+    <strong>Rule</strong> = “IF this happens, THEN do that.”<br />
+    <strong>Template</strong> = “Here is the text to send.”
+  </div>
+
+  <hr />
+
+  <h2>1) Event Rules</h2>
+
+  <h3>What a rule does</h3>
+  <p>A rule watches for an <strong>event type</strong> (example: project status changed, weekly report time).</p>
+  <p>When that event happens, the rule can:</p>
+  <ul>
+    <li><strong>Notify</strong> — send email / SMS / push to selected roles</li>
+    <li><strong>Create Report</strong> — build a report and send it</li>
+    <li><strong>Log Only</strong> — only write to the Event log (no message)</li>
+  </ul>
+
+  <h3>Main fields (plain words)</h3>
+  <table>
+    <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Event Type</strong></td><td>The name of the thing we listen for (usually UPPERCASE_WITH_UNDERSCORES)</td></tr>
+      <tr><td><strong>Rule Enabled</strong></td><td>On = rule works. Off = ignored</td></tr>
+      <tr><td><strong>Severity</strong></td><td>How important it looks in the log (Important / Critical)</td></tr>
+      <tr><td><strong>Priority</strong></td><td>How urgently the system processes the job queue. Leave Auto if unsure</td></tr>
+      <tr><td><strong>Execution Location</strong></td><td>Where it runs. Leave Auto/Server if unsure</td></tr>
+      <tr><td><strong>Actions</strong></td><td>What to do (Notify / Report / Log Only)</td></tr>
+      <tr><td><strong>Schedule</strong></td><td>Optional timer. Empty = run right away when the event happens</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Notify action</h3>
+  <ul>
+    <li>Choose channels: EMAIL, SMS, PUSH</li>
+    <li>Choose who gets it (Admin, Project Manager, Foreman…)</li>
+    <li>Choose message source:
+      <ul>
+        <li><strong>System text</strong> — automatic short text</li>
+        <li><strong>Message Template</strong> — pick a template you created</li>
+        <li><strong>Custom text</strong> — type the text on the rule</li>
+      </ul>
+    </li>
+  </ul>
+  <p>Email goes through SendGrid. SMS goes through Twilio. They only deliver — they do not invent the wording.</p>
+
+  <h3>Create Report action</h3>
+  <ul>
+    <li><strong>Period</strong> = what the report covers (daily / weekly / monthly data)</li>
+    <li><strong>Recipients</strong> = who gets the report email</li>
+    <li><strong>When</strong> it runs is controlled by <strong>Schedule</strong> (not by Period)</li>
+  </ul>
+
+  <h3>Schedule (optional)</h3>
+  <p>Like a calendar alarm:</p>
+  <ul>
+    <li><strong>Frequency</strong> — daily / weekly / monthly</li>
+    <li><strong>Days / day of month / 2nd Monday…</strong> — which day</li>
+    <li><strong>At time</strong> and <strong>Until</strong> — time window when it is allowed to run</li>
+    <li><strong>Timezone</strong> — which clock to use (example: America/Toronto)</li>
+  </ul>
+  <p>Why a window (At → Until)? The system checks every few minutes. A short window (07:00–07:30) avoids missing an exact minute.</p>
+  <ul>
+    <li>No schedule → process immediately when the event happens</li>
+    <li>With schedule → wait for the right day/time window</li>
+  </ul>
+  <p>Click the small <strong>?</strong> icons next to fields for short help.</p>
+
+  <h3>How to create a simple notify rule (test)</h3>
+  <ol>
+    <li>Open <strong>Admin settings → Event Rules</strong>.</li>
+    <li>Create / edit a rule.</li>
+    <li>Set Event Type (use an existing type from your system, or a known test type).</li>
+    <li>Enable the rule.</li>
+    <li>Add action <strong>Notify</strong> → EMAIL → choose recipients → System text or a template.</li>
+    <li>Leave Schedule empty for “immediate”.</li>
+    <li>Save.</li>
+    <li>Trigger the real action in the app, then check email and Event log.</li>
+  </ol>
+
+  <hr />
+
+  <h2>2) Message Templates</h2>
+
+  <h3>What a template is</h3>
+  <p>Reusable text for email or SMS. You write it once, then Event Rules can use it.</p>
+
+  <h3>How to create one</h3>
+  <ol>
+    <li>Open tab <strong>Message Templates</strong>.</li>
+    <li>Click <strong>Create Template</strong>.</li>
+    <li>Name it clearly (example: <em>Task assigned SMS</em>).</li>
+    <li>Choose type: Email or SMS.</li>
+    <li>For Email, fill Subject.</li>
+    <li>Write the body. Insert variables with buttons like <code>{{PROJECT_NAME}}</code>.</li>
+    <li>In <strong>Variables</strong>, type sample values to see Preview.</li>
+    <li>Keep <strong>Active</strong> checked.</li>
+    <li>Save.</li>
+  </ol>
+
+  <h3>Variables</h3>
+  <p>A variable is a placeholder. Example:</p>
+  <p><code>Hello, work on {{PROJECT_NAME}} starts tomorrow.</code></p>
+  <p>When the message is sent for a real project, <code>{{PROJECT_NAME}}</code> becomes the real name.</p>
+  <p>Preview uses your sample values so you can check the text looks right.</p>
+
+  <h3>How to test a template</h3>
+  <ol>
+    <li>Create a template with a few variables.</li>
+    <li>Open Preview in the editor — confirm sample values appear.</li>
+    <li>From the list, click Preview — same check.</li>
+    <li>Attach the template to an Event Rule Notify action (Source = Message Template).</li>
+    <li>Trigger the event and confirm the real message arrives.</li>
+  </ol>
+
+  <hr />
+
+  <h2>How the pieces fit together</h2>
+  <ol>
+    <li>Something happens in the app (or a schedule timer fires).</li>
+    <li>An <strong>Event Rule</strong> matches.</li>
+    <li>If Schedule allows it, the system creates a job.</li>
+    <li>Notify uses a <strong>Message Template</strong> (or system/custom text).</li>
+    <li>You can later inspect what happened in <strong>Event log</strong>.</li>
+    <li>Reports may appear under <strong>Settings → Reports</strong>.</li>
+  </ol>
+
+  <div class="warn">
+    <strong>Be careful:</strong> a wrong rule can send many emails/SMS.
+    Test with yourself as recipient first. Turn the rule off when not ready.
+  </div>
+
+  <h2>Quick checklist for the customer</h2>
+  <ol>
+    <li>Create one SMS template and one Email template. Preview works.</li>
+    <li>Create one Notify rule using that template. Recipients = Admin only.</li>
+    <li>Trigger a test event. Message arrives. Event log shows the event.</li>
+    <li>(Optional) Add a Schedule window and confirm it only fires inside that window.</li>
+    <li>(Optional) Create a Create Report rule with monthly schedule on day 1.</li>
+  </ol>
+</body>
+</html>

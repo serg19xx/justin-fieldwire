@@ -49,27 +49,7 @@
           >
             Calendar
           </RouterLink>
-          <!-- Reports - admin and PM only -->
-          <RouterLink
-            v-if="
-              authStore.currentUser?.role_code === 'admin' ||
-              authStore.currentUser?.role_code === 'project_manager'
-            "
-            to="/reports"
-            class="text-sm font-medium text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md"
-            :class="{ 'bg-gray-100 text-gray-900': $route.path === '/reports' }"
-          >
-            Reports
-          </RouterLink>
-          <!-- Admin Settings - Only visible for System Administrators -->
-          <RouterLink
-            v-if="authStore.currentUser?.job_title === 'System Administrator'"
-            to="/admin-settings"
-            class="text-sm font-medium text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md"
-            :class="{ 'bg-gray-100 text-gray-900': $route.path === '/admin-settings' }"
-          >
-            Admin Settings
-          </RouterLink>
+          <SystemNavDropdown />
         </nav>
 
 
@@ -117,6 +97,7 @@ import { getDisplayRole } from '@/core/utils/role-utils'
 import { canAccessClientsRegistry } from '@/core/utils/clients-access'
 import TopBarAvatar from '@/components/TopBarAvatar.vue'
 import ClientsNavDropdown from '@/components/clients/ClientsNavDropdown.vue'
+import SystemNavDropdown from '@/components/nav/SystemNavDropdown.vue'
 
 const route = useRoute()
 const router = useRouter()

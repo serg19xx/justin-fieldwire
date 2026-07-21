@@ -1,28 +1,34 @@
 <template>
   <div class="px-4 py-6 md:px-6 max-w-5xl mx-auto">
-    <div class="flex items-center justify-between mb-5">
-      <h1 class="text-xl font-semibold text-slate-900">Reports</h1>
-      <button
-        class="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1"
-        :disabled="isLoadingGlobal"
-        @click="loadGlobal"
-      >
-        <svg
-          class="w-4 h-4"
-          :class="{ 'animate-spin': isLoadingGlobal }"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
+    <div class="flex items-center justify-between mb-5 gap-3 flex-wrap">
+      <div>
+        <h1 class="text-xl font-semibold text-slate-900">Reports</h1>
+        <p class="text-sm text-slate-500 mt-0.5">Saved period summaries — expand over time on request.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <PageUserGuideLink href="/USER_GUIDE_REPORTS.html" />
+        <button
+          class="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1"
+          :disabled="isLoadingGlobal"
+          @click="loadGlobal"
         >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-          />
-        </svg>
-        Refresh
-      </button>
+          <svg
+            class="w-4 h-4"
+            :class="{ 'animate-spin': isLoadingGlobal }"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+          Refresh
+        </button>
+      </div>
     </div>
 
     <div v-if="hasError" class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 mb-5">
@@ -95,6 +101,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { reportsApi, type ReportListItem } from '@/core/utils/reports-api'
+import PageUserGuideLink from '@/components/PageUserGuideLink.vue'
 import ReportDetailView from './components/ReportDetailView.vue'
 import { formatReportPeriod, type ReportPeriodType } from './report-period'
 

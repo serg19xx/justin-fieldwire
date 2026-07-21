@@ -1,7 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
-import { isTaskRoleForeman } from '@/core/utils/task-role-ux'
-
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -48,13 +46,9 @@ const router = createRouter({
           return import('../pages/dashboard/ProjectDashboard.vue')
         }
 
-        // Task role: foreman gets overview dashboard; workers / contractors get compact "my work" dashboard
+        // Field roles (foreman, worker, contractor) share one home dashboard
         if (roleCategory === 'task') {
-          const u = authStore.currentUser
-          if (isTaskRoleForeman(u?.role_code, u?.role_id)) {
-            return import('../pages/dashboard/ForemanDashboard.vue')
-          }
-          return import('../pages/dashboard/TaskDashboard.vue')
+          return import('../pages/dashboard/FieldDashboard.vue')
         }
 
         // Default fallback
@@ -156,6 +150,20 @@ const router = createRouter({
         next()
       },
       component: () => import('../pages/reports/Reports.vue'),
+    },
+    {
+      path: '/event-log',
+      beforeEnter: (to, from, next) => {
+        const authStore = useAuthStore()
+        const roleCode = authStore.currentUser?.role_code
+        const allowed = roleCode === 'admin' || roleCode === 'project_manager'
+        if (!allowed) {
+          next('/dashboard')
+          return
+        }
+        next()
+      },
+      component: () => import('../pages/audit/EventLog.vue'),
     },
     {
       path: '/task-templates',

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldWire — Event log (user guide)</title>
+  <style>
+    :root { --text:#1a1a1a; --muted:#555; --border:#ccc; --bg-alt:#f7f7f7; --accent:#2563eb; }
+    * { box-sizing:border-box; }
+    body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.55; color:var(--text); max-width:50rem; margin:0 auto; padding:1.25rem 1rem 3rem; font-size:15px; }
+    .howto-open { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.5rem; font-size:14px; }
+    .howto-open strong { color:var(--accent); }
+    .howto-open code { font-size:12px; word-break:break-all; background:#fff; padding:0.1rem 0.35rem; border-radius:4px; border:1px solid #bfdbfe; }
+    .tip { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:0.75rem 1rem; margin:1rem 0; }
+    h1 { font-size:1.55rem; margin:0 0 0.5rem; line-height:1.25; }
+    h2 { font-size:1.15rem; margin:1.75rem 0 0.75rem; padding-bottom:0.25rem; border-bottom:2px solid var(--border); }
+    h3 { font-size:1rem; margin:1rem 0 0.5rem; }
+    p { margin:0.5rem 0; }
+    ul,ol { margin:0.5rem 0; padding-left:1.35rem; }
+    li { margin:0.35rem 0; }
+    hr { border:none; border-top:1px solid var(--border); margin:1.5rem 0; }
+    table { width:100%; border-collapse:collapse; margin:0.75rem 0 1rem; font-size:13px; }
+    th,td { border:1px solid var(--border); padding:0.5rem 0.6rem; text-align:left; vertical-align:top; }
+    th { background:var(--bg-alt); font-weight:600; }
+    code { font-size:0.9em; background:#f3f4f6; padding:0.1rem 0.3rem; border-radius:3px; }
+    a { color:var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="howto-open">
+    <strong>How to open:</strong> this page is available at
+    <code id="self-url">…</code>
+    (no login required).
+  </div>
+  <script>
+    (function(){ try { var el=document.getElementById('self-url'); if(el&&window.location&&window.location.origin) el.textContent=window.location.origin+'/USER_GUIDE_EVENT_LOG.html'; } catch(e){} })();
+  </script>
+
+  <h1>Event log — user guide</h1>
+  <p><strong>Where in the app:</strong> <strong>Settings</strong> → <strong>Event log</strong></p>
+  <p><strong>Who can use it:</strong> Admin and Project Manager.</p>
+
+  <hr />
+
+  <h2>What is this?</h2>
+  <p>A diary of important things the system recorded.</p>
+  <p>Examples:</p>
+  <ul>
+    <li>a project became active</li>
+    <li>a task status changed</li>
+    <li>someone got a notification</li>
+    <li>a report was generated</li>
+  </ul>
+  <p>You use Event log to answer: <strong>“What happened, when, and about which project?”</strong></p>
+
+  <div class="tip">
+    <strong>Simple idea:</strong> Event log is history. It does not create work by itself.
+    Rules that send emails/SMS live in <strong>Admin settings</strong>.
+  </div>
+
+  <h2>How to open it</h2>
+  <ol>
+    <li>Log in.</li>
+    <li>Open the <strong>Settings</strong> menu (gear).</li>
+    <li>Click <strong>Event log</strong>.</li>
+  </ol>
+
+  <h2>What you see on the page</h2>
+  <ul>
+    <li>A list of events (newest first, usually)</li>
+    <li>Filters at the top so you can find one event faster</li>
+    <li>A <strong>Refresh</strong> button to reload the list</li>
+  </ul>
+
+  <h2>How to find something</h2>
+  <table>
+    <thead><tr><th>Filter</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Search</strong></td><td>Type a word from a comment, event name, or project</td></tr>
+      <tr><td><strong>Event type</strong></td><td>Only one kind of event (example: task changed)</td></tr>
+      <tr><td><strong>Project</strong></td><td>Only events for one project</td></tr>
+      <tr><td><strong>From / To</strong></td><td>Only events between two dates</td></tr>
+    </tbody>
+  </table>
+  <p>After you set filters, apply them (button or Enter in search) and wait for the list to update.</p>
+
+  <h2>How to read one event</h2>
+  <p>Click a row (or open details if the UI shows an expand/open control). Look for:</p>
+  <ul>
+    <li><strong>When</strong> it happened</li>
+    <li><strong>What</strong> type of event</li>
+    <li><strong>Which</strong> project or task</li>
+    <li><strong>Who</strong> did it (user or system)</li>
+    <li>Any short comment</li>
+  </ul>
+
+  <h2>What Event log is NOT</h2>
+  <ul>
+    <li>It is not a chat</li>
+    <li>It is not where you turn notifications on/off (that is Admin settings → Event Rules)</li>
+    <li>It is not where you write message text (that is Message Templates)</li>
+  </ul>
+
+  <h2>How to test</h2>
+  <ol>
+    <li>Open Event log — confirm the page loads.</li>
+    <li>Do a small action in the app (example: change a task status in a test project).</li>
+    <li>Come back to Event log → Refresh.</li>
+    <li>Find your event with filters (project + date today).</li>
+    <li>Open details and confirm the information looks correct.</li>
+  </ol>
+
+  <h2>If the list is empty</h2>
+  <ul>
+    <li>Widen the date range</li>
+    <li>Clear filters</li>
+    <li>Make sure something actually happened in the system recently</li>
+    <li>Confirm Event Rules exist and are enabled (Admin settings) if you expected automatic events</li>
+  </ul>
+</body>
+</html>

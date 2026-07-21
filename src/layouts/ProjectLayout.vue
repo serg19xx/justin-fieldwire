@@ -58,39 +58,7 @@
           >
             Calendar
           </RouterLink>
-          <!-- Reports - admin and PM only -->
-          <RouterLink
-            v-if="
-              authStore.currentUser?.role_code === 'admin' ||
-              authStore.currentUser?.role_code === 'project_manager'
-            "
-            to="/reports"
-            class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
-            :class="{ 'bg-green-700 text-white': $route.path === '/reports' }"
-          >
-            Reports
-          </RouterLink>
-          <!-- Task Templates - visible only for Project Managers (and Admin later) -->
-          <RouterLink
-            v-if="authStore.currentUser?.role_code === 'project_manager'"
-            to="/task-templates"
-            class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
-            :class="{ 'bg-green-700 text-white': $route.path === '/task-templates' }"
-          >
-            Task Templates
-          </RouterLink>
-          <!-- Admin Settings — Admin and Project Manager configure Event Rules -->
-          <RouterLink
-            v-if="
-              authStore.currentUser?.role_code === 'admin' ||
-              authStore.currentUser?.role_code === 'project_manager'
-            "
-            to="/admin-settings"
-            class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
-            :class="{ 'bg-green-700 text-white': $route.path === '/admin-settings' }"
-          >
-            Admin Settings
-          </RouterLink>
+          <SystemNavDropdown variant="on-dark" />
         </nav>
 
         <!-- User menu -->
@@ -187,39 +155,23 @@
           >
             Calendar
           </RouterLink>
-          <!-- Reports - admin and PM only -->
-          <RouterLink
-            v-if="
-              authStore.currentUser?.role_code === 'admin' ||
-              authStore.currentUser?.role_code === 'project_manager'
-            "
-            to="/reports"
-            @click="closeMobileMenu"
-            class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
-          >
-            Reports
-          </RouterLink>
-          <!-- Task Templates - visible only for Project Managers -->
-          <RouterLink
-            v-if="authStore.currentUser?.role_code === 'project_manager'"
-            to="/task-templates"
-            @click="closeMobileMenu"
-            class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
-          >
-            Task Templates
-          </RouterLink>
-          <!-- Admin Settings — Admin and Project Manager configure Event Rules -->
-          <RouterLink
-            v-if="
-              authStore.currentUser?.role_code === 'admin' ||
-              authStore.currentUser?.role_code === 'project_manager'
-            "
-            to="/admin-settings"
-            @click="closeMobileMenu"
-            class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
-          >
-            Admin Settings
-          </RouterLink>
+          <template v-if="systemNavItems.length > 0">
+            <p class="px-4 pt-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+              Settings
+            </p>
+            <RouterLink
+              v-for="item in systemNavItems"
+              :key="item.route"
+              :to="item.route"
+              @click="closeMobileMenu"
+              class="block px-4 py-2.5 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
+              :class="{
+                'border-green-500 bg-green-50 font-medium': $route.path === item.route,
+              }"
+            >
+              {{ item.label }}
+            </RouterLink>
+          </template>
         </nav>
       </div>
     </div>
@@ -240,12 +192,16 @@ import { canAccessClientsRegistry } from '@/core/utils/clients-access'
 import { getEnabledClientTypes } from '@/config/clients-registry'
 import TopBarAvatar from '@/components/TopBarAvatar.vue'
 import ClientsNavDropdown from '@/components/clients/ClientsNavDropdown.vue'
+import SystemNavDropdown from '@/components/nav/SystemNavDropdown.vue'
+import { getSystemNavItemsForUser } from '@/config/system-nav'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
 const clientTypes = getEnabledClientTypes()
+
+const systemNavItems = computed(() => getSystemNavItemsForUser(authStore.currentUser))
 
 const showClientsNav = computed(() =>
   canAccessClientsRegistry(authStore.currentUser?.role_code),

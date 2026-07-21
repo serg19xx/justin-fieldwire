@@ -3,7 +3,7 @@
     <!-- Main Content -->
     <div class="px-4 py-6 md:px-6">
       <div class="max-w-7xl mx-auto">
-        <nav class="mb-4" aria-label="Back">
+        <nav class="mb-4 flex flex-wrap items-center justify-between gap-3" aria-label="Page actions">
           <button
             type="button"
             class="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800"
@@ -14,7 +14,15 @@
             </svg>
             Back
           </button>
+          <PageUserGuideLink href="/USER_GUIDE_ADMIN_SETTINGS.html" />
         </nav>
+
+        <div class="mb-6">
+          <h1 class="text-2xl font-semibold text-gray-900">Admin settings</h1>
+          <p class="mt-1 text-sm text-gray-600">
+            Event rules and message templates for automatic notifications and reports.
+          </p>
+        </div>
 
         <!-- Tabs Navigation -->
         <div class="border-b border-gray-200 mb-8">
@@ -59,6 +67,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
+import PageUserGuideLink from '@/components/PageUserGuideLink.vue'
 import EventRules from './components/EventRules.vue'
 import MessageTemplates from './components/MessageTemplates.vue'
 

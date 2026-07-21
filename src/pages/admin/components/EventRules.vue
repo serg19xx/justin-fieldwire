@@ -84,96 +84,85 @@
     </div>
 
     <!-- Rules Table -->
-    <div class="bg-white shadow-sm rounded-lg border border-gray-200">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Event Type
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Rule Type
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Status
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Execution
-              </th>
-              <th
-                class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Updated
-              </th>
-              <th
-                class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr v-for="rule in filteredRules" :key="rule.event_type" class="hover:bg-gray-50">
-              <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-medium text-gray-900">{{ rule.event_type }}</div>
-                <div class="text-xs text-gray-500">{{ rule.comment }}</div>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+    <div class="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
+      <table class="w-full table-fixed divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[70%]">
+              Rule
+            </th>
+            <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[15%]">
+              Status
+            </th>
+            <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[15%]">
+              Edit
+            </th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <tr
+            v-for="rule in filteredRules"
+            :key="rule.event_type"
+            class="hover:bg-gray-50 cursor-pointer"
+            @click="editRule(rule)"
+          >
+            <td class="px-3 py-2 align-top">
+              <div class="flex flex-wrap items-center gap-1.5 min-w-0">
+                <span class="text-sm font-medium text-gray-900 break-all">{{ rule.event_type }}</span>
                 <span
                   :class="
                     getRuleType(rule) === 'system'
                       ? 'bg-blue-100 text-blue-800'
                       : 'bg-green-100 text-green-800'
                   "
-                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                  class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium uppercase"
                 >
                   {{ getRuleType(rule) }}
                 </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap">
-                <span
-                  :class="rule.enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
-                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-                >
-                  {{ rule.enabled ? 'Active' : 'Inactive' }}
-                </span>
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ rule.execution_location || 'Auto' }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {{ formatDate(rule.updated_at) }}
-              </td>
-              <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                <div class="flex items-center justify-end space-x-2">
-                  <button @click="editRule(rule)" class="text-blue-600 hover:text-blue-900">
-                    Edit
-                  </button>
-                  <button
-                    @click="deleteRule(rule)"
-                    :disabled="getRuleType(rule) === 'system'"
-                    :class="[
-                      'text-red-600',
-                      getRuleType(rule) === 'system' ? 'opacity-40 cursor-not-allowed' : 'hover:text-red-900'
-                    ]"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+              </div>
+              <div
+                class="mt-0.5 text-xs text-gray-600 line-clamp-2"
+                :title="formatActionsSummary(rule)"
+              >
+                {{ formatActionsSummary(rule) }}
+              </div>
+              <div v-if="rule.comment" class="mt-0.5 text-xs text-gray-400 truncate">
+                {{ rule.comment }}
+              </div>
+            </td>
+            <td class="px-3 py-2 align-top whitespace-nowrap">
+              <span
+                :class="rule.enabled ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+              >
+                {{ rule.enabled ? 'Active' : 'Off' }}
+              </span>
+            </td>
+            <td class="px-3 py-2 align-top whitespace-nowrap text-right text-sm font-medium" @click.stop>
+              <button
+                type="button"
+                @click="editRule(rule)"
+                class="text-blue-600 hover:text-blue-900"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                @click="deleteRule(rule)"
+                :disabled="getRuleType(rule) === 'system'"
+                :class="[
+                  'ml-2 text-red-600',
+                  getRuleType(rule) === 'system'
+                    ? 'opacity-40 cursor-not-allowed'
+                    : 'hover:text-red-900',
+                ]"
+              >
+                Del
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
 
       <!-- Empty State -->
       <div v-if="filteredRules.length === 0" class="text-center py-12">
@@ -267,21 +256,31 @@ function sanitizeRule(rule: EventRule): EventRule {
 
   // Actions normalization
   if (Array.isArray(clone.actions)) {
-    const allowedChannels: NotifyChannel[] = ['email', 'sms', 'webhook']
+    const allowedChannels: NotifyChannel[] = ['email', 'sms', 'push']
     clone.actions = clone.actions.map((a: EventRuleAction) => {
       if (a.type === 'notify') {
         a.channels = Array.isArray(a.channels)
           ? (a.channels.filter((c) => allowedChannels.includes(c as NotifyChannel)) as NotifyChannel[])
           : []
-        // Keep templates only for email/sms; ensure number|null
-        const ct: Partial<Record<NotifyChannel, number | null>> = {}
-        const source = a.channel_templates as Partial<Record<NotifyChannel, number | null>> | undefined
-        if (source) {
-          if (source.email !== undefined) ct.email = source.email ?? null
-          if (source.sms !== undefined) ct.sms = source.sms ?? null
+        if (!Array.isArray(a.recipients)) a.recipients = []
+
+        // Prefer channel_content; migrate legacy channel_templates
+        const content: NonNullable<typeof a.channel_content> = { ...(a.channel_content || {}) }
+        const legacy = a.channel_templates || {}
+        for (const ch of allowedChannels) {
+          if (content[ch]) continue
+          const tid = legacy[ch]
+          if (tid != null && Number(tid) > 0) {
+            content[ch] = { mode: 'local', template_id: Number(tid) }
+          }
         }
-        a.channel_templates = ct
-        a.store_for_dashboard = Boolean(a.store_for_dashboard)
+        // Keep only channels in use
+        const pruned: typeof content = {}
+        for (const ch of a.channels) {
+          pruned[ch] = content[ch] || { mode: 'system' }
+        }
+        a.channel_content = pruned
+        delete a.channel_templates
       }
       if (a.type === 'create_report') {
         const allowed = ['daily', 'weekly', 'monthly', 'quarterly', 'custom']
@@ -289,18 +288,23 @@ function sanitizeRule(rule: EventRule): EventRule {
         if (!allowed.includes(p)) a.period = 'daily'
         if (a.period !== 'custom') delete a.custom_period
         if (!Array.isArray(a.recipients)) a.recipients = []
-        a.store_for_dashboard = Boolean(a.store_for_dashboard)
-      }
-      if (a.type === 'log_only') {
-        a.store_for_dashboard = Boolean(a.store_for_dashboard)
       }
       return a
     })
   }
 
-  // Conditions: ensure object and valid notify_roles structure
+  // Conditions: keep schedule filter only; strip legacy notify_roles / strict_mode
   if (!clone.conditions || typeof clone.conditions !== 'object') {
-    clone.conditions = { strict_mode: false }
+    clone.conditions = {}
+  } else {
+    const raw = clone.conditions as Record<string, unknown>
+    const next: Record<string, unknown> = {}
+    if (raw.time_conditions && typeof raw.time_conditions === 'object') {
+      const tc = raw.time_conditions as Record<string, unknown>
+      next.time_conditions =
+        'value' in tc && tc.value && typeof tc.value === 'object' ? tc.value : tc
+    }
+    clone.conditions = next
   }
   return clone as EventRule
 }
@@ -392,10 +396,41 @@ function getRuleType(rule: EventRule): 'system' | 'custom' {
   return rule.updated_by === null ? 'system' : 'custom'
 }
 
-function formatDate(dateString?: string): string {
-  if (!dateString) return '-'
-  const d = new Date(dateString)
-  return isNaN(d.getTime()) ? '-' : d.toLocaleDateString()
+function formatActionsSummary(rule: EventRule): string {
+  if (!Array.isArray(rule.actions) || rule.actions.length === 0) {
+    return '—'
+  }
+  return rule.actions
+    .map((a) => {
+      if (a.type === 'notify') {
+        const channels = (a.channels || []).join('/') || '?'
+        const recipients = (a.recipients || []).map(shortRole).join(',') || 'default'
+        return `Notify ${channels}→${recipients}`
+      }
+      if (a.type === 'create_report') {
+        const recipients = (a.recipients || []).map(shortRole).join(',') || 'default'
+        return `Report ${a.period || 'daily'}→${recipients}`
+      }
+      if (a.type === 'log_only') {
+        return 'Log only'
+      }
+      return String((a as { type?: string }).type ?? 'action')
+    })
+    .join(' · ')
+}
+
+function shortRole(role: string): string {
+  const map: Record<string, string> = {
+    admin: 'admin',
+    project_manager: 'PM',
+    task_lead: 'lead',
+    team_members: 'team',
+    foreman: 'foreman',
+    worker: 'worker',
+    contractor: 'contractor',
+    inspector: 'inspector',
+  }
+  return map[role] || role
 }
 
 function openCreateDialog() {

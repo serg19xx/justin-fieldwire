@@ -206,7 +206,8 @@
           <div v-if="Object.keys(variablesMap).length > 0" class="mb-6">
             <h3 class="text-lg font-medium text-gray-900 mb-3">Variables</h3>
             <p class="text-xs text-gray-600 mb-3">
-              Customize labels shown to users for each variable. Keys are detected from content automatically.
+              Sample values for Preview (also saved with the template). Keys are detected from
+              content automatically.
             </p>
             <div class="space-y-2">
               <div
@@ -221,7 +222,7 @@
                   v-model="variablesMap[key]"
                   type="text"
                   class="md:col-span-2 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter label"
+                  placeholder="Sample value for preview"
                 />
               </div>
             </div>
@@ -267,7 +268,17 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import type { MessageTemplate, EventType, CreateMessageTemplateRequest, UpdateMessageTemplateRequest } from '@/core/utils/admin-api'
+import type {
+  MessageTemplate,
+  EventType,
+  CreateMessageTemplateRequest,
+  UpdateMessageTemplateRequest,
+} from '@/core/utils/admin-api'
+import {
+  buildTemplateSampleData,
+  extractTemplateVariableKeys,
+  renderTemplateString,
+} from '@/core/utils/message-template-preview'
 
 // Props
 interface Props {
@@ -290,7 +301,7 @@ const emit = defineEmits<{
 
 // State
 const isSubmitting = ref(false)
-const showPreview = ref(false)
+const showPreview = ref(true)
 const validationErrors = ref<Record<string, string>>({})
 
 const form = ref({
@@ -315,18 +326,20 @@ const editorRef = ref<HTMLTextAreaElement | null>(null)
 // Computed
 const editingTemplate = computed(() => props.template)
 
+const previewSampleData = computed(() => {
+  const keys = extractTemplateVariableKeys(form.value.subject, form.value.body)
+  return buildTemplateSampleData(keys, variablesMap.value)
+})
 
+const previewSubject = computed(() =>
+  renderTemplateString(form.value.subject || '', previewSampleData.value),
+)
 
-const previewSubject = computed(() => form.value.subject || '')
-
-const previewContent = computed(() => (form.value.body || '').replace(/\n/g, '<br>'))
+const previewContent = computed(() =>
+  renderTemplateString(form.value.body || '', previewSampleData.value).replace(/\n/g, '<br>'),
+)
 
 // Methods
-
-
-
-
-
 
 function validateForm(): boolean {
   const errors: Record<string, string> = {}
@@ -362,7 +375,7 @@ async function handleSubmit() {
       category: 'custom' as const,
     }
 
-    // Use current variables map (keeps user-edited labels)
+    // Use current variables map (keeps user-edited sample labels/values)
     const variables = { ...variablesMap.value }
 
     const templateData: CreateMessageTemplateRequest = {
@@ -415,8 +428,8 @@ function extractVariablesFromBody(
     const key = match[1]
     if (seen.has(key)) continue
     seen.add(key)
-    // Preserve existing label if present; otherwise generate a readable label
-    const existingLabel = existing?.[key]
+    // Preserve existing sample value if present; otherwise use readable default label
+    const existingLabel = existing?.[key] ?? existing?.[key.toUpperCase()]
     result[key] = existingLabel ?? toReadableLabel(key)
   }
   return result
@@ -444,7 +457,9 @@ watch(
 )
 
 // Simple HTML commands operating on textarea selection
-function onCmd(cmd: 'bold' | 'italic' | 'p' | 'br' | 'ul' | 'ol' | 'span' | 'div' | 'h2' | 'h3' | 'link') {
+function onCmd(
+  cmd: 'bold' | 'italic' | 'p' | 'br' | 'ul' | 'ol' | 'span' | 'div' | 'h2' | 'h3' | 'link',
+) {
   const el = editorRef.value
   if (!el) return
   const start = el.selectionStart

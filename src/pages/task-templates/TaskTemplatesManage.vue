@@ -3,23 +3,26 @@
     <div class="px-4 py-6 md:px-6">
       <div class="max-w-7xl mx-auto">
         <!-- Header -->
-        <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center justify-between mb-6 gap-3 flex-wrap">
           <div>
             <h1 class="text-2xl font-semibold text-gray-900">Task Templates</h1>
             <p class="mt-1 text-sm text-gray-600">
               Manage task templates for quick task creation in projects.
             </p>
           </div>
-          <button
-            type="button"
-            @click="openCreate"
-            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-          >
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Add Template
-          </button>
+          <div class="flex flex-wrap items-center gap-3">
+            <PageUserGuideLink href="/USER_GUIDE_TASK_TEMPLATES.html" />
+            <button
+              type="button"
+              @click="openCreate"
+              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+            >
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Add Template
+            </button>
+          </div>
         </div>
 
         <!-- Filters -->
@@ -145,6 +148,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import PageUserGuideLink from '@/components/PageUserGuideLink.vue'
 import { taskTemplatesApi } from '@/core/utils/task-templates-api'
 import type { TaskTemplate } from '@/core/types/task'
 import TaskTemplateDialog from './TaskTemplateDialog.vue'

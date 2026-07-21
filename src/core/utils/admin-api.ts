@@ -5,13 +5,39 @@ export type EventSeverity = 'critical' | 'important'
 export type EventPriority = 'critical' | 'high' | 'normal' | 'low'
 export type ExecutionLocation = 'server' | 'n8n' | 'both' | null
 
-export type NotifyChannel = 'email' | 'sms' | 'push' | 'webhook' | 'slack'
+export type NotifyChannel = 'email' | 'sms' | 'push'
+
+export type RecipientRole =
+  | 'admin'
+  | 'project_manager'
+  | 'task_lead'
+  | 'team_members'
+  | 'foreman'
+  | 'worker'
+  | 'contractor'
+  | 'inspector'
+
+/** Content source for a notify channel (SendGrid/Twilio are transport only). */
+export type ChannelContentMode = 'system' | 'local' | 'manual'
+
+export interface ChannelContentSpec {
+  mode: ChannelContentMode
+  /** Message Templates id when mode=local */
+  template_id?: number | null
+  /** Email subject when mode=manual */
+  subject?: string
+  /** Body / HTML when mode=manual */
+  body?: string
+}
 
 export interface NotifyAction {
   type: 'notify'
   channels: NotifyChannel[]
+  /** Preferred: per-channel content source */
+  channel_content?: Partial<Record<NotifyChannel, ChannelContentSpec>>
+  /** Legacy: template id per channel (migrated to channel_content.local on save) */
   channel_templates?: Partial<Record<NotifyChannel, number | null>>
-  store_for_dashboard: boolean
+  recipients: RecipientRole[]
 }
 
 export type ReportPeriod = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'custom'
@@ -20,41 +46,55 @@ export interface CreateReportAction {
   type: 'create_report'
   period: ReportPeriod
   custom_period?: string
-  store_for_dashboard: boolean
-  recipients?: string[]
+  recipients: RecipientRole[]
 }
 
 export interface LogOnlyAction {
   type: 'log_only'
-  store_for_dashboard: boolean
 }
 
 export type EventRuleAction = NotifyAction | CreateReportAction | LogOnlyAction
 
-export type ConditionPriority = 'required' | 'preferred' | 'optional'
+export type ScheduleFrequency = 'daily' | 'weekly' | 'monthly'
+export type MonthlyMode = 'day_of_month' | 'nth_weekday'
+export type WeekdayOccurrence = 1 | 2 | 3 | 4 | -1
 
-export interface ConditionField<T> {
-  value: T
-  priority: ConditionPriority
+export interface TimeConditionsValue {
+  /** Crontab-like: how often the schedule may match. */
+  frequency?: ScheduleFrequency
+  /** 1=Monday … 7=Sunday */
+  days_of_week?: number[]
+  /** Monthly: on calendar day vs Nth weekday */
+  monthly_mode?: MonthlyMode
+  /** 1–31 when monthly_mode=day_of_month */
+  day_of_month?: number
+  /** Last calendar day of month (cron L) */
+  day_of_month_last?: boolean
+  /** 1st/2nd/3rd/4th/last when monthly_mode=nth_weekday */
+  weekday_occurrence?: WeekdayOccurrence
+  /** Optional months 1–12; empty = every month */
+  months?: number[]
+  /** Window start HH:mm */
+  at_time?: string
+  /** Window end HH:mm */
+  until_time?: string
+  timezone?: string
+  /** @deprecated */
+  business_hours_only?: boolean
+  /** @deprecated */
+  weekdays_only?: boolean
+  weekends_only?: boolean
+  /** @deprecated */
+  time_range?: { start: string; end: string }
+  specific_hours?: number[]
+  specific_days?: number[]
+  exclude_holidays?: boolean
 }
 
+/** Schedule filter only — recipients live on each action. */
 export interface EventConditions {
-  strict_mode?: boolean
-  notify_roles?: ConditionField<string[]>
-  user_roles?: ConditionField<string[]>
-  exclude_roles?: ConditionField<string[]>
-  time_conditions?: ConditionField<{
-    business_hours_only?: boolean
-    weekdays_only?: boolean
-    weekends_only?: boolean
-    timezone?: string
-    time_range?: { start: string; end: string }
-    specific_hours?: number[]
-    specific_days?: number[]
-    exclude_holidays?: boolean
-  }>
-  project_conditions?: ConditionField<Record<string, unknown>>
-  task_conditions?: ConditionField<Record<string, unknown>>
+  time_conditions?: TimeConditionsValue
+  [key: string]: unknown
 }
 
 export interface EventRule {

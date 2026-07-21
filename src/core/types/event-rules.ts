@@ -6,81 +6,89 @@ export type EventSeverity = 'critical' | 'important'
 // Technical processing priority (queue ordering)
 export type EventPriority = 'critical' | 'high' | 'normal' | 'low'
 
-// Delivery channels for notify action
-export type NotifyChannel = 'email' | 'sms' | 'push' | 'webhook' | 'slack'
+// Delivery channels for notify action (webhook/slack reserved for future)
+export type NotifyChannel = 'email' | 'sms' | 'push'
 
-// Condition priority semantics
-export type ConditionPriority = 'required' | 'preferred' | 'optional'
-
-// Common roles in the system
-export type UserRole =
+// Roles resolved by EventOutboxProcessor::resolveRecipientUserIds
+export type RecipientRole =
   | 'admin'
   | 'project_manager'
+  | 'task_lead'
+  | 'team_members'
+  | 'foreman'
+  | 'worker'
   | 'contractor'
-  | 'architect'
-  | 'viewer'
-  | 'guest'
+  | 'inspector'
+
+export type ChannelContentMode = 'system' | 'local' | 'manual'
+
+export interface ChannelContentSpec {
+  mode: ChannelContentMode
+  template_id?: number | null
+  subject?: string
+  body?: string
+}
 
 export interface TimeRange {
   start: string // HH:mm
   end: string // HH:mm
 }
 
+/** Crontab-like schedule: periodicity + time-of-day window. */
+export type ScheduleFrequency = 'daily' | 'weekly' | 'monthly'
+
+/** How monthly schedule picks the calendar day. */
+export type MonthlyMode = 'day_of_month' | 'nth_weekday'
+
+/** 1=1st, 2=2nd, 3=3rd, 4=4th, -1=last (e.g. last Monday). */
+export type WeekdayOccurrence = 1 | 2 | 3 | 4 | -1
+
 export interface TimeConditionsValue {
+  /** How often the schedule may match (crontab-style). */
+  frequency?: ScheduleFrequency
+  /** 1=Monday … 7=Sunday. Weekly / daily mask / nth_weekday. */
+  days_of_week?: number[]
+  /** Monthly: calendar day vs Nth weekday (like cron DOM vs DOW). */
+  monthly_mode?: MonthlyMode
+  /** 1–31 when monthly_mode=day_of_month (ignored if day_of_month_last). */
+  day_of_month?: number
+  /** When true: last calendar day of the month (cron "L"). */
+  day_of_month_last?: boolean
+  /** When monthly_mode=nth_weekday: 1st/2nd/3rd/4th/last. */
+  weekday_occurrence?: WeekdayOccurrence
+  /** Optional month mask 1–12; empty/omit = every month. */
+  months?: number[]
+  /** Local time when the window opens (HH:mm). */
+  at_time?: string
+  /** Local time when the window closes (HH:mm). Defaults to at_time + 30m. */
+  until_time?: string
+  timezone?: string
+  /** @deprecated migrated into frequency / days_of_week / at_time */
   business_hours_only?: boolean
+  /** @deprecated migrated into days_of_week */
   weekdays_only?: boolean
   weekends_only?: boolean
-  timezone?: string
+  /** @deprecated migrated into at_time / until_time */
   time_range?: TimeRange
   specific_hours?: number[]
   specific_days?: number[] // 1-7, 1 = Monday
   exclude_holidays?: boolean
 }
 
-export interface ProjectConditionsValue {
-  min_budget?: number
-  max_budget?: number
-  status?: string[]
-  exclude_status?: string[]
-  project_type?: string
-  priority?: string[]
-  min_duration_days?: number
-  max_duration_days?: number
-}
-
-export interface TaskConditionsValue {
-  status?: string[]
-  exclude_status?: string[]
-  min_priority?: number
-  max_priority?: number
-  is_milestone?: boolean
-  has_dependencies?: boolean
-  overdue_only?: boolean
-  due_soon_days?: number
-}
-
-export interface ConditionField<T> {
-  value: T
-  priority: ConditionPriority
-}
-
+/** Schedule filter: when the rule may fire (not who receives notifications). */
 export interface EventRuleConditions {
-  strict_mode?: boolean
-  notify_roles?: ConditionField<UserRole[]>
-  user_roles?: ConditionField<UserRole[]>
-  exclude_roles?: ConditionField<UserRole[]>
-  time_conditions?: ConditionField<TimeConditionsValue>
-  project_conditions?: ConditionField<ProjectConditionsValue>
-  task_conditions?: ConditionField<TaskConditionsValue>
-  // Allow future custom conditions without changing type consumers
+  time_conditions?: TimeConditionsValue
+  // Allow legacy keys during migration without breaking consumers
   [key: string]: unknown
 }
 
 export interface NotifyAction {
   type: 'notify'
   channels: NotifyChannel[]
+  channel_content?: Partial<Record<NotifyChannel, ChannelContentSpec>>
+  /** @deprecated use channel_content */
   channel_templates?: Partial<Record<NotifyChannel, number | null>>
-  store_for_dashboard: boolean
+  recipients: RecipientRole[]
 }
 
 export type ReportPeriod = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'custom'
@@ -89,13 +97,11 @@ export interface CreateReportAction {
   type: 'create_report'
   period: ReportPeriod
   custom_period?: string // ISO8601 duration (e.g., P7D)
-  store_for_dashboard: boolean
-  recipients?: UserRole[]
+  recipients: RecipientRole[]
 }
 
 export interface LogOnlyAction {
   type: 'log_only'
-  store_for_dashboard: boolean
 }
 
 export type EventRuleAction = NotifyAction | CreateReportAction | LogOnlyAction
@@ -128,5 +134,3 @@ export interface ApiError {
 }
 
 export type ApiResponse<T> = ApiSuccess<T> | ApiError
-
-

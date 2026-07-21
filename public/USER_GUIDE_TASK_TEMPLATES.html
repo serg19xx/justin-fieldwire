@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldWire — Task templates (user guide)</title>
+  <style>
+    :root { --text:#1a1a1a; --muted:#555; --border:#ccc; --bg-alt:#f7f7f7; --accent:#2563eb; }
+    * { box-sizing:border-box; }
+    body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.55; color:var(--text); max-width:50rem; margin:0 auto; padding:1.25rem 1rem 3rem; font-size:15px; }
+    .howto-open { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.5rem; font-size:14px; }
+    .howto-open strong { color:var(--accent); }
+    .howto-open code { font-size:12px; word-break:break-all; background:#fff; padding:0.1rem 0.35rem; border-radius:4px; border:1px solid #bfdbfe; }
+    .tip { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:0.75rem 1rem; margin:1rem 0; }
+    h1 { font-size:1.55rem; margin:0 0 0.5rem; line-height:1.25; }
+    h2 { font-size:1.15rem; margin:1.75rem 0 0.75rem; padding-bottom:0.25rem; border-bottom:2px solid var(--border); }
+    h3 { font-size:1rem; margin:1rem 0 0.5rem; }
+    p { margin:0.5rem 0; }
+    ul,ol { margin:0.5rem 0; padding-left:1.35rem; }
+    li { margin:0.35rem 0; }
+    hr { border:none; border-top:1px solid var(--border); margin:1.5rem 0; }
+    table { width:100%; border-collapse:collapse; margin:0.75rem 0 1rem; font-size:13px; }
+    th,td { border:1px solid var(--border); padding:0.5rem 0.6rem; text-align:left; vertical-align:top; }
+    th { background:var(--bg-alt); font-weight:600; }
+    a { color:var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="howto-open">
+    <strong>How to open:</strong> this page is available at
+    <code id="self-url">…</code>
+    (no login required).
+  </div>
+  <script>
+    (function(){ try { var el=document.getElementById('self-url'); if(el&&window.location&&window.location.origin) el.textContent=window.location.origin+'/USER_GUIDE_TASK_TEMPLATES.html'; } catch(e){} })();
+  </script>
+
+  <h1>Task templates — user guide</h1>
+  <p><strong>Where in the app:</strong> <strong>Settings</strong> → <strong>Task templates</strong></p>
+  <p><strong>Who can use it:</strong> Admin and Project Manager.</p>
+
+  <hr />
+
+  <h2>What is this?</h2>
+  <p>A <strong>task template</strong> is a ready-made recipe for a task.</p>
+  <p>Instead of typing the same task again and again (“Install cabinets”, “Rough-in plumbing”…),
+  you save it once as a template. Later, when you build a project schedule, you pick the template
+  and the system fills in the usual fields.</p>
+
+  <div class="tip">
+    <strong>Simple idea:</strong> Template = blank form already filled with defaults.
+    Creating a template does <strong>not</strong> create a real task in a project yet.
+  </div>
+
+  <h2>How to open it</h2>
+  <ol>
+    <li>Log in as Admin or Project Manager.</li>
+    <li><strong>Settings</strong> → <strong>Task templates</strong>.</li>
+  </ol>
+
+  <h2>What you see</h2>
+  <ul>
+    <li>A list of templates (name, category, and actions)</li>
+    <li>Filters: category and search</li>
+    <li>Button <strong>Add Template</strong></li>
+  </ul>
+
+  <h2>Create a template</h2>
+  <ol>
+    <li>Click <strong>Add Template</strong>.</li>
+    <li>Enter a clear name (example: <em>Paint interior walls</em>).</li>
+    <li>Choose a category if asked (helps you find it later).</li>
+    <li>Fill the fields you usually set on a real task (description, defaults, etc.).</li>
+    <li>Save.</li>
+  </ol>
+  <p>After save, the template appears in the list.</p>
+
+  <h2>Edit or delete</h2>
+  <table>
+    <thead><tr><th>Action</th><th>What happens</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Edit</strong></td><td>Change the recipe. New projects/tasks created from it will use the new values. Old tasks already created stay as they are.</td></tr>
+      <tr><td><strong>Delete</strong></td><td>Removes the template from the list. Does not delete tasks that were already created from it.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>How templates are used in a project</h2>
+  <p>When you add tasks inside a project (calendar / task list / importer — depending on the screen),
+  you can choose a template instead of starting from an empty form.</p>
+  <p>Typical flow:</p>
+  <ol>
+    <li>Open a project.</li>
+    <li>Add task → choose template (or import from templates).</li>
+    <li>Adjust dates/people for this project.</li>
+    <li>Save the real task.</li>
+  </ol>
+
+  <h2>Tips</h2>
+  <ul>
+    <li>Use short, clear names.</li>
+    <li>Group with categories (Electrical, Plumbing, Finish…).</li>
+    <li>Do not put project-specific dates in the template — those change every project.</li>
+  </ul>
+
+  <h2>How to test</h2>
+  <ol>
+    <li>Create a test template named <em>TEST – Demo task</em>.</li>
+    <li>Find it with Search.</li>
+    <li>Edit the description and save.</li>
+    <li>Open a test project and create a task from that template.</li>
+    <li>Confirm the task got the expected fields.</li>
+    <li>Delete the test template when finished.</li>
+  </ol>
+</body>
+</html>

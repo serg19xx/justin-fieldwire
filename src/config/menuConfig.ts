@@ -37,9 +37,15 @@ export const MENU_CONFIG: Record<string, MenuItem[]> = {
       ],
     },
     {
-      label: 'Reports',
+      label: 'Settings',
       route: '/reports',
-      icon: 'chart',
+      icon: 'settings',
+      children: [
+        { label: 'Reports', route: '/reports' },
+        { label: 'Event log', route: '/event-log' },
+        { label: 'Task templates', route: '/task-templates' },
+        { label: 'Admin settings', route: '/admin-settings' },
+      ],
     },
     {
       label: 'Calendar',
@@ -75,9 +81,15 @@ export const MENU_CONFIG: Record<string, MenuItem[]> = {
       icon: 'users',
     },
     {
-      label: 'Reports',
+      label: 'Settings',
       route: '/reports',
-      icon: 'chart',
+      icon: 'settings',
+      children: [
+        { label: 'Reports', route: '/reports' },
+        { label: 'Event log', route: '/event-log' },
+        { label: 'Task templates', route: '/task-templates' },
+        { label: 'Admin settings', route: '/admin-settings' },
+      ],
     },
     {
       label: 'Calendar',

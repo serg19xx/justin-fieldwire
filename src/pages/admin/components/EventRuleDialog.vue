@@ -4,39 +4,41 @@
       v-if="isOpen"
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[2000]"
     >
-    <div
-      class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto"
-      @click.stop
-    >
-      <!-- Header -->
-      <div class="flex items-center justify-between p-6 border-b border-gray-300 bg-gray-50">
-        <h2 class="text-xl font-semibold text-gray-900">
-          {{ editingRule ? 'Edit Event Rule' : 'Create Event Rule' }}
-        </h2>
-        <button @click="closeDialog" class="text-gray-600 hover:text-gray-800 transition-colors">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"
-            ></path>
-          </svg>
-        </button>
-      </div>
+      <div
+        class="bg-white rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto"
+        @click.stop
+      >
+        <!-- Header -->
+        <div class="flex items-center justify-between p-6 border-b border-gray-300 bg-gray-50">
+          <h2 class="text-xl font-semibold text-gray-900">
+            {{ editingRule ? 'Edit Event Rule' : 'Create Event Rule' }}
+          </h2>
+          <button @click="closeDialog" class="text-gray-600 hover:text-gray-800 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
+            </svg>
+          </button>
+        </div>
 
-      <!-- Content -->
-      <div class="p-6">
-        <form @submit.prevent="handleSubmit">
-          <!-- Basic Information -->
-          <div class="space-y-6 mb-6">
-            <!-- First row: Event Type + Rule Enabled -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Event Type <span class="text-red-500">*</span>
-                </label>
+        <!-- Content -->
+        <div class="p-6">
+          <form @submit.prevent="handleSubmit">
+            <!-- Basic Information -->
+            <div class="space-y-6 mb-6">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
+                  <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                    Event Type <span class="text-red-500">*</span>
+                    <HelpTip
+                      title="Event Type"
+                      text="The system event this rule listens for (UPPERCASE_WITH_UNDERSCORES). When that event happens — or a schedule tick creates it — this rule’s actions run."
+                    />
+                  </label>
                   <input
                     v-model="form.event_type"
                     type="text"
@@ -54,567 +56,700 @@
                     {{ validationErrors.event_type }}
                   </p>
                 </div>
-              </div>
 
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  &nbsp;
-                </label>
                 <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">&nbsp;</label>
                   <label class="flex items-center text-sm font-medium text-gray-700">
-                    <input type="checkbox" v-model="form.enabled" class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2" />
+                    <input
+                      type="checkbox"
+                      v-model="form.enabled"
+                      class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                    />
                     Rule Enabled
+                    <HelpTip
+                      title="Rule Enabled"
+                      text="Off = the rule is ignored. On = it can log events and run actions."
+                    />
                   </label>
                 </div>
               </div>
-            </div>
 
-            <!-- Second row: Severity, Priority, Execution Location -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Severity <span class="text-red-500">*</span>
-                </label>
-                <select
-                  v-model="form.severity"
-                  required
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
-                >
-                  <option value="important">Important</option>
-                  <option value="critical">Critical</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Priority
-                </label>
-                <select
-                  v-model="form.priority"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
-                >
-                  <option :value="null">Auto ({{ computedPriority }})</option>
-                  <option value="critical">Critical</option>
-                  <option value="high">High</option>
-                  <option value="normal">Normal</option>
-                  <option value="low">Low</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">
-                  Execution Location
-                </label>
-                <select
-                  v-model="form.execution_location"
-                  class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
-                >
-                  <option :value="null">Auto</option>
-                  <option value="server">Server</option>
-                  <option value="n8n">N8N</option>
-                  <option value="both">Both</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Comment - full width -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">
-                Comment
-              </label>
-              <textarea
-                v-model="form.comment"
-                rows="3"
-                maxlength="255"
-                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900 resize-none"
-                placeholder="Optional comment"
-              ></textarea>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="mb-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold text-gray-900">Actions <span class="text-red-500">*</span></h3>
-              <div class="flex gap-2">
-                <button
-                  type="button"
-                  @click="addAction('notify')"
-                  class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
-                >
-                  + Notify
-                </button>
-                <button
-                  type="button"
-                  @click="addAction('create_report')"
-                  class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
-                >
-                  + Report
-                </button>
-              <button
-                type="button"
-                  @click="addAction('log_only')"
-                  class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
-                >
-                  + Log Only
-              </button>
-              </div>
-            </div>
-
-            <div v-if="form.actions.length === 0" class="text-center py-8 bg-gray-50 border border-gray-200 rounded-lg shadow-sm">
-              <p class="text-gray-500">No actions added. Add at least one action for the rule.</p>
-            </div>
-
-            <div v-else class="space-y-4">
-              <div
-                v-for="(action, index) in form.actions"
-                :key="index"
-                class="p-4 bg-gray-50 border border-gray-200 rounded-lg shadow-sm"
-              >
-                <div class="flex items-center justify-between mb-3">
-                  <h4 class="font-medium text-gray-900">{{ getActionTypeLabel(action.type) }}</h4>
-                <button
-                  type="button"
-                    @click="removeAction(index)"
-                  class="text-red-600 hover:text-red-800"
-                >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    ></path>
-                  </svg>
-                </button>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                    Severity <span class="text-red-500">*</span>
+                    <HelpTip
+                      title="Severity"
+                      text="Business importance shown in logs and dashboards. Critical stands out more than Important. This is not the same as queue Priority."
+                    />
+                  </label>
+                  <select
+                    v-model="form.severity"
+                    required
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
+                  >
+                    <option value="important">Important</option>
+                    <option value="critical">Critical</option>
+                  </select>
                 </div>
 
-                <!-- Notify Action -->
-                <div v-if="action.type === 'notify'" class="space-y-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Channels *</label>
-                    <div class="flex flex-wrap gap-2">
-                      <label v-for="channel in channels" :key="channel" class="flex items-center text-gray-900 font-medium">
-                        <input
-                          type="checkbox"
-                          :value="channel"
-                          v-model="action.channels"
-                          @change="onChannelChange(action)"
-                          class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                <div>
+                  <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                    Priority
+                    <HelpTip
+                      title="Priority"
+                      text="Technical processing order in the job queue. Auto picks from Severity (Critical → critical, otherwise high). Use only if you need to override."
+                    />
+                  </label>
+                  <select
+                    v-model="form.priority"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
+                  >
+                    <option :value="null">Auto ({{ computedPriority }})</option>
+                    <option value="critical">Critical</option>
+                    <option value="high">High</option>
+                    <option value="normal">Normal</option>
+                    <option value="low">Low</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                    Execution Location
+                    <HelpTip
+                      title="Execution Location"
+                      text="Where actions are meant to run. Server = this app’s backend. N8N = external workflow tool. Auto/Both are for advanced setups — leave Auto if unsure."
+                    />
+                  </label>
+                  <select
+                    v-model="form.execution_location"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
+                  >
+                    <option :value="null">Auto</option>
+                    <option value="server">Server</option>
+                    <option value="n8n">N8N</option>
+                    <option value="both">Both</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Comment</label>
+                <textarea
+                  v-model="form.comment"
+                  rows="3"
+                  maxlength="255"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900 resize-none"
+                  placeholder="Optional comment"
+                ></textarea>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="mb-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="inline-flex items-center text-lg font-semibold text-gray-900">
+                  Actions <span class="text-red-500">*</span>
+                  <HelpTip
+                    title="Actions"
+                    text="What happens when the rule fires. Notify = email/SMS/push. Report = build and send an operational report. Log Only = write to the event log, no messages."
+                  />
+                </h3>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    @click="addAction('notify')"
+                    class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
+                  >
+                    + Notify
+                  </button>
+                  <button
+                    type="button"
+                    @click="addAction('create_report')"
+                    class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
+                  >
+                    + Report
+                  </button>
+                  <button
+                    type="button"
+                    @click="addAction('log_only')"
+                    class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
+                  >
+                    + Log Only
+                  </button>
+                </div>
+              </div>
+
+              <p v-if="validationErrors.actions" class="mb-2 text-sm text-red-600">
+                {{ validationErrors.actions }}
+              </p>
+
+              <div
+                v-if="form.actions.length === 0"
+                class="text-center py-8 bg-gray-50 border border-gray-200 rounded-lg shadow-sm"
+              >
+                <p class="text-gray-500">No actions added. Add at least one action for the rule.</p>
+              </div>
+
+              <div v-else class="space-y-4">
+                <div
+                  v-for="(action, index) in form.actions"
+                  :key="index"
+                  class="p-4 bg-gray-50 border border-gray-200 rounded-lg shadow-sm"
+                >
+                  <div class="flex items-center justify-between mb-3">
+                    <h4 class="font-medium text-gray-900">{{ getActionTypeLabel(action.type) }}</h4>
+                    <button
+                      type="button"
+                      @click="removeAction(index)"
+                      class="text-red-600 hover:text-red-800"
+                    >
+                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        ></path>
+                      </svg>
+                    </button>
+                  </div>
+
+                  <!-- Notify Action -->
+                  <div v-if="action.type === 'notify'" class="space-y-4">
+                    <div>
+                      <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                        Channels *
+                        <HelpTip
+                          title="Channels"
+                          text="How to deliver the notification. EMAIL and SMS go through SendGrid / Twilio as transport only. PUSH is for mobile app alerts when enabled."
                         />
-                        {{ channel.toUpperCase() }}
                       </label>
+                      <div class="flex flex-wrap gap-2">
+                        <label
+                          v-for="channel in channels"
+                          :key="channel"
+                          class="flex items-center text-gray-900 font-medium"
+                        >
+                          <input
+                            type="checkbox"
+                            :value="channel"
+                            v-model="action.channels"
+                            @change="onChannelChange(action)"
+                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                          />
+                          {{ channel.toUpperCase() }}
+                        </label>
+                      </div>
+                    </div>
+
+                    <div
+                      v-for="channel in action.channels.filter((c) => c === 'email' || c === 'sms')"
+                      :key="channel"
+                      class="p-3 bg-white border border-gray-200 rounded-lg space-y-3"
+                    >
+                      <div class="inline-flex items-center text-sm font-medium text-gray-900">
+                        {{ channel.toUpperCase() }} content
+                        <span class="font-normal text-gray-500 ml-1">
+                          ({{ channel === 'email' ? 'SendGrid' : 'Twilio' }} transport)
+                        </span>
+                        <HelpTip
+                          title="Message content"
+                          text="Choose where the text comes from. System = auto from the event. Message Template = from Settings → Message Templates. Custom text = typed here. SendGrid/Twilio only deliver — they do not choose the wording."
+                        />
+                      </div>
+                      <div>
+                        <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                          Source
+                          <HelpTip
+                            title="Content source"
+                            text="System text — built automatically from the event.&#10;Message Template — reusable template from Settings.&#10;Custom text — subject/body entered on this rule (supports {{VARIABLES}})."
+                          />
+                        </label>
+                        <select
+                          :value="getChannelMode(action, channel)"
+                          @change="setChannelMode(action, channel, ($event.target as HTMLSelectElement).value)"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        >
+                          <option value="system">System text (auto from event)</option>
+                          <option value="local">Message Template</option>
+                          <option value="manual">Custom text</option>
+                        </select>
+                      </div>
+                      <div v-if="getChannelMode(action, channel) === 'local'">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                          Template *
+                        </label>
+                        <select
+                          :value="getChannelTemplateId(action, channel)"
+                          @change="setChannelTemplateId(action, channel, ($event.target as HTMLSelectElement).value)"
+                          class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                        >
+                          <option value="">Select template…</option>
+                          <option
+                            v-for="template in getTemplatesForChannel(channel as 'email' | 'sms')"
+                            :key="template.id"
+                            :value="String(template.id)"
+                          >
+                            {{ template.name }} [{{ template.category }}]
+                          </option>
+                        </select>
+                      </div>
+                      <div v-if="getChannelMode(action, channel) === 'manual'" class="space-y-2">
+                        <div v-if="channel === 'email'">
+                          <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Subject
+                          </label>
+                          <input
+                            :value="getChannelSubject(action, channel)"
+                            @input="setChannelSubject(action, channel, ($event.target as HTMLInputElement).value)"
+                            type="text"
+                            placeholder="e.g. Update: {{PROJECT_NAME}}"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                          />
+                        </div>
+                        <div>
+                          <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Body *
+                          </label>
+                          <textarea
+                            :value="getChannelBody(action, channel)"
+                            @input="setChannelBody(action, channel, ($event.target as HTMLTextAreaElement).value)"
+                            rows="3"
+                            :placeholder="
+                              channel === 'email'
+                                ? 'HTML or text with {{PROJECT_NAME}}, {{STATUS}}…'
+                                : 'SMS text with {{PROJECT_NAME}}…'
+                            "
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 resize-y"
+                          ></textarea>
+                          <p class="mt-1 text-xs text-gray-500" v-pre>
+                            Variables: {{PROJECT_NAME}}, {{STATUS}}, {{TASK_NAME}}, {{URL}},
+                            {{EVENT_LABEL}}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                        Recipients *
+                        <HelpTip
+                          title="Recipients"
+                          text="Which roles receive this notification. Resolved to real users on the related project (admins are global)."
+                        />
+                      </label>
+                      <div class="flex flex-wrap gap-2">
+                        <label
+                          v-for="role in roles"
+                          :key="role"
+                          class="flex items-center text-gray-900 font-medium"
+                        >
+                          <input
+                            type="checkbox"
+                            :value="role"
+                            v-model="action.recipients"
+                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                          />
+                          {{ formatRoleLabel(role) }}
+                        </label>
+                      </div>
                     </div>
                   </div>
 
-                  <!-- Channel Templates -->
-                  <div v-for="channel in action.channels" :key="channel">
-                    <div v-if="channel === 'email' || channel === 'sms'">
-                      <label class="block text-sm font-medium text-gray-700 mb-1">
-                        Template for {{ channel.toUpperCase() }}
+                  <!-- Create Report Action -->
+                  <div v-if="action.type === 'create_report'" class="space-y-4">
+                    <div>
+                      <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                        Period *
+                        <HelpTip
+                          title="Report period"
+                          text="What data the report covers (daily / weekly / monthly summary). This is NOT when the rule runs — use Schedule below for timing."
+                        />
                       </label>
                       <select
-                        v-model="(action.channel_templates || {})[channel]"
+                        v-model="action.period"
                         class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
                       >
-                        <option :value="null">Use default template</option>
-                        <option
-                          v-for="template in getTemplatesForChannel(channel)"
-                          :key="template.id"
-                          :value="template.id"
-                        >
-                          {{ template.name }} [{{ template.category }}]
-                          <span v-if="template.parent_id">
-                            [Base: {{ getParentTemplateName(template.parent_id) }}]
-                          </span>
-                        </option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="quarterly">Quarterly</option>
+                        <option value="custom">Custom</option>
                       </select>
+                    </div>
+
+                    <div v-if="action.period === 'custom'">
+                      <label class="block text-sm font-medium text-gray-700 mb-1">
+                        Custom Period *
+                      </label>
+                      <input
+                        v-model="action.custom_period"
+                        type="text"
+                        pattern="^P\d+[DM]$"
+                        placeholder="P7D (7 days), P1M (1 month)"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
+                      />
+                    </div>
+
+                    <div>
+                      <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                        Recipients *
+                        <HelpTip
+                          title="Report recipients"
+                          text="Who receives the generated report email. Usually Admin and Project Manager."
+                        />
+                      </label>
+                      <div class="flex flex-wrap gap-2">
+                        <label
+                          v-for="role in roles"
+                          :key="role"
+                          class="flex items-center text-gray-900 font-medium"
+                        >
+                          <input
+                            type="checkbox"
+                            :value="role"
+                            v-model="action.recipients"
+                            class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                          />
+                          {{ formatRoleLabel(role) }}
+                        </label>
+                      </div>
                     </div>
                   </div>
 
-                  <div>
-                    <label class="flex items-center text-gray-900 font-medium">
-                      <input
-                        type="checkbox"
-                        v-model="action.store_for_dashboard"
-                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                  <!-- Log Only Action -->
+                  <div v-if="action.type === 'log_only'">
+                    <p class="inline-flex items-start gap-1 text-sm text-gray-600">
+                      <span>
+                        Writes to the event log only. No notifications are sent.
+                      </span>
+                      <HelpTip
+                        title="Log Only"
+                        text="Useful for auditing: the event is recorded, but nobody is emailed or texted."
                       />
-                      <span class="text-gray-900 font-medium">Store for dashboard</span>
-                    </label>
+                    </p>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                <!-- Create Report Action -->
-                <div v-if="action.type === 'create_report'" class="space-y-4">
+            <!-- Schedule -->
+            <div class="mb-6">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <h3 class="inline-flex items-center text-lg font-semibold text-gray-900">
+                    Schedule
+                    <HelpTip
+                      title="Schedule"
+                      text="Optional. Controls WHEN this rule may run (like a calendar timer).&#10;&#10;• No schedule → actions run immediately when the event happens.&#10;• With schedule → actions run only in the time window you set (Frequency + At time / Until)."
+                    />
+                  </h3>
+                  <p class="text-sm text-gray-600 mt-1">
+                    Optional. Leave empty to run immediately on every matching event.
+                  </p>
+                </div>
+                <button
+                  v-if="!form.conditions?.time_conditions"
+                  type="button"
+                  @click="addScheduleFilter"
+                  class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
+                >
+                  + Add schedule
+                </button>
+              </div>
+
+              <div
+                v-if="!form.conditions?.time_conditions"
+                class="text-center py-8 bg-gray-50 border border-gray-200 rounded-lg shadow-sm"
+              >
+                <p class="text-gray-500">
+                  No schedule. Outbox processes this rule immediately.
+                </p>
+              </div>
+
+              <div
+                v-else
+                class="p-4 bg-amber-50 border border-amber-200 rounded-lg shadow-sm space-y-4"
+              >
+                <div class="flex items-center justify-between">
+                  <h4 class="inline-flex items-center font-medium text-gray-900">
+                    {{ scheduleSummary }}
+                    <HelpTip
+                      title="Summary"
+                      text="Plain-language preview of the schedule you configured. Save the rule to apply it."
+                    />
+                  </h4>
+                  <button
+                    type="button"
+                    @click="removeScheduleFilter"
+                    class="text-red-600 hover:text-red-800"
+                    title="Remove schedule"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      ></path>
+                    </svg>
+                  </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Period *</label>
+                    <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                      Frequency <span class="text-red-500">*</span>
+                      <HelpTip
+                        title="Frequency"
+                        text="How often the schedule can match.&#10;&#10;Daily — every selected weekday.&#10;Weekly — on the weekdays you pick.&#10;Monthly — on a calendar day or an Nth weekday (e.g. 2nd Monday)."
+                      />
+                    </label>
                     <select
-                      v-model="action.period"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
+                      v-model="schedule.frequency"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                     >
                       <option value="daily">Daily</option>
                       <option value="weekly">Weekly</option>
                       <option value="monthly">Monthly</option>
-                      <option value="quarterly">Quarterly</option>
-                      <option value="custom">Custom</option>
                     </select>
                   </div>
-
-                  <div v-if="action.period === 'custom'">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Custom Period *</label>
-                    <input
-                      v-model="action.custom_period"
-                      type="text"
-                      pattern="^P\d+[DM]$"
-                      placeholder="P7D (7 days), P1M (1 month)"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
-                    />
-                  </div>
-
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Recipients</label>
-                    <div class="flex flex-wrap gap-2">
-                      <label v-for="role in roles" :key="role" class="flex items-center text-gray-900 font-medium">
-                        <input
-                          type="checkbox"
-                          :value="role"
-                          v-model="action.recipients"
-                          class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
-                        />
-                        {{ role.replace('_', ' ').toUpperCase() }}
-                      </label>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label class="flex items-center text-gray-900 font-medium">
-                      <input
-                        type="checkbox"
-                        v-model="action.store_for_dashboard"
-                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                    <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                      Timezone
+                      <HelpTip
+                        title="Timezone"
+                        text="All schedule times (At / Until) and day boundaries use this timezone — not the browser’s local clock."
                       />
-                      <span class="text-gray-900 font-medium">Store for dashboard</span>
                     </label>
-                  </div>
-                </div>
-
-                <!-- Log Only Action -->
-                <div v-if="action.type === 'log_only'">
-                  <div>
-                    <label class="flex items-center text-gray-900 font-medium">
-                      <input
-                        type="checkbox"
-                        v-model="action.store_for_dashboard"
-                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
-                      />
-                      <span class="text-gray-900 font-medium">Store for dashboard</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Conditions -->
-          <div class="mb-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold text-gray-900">Conditions</h3>
-              <div class="flex gap-2 flex-wrap">
-                <button
-                  type="button"
-                  @click="addCondition('notify_roles')"
-                  class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
-                >
-                  + Notify Roles
-                </button>
-                <button
-                  type="button"
-                  @click="addCondition('time_conditions')"
-                  class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
-                >
-                  + Time Conditions
-                </button>
-                <button
-                  type="button"
-                  @click="addCondition('project_conditions')"
-                  class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
-                >
-                  + Project Conditions
-                </button>
-              <button
-                type="button"
-                  @click="addCondition('task_conditions')"
-                  class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 shadow-sm"
-                >
-                  + Task Conditions
-              </button>
-              </div>
-            </div>
-
-            <div class="mb-4">
-              <label class="flex items-center">
-                <input
-                  type="checkbox"
-                  v-model="strictMode"
-                  class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
-                />
-                <span class="text-gray-900 font-medium">Strict mode (all conditions must be met)</span>
-              </label>
-            </div>
-
-            <div v-if="!form.conditions || Object.keys(form.conditions).length === 1" class="text-center py-8 bg-gray-50 border border-gray-200 rounded-lg shadow-sm">
-              <p class="text-gray-500">No conditions added. Rules without conditions will trigger on all events.</p>
-            </div>
-
-            <div v-else class="space-y-4">
-              <!-- Notify Roles -->
-              <div v-if="form.conditions?.notify_roles" class="p-4 bg-blue-50 border border-blue-200 rounded-lg shadow-sm">
-                <div class="flex items-center justify-between mb-3">
-                  <h4 class="font-medium text-gray-900">Notify Roles *</h4>
-                  <button
-                    type="button"
-                    @click="removeCondition('notify_roles')"
-                    class="text-red-600 hover:text-red-800"
-                  >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      ></path>
-                    </svg>
-                  </button>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                  <label v-for="role in roles" :key="role" class="flex items-center text-gray-900 font-medium">
-                    <input
-                      type="checkbox"
-                      :value="role"
-                      v-model="form.conditions.notify_roles.value"
-                      class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
-                    />
-                    {{ role.replace('_', ' ').toUpperCase() }}
-                  </label>
-                </div>
-                  <select
-                  v-model="form.conditions.notify_roles.priority"
-                  class="mt-2 px-3 py-1 border border-gray-400 rounded text-sm text-gray-900 bg-white"
-                >
-                  <option value="required">Required</option>
-                  <option value="preferred">Preferred</option>
-                  <option value="optional">Optional</option>
-                </select>
-              </div>
-
-
-              <!-- Time Conditions -->
-              <div v-if="form.conditions?.time_conditions" class="p-4 bg-amber-50 border border-amber-200 rounded-lg shadow-sm">
-                <div class="flex items-center justify-between mb-3">
-                  <h4 class="font-medium text-gray-900">Time Conditions</h4>
-                  <button
-                    type="button"
-                    @click="removeCondition('time_conditions')"
-                    class="text-red-600 hover:text-red-800"
-                  >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      ></path>
-                    </svg>
-                  </button>
-                </div>
-                <div class="space-y-3">
-                  <div class="flex items-center">
-                    <input
-                      type="checkbox"
-                      v-model="form.conditions.time_conditions.value.business_hours_only"
-                      class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
-                    />
-                    <span class="text-gray-900 font-medium">Business hours only</span>
-                  </div>
-                  <div class="flex items-center">
-                    <input
-                      type="checkbox"
-                      v-model="form.conditions.time_conditions.value.weekdays_only"
-                      class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
-                    />
-                    <span class="text-gray-900 font-medium">Weekdays only</span>
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
                     <select
-                      v-model="form.conditions.time_conditions.value.timezone"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
-                  >
+                      v-model="schedule.timezone"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    >
                       <option value="America/New_York">America/New_York</option>
                       <option value="America/Los_Angeles">America/Los_Angeles</option>
+                      <option value="America/Toronto">America/Toronto</option>
                       <option value="Europe/London">Europe/London</option>
                       <option value="Europe/Paris">Europe/Paris</option>
                       <option value="Asia/Tokyo">Asia/Tokyo</option>
-                  </select>
-                  </div>
-                  <div class="grid grid-cols-2 gap-2">
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
-                      <input
-                        v-model="timeRange.start"
-                        type="time"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
-                      />
-                    </div>
-                    <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
-                      <input
-                        v-model="timeRange.end"
-                        type="time"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
-                      />
-                    </div>
+                      <option value="UTC">UTC</option>
+                    </select>
                   </div>
                 </div>
-                  <select
-                  v-model="form.conditions.time_conditions.priority"
-                  class="mt-2 px-3 py-1 border border-gray-400 rounded text-sm text-gray-900 bg-white"
-                >
-                  <option value="required">Required</option>
-                  <option value="preferred">Preferred</option>
-                  <option value="optional">Optional</option>
-                </select>
-              </div>
 
-              <!-- Project Conditions -->
-              <div v-if="form.conditions?.project_conditions" class="p-4 bg-violet-50 border border-violet-200 rounded-lg shadow-sm">
-                <div class="flex items-center justify-between mb-3">
-                  <h4 class="font-medium text-gray-900">Project Conditions</h4>
-                  <button
-                    type="button"
-                    @click="removeCondition('project_conditions')"
-                    class="text-red-600 hover:text-red-800"
+                <div v-if="schedule.frequency === 'weekly' || schedule.frequency === 'daily'">
+                  <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-2">
+                    Days of week
+                    <HelpTip
+                      title="Days of week"
+                      text="Which weekdays are allowed. Example: Mon–Fri for business days only. For Weekly, pick the days the rule should fire."
+                    />
+                  </label>
+                  <div class="flex flex-wrap gap-2">
+                    <label
+                      v-for="day in weekDays"
+                      :key="day.value"
+                      class="inline-flex items-center px-3 py-2 border rounded-md text-sm cursor-pointer"
+                      :class="
+                        isDaySelected(day.value)
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                      "
+                    >
+                      <input
+                        type="checkbox"
+                        class="sr-only"
+                        :checked="isDaySelected(day.value)"
+                        @change="toggleDay(day.value)"
+                      />
+                      {{ day.label }}
+                    </label>
+                  </div>
+                </div>
+
+                <div v-if="schedule.frequency === 'monthly'" class="space-y-3">
+                  <div>
+                    <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                      Monthly on <span class="text-red-500">*</span>
+                      <HelpTip
+                        title="Monthly on"
+                        text="Calendar day — fixed date each month (e.g. the 1st).&#10;&#10;Nth weekday — e.g. 2nd Monday of each month (date changes; weekday does not)."
+                      />
+                    </label>
+                    <select
+                      v-model="schedule.monthly_mode"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    >
+                      <option value="day_of_month">Calendar day (e.g. 1st of each month)</option>
+                      <option value="nth_weekday">Nth weekday (e.g. 2nd Monday)</option>
+                    </select>
+                  </div>
+
+                  <div
+                    v-if="schedule.monthly_mode !== 'nth_weekday'"
+                    class="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end"
                   >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      ></path>
-                    </svg>
-                  </button>
-                </div>
-                <div class="space-y-3">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Min Budget</label>
-                    <input
-                      v-model.number="form.conditions.project_conditions.value.min_budget"
-                      type="number"
-                      min="0"
-                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-blue-400 text-gray-900"
-                    />
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <div class="flex flex-wrap gap-2">
-                      <label v-for="status in ['active', 'planning', 'completed', 'on_hold']" :key="status" class="flex items-center text-gray-900 font-medium">
-                        <input
-                          type="checkbox"
-                          :value="status"
-                          v-model="form.conditions.project_conditions.value.status"
-                          class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                    <div>
+                      <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                        Day of month
+                        <HelpTip
+                          title="Day of month"
+                          text="Calendar date 1–31. If the month is shorter (e.g. day 31 in February), the last day of that month is used."
                         />
-                        {{ status.replace('_', ' ').toUpperCase() }}
                       </label>
+                      <input
+                        v-model.number="schedule.day_of_month"
+                        type="number"
+                        min="1"
+                        max="31"
+                        :disabled="!!schedule.day_of_month_last"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 disabled:bg-gray-100"
+                      />
                     </div>
+                    <label class="flex items-center text-sm font-medium text-gray-700 pb-3">
+                      <input
+                        type="checkbox"
+                        v-model="schedule.day_of_month_last"
+                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                      />
+                      Last day of month
+                      <HelpTip
+                        title="Last day of month"
+                        text="Use the final calendar day (28–31 depending on the month) instead of a fixed number."
+                      />
+                    </label>
                   </div>
-                </div>
-                <select
-                  v-model="form.conditions.project_conditions.priority"
-                  class="mt-2 px-3 py-1 border border-gray-400 rounded text-sm text-gray-900 bg-white"
-                >
-                  <option value="required">Required</option>
-                  <option value="preferred">Preferred</option>
-                  <option value="optional">Optional</option>
-                </select>
-              </div>
 
-              <!-- Task Conditions -->
-              <div v-if="form.conditions?.task_conditions" class="p-4 bg-orange-50 border border-orange-200 rounded-lg shadow-sm">
-                <div class="flex items-center justify-between mb-3">
-                  <h4 class="font-medium text-gray-900">Task Conditions</h4>
-                <button
-                  type="button"
-                    @click="removeCondition('task_conditions')"
-                  class="text-red-600 hover:text-red-800"
-                >
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    ></path>
-                  </svg>
-                </button>
-                </div>
-                <div class="space-y-3">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    <div class="flex flex-wrap gap-2">
-                      <label v-for="status in ['planned', 'scheduled', 'scheduled_accepted', 'in_progress', 'partially_completed', 'delayed_due_to_issue', 'ready_for_inspection', 'completed']" :key="status" class="flex items-center text-gray-900 font-medium">
-                        <input
-                          type="checkbox"
-                          :value="status"
-                          v-model="form.conditions.task_conditions.value.status"
-                          class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                  <div
+                    v-else
+                    class="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                  >
+                    <div>
+                      <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                        Occurrence
+                        <HelpTip
+                          title="Occurrence"
+                          text="Which Monday/Tuesday/… in the month: 1st, 2nd, 3rd, 4th, or Last."
                         />
-                        {{ status.replace('_', ' ').toUpperCase() }}
                       </label>
+                      <select
+                        v-model.number="schedule.weekday_occurrence"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option :value="1">1st</option>
+                        <option :value="2">2nd</option>
+                        <option :value="3">3rd</option>
+                        <option :value="4">4th</option>
+                        <option :value="-1">Last</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                        Weekday
+                        <HelpTip
+                          title="Weekday"
+                          text="Combined with Occurrence. Example: 2nd + Monday = second Monday of the month."
+                        />
+                      </label>
+                      <select
+                        v-model.number="monthlyWeekday"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      >
+                        <option v-for="day in weekDays" :key="day.value" :value="day.value">
+                          {{ day.full }}
+                        </option>
+                      </select>
                     </div>
                   </div>
-                  <div class="flex items-center">
-                    <input
-                      type="checkbox"
-                      v-model="form.conditions.task_conditions.value.overdue_only"
-                      class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                </div>
+
+                <div>
+                  <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-2">
+                    Months
+                    <HelpTip
+                      title="Months"
+                      text="Limit to specific months. Leave all unchecked to run every month. Example: only January and July."
                     />
-                    <span class="text-gray-900 font-medium">Overdue tasks only</span>
+                  </label>
+                  <div class="flex flex-wrap gap-2">
+                    <label
+                      v-for="month in monthOptions"
+                      :key="month.value"
+                      class="inline-flex items-center px-2.5 py-1.5 border rounded-md text-xs cursor-pointer"
+                      :class="
+                        isMonthSelected(month.value)
+                          ? 'bg-blue-600 text-white border-blue-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                      "
+                    >
+                      <input
+                        type="checkbox"
+                        class="sr-only"
+                        :checked="isMonthSelected(month.value)"
+                        @change="toggleMonth(month.value)"
+                      />
+                      {{ month.label }}
+                    </label>
                   </div>
                 </div>
-                <select
-                  v-model="form.conditions.task_conditions.priority"
-                  class="mt-2 px-3 py-1 border border-gray-400 rounded text-sm text-gray-900 bg-white"
-                >
-                  <option value="required">Required</option>
-                  <option value="preferred">Preferred</option>
-                  <option value="optional">Optional</option>
-                </select>
+
+                <div class="grid grid-cols-2 gap-4">
+                  <div>
+                    <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                      At time <span class="text-red-500">*</span>
+                      <HelpTip
+                        title="At time"
+                        text="Start of the allowed time window (in the selected Timezone). The rule may run from this time onward until Until."
+                      />
+                    </label>
+                    <input
+                      v-model="scheduleAt"
+                      type="time"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    />
+                  </div>
+                  <div>
+                    <label class="inline-flex items-center text-sm font-medium text-gray-700 mb-1">
+                      Until
+                      <HelpTip
+                        title="Until"
+                        text="End of the allowed time window.&#10;&#10;Why a window? The system checks on a timer every few minutes. A short window (e.g. 07:00–07:30) avoids missing an exact minute.&#10;&#10;Default if empty: At time + 30 minutes.&#10;&#10;• Before At → wait&#10;• Between At and Until → run&#10;• After Until → skip for this day"
+                      />
+                    </label>
+                    <input
+                      v-model="scheduleUntil"
+                      type="time"
+                      class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    />
+                  </div>
+                </div>
+                <p v-if="validationErrors.schedule" class="text-sm text-red-600">
+                  {{ validationErrors.schedule }}
+                </p>
               </div>
             </div>
-          </div>
 
-          <!-- Actions -->
-          <div class="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200">
-            <button
-              type="button"
-              @click="closeDialog"
-              class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              :disabled="isSubmitting"
-              class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {{ isSubmitting ? 'Saving...' : editingRule ? 'Update Rule' : 'Create Rule' }}
-            </button>
-          </div>
-        </form>
+            <!-- Form actions -->
+            <div class="flex items-center justify-end space-x-3 pt-6 border-t border-gray-200">
+              <button
+                type="button"
+                @click="closeDialog"
+                class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors text-sm font-medium shadow-sm"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                :disabled="isSubmitting"
+                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {{ isSubmitting ? 'Saving...' : editingRule ? 'Update Rule' : 'Create Rule' }}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
     </div>
   </teleport>
 </template>
@@ -628,10 +763,18 @@ import type {
   EventRuleActionType,
   EventRuleAction,
   EventConditions,
+  NotifyAction,
+  RecipientRole,
+  TimeConditionsValue,
+  ChannelContentMode,
+  ChannelContentSpec,
+  NotifyChannel,
+  MonthlyMode,
+  WeekdayOccurrence,
 } from '@/core/utils/admin-api'
 import { eventRulesApi, type MessageTemplate } from '@/core/utils/eventRulesApi'
+import HelpTip from '@/components/HelpTip.vue'
 
-// Props
 interface Props {
   isOpen: boolean
   rule?: EventRule | null
@@ -648,19 +791,58 @@ const props = withDefaults(defineProps<Props>(), {
   actions: () => [],
 })
 
-// Emits
 const emit = defineEmits<{
   close: []
   save: [rule: EventRule]
 }>()
 
-// State
 const isSubmitting = ref(false)
 const validationErrors = ref<Record<string, string>>({})
-// inline add buttons used directly; no modals
 
-const channels = ['email', 'sms', 'webhook']
-const roles = ['admin', 'project_manager', 'contractor', 'architect', 'viewer', 'guest']
+const channels = ['email', 'sms', 'push'] as const
+const roles: RecipientRole[] = [
+  'admin',
+  'project_manager',
+  'task_lead',
+  'team_members',
+  'foreman',
+  'worker',
+  'contractor',
+  'inspector',
+]
+
+const weekDays = [
+  { value: 1, label: 'Mon', full: 'Monday' },
+  { value: 2, label: 'Tue', full: 'Tuesday' },
+  { value: 3, label: 'Wed', full: 'Wednesday' },
+  { value: 4, label: 'Thu', full: 'Thursday' },
+  { value: 5, label: 'Fri', full: 'Friday' },
+  { value: 6, label: 'Sat', full: 'Saturday' },
+  { value: 7, label: 'Sun', full: 'Sunday' },
+]
+
+const monthOptions = [
+  { value: 1, label: 'Jan' },
+  { value: 2, label: 'Feb' },
+  { value: 3, label: 'Mar' },
+  { value: 4, label: 'Apr' },
+  { value: 5, label: 'May' },
+  { value: 6, label: 'Jun' },
+  { value: 7, label: 'Jul' },
+  { value: 8, label: 'Aug' },
+  { value: 9, label: 'Sep' },
+  { value: 10, label: 'Oct' },
+  { value: 11, label: 'Nov' },
+  { value: 12, label: 'Dec' },
+]
+
+const weekdayOccurrenceLabels: Record<number, string> = {
+  1: '1st',
+  2: '2nd',
+  3: '3rd',
+  4: '4th',
+  [-1]: 'last',
+}
 
 const templates = ref<{
   email: MessageTemplate[]
@@ -676,14 +858,11 @@ const form = ref<EventRule>({
   severity: 'important',
   priority: null,
   actions: [],
-  conditions: {
-    strict_mode: false,
-  },
+  conditions: {},
   execution_location: null,
   comment: '',
 })
 
-// Computed
 const editingRule = computed(() => props.rule)
 
 const computedPriority = computed(() => {
@@ -691,7 +870,187 @@ const computedPriority = computed(() => {
   return form.value.severity === 'critical' ? 'critical' : 'high'
 })
 
-// Methods
+function emptySchedule(): TimeConditionsValue {
+  return {
+    frequency: 'daily',
+    days_of_week: [1, 2, 3, 4, 5],
+    monthly_mode: 'day_of_month',
+    day_of_month: 1,
+    day_of_month_last: false,
+    weekday_occurrence: 1,
+    months: [],
+    at_time: '09:00',
+    until_time: '09:30',
+    timezone: 'America/Toronto',
+  }
+}
+
+/** Migrate legacy business_hours / weekdays / time_range into crontab fields. */
+function migrateSchedule(raw: TimeConditionsValue): TimeConditionsValue {
+  const base = emptySchedule()
+  const merged: TimeConditionsValue = { ...base, ...raw }
+
+  if (!merged.frequency) {
+    merged.frequency = raw.weekdays_only ? 'weekly' : 'daily'
+  }
+
+  if (!merged.days_of_week?.length) {
+    if (raw.specific_days?.length) {
+      merged.days_of_week = [...raw.specific_days]
+    } else if (raw.weekdays_only) {
+      merged.days_of_week = [1, 2, 3, 4, 5]
+    } else if (raw.weekends_only) {
+      merged.days_of_week = [6, 7]
+    } else if (merged.frequency === 'weekly') {
+      merged.days_of_week = [1]
+    } else {
+      merged.days_of_week = [1, 2, 3, 4, 5, 6, 7]
+    }
+  }
+
+  if (!merged.monthly_mode) {
+    merged.monthly_mode = 'day_of_month'
+  }
+  if (merged.day_of_month_last === undefined) {
+    merged.day_of_month_last = false
+  }
+  if (!merged.day_of_month) {
+    merged.day_of_month = 1
+  }
+  if (merged.weekday_occurrence === undefined || merged.weekday_occurrence === null) {
+    merged.weekday_occurrence = 1
+  }
+  if (!Array.isArray(merged.months)) {
+    merged.months = []
+  }
+
+  if (!merged.at_time) {
+    merged.at_time = raw.time_range?.start || (raw.business_hours_only ? '09:00' : '09:00')
+  }
+  if (!merged.until_time) {
+    merged.until_time = raw.time_range?.end || (raw.business_hours_only ? '17:00' : '09:30')
+  }
+  if (!merged.timezone) {
+    merged.timezone = 'America/Toronto'
+  }
+
+  return merged
+}
+
+const schedule = computed<TimeConditionsValue>({
+  get() {
+    ensureScheduleShape()
+    return form.value.conditions!.time_conditions as TimeConditionsValue
+  },
+  set(val) {
+    if (!form.value.conditions) form.value.conditions = {}
+    form.value.conditions.time_conditions = val
+  },
+})
+
+const scheduleAt = computed({
+  get() {
+    return schedule.value.at_time ?? '09:00'
+  },
+  set(v: string) {
+    ensureScheduleShape()
+    const tc = form.value.conditions!.time_conditions as TimeConditionsValue
+    tc.at_time = v
+  },
+})
+
+const scheduleUntil = computed({
+  get() {
+    return schedule.value.until_time ?? '09:30'
+  },
+  set(v: string) {
+    ensureScheduleShape()
+    const tc = form.value.conditions!.time_conditions as TimeConditionsValue
+    tc.until_time = v
+  },
+})
+
+const scheduleSummary = computed(() => {
+  const tc = schedule.value
+  const freq = tc.frequency || 'daily'
+  const at = tc.at_time || '09:00'
+  const until = tc.until_time || '09:30'
+  const tz = tc.timezone || 'UTC'
+  const monthsLabel =
+    tc.months && tc.months.length > 0 && tc.months.length < 12
+      ? ` in ${tc.months.map((m) => monthOptions.find((o) => o.value === m)?.label || m).join(', ')}`
+      : ''
+
+  if (freq === 'monthly') {
+    if (tc.monthly_mode === 'nth_weekday') {
+      const occ = weekdayOccurrenceLabels[tc.weekday_occurrence ?? 1] || '1st'
+      const day =
+        weekDays.find((w) => w.value === (tc.days_of_week?.[0] ?? 1))?.full || 'Monday'
+      return `Monthly on ${occ} ${day}${monthsLabel}, ${at}–${until} (${tz})`
+    }
+    if (tc.day_of_month_last) {
+      return `Monthly on last day${monthsLabel}, ${at}–${until} (${tz})`
+    }
+    return `Monthly on day ${tc.day_of_month || 1}${monthsLabel}, ${at}–${until} (${tz})`
+  }
+  const days = (tc.days_of_week || [])
+    .slice()
+    .sort((a, b) => a - b)
+    .map((d) => weekDays.find((w) => w.value === d)?.label || String(d))
+    .join(', ')
+  if (freq === 'weekly') {
+    return `Weekly on ${days || '—'}, ${at}–${until} (${tz})`
+  }
+  return `Daily${days && days !== 'Mon, Tue, Wed, Thu, Fri, Sat, Sun' ? ` (${days})` : ''}, ${at}–${until} (${tz})`
+})
+
+const monthlyWeekday = computed({
+  get() {
+    return schedule.value.days_of_week?.[0] ?? 1
+  },
+  set(v: number) {
+    ensureScheduleShape()
+    const tc = form.value.conditions!.time_conditions as TimeConditionsValue
+    tc.days_of_week = [v]
+  },
+})
+
+function isDaySelected(day: number): boolean {
+  return (schedule.value.days_of_week || []).includes(day)
+}
+
+function toggleDay(day: number) {
+  ensureScheduleShape()
+  const tc = form.value.conditions!.time_conditions as TimeConditionsValue
+  const current = new Set(tc.days_of_week || [])
+  if (current.has(day)) {
+    current.delete(day)
+  } else {
+    current.add(day)
+  }
+  tc.days_of_week = Array.from(current).sort((a, b) => a - b)
+}
+
+function isMonthSelected(month: number): boolean {
+  return (schedule.value.months || []).includes(month)
+}
+
+function toggleMonth(month: number) {
+  ensureScheduleShape()
+  const tc = form.value.conditions!.time_conditions as TimeConditionsValue
+  const current = new Set(tc.months || [])
+  if (current.has(month)) {
+    current.delete(month)
+  } else {
+    current.add(month)
+  }
+  tc.months = Array.from(current).sort((a, b) => a - b)
+}
+
+function formatRoleLabel(role: string): string {
+  return role.replace(/_/g, ' ').toUpperCase()
+}
+
 function getActionTypeLabel(type: string): string {
   const labels: Record<string, string> = {
     notify: 'Notify',
@@ -701,143 +1060,224 @@ function getActionTypeLabel(type: string): string {
   return labels[type] || type
 }
 
-// Safe accessors to satisfy template type-checking
-const strictMode = computed<boolean>({
-  get() {
-    ensureConditionsObject()
-    return Boolean(form.value.conditions!.strict_mode)
-  },
-  set(val: boolean) {
-    ensureConditionsObject()
-    form.value.conditions!.strict_mode = val
-  },
-})
-
-const timeRange = computed<{ start: string; end: string }>({
-  get() {
-    normalizeConditions()
-    const tr = form.value.conditions!.time_conditions!.value!.time_range!
-    return { start: tr.start as string, end: tr.end as string }
-  },
-  set(val) {
-    ensureConditionsObject()
-    if (!form.value.conditions!.time_conditions) {
-      addCondition('time_conditions')
+function extractLegacyNotifyRoles(conditions: unknown): RecipientRole[] {
+  if (!conditions || typeof conditions !== 'object') return []
+  const c = conditions as Record<string, unknown>
+  const raw = c.notify_roles
+  if (!raw) return []
+  if (Array.isArray(raw)) {
+    return raw.filter((r): r is RecipientRole => typeof r === 'string') as RecipientRole[]
+  }
+  if (typeof raw === 'object' && raw !== null && 'value' in raw) {
+    const value = (raw as { value?: unknown }).value
+    if (Array.isArray(value)) {
+      return value.filter((r): r is RecipientRole => typeof r === 'string') as RecipientRole[]
     }
-    normalizeConditions()
-    form.value.conditions!.time_conditions!.value!.time_range = {
-      start: val.start,
-      end: val.end,
-    }
-  },
-})
-
-function parseLegacyActions(input: unknown): EventRuleAction[] {
-  if (Array.isArray(input)) {
-    // If already objects
-    if (input.length === 0) return []
-    const first = input[0] as unknown
-    if (first && typeof first === 'object' && 'type' in (first as Record<string, unknown>)) {
-      // Normalize actions to ensure channel_templates exists for notify actions
-      return (input as EventRuleAction[]).map(action => {
-        if (action.type === 'notify') {
-          return {
-            ...action,
-            channels: action.channels || [],
-            channel_templates: action.channel_templates || {},
-            store_for_dashboard: action.store_for_dashboard !== undefined ? action.store_for_dashboard : true,
-          }
-        }
-        return action
-      })
-    }
-    // Legacy strings → new objects
-    const result: EventRuleAction[] = []
-    for (const v of input as string[]) {
-      if (v === 'notify') {
-        result.push({ type: 'notify', channels: [], channel_templates: {}, store_for_dashboard: true })
-      } else if (v === 'log_only') {
-        result.push({ type: 'log_only', store_for_dashboard: false })
-      } else if (v.startsWith('create_') && v.endsWith('_report')) {
-        if (v === 'create_daily_report') result.push({ type: 'create_report', period: 'daily', store_for_dashboard: true, recipients: [] })
-        else if (v === 'create_weekly_report') result.push({ type: 'create_report', period: 'weekly', store_for_dashboard: true, recipients: [] })
-        else if (v === 'create_monthly_report') result.push({ type: 'create_report', period: 'monthly', store_for_dashboard: true, recipients: [] })
-        else if (v === 'create_quarterly_report') result.push({ type: 'create_report', period: 'quarterly', store_for_dashboard: true, recipients: [] })
-        else result.push({ type: 'create_report', period: 'daily', store_for_dashboard: true, recipients: [] })
-      } else if (v === 'create_report') {
-        result.push({ type: 'create_report', period: 'daily', store_for_dashboard: true, recipients: [] })
-      }
-    }
-    return result
   }
   return []
+}
+
+function unwrapTimeConditions(raw: unknown): TimeConditionsValue | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const obj = raw as Record<string, unknown>
+  if ('value' in obj && obj.value && typeof obj.value === 'object') {
+    return migrateSchedule({ ...emptySchedule(), ...(obj.value as TimeConditionsValue) })
+  }
+  return migrateSchedule({ ...emptySchedule(), ...(obj as TimeConditionsValue) })
+}
+
+function normalizeConditionsForForm(raw: unknown): EventConditions {
+  if (!raw || typeof raw !== 'object') return {}
+  const c = raw as Record<string, unknown>
+  const result: EventConditions = {}
+  const time = unwrapTimeConditions(c.time_conditions)
+  if (time) result.time_conditions = time
+  return result
+}
+
+function migrateNotifyContent(action: NotifyAction): NotifyAction {
+  const channel_content: Partial<Record<NotifyChannel, ChannelContentSpec>> = {
+    ...(action.channel_content || {}),
+  }
+  const legacy = action.channel_templates || {}
+  for (const ch of ['email', 'sms', 'push'] as NotifyChannel[]) {
+    if (channel_content[ch]) continue
+    const tid = legacy[ch]
+    if (tid != null && Number(tid) > 0) {
+      channel_content[ch] = { mode: 'local', template_id: Number(tid) }
+    }
+  }
+  return {
+    type: 'notify',
+    channels: (action.channels || []).filter((ch) =>
+      ['email', 'sms', 'push'].includes(ch),
+    ) as NotifyAction['channels'],
+    channel_content,
+    recipients:
+      Array.isArray(action.recipients) && action.recipients.length > 0
+        ? action.recipients
+        : [],
+  }
+}
+
+function ensureChannelContent(action: NotifyAction, channel: string): ChannelContentSpec {
+  if (!action.channel_content) action.channel_content = {}
+  const key = channel as NotifyChannel
+  if (!action.channel_content[key]) {
+    action.channel_content[key] = { mode: 'system' }
+  }
+  return action.channel_content[key]!
+}
+
+function getChannelMode(action: NotifyAction, channel: string): ChannelContentMode {
+  return ensureChannelContent(action, channel).mode || 'system'
+}
+
+function setChannelMode(action: NotifyAction, channel: string, mode: string) {
+  const spec = ensureChannelContent(action, channel)
+  const m = (['system', 'local', 'manual'].includes(mode) ? mode : 'system') as ChannelContentMode
+  spec.mode = m
+  if (m === 'local' && (channel === 'email' || channel === 'sms')) {
+    loadTemplatesForChannel(channel)
+  }
+  if (m !== 'local') spec.template_id = null
+  if (m !== 'manual') {
+    delete spec.subject
+    delete spec.body
+  }
+}
+
+function getChannelTemplateId(action: NotifyAction, channel: string): string {
+  const id = ensureChannelContent(action, channel).template_id
+  return id != null && id > 0 ? String(id) : ''
+}
+
+function setChannelTemplateId(action: NotifyAction, channel: string, value: string) {
+  const spec = ensureChannelContent(action, channel)
+  spec.mode = 'local'
+  spec.template_id = value ? Number(value) : null
+}
+
+function getChannelSubject(action: NotifyAction, channel: string): string {
+  return ensureChannelContent(action, channel).subject || ''
+}
+
+function setChannelSubject(action: NotifyAction, channel: string, value: string) {
+  const spec = ensureChannelContent(action, channel)
+  spec.mode = 'manual'
+  spec.subject = value
+}
+
+function getChannelBody(action: NotifyAction, channel: string): string {
+  return ensureChannelContent(action, channel).body || ''
+}
+
+function setChannelBody(action: NotifyAction, channel: string, value: string) {
+  const spec = ensureChannelContent(action, channel)
+  spec.mode = 'manual'
+  spec.body = value
+}
+
+function parseLegacyActions(
+  input: unknown,
+  legacyNotifyRoles: RecipientRole[] = [],
+): EventRuleAction[] {
+  if (!Array.isArray(input)) return []
+  if (input.length === 0) return []
+
+  const first = input[0] as unknown
+  if (first && typeof first === 'object' && 'type' in (first as Record<string, unknown>)) {
+    return (input as EventRuleAction[]).map((action) => {
+      if (action.type === 'notify') {
+        const migrated = migrateNotifyContent(action)
+        if (legacyNotifyRoles.length > 0 && migrated.recipients.length === 0) {
+          migrated.recipients = [...legacyNotifyRoles]
+        }
+        return migrated
+      }
+      if (action.type === 'create_report') {
+        return {
+          type: 'create_report' as const,
+          period: action.period || 'daily',
+          custom_period: action.custom_period,
+          recipients: Array.isArray(action.recipients) ? action.recipients : [],
+        }
+      }
+      return { type: 'log_only' as const }
+    })
+  }
+
+  const result: EventRuleAction[] = []
+  for (const v of input as string[]) {
+    if (v === 'notify') {
+      result.push({
+        type: 'notify',
+        channels: [],
+        channel_content: {},
+        recipients: [...legacyNotifyRoles],
+      })
+    } else if (v === 'log_only') {
+      result.push({ type: 'log_only' })
+    } else if (v.startsWith('create_') && v.endsWith('_report')) {
+      const periodMap: Record<string, 'daily' | 'weekly' | 'monthly' | 'quarterly'> = {
+        create_daily_report: 'daily',
+        create_weekly_report: 'weekly',
+        create_monthly_report: 'monthly',
+        create_quarterly_report: 'quarterly',
+      }
+      result.push({
+        type: 'create_report',
+        period: periodMap[v] || 'daily',
+        recipients: [],
+      })
+    } else if (v === 'create_report') {
+      result.push({ type: 'create_report', period: 'daily', recipients: [] })
+    }
+  }
+  return result
 }
 
 function getTemplatesForChannel(channel: 'email' | 'sms'): MessageTemplate[] {
   return templates.value[channel] || []
 }
 
-function getParentTemplateName(parentId: number): string {
-  for (const channelTemplates of Object.values(templates.value)) {
-    const parent = channelTemplates.find(t => t.id === parentId)
-    if (parent) return parent.name
-  }
-  return 'Unknown'
-}
-
 function addAction(type: 'notify' | 'create_report' | 'log_only') {
   if (type === 'notify') {
-    const action: EventRuleAction = {
+    form.value.actions.push({
       type: 'notify',
       channels: [],
-      channel_templates: {},
-      store_for_dashboard: true,
-    }
-    form.value.actions.push(action)
-    // ensure notify_roles condition exists to avoid empty payload later
-    if (!form.value.conditions || !('notify_roles' in form.value.conditions)) {
-      if (!form.value.conditions) {
-        form.value.conditions = { strict_mode: false } as EventConditions
-      }
-      form.value.conditions.notify_roles = { value: [], priority: 'required' }
-    }
+      channel_content: {},
+      recipients: [],
+    })
     return
   }
   if (type === 'create_report') {
-    const action: EventRuleAction = {
+    form.value.actions.push({
       type: 'create_report',
       period: 'daily',
       recipients: [],
-      store_for_dashboard: true,
-    }
-    form.value.actions.push(action)
+    })
     return
   }
-  if (type === 'log_only') {
-    const action: EventRuleAction = {
-      type: 'log_only',
-      store_for_dashboard: true,
-    }
-    form.value.actions.push(action)
-  }
+  form.value.actions.push({ type: 'log_only' })
 }
 
-function onChannelChange(action: { type: string; channels: string[]; channel_templates?: Record<string, number | null> }) {
-  if (!action.channel_templates) {
-    action.channel_templates = {}
-  }
-
-  // Load templates for new channels
-  action.channels.forEach((channel: string) => {
-    if ((channel === 'email' || channel === 'sms') && !templates.value[channel as 'email' | 'sms']?.length) {
+function onChannelChange(action: NotifyAction) {
+  if (!action.channel_content) action.channel_content = {}
+  action.channels.forEach((channel) => {
+    if (!action.channel_content![channel]) {
+      action.channel_content![channel] = { mode: 'system' }
+    }
+    if (
+      (channel === 'email' || channel === 'sms') &&
+      !templates.value[channel as 'email' | 'sms']?.length
+    ) {
       loadTemplatesForChannel(channel as 'email' | 'sms')
     }
   })
-
-  // Remove templates for removed channels
-  Object.keys(action.channel_templates).forEach(channel => {
-    if (!action.channels.includes(channel)) {
-      delete action.channel_templates![channel]
+  Object.keys(action.channel_content).forEach((channel) => {
+    if (!action.channels.includes(channel as NotifyChannel)) {
+      delete action.channel_content![channel as NotifyChannel]
     }
   })
 }
@@ -846,7 +1286,7 @@ async function loadTemplatesForChannel(channel: 'email' | 'sms') {
   try {
     const response = await eventRulesApi.listTemplates({ type: channel })
     if (response.status === 'success') {
-      templates.value[channel] = response.data.templates.filter(t => t.is_active)
+      templates.value[channel] = response.data.templates.filter((t) => t.is_active)
     }
   } catch (error) {
     console.error(`Failed to load templates for ${channel}:`, error)
@@ -857,80 +1297,34 @@ function removeAction(index: number) {
   form.value.actions.splice(index, 1)
 }
 
-function addCondition(type: 'notify_roles' | 'time_conditions' | 'project_conditions' | 'task_conditions') {
-  if (!form.value.conditions) {
-    form.value.conditions = { strict_mode: false } as EventConditions
+function ensureScheduleShape() {
+  if (!form.value.conditions) form.value.conditions = {}
+  if (!form.value.conditions.time_conditions) {
+    form.value.conditions.time_conditions = emptySchedule()
+    return
   }
-
-  if (type === 'notify_roles') {
-    form.value.conditions.notify_roles = {
-      value: [],
-      priority: 'required',
-    }
-  } else if (type === 'time_conditions') {
-    form.value.conditions.time_conditions = {
-      value: {
-        business_hours_only: false,
-        weekdays_only: false,
-        timezone: 'America/New_York',
-        time_range: { start: '09:00', end: '17:00' }
-      },
-      priority: 'preferred',
-    }
-  } else if (type === 'project_conditions') {
-    form.value.conditions.project_conditions = {
-      value: {
-        min_budget: 0,
-        status: []
-      },
-      priority: 'preferred',
-    }
-  } else if (type === 'task_conditions') {
-    form.value.conditions.task_conditions = {
-      value: {
-        status: [],
-        overdue_only: false
-      },
-      priority: 'preferred',
-    }
-  }
+  const migrated = migrateSchedule(form.value.conditions.time_conditions as TimeConditionsValue)
+  const tc = form.value.conditions.time_conditions as TimeConditionsValue
+  tc.frequency = migrated.frequency
+  tc.days_of_week = migrated.days_of_week
+  tc.monthly_mode = migrated.monthly_mode
+  tc.day_of_month = migrated.day_of_month
+  tc.day_of_month_last = migrated.day_of_month_last
+  tc.weekday_occurrence = migrated.weekday_occurrence
+  tc.months = migrated.months
+  tc.at_time = migrated.at_time
+  tc.until_time = migrated.until_time
+  tc.timezone = migrated.timezone
 }
 
-function ensureConditionsObject() {
-  if (!form.value.conditions || typeof form.value.conditions !== 'object') {
-    form.value.conditions = { strict_mode: false } as EventConditions
-  }
+function addScheduleFilter() {
+  if (!form.value.conditions) form.value.conditions = {}
+  form.value.conditions.time_conditions = emptySchedule()
 }
 
-function removeCondition(type: string) {
+function removeScheduleFilter() {
   if (form.value.conditions) {
-    if (type === 'notify_roles') delete form.value.conditions.notify_roles
-    if (type === 'time_conditions') delete form.value.conditions.time_conditions
-    if (type === 'project_conditions') delete form.value.conditions.project_conditions
-    if (type === 'task_conditions') delete form.value.conditions.task_conditions
-  }
-}
-
-function normalizeConditions() {
-  ensureConditionsObject()
-  const c = form.value.conditions!
-  if (c.time_conditions) {
-    const tc = c.time_conditions as unknown as {
-      value?: {
-        business_hours_only?: boolean
-        weekdays_only?: boolean
-        timezone?: string
-        time_range?: { start?: string; end?: string }
-      }
-      priority?: string
-    }
-    if (!tc.value) tc.value = {}
-    if (tc.value.business_hours_only === undefined) tc.value.business_hours_only = false
-    if (tc.value.weekdays_only === undefined) tc.value.weekdays_only = false
-    if (!tc.value.timezone) tc.value.timezone = 'America/New_York'
-    if (!tc.value.time_range) tc.value.time_range = { start: '09:00', end: '17:00' }
-    if (!tc.value.time_range.start) tc.value.time_range.start = '09:00'
-    if (!tc.value.time_range.end) tc.value.time_range.end = '17:00'
+    delete form.value.conditions.time_conditions
   }
 }
 
@@ -947,27 +1341,55 @@ function validateForm(): boolean {
     errors.actions = 'At least one action is required'
   }
 
-  // Validate actions
-  let hasNotify = false
+  if (form.value.conditions?.time_conditions) {
+    const tc = migrateSchedule(form.value.conditions.time_conditions as TimeConditionsValue)
+    if (tc.frequency === 'weekly' && !(tc.days_of_week && tc.days_of_week.length > 0)) {
+      errors.schedule = 'Weekly schedule requires at least one day of week'
+    }
+    if (tc.frequency === 'monthly' && tc.monthly_mode === 'nth_weekday') {
+      if (!(tc.days_of_week && tc.days_of_week.length > 0)) {
+        errors.schedule = 'Nth weekday schedule requires a weekday'
+      }
+    }
+    if (!tc.at_time) {
+      errors.schedule = 'Schedule requires At time'
+    }
+  }
+
   for (const action of form.value.actions) {
     if (action.type === 'notify') {
-      hasNotify = true
       if (!action.channels || action.channels.length === 0) {
         errors.actions = 'Notify action must have at least one channel'
         break
       }
+      if (!action.recipients || action.recipients.length === 0) {
+        errors.actions = 'Notify action must have at least one recipient'
+        break
+      }
+      for (const ch of action.channels) {
+        if (ch !== 'email' && ch !== 'sms') continue
+        const spec = action.channel_content?.[ch]
+        const mode = spec?.mode || 'system'
+        if (mode === 'local' && !(spec?.template_id && Number(spec.template_id) > 0)) {
+          errors.actions = `Select a Message Template for ${ch.toUpperCase()}`
+          break
+        }
+        if (mode === 'manual' && !(spec?.body && spec.body.trim())) {
+          errors.actions = `Enter custom body for ${ch.toUpperCase()}`
+          break
+        }
+      }
+      if (errors.actions) break
     }
-    if (action.type === 'create_report' && action.period === 'custom' && !action.custom_period) {
-      errors.actions = 'Custom period requires custom_period field'
-      break
-    }
-  }
-
-  // If notify action exists, require notify_roles to be non-empty
-  if (hasNotify) {
-    const roles = form.value.conditions?.notify_roles?.value
-    if (!roles || roles.length === 0) {
-      errors.conditions = 'Select at least one role in Notify Roles'
+    if (action.type === 'create_report') {
+      if (!action.recipients || action.recipients.length === 0) {
+        errors.actions = 'Create Report action must have at least one recipient'
+        break
+      }
+      if (action.period === 'custom' && !action.custom_period) {
+        errors.actions = 'Custom period requires custom_period field'
+        break
+      }
     }
   }
 
@@ -975,17 +1397,42 @@ function validateForm(): boolean {
   return Object.keys(errors).length === 0
 }
 
-async function handleSubmit() {
-  if (!validateForm()) {
-    return
+function buildSavePayload(): EventRule {
+  const conditions: EventConditions = {}
+  if (form.value.conditions?.time_conditions) {
+    const tc = migrateSchedule(form.value.conditions.time_conditions as TimeConditionsValue)
+    conditions.time_conditions = {
+      frequency: tc.frequency || 'daily',
+      days_of_week: tc.days_of_week || [1, 2, 3, 4, 5, 6, 7],
+      monthly_mode: (tc.monthly_mode || 'day_of_month') as MonthlyMode,
+      day_of_month: tc.day_of_month || 1,
+      day_of_month_last: !!tc.day_of_month_last,
+      weekday_occurrence: (tc.weekday_occurrence ?? 1) as WeekdayOccurrence,
+      months: Array.isArray(tc.months) ? tc.months : [],
+      at_time: tc.at_time || '09:00',
+      until_time: tc.until_time || '09:30',
+      timezone: tc.timezone || 'America/Toronto',
+    }
   }
+  const actions = form.value.actions.map((a) => {
+    if (a.type !== 'notify') return a
+    const migrated = migrateNotifyContent(a)
+    // Drop legacy field on save
+    delete migrated.channel_templates
+    return migrated
+  })
+  return {
+    ...form.value,
+    actions,
+    conditions: Object.keys(conditions).length > 0 ? conditions : {},
+  }
+}
 
-  // Ensure conditions object exists before saving
-  ensureConditionsObject()
-
+async function handleSubmit() {
+  if (!validateForm()) return
   isSubmitting.value = true
   try {
-    emit('save', { ...form.value })
+    emit('save', buildSavePayload())
   } finally {
     isSubmitting.value = false
   }
@@ -995,56 +1442,45 @@ function closeDialog() {
   emit('close')
 }
 
-// Watch for rule changes
+function resetForm() {
+  form.value = {
+    event_type: '',
+    enabled: true,
+    severity: 'important',
+    priority: null,
+    actions: [],
+    conditions: {},
+    execution_location: null,
+    comment: '',
+  }
+}
+
 watch(
   () => props.rule,
   (newRule) => {
     if (newRule) {
-      const normalizedConditions = newRule.conditions && typeof newRule.conditions === 'object'
-        ? newRule.conditions
-        : { strict_mode: false }
-      const parsedActions = parseLegacyActions(newRule.actions as unknown)
-      // Ensure channel_templates is initialized for all notify actions
-      parsedActions.forEach(action => {
-        if (action.type === 'notify' && !action.channel_templates) {
-          action.channel_templates = {}
-        }
-      })
+      const legacyRoles = extractLegacyNotifyRoles(newRule.conditions)
+      const parsedActions = parseLegacyActions(newRule.actions as unknown, legacyRoles)
       form.value = {
         event_type: newRule.event_type,
         enabled: newRule.enabled,
         severity: newRule.severity,
         priority: newRule.priority ?? null,
         actions: parsedActions,
-        conditions: normalizedConditions,
+        conditions: normalizeConditionsForForm(newRule.conditions),
         execution_location: newRule.execution_location ?? null,
         comment: newRule.comment || '',
         updated_at: newRule.updated_at,
         updated_by: newRule.updated_by,
       }
-      normalizeConditions()
     } else {
-      // Reset form for new rule
-      form.value = {
-        event_type: '',
-        enabled: true,
-        severity: 'important',
-        priority: null,
-        actions: [],
-        conditions: {
-          strict_mode: false,
-        },
-        execution_location: null,
-        comment: '',
-      }
-      normalizeConditions()
+      resetForm()
     }
     validationErrors.value = {}
   },
   { immediate: true },
 )
 
-// Load templates on mount
 onMounted(() => {
   loadTemplatesForChannel('email')
   loadTemplatesForChannel('sms')
@@ -1054,4 +1490,3 @@ defineOptions({
   name: 'EventRuleDialog',
 })
 </script>
-
