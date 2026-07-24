@@ -121,6 +121,10 @@ const router = createRouter({
       component: () => import('@/pages/calendar/GlobalCalendar.vue'),
     },
     {
+      path: '/schedule',
+      component: () => import('@/pages/schedule/GlobalSchedule.vue'),
+    },
+    {
       path: '/clients',
       redirect: '/clients/pharma',
     },

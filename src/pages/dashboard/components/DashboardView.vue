@@ -5,7 +5,7 @@
         <h1 v-if="title" class="text-xl font-semibold text-slate-900">{{ title }}</h1>
         <p v-if="subtitle" class="text-sm text-slate-500 mt-0.5">{{ subtitle }}</p>
         <p v-if="payload?.generated_at" class="text-xs text-slate-400 mt-1">
-          Live snapshot · {{ formatGeneratedAt(payload.generated_at) }}
+          Ops snapshot · {{ formatGeneratedAt(payload.generated_at) }}
         </p>
       </div>
       <div class="flex flex-wrap items-center gap-3">
@@ -39,12 +39,21 @@
       <button class="underline ml-1" @click="load">Retry</button>
     </div>
 
-    <div v-if="isLoading && !payload" class="py-12 text-center text-slate-400 text-sm">Loading…</div>
+    <div v-if="isLoading && !payload && !portfolio" class="py-12 text-center text-slate-400 text-sm">
+      Loading…
+    </div>
 
-    <template v-else-if="payload">
-      <DashboardKpiTiles :kpis="payload.kpis" scope="global" class="mb-6" />
+    <template v-else>
+      <DashboardKpiTiles v-if="payload" :kpis="payload.kpis" scope="global" class="mb-6" />
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <DashboardWorkPortfolio
+        class="mb-6"
+        :snapshot="portfolio"
+        :is-loading="isPortfolioLoading"
+        :error="portfolioError"
+      />
+
+      <div v-if="payload" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <DashboardAlerts :alerts="payload.alerts" :show-project="true" />
         <DashboardActivityFeed :activity="payload.activity" :show-project="true" />
       </div>
@@ -61,11 +70,17 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useAuthStore } from '@/core/stores/auth'
 import { dashboardApi, type DashboardPayload } from '@/core/utils/dashboard-api'
+import {
+  loadPortfolioWorkSnapshot,
+  type PortfolioWorkSnapshot,
+} from '@/core/utils/dashboard-work-portfolio'
 import PageUserGuideLink from '@/components/PageUserGuideLink.vue'
 import DashboardKpiTiles from './DashboardKpiTiles.vue'
 import DashboardAlerts from './DashboardAlerts.vue'
 import DashboardActivityFeed from './DashboardActivityFeed.vue'
+import DashboardWorkPortfolio from './DashboardWorkPortfolio.vue'
 
 defineOptions({ name: 'DashboardView' })
 
@@ -74,21 +89,45 @@ defineProps<{
   subtitle?: string
 }>()
 
+const authStore = useAuthStore()
+
 const payload = ref<DashboardPayload | null>(null)
+const portfolio = ref<PortfolioWorkSnapshot | null>(null)
 const isLoading = ref(false)
+const isPortfolioLoading = ref(false)
 const hasError = ref(false)
+const portfolioError = ref('')
 
 async function load(): Promise<void> {
   isLoading.value = true
+  isPortfolioLoading.value = true
   hasError.value = false
-  try {
-    payload.value = await dashboardApi.getGlobal()
-  } catch {
-    hasError.value = true
-    payload.value = null
-  } finally {
-    isLoading.value = false
-  }
+  portfolioError.value = ''
+
+  const opsPromise = dashboardApi.getGlobal().then(
+    (data) => {
+      payload.value = data
+    },
+    () => {
+      hasError.value = true
+      payload.value = null
+    },
+  )
+
+  const portfolioPromise = loadPortfolioWorkSnapshot(authStore.currentUser).then(
+    (data) => {
+      portfolio.value = data
+    },
+    (e) => {
+      console.error('Dashboard portfolio load failed', e)
+      portfolioError.value = 'Failed to load work portfolio.'
+      portfolio.value = null
+    },
+  )
+
+  await Promise.all([opsPromise, portfolioPromise])
+  isLoading.value = false
+  isPortfolioLoading.value = false
 }
 
 function formatGeneratedAt(value: string): string {

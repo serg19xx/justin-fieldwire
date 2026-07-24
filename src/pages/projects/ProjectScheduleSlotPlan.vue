@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-gray-50 px-4 py-6 max-w-3xl mx-auto w-full">
     <nav class="mb-4" aria-label="Back">
       <RouterLink
-        :to="{ path: `/projects/${projectId}/detail`, query: backToScheduleQuery }"
+        :to="{ path: '/schedule', query: backToScheduleQuery }"
         class="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800"
       >
         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -319,7 +319,7 @@
           Save instructions
         </button>
         <RouterLink
-          :to="{ path: `/projects/${projectId}/detail`, query: backToScheduleQuery }"
+          :to="{ path: '/schedule', query: backToScheduleQuery }"
           class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
         >
           Cancel
@@ -462,9 +462,9 @@ const weekStartQuery = computed(() => {
   return typeof w === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(w) ? w : ''
 })
 
-/** Keeps the same calendar week when leaving (Cancel / Back / after Save) so the schedule section reloads the right draft. */
+/** Keeps the same calendar week when leaving (Cancel / Back / after Save) so the schedule page reloads the right draft. */
 const backToScheduleQuery = computed((): Record<string, string> => {
-  const q: Record<string, string> = { section: 'schedule' }
+  const q: Record<string, string> = { projectId: String(projectId.value) }
   const raw =
     weekStartQuery.value ||
     (weekMeta.value?.week_start ? String(weekMeta.value.week_start).slice(0, 10) : '')
@@ -687,7 +687,7 @@ async function onSave(): Promise<void> {
     allEntries.value = mapLoadedEntries(entries)
     const hit = allEntries.value.find((e) => e.id === id)
     if (hit) noteDraft.value = typeof hit.assignment_note === 'string' ? hit.assignment_note : ''
-    await router.push({ path: `/projects/${projectId.value}/detail`, query: { ...backToScheduleQuery.value } })
+    await router.push({ path: '/schedule', query: { ...backToScheduleQuery.value } })
   } catch (e) {
     saveError.value = getApiErrorMessage(e, 'Save failed. Check that the week is still a draft.')
   } finally {

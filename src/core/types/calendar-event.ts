@@ -5,6 +5,8 @@ export interface CalendarEvent {
   user_id: number
   project_id: number | null
   project_name: string | null
+  /** Address from the linked project (fw_projects.address); null/absent for personal events. */
+  project_address?: string | null
   title: string
   description: string | null
   location: string | null

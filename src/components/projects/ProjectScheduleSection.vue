@@ -2,16 +2,16 @@
   <div class="p-4 md:p-6 max-w-5xl mx-auto w-full min-w-0">
     <div class="mb-4 space-y-4">
       <div>
-        <h2 class="text-lg font-semibold text-gray-900">Weekly task schedule</h2>
+        <h2 class="text-lg font-semibold text-gray-900">Weekly job-site schedule</h2>
         <p class="text-sm text-gray-500 mt-0.5">
           Choose <strong class="font-medium text-gray-700">one worker</strong> — the table lists
-          <strong class="font-medium text-gray-700">seven days</strong> (Mon–Sun). Set slot and task per day, or leave none.
-          Use the <strong class="font-medium text-gray-700">clipboard</strong> icon for instructions and the
-          <strong class="font-medium text-gray-700">speech bubble</strong> for schedule messages (task tree + PM thread).
+          <strong class="font-medium text-gray-700">seven days</strong> (Mon–Sun). Set morning / afternoon / all day
+          per day, or leave none. This tracks <strong class="font-medium text-gray-700">where the person should be</strong>
+          (this project). Tasks / Jobsite work stays separate — not linked here.
+          Use the <strong class="font-medium text-gray-700">clipboard</strong> icon for slot notes/documents and the
+          <strong class="font-medium text-gray-700">speech bubble</strong> for schedule messages.
           The week bar reflects free / partly busy / fully blocked days using this draft plus
-          <strong class="font-medium text-gray-700">published slots in other projects</strong> from
-          <code class="text-xs bg-gray-100 px-1 rounded">GET /users/&#123;id&#125;/schedule</code> (when the server allows
-          by RBAC). Saving adds people to the task team if needed.
+          <strong class="font-medium text-gray-700">published slots in other projects</strong> when available.
         </p>
       </div>
       <div class="flex flex-col gap-2">
@@ -188,7 +188,7 @@
               <tr>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Day</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Slot</th>
-                <th class="px-3 py-2 text-left font-medium text-gray-700">Task</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-700">Note</th>
                 <th class="px-2 py-2 text-center font-medium text-gray-700 w-[7.5rem]">
                   <span class="sr-only">Actions</span>
                   <span class="inline sm:hidden text-xs font-normal text-gray-500">⋯</span>
@@ -245,36 +245,40 @@
                     </span>
                     <span v-else class="text-gray-900">{{ dayPartLabel(slot.row.day_part) }}</span>
                   </template>
+                  <button
+                    v-else-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
+                    type="button"
+                    class="text-sm font-medium text-blue-700 hover:text-blue-900"
+                    @click="assignWeekDay(slot.ymd)"
+                  >
+                    + Assign
+                  </button>
                   <span v-else class="text-gray-400">—</span>
                 </td>
                 <td class="px-3 py-2 align-top">
                   <template v-if="slot.row">
-                    <select
+                    <textarea
                       v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
-                      v-model.number="slot.row.task_id"
-                      class="w-full min-w-[10rem] rounded border border-gray-300 text-sm"
-                    >
-                      <option :value="0">— None —</option>
-                      <option v-for="t in allTaskSelectOptions" :key="t.task_id" :value="t.task_id">
-                        {{ t.label }}
-                      </option>
-                    </select>
+                      v-model="slot.row.assignment_note"
+                      rows="2"
+                      class="w-full min-w-[10rem] rounded border border-gray-300 text-sm px-2 py-1"
+                      :maxlength="assignmentNoteMaxChars"
+                      placeholder="Optional note for this day"
+                    />
                     <span
-                      v-else-if="isScheduleEditable && isPastPlanDayYmd(slot.ymd)"
-                      class="text-sm text-gray-600"
+                      v-else-if="slot.row.assignment_note"
+                      class="text-sm text-gray-700 whitespace-pre-wrap"
                     >
-                      {{ slot.row.task_id > 0 ? taskLabel(slot.row.task_id) : '—' }}
+                      {{ slot.row.assignment_note }}
                     </span>
-                    <span v-else class="text-gray-900">{{
-                      slot.row.task_id > 0 ? taskLabel(slot.row.task_id) : '—'
-                    }}</span>
+                    <span v-else class="text-gray-400">—</span>
                   </template>
                   <span v-else class="text-gray-400">—</span>
                 </td>
                 <td class="px-1 py-2 align-middle">
                   <div v-if="slot.row" class="flex items-center justify-center gap-0.5 sm:gap-1">
                     <RouterLink
-                      v-if="slot.row.task_id > 0 && slotPlanLocation(slot.row)"
+                      v-if="slotPlanLocation(slot.row)"
                       :to="slotPlanLocation(slot.row)!"
                       class="inline-flex items-center justify-center p-1.5 rounded-md transition-colors text-gray-600 hover:text-blue-600 hover:bg-blue-50"
                       title="Assignment — instructions and documents"
@@ -292,7 +296,7 @@
                     <span
                       v-else
                       class="inline-flex items-center justify-center p-1.5 rounded-md text-gray-300 cursor-not-allowed"
-                      title="Pick a task for this day (and save the draft if the row is new) to open assignment"
+                      title="Save the draft first to open assignment documents"
                     >
                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path
@@ -304,7 +308,7 @@
                       </svg>
                     </span>
                     <RouterLink
-                      v-if="slot.row.task_id > 0 && slotChatLocation(slot.row)"
+                      v-if="slotChatLocation(slot.row)"
                       :to="slotChatLocation(slot.row)!"
                       class="inline-flex items-center justify-center p-1.5 rounded-md transition-colors text-gray-600 hover:text-blue-600 hover:bg-blue-50"
                       title="Chat for this slot"
@@ -322,7 +326,7 @@
                     <span
                       v-else
                       class="inline-flex items-center justify-center p-1.5 rounded-md text-gray-300 cursor-not-allowed"
-                      title="Pick a task for this day (and save the draft if needed) to open chat"
+                      title="Save the draft first to open chat"
                     >
                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path
@@ -337,8 +341,8 @@
                       v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
                       type="button"
                       class="inline-flex items-center justify-center p-1.5 rounded-md transition-colors text-gray-600 hover:text-amber-700 hover:bg-amber-50"
-                      title="Clear task for this day"
-                      aria-label="Clear task for this day"
+                      title="Clear this day"
+                      aria-label="Clear this day"
                       @click="clearWeekDayRow(slot.row)"
                     >
                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -358,10 +362,10 @@
           </table>
         </div>
         <p
-          v-if="canEdit && isDraft && selectedPlannerWorkerId > 0 && allTaskSelectOptions.length === 0"
+          v-if="canEdit && isDraft && selectedPlannerWorkerId > 0 && plannerWorkers.length === 0"
           class="text-amber-800 text-xs mt-2"
         >
-          No tasks in this project yet.
+          No project team members available for scheduling.
         </p>
 
         <div v-if="selectedPlannerWorkerId <= 0" class="text-sm text-gray-500 mt-2">
@@ -378,7 +382,7 @@
           v-if="isScheduleEditable && hasRowsOnPastDays"
           class="mt-2 text-sm text-amber-800 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
         >
-          There is still a <strong class="font-medium text-amber-950">task or note on a calendar day before today</strong>
+          There is still a <strong class="font-medium text-amber-950">slot or note on a calendar day before today</strong>
           — planning is forward-only.
           <strong class="font-medium text-amber-950">Save and Publish stay off</strong> until this is cleared
           (use the button below, then <strong class="font-medium text-amber-950">Save draft</strong> so the server matches).
@@ -483,8 +487,6 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute, type RouteLocationRaw } from 'vue-router'
 import axios from 'axios'
 import type { ProjectTeamMember } from '@/core/utils/project-api'
-import type { Task, TaskCreateUpdate } from '@/core/types/task'
-import { tasksApi } from '@/core/utils/tasks-api'
 import {
   fetchProjectScheduleWeek,
   ensureProjectScheduleDraft,
@@ -516,11 +518,8 @@ const props = defineProps<{
   projectId: number
   canEdit: boolean
   teamMembers: ProjectTeamMember[]
-  tasks: Task[]
-}>()
-
-const emit = defineEmits<{
-  tasksSynced: []
+  /** @deprecated Schedule is independent of tasks; kept optional for callers. */
+  tasks?: unknown[]
 }>()
 
 const route = useRoute()
@@ -598,9 +597,8 @@ function isPastPlanDayYmd(ymd: string): boolean {
 function isPastDayRowBlockingSave(r: ScheduleWeekEntryRow): boolean {
   if (!r.work_date) return false
   if (sliceWorkYmd(r.work_date) >= todayYmd.value) return false
-  if (r.task_id > 0) return true
-  const n = r.assignment_note
-  return typeof n === 'string' && n.trim().length > 0
+  // Any saved/active presence row on a past day blocks forward-only planning
+  return scheduleUserId(r.user_id) > 0
 }
 
 const showPlannerHint = computed(() => selectedPlannerWorkerId.value > 0)
@@ -630,14 +628,19 @@ const dayChoices = computed(() => {
   return out
 })
 
-const workerOptions = computed(() =>
-  props.teamMembers
-    .filter((m) => m.user_id != null && Number(m.user_id) > 0)
-    .map((m) => ({
-      user_id: Number(m.user_id),
-      label: (m.name ?? m.email ?? `User ${m.user_id}`) as string,
-    })),
-)
+const workerOptions = computed(() => {
+  const byUser = new Map<number, { user_id: number; label: string }>()
+  for (const m of props.teamMembers) {
+    const uid = Number(m.user_id)
+    if (!Number.isFinite(uid) || uid <= 0) continue
+    if (byUser.has(uid)) continue
+    const label = String(m.name ?? m.email ?? `User ${uid}`).trim() || `User ${uid}`
+    byUser.set(uid, { user_id: uid, label })
+  }
+  return [...byUser.values()].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' }))
+})
+
+const plannerWorkers = workerOptions
 
 const selectedPlannerWorkerLabel = computed(() => {
   const sel = scheduleUserId(selectedPlannerWorkerId.value)
@@ -645,13 +648,6 @@ const selectedPlannerWorkerLabel = computed(() => {
   const w = workerOptions.value.find((x) => x.user_id === sel)
   return (w?.label ?? '').trim()
 })
-
-const allTaskSelectOptions = computed(() =>
-  props.tasks.map((t) => ({
-    task_id: Number(t.id),
-    label: t.name || `Task ${t.id}`,
-  })),
-)
 
 const isDraft = computed(() => weekMeta.value?.status === 'draft')
 
@@ -729,7 +725,7 @@ const saveDraftDisabledTitle = computed(() => {
   if (isFetchingWeek.value) return 'Loading this week from the server…'
   if (isSaving.value) return 'Saving…'
   if (hasRowsOnPastDays.value) {
-    return 'Clear past-day tasks or notes (button above), then save.'
+    return 'Clear past-day slots or notes (button above), then save.'
   }
   if (hasAnySlotConflict.value) return 'Resolve overlapping slots first.'
   if (hasAnyAssignmentNoteTooLong.value) return `Shorten assignment text to ${assignmentNoteMaxChars} characters or less.`
@@ -741,12 +737,12 @@ const publishWeekDisabledTitle = computed(() => {
   if (isFetchingWeek.value) return 'Loading this week from the server…'
   if (isSaving.value) return 'Saving…'
   if (hasRowsOnPastDays.value) {
-    return 'Clear past-day tasks or notes before publishing — planning is forward-only.'
+    return 'Clear past-day slots or notes before publishing — planning is forward-only.'
   }
   if (hasAnySlotConflict.value) return 'Resolve overlapping slots first.'
   if (hasAnyAssignmentNoteTooLong.value) return `Shorten assignment text to ${assignmentNoteMaxChars} characters or less.`
   if (saveableRowCount.value === 0) {
-    return 'Add at least one task on this week before publishing.'
+    return 'Assign at least one day on this week before publishing.'
   }
   return ''
 })
@@ -801,7 +797,7 @@ function slotChatLocation(row: ScheduleWeekEntryRow): RouteLocationRaw | null {
       week_start: weekMeta.value!.week_start,
       entryId: String(row.id),
       slotWorker: String(row.user_id),
-      slotTask: String(row.task_id),
+      slotTask: row.task_id != null && row.task_id > 0 ? String(row.task_id) : '0',
       slotDate: ymd,
       slotPart,
     },
@@ -911,23 +907,9 @@ function isSlotDisabledForRow(row: ScheduleWeekEntryRow, part: ScheduleDayPart):
   return isSlotTakenByOthers(row.user_id, row.work_date, part, row)
 }
 
-function userAssignedToTask(userId: number, task: Task): boolean {
-  if (userId <= 0) return false
-  if (task.task_lead_id != null && uIdsEqual(task.task_lead_id, userId)) return true
-  const team = task.team_members ?? []
-  if (team.some((id) => uIdsEqual(id, userId))) return true
-  const legacy = task.assignees ?? []
-  if (legacy.some((id) => uIdsEqual(id, userId))) return true
-  return false
-}
-
 function uIdsEqual(raw: number | string, userId: number): boolean {
   const n = Number(raw)
   return Number.isFinite(n) && n === userId
-}
-
-function taskById(taskId: number): Task | undefined {
-  return props.tasks.find((t) => Number(t.id) === taskId)
 }
 
 function firstFreeSlotOnDay(userId: number, ymd: string, excludeRow: ScheduleWeekEntryRow): ScheduleDayPart | null {
@@ -942,47 +924,29 @@ function onDayOrSlotChange(row: ScheduleWeekEntryRow): void {
     const alt = firstFreeSlotOnDay(row.user_id, row.work_date, row)
     if (alt) row.day_part = alt
   }
-  syncTaskForRow(row)
-}
-
-function syncTaskForRow(row: ScheduleWeekEntryRow): void {
-  const ts = allTaskSelectOptions.value
-  if (ts.length === 0) {
-    // Project tasks may still be loading after mount (e.g. Cancel from slot → remount).
-    // Do not clear server-assigned task_id — reconcile runs again when tasks arrive.
-    return
-  }
-  if (row.task_id <= 0) return
-  if (!ts.some((t) => t.task_id === row.task_id)) {
-    row.task_id = ts[0]!.task_id
-  }
 }
 
 function reconcileAllRows(): void {
-  for (const row of allDraftRows.value) {
-    syncTaskForRow(row)
-  }
+  // no-op: schedule is project presence, not task-linked
 }
 
 function makeTemplateRowForDay(uid: number, ymd: string): ScheduleWeekEntryRow {
   const row: ScheduleWeekEntryRow = {
     user_id: uid,
-    task_id: 0,
+    task_id: null,
     work_date: ymd,
     day_part: 'am',
     assignment_note: '',
   }
   const slot = firstFreeSlotOnDay(uid, ymd, row)
   if (slot) row.day_part = slot
-  syncTaskForRow(row)
   return row
 }
 
 function isRowSaveable(row: ScheduleWeekEntryRow): boolean {
-  if (row.user_id <= 0 || row.task_id <= 0) return false
-  if (taskById(row.task_id) == null) return false
-  if (hasWorkerSlotConflict(row)) return false
+  if (row.user_id <= 0) return false
   if (row.work_date && row.work_date < todayYmd.value) return false
+  if (hasWorkerSlotConflict(row)) return false
   return true
 }
 
@@ -990,14 +954,13 @@ function pickBestDuplicateRow(list: ScheduleWeekEntryRow[]): ScheduleWeekEntryRo
   return (
     list.find((r) => r.id != null && isRowSaveable(r)) ??
     list.find((r) => r.id != null) ??
-    list.find((r) => r.task_id > 0) ??
     list[0]!
   )
 }
 
 /**
- * Ensures exactly one draft row per calendar day for the selected worker (7 rows / week).
- * Drops out-of-week rows for that worker and collapses duplicate (worker, day) rows.
+ * Collapse duplicate (worker, day) rows for the selected worker. Does not invent empty days —
+ * presence is opt-in per day (Assign).
  */
 function ensureWeekTemplateRowsForSelectedWorker(): void {
   if (!isScheduleEditable.value) return
@@ -1035,83 +998,29 @@ function ensureWeekTemplateRowsForSelectedWorker(): void {
     allDraftRows.value = allDraftRows.value.filter((r) => !rm.has(r))
   }
 
-  const have = new Set(
-    allDraftRows.value
-      .filter((r) => scheduleUserId(r.user_id) === uid)
-      .map((r) => sliceWorkYmd(r.work_date)),
-  )
-  for (const ymd of ymds) {
-    if (have.has(ymd)) continue
-    allDraftRows.value.push(makeTemplateRowForDay(uid, ymd))
-  }
-
   for (const r of allDraftRows.value) {
     if (scheduleUserId(r.user_id) !== uid) continue
     const y = sliceWorkYmd(r.work_date)
     if (weekSet.has(y) && r.work_date !== y) r.work_date = y
   }
+}
 
-  reconcileAllRows()
+function assignWeekDay(ymd: string): void {
+  if (!isScheduleEditable.value) return
+  if (isPastPlanDayYmd(ymd)) return
+  const uid = scheduleUserId(selectedPlannerWorkerId.value)
+  if (uid <= 0) return
+  const exists = allDraftRows.value.some(
+    (r) => scheduleUserId(r.user_id) === uid && sliceWorkYmd(r.work_date) === ymd,
+  )
+  if (exists) return
+  allDraftRows.value.push(makeTemplateRowForDay(uid, ymd))
 }
 
 function clearWeekDayRow(row: ScheduleWeekEntryRow): void {
   if (!isScheduleEditable.value) return
   if (row.work_date && sliceWorkYmd(row.work_date) < todayYmd.value) return
-  row.task_id = 0
-  row.assignment_note = ''
-  syncTaskForRow(row)
-}
-
-async function syncTaskRosterWithScheduleRows(rows: ScheduleWeekEntryRow[]): Promise<void> {
-  const byTask = new Map<number, Set<number>>()
-  for (const r of rows) {
-    if (r.task_id <= 0 || r.user_id <= 0) continue
-    if (!byTask.has(r.task_id)) byTask.set(r.task_id, new Set())
-    byTask.get(r.task_id)!.add(r.user_id)
-  }
-
-  for (const [taskId, userIds] of byTask) {
-    const task = taskById(taskId)
-    if (!task) continue
-
-    const missing: number[] = []
-    for (const uid of userIds) {
-      if (uid <= 0) continue
-      if (!userAssignedToTask(uid, task)) missing.push(uid)
-    }
-    if (missing.length === 0) continue
-
-    const nextTeam = new Set<number>()
-    for (const id of task.team_members ?? []) {
-      const n = Number(id)
-      if (n > 0) nextTeam.add(n)
-    }
-    for (const id of missing) {
-      if (task.task_lead_id != null && uIdsEqual(task.task_lead_id, id)) continue
-      nextTeam.add(id)
-    }
-
-    const payload: Partial<TaskCreateUpdate> = {
-      name: task.name,
-      start_planned: task.start_planned,
-      end_planned: task.end_planned,
-      status: task.status,
-      progress_pct: task.progress_pct || 0,
-      project_id: task.project_id,
-      task_lead_id: task.task_lead_id,
-      team_members: [...nextTeam],
-      resources: task.resources || [],
-      address: task.address,
-      notes: task.notes,
-      milestone: task.milestone,
-      milestone_type: typeof task.milestone === 'string' ? task.milestone : task.milestone_type,
-    }
-    if (Array.isArray(task.dependencies) && task.dependencies.length > 0) {
-      payload.dependencies = task.dependencies as TaskCreateUpdate['dependencies']
-    }
-
-    await tasksApi.update(props.projectId, String(task.id), payload)
-  }
+  allDraftRows.value = allDraftRows.value.filter((r) => r !== row)
 }
 
 function getApiErrorMessage(err: unknown, fallback: string): string {
@@ -1127,15 +1036,10 @@ function dayPartLabel(part: ScheduleDayPart): string {
   return f?.label ?? part
 }
 
-function taskLabel(taskId: number): string {
-  const t = taskById(taskId)
-  return t?.name ?? `Task ${taskId}`
-}
-
 function mapEntries(list: ScheduleWeekEntryRow[]): ScheduleWeekEntryRow[] {
   return list.map((e) => ({
     user_id: scheduleUserId(e.user_id),
-    task_id: e.task_id,
+    task_id: e.task_id != null && Number(e.task_id) > 0 ? Number(e.task_id) : null,
     work_date: e.work_date,
     day_part: e.day_part,
     id: e.id,
@@ -1187,15 +1091,10 @@ function onRemovePastDayRows(): void {
   const n = pastDayRowCount.value
   if (n <= 0) return
   const ok = window.confirm(
-    `Clear ${n} assignment(s) on calendar days before today?\n\nThis only updates your draft in the browser. To update the server, click Save draft afterward.\n\nEmpty day rows stay in the table.`,
+    `Clear ${n} assignment(s) on calendar days before today?\n\nThis only updates your draft in the browser. To update the server, click Save draft afterward.`,
   )
   if (!ok) return
-  for (const r of allDraftRows.value) {
-    if (!isPastDayRowBlockingSave(r)) continue
-    r.task_id = 0
-    r.assignment_note = ''
-    syncTaskForRow(r)
-  }
+  allDraftRows.value = allDraftRows.value.filter((r) => !isPastDayRowBlockingSave(r))
   bannerError.value = ''
   void nextTick(() => ensureWeekTemplateRowsForSelectedWorker())
 }
@@ -1267,7 +1166,7 @@ async function onSaveEntries(): Promise<void> {
   }
   if (hasRowsOnPastDays.value) {
     bannerError.value =
-      'Clear task/note on days before today (use “Clear past-day assignments” below) — planning is forward-only.'
+      'Clear slots/notes on days before today (use “Clear past-day assignments” below) — planning is forward-only.'
     return
   }
   if (hasAnyAssignmentNoteTooLong.value) {
@@ -1278,8 +1177,6 @@ async function onSaveEntries(): Promise<void> {
   isSaving.value = true
   bannerError.value = ''
   try {
-    await syncTaskRosterWithScheduleRows(valid)
-    emit('tasksSynced')
     const { week, entries } = await replaceProjectScheduleEntries(
       props.projectId,
       weekMeta.value.id,
@@ -1287,7 +1184,6 @@ async function onSaveEntries(): Promise<void> {
     )
     if (week) weekMeta.value = mergeScheduleWeekMetaAfterWrite(week, weekMeta.value, weekStartYmd.value)
     allDraftRows.value = mapEntries(entries)
-    reconcileAllRows()
     await nextTick()
     ensureWeekTemplateRowsForSelectedWorker()
   } catch (err) {
@@ -1308,7 +1204,7 @@ async function onPublish(): Promise<void> {
   }
   if (hasRowsOnPastDays.value) {
     bannerError.value =
-      'Clear task/note on days before today before publishing — planning is forward-only.'
+      'Clear slots/notes on days before today before publishing — planning is forward-only.'
     return
   }
   if (hasAnyAssignmentNoteTooLong.value) {
@@ -1318,15 +1214,13 @@ async function onPublish(): Promise<void> {
   const valid = allDraftRows.value.filter((r) => isRowSaveable(r))
   if (valid.length === 0) {
     bannerError.value =
-      'Cannot publish an empty week — assign at least one task on any day (any worker) in this draft.'
+      'Cannot publish an empty week — assign at least one day (any worker) in this draft.'
     return
   }
   isSaving.value = true
   bannerError.value = ''
   const weekStartSnap = weekMeta.value.week_start
   try {
-    await syncTaskRosterWithScheduleRows(valid)
-    emit('tasksSynced')
     const { week, entries } = await replaceProjectScheduleEntries(
       props.projectId,
       weekMeta.value.id,
@@ -1334,7 +1228,6 @@ async function onPublish(): Promise<void> {
     )
     if (week) weekMeta.value = mergeScheduleWeekMetaAfterWrite(week, weekMeta.value, weekStartYmd.value)
     allDraftRows.value = mapEntries(entries)
-    reconcileAllRows()
     const published = await publishProjectScheduleWeek(
       props.projectId,
       weekMeta.value!.id,
@@ -1356,14 +1249,6 @@ watch(
   () => {
     loadWeek()
   },
-)
-
-watch(
-  () => props.tasks,
-  () => {
-    reconcileAllRows()
-  },
-  { deep: true },
 )
 
 watch(weekOffset, () => {

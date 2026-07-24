@@ -51,13 +51,7 @@
           >
             Team
           </RouterLink>
-          <RouterLink
-            to="/calendar"
-            class="text-sm font-medium text-white hover:text-green-100 px-3 py-2 rounded-md"
-            :class="{ 'bg-green-700 text-white': $route.path === '/calendar' }"
-          >
-            Calendar
-          </RouterLink>
+          <CalendarNavDropdown variant="on-dark" />
           <SystemNavDropdown variant="on-dark" />
         </nav>
 
@@ -148,12 +142,27 @@
           >
             Team
           </RouterLink>
+          <p class="px-4 pt-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+            Calendar
+          </p>
           <RouterLink
             to="/calendar"
             @click="closeMobileMenu"
-            class="block px-4 py-3 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
+            class="block px-4 py-2.5 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
+            :class="{ 'border-green-500 bg-green-50 font-medium': $route.path === '/calendar' }"
           >
             Calendar
+          </RouterLink>
+          <RouterLink
+            to="/schedule"
+            @click="closeMobileMenu"
+            class="block px-4 py-2.5 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
+            :class="{
+              'border-green-500 bg-green-50 font-medium':
+                $route.path === '/schedule' || $route.path.startsWith('/schedule/'),
+            }"
+          >
+            Schedule
           </RouterLink>
           <template v-if="systemNavItems.length > 0">
             <p class="px-4 pt-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
@@ -192,6 +201,7 @@ import { canAccessClientsRegistry } from '@/core/utils/clients-access'
 import { getEnabledClientTypes } from '@/config/clients-registry'
 import TopBarAvatar from '@/components/TopBarAvatar.vue'
 import ClientsNavDropdown from '@/components/clients/ClientsNavDropdown.vue'
+import CalendarNavDropdown from '@/components/nav/CalendarNavDropdown.vue'
 import SystemNavDropdown from '@/components/nav/SystemNavDropdown.vue'
 import { getSystemNavItemsForUser } from '@/config/system-nav'
 

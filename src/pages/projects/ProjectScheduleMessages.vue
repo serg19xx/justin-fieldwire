@@ -7,7 +7,7 @@
       <div class="p-3 border-b border-gray-100 shrink-0">
         <nav class="mb-2 text-sm">
           <RouterLink
-            :to="{ path: `/projects/${projectId}/detail`, query: { section: 'schedule' } }"
+            :to="{ path: '/schedule', query: { projectId: String(projectId) } }"
             class="inline-flex items-center gap-1 font-medium text-blue-600 hover:text-blue-800"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

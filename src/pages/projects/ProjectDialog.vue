@@ -69,22 +69,17 @@
           </div>
 
           <!-- 2. Project Address -->
-          <div v-show="activeSection === 'space'" class="order-4">
+          <div v-show="activeSection === 'space'" class="order-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Project Address <span class="text-red-500">*</span>
+              Project Address
+              <span class="text-gray-400 font-normal">(optional)</span>
             </label>
             <textarea
               v-model="form.address"
               rows="3"
-              :class="[
-                'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
-                validationErrors.address ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300'
-              ]"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter project address"
             ></textarea>
-            <p v-if="validationErrors.address" class="mt-1 text-sm text-red-600">
-              {{ validationErrors.address }}
-            </p>
           </div>
 
           <!-- 2b. Locations of interest -->
@@ -168,7 +163,7 @@
           </div>
 
           <!-- 4. Secondary Client -->
-          <div v-show="activeSection === 'space'" class="order-5">
+          <div v-show="activeSection === 'space'" class="order-7">
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Secondary Client <span class="text-gray-400 font-normal">(optional)</span>
             </label>
@@ -258,22 +253,6 @@
             />
           </div>
 
-          <!-- 9. Level -->
-          <div v-show="activeSection === 'general'" class="order-8">
-            <label class="block text-sm font-medium text-gray-700 mb-2"> Level </label>
-            <select
-              v-model="form.level"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">— Select level —</option>
-              <option value="Basics">Basics</option>
-              <option value="Full Service">Full Service</option>
-              <option value="Medical Nice">Medical Nice</option>
-              <option value="High End">High End</option>
-              <option value="Extravagant">Extravagant</option>
-            </select>
-          </div>
-
           <!-- 10. Clinic Model Type -->
           <div v-show="activeSection === 'healthcare'" class="order-1">
             <label class="block text-sm font-medium text-gray-700 mb-2"> Clinic Model Type </label>
@@ -292,35 +271,7 @@
             </select>
           </div>
 
-          <!-- 11. Project Inclusions -->
-          <div v-show="activeSection === 'healthcare'" class="order-5">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Project Inclusions</label>
-            <div class="flex flex-wrap items-center gap-2 mb-2">
-              <span
-                v-for="item in form.project_inclusions"
-                :key="item"
-                class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-800"
-              >
-                {{ item }}
-                <button
-                  type="button"
-                  class="ml-1 text-gray-500 hover:text-red-600"
-                  @click="removeProjectInclusion(item)"
-                >
-                  ×
-                </button>
-              </span>
-              <button
-                type="button"
-                @click="showProjectInclusionsSelector = true"
-                class="px-3 py-1.5 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
-              >
-                + Add
-              </button>
-            </div>
-          </div>
-
-          <!-- 12. Healthcare Services -->
+          <!-- Healthcare Services -->
           <div v-show="activeSection === 'healthcare'" class="order-6">
             <label class="block text-sm font-medium text-gray-700 mb-2">Healthcare Services</label>
             <div class="flex flex-wrap items-center gap-2 mb-2">
@@ -474,13 +425,13 @@
           <!-- 16. Project foreman -->
           <div v-show="activeSection === 'general'" class="order-10">
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Project foreman / brigadier <span class="text-red-500">*</span>
+              Project foreman / brigadier
+              <span class="text-gray-400 font-normal">(optional)</span>
             </label>
             <select
               v-model="form.project_foreman_id"
               :class="[
-                'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500',
-                validationErrors.project_foreman_id ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : 'border-gray-300'
+                'w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300',
               ]"
             >
               <option value="">Select foreman</option>
@@ -488,11 +439,8 @@
                 {{ foreman.name }} ({{ foreman.email }})
               </option>
             </select>
-            <p v-if="validationErrors.project_foreman_id" class="mt-1 text-sm text-red-600">
-              {{ validationErrors.project_foreman_id }}
-            </p>
             <p class="mt-1 text-xs text-gray-500">
-              Default foreman for all tasks in this project (can be overridden per task).
+              Default foreman for all tasks in this project (can be overridden per task). Leave empty if not known yet.
             </p>
           </div>
 
@@ -508,7 +456,7 @@
           </div>
 
           <!-- 18. Notes -->
-          <div v-show="activeSection === 'space'" class="order-3">
+          <div v-show="activeSection === 'space'" class="order-5">
             <label class="block text-sm font-medium text-gray-700 mb-2"> Notes </label>
             <textarea
               v-model="form.notes"
@@ -525,6 +473,50 @@
           <div v-show="activeSection === 'space'" class="order-1">
             <label class="block text-sm font-medium text-gray-700 mb-2">Contents of Space</label>
             <ContentsOfSpaceEditor v-model="form.contents_of_space" />
+          </div>
+
+          <!-- Level (Space tab, before Project Inclusions) -->
+          <div v-show="activeSection === 'space'" class="order-3">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Level</label>
+            <select
+              v-model="form.level"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">— Select level —</option>
+              <option value="Basics">Basics</option>
+              <option value="Full Service">Full Service</option>
+              <option value="Medical Nice">Medical Nice</option>
+              <option value="High End">High End</option>
+              <option value="Extravagant">Extravagant</option>
+            </select>
+          </div>
+
+          <!-- Project Inclusions (Space tab, after Level) -->
+          <div v-show="activeSection === 'space'" class="order-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Project Inclusions</label>
+            <div class="flex flex-wrap items-center gap-2 mb-2">
+              <span
+                v-for="item in form.project_inclusions"
+                :key="item"
+                class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-800"
+              >
+                {{ item }}
+                <button
+                  type="button"
+                  class="ml-1 text-gray-500 hover:text-red-600"
+                  @click="removeProjectInclusion(item)"
+                >
+                  ×
+                </button>
+              </span>
+              <button
+                type="button"
+                @click="showProjectInclusionsSelector = true"
+                class="px-3 py-1.5 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
+              >
+                + Add
+              </button>
+            </div>
           </div>
 
           <div v-show="activeSection === 'marketing'" class="order-1">
@@ -855,10 +847,6 @@ function validateForm() {
     errors.prj_name = 'Project name is required'
   }
 
-  if (!form.value.address?.trim()) {
-    errors.address = 'Address is required'
-  }
-
   // Admin must select a project manager
   if (canAssignManager.value && !form.value.prj_manager) {
     errors.prj_manager = 'My Account is required for administrators'
@@ -867,10 +855,6 @@ function validateForm() {
   // Primary client is required
   if (!form.value.client_id) {
     errors.client = 'Primary client is required'
-  }
-
-  if (!form.value.project_foreman_id) {
-    errors.project_foreman_id = 'Project foreman is required'
   }
 
   const hoursError = getOperationalHoursValidationError(form.value.operational_hours)

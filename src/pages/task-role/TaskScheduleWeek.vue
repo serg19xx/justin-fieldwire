@@ -3,7 +3,7 @@
     <header class="mb-4">
       <h1 class="text-xl font-semibold text-gray-900">Schedule</h1>
       <p class="text-sm text-gray-500 mt-0.5">
-        Tap a row to open the task screen for that day — instructions, files, and notes are all there.
+        Where you are scheduled (job site + morning / afternoon / all day). Tasks stay in Jobsite separately.
       </p>
     </header>
 
@@ -26,18 +26,18 @@
       <li v-for="row in scheduleListRows" :key="row.slot.entryKey">
         <RouterLink
           class="flex w-full items-stretch rounded-xl border border-gray-200 bg-white text-left shadow-sm transition hover:border-orange-300 hover:bg-orange-50/30 active:bg-orange-50/50"
-          :to="{
-            path: `/tasks/schedule/task/${row.slot.projectId}/${row.slot.taskId}`,
-            query: { workDate: row.slot.workYmd, dayPart: row.slot.dayPart },
-          }"
+          :to="slotLink(row.slot)"
         >
           <div class="min-w-0 flex-1 p-3">
-            <p class="text-sm font-semibold text-gray-900 truncate">{{ row.slot.taskName }}</p>
+            <p class="text-sm font-semibold text-gray-900 truncate">
+              {{ row.slot.projectName || `Project #${row.slot.projectId}` }}
+            </p>
             <p class="text-xs text-gray-600 mt-0.5">
               {{ row.slot.fullDateLabel }} · {{ dayPartLabel(row.slot.dayPart) }}
             </p>
-            <p class="text-xs text-gray-500 truncate mt-0.5">{{ row.slot.projectName || `Project #${row.slot.projectId}` }}</p>
-            <p v-if="row.slot.taskAddress" class="text-xs text-gray-600 truncate mt-0.5">{{ row.slot.taskAddress }}</p>
+            <p v-if="row.slot.siteAddress" class="text-xs text-gray-600 truncate mt-0.5">
+              {{ row.slot.siteAddress }}
+            </p>
             <p v-if="row.slot.assignmentNote" class="mt-2 text-xs text-gray-700 line-clamp-2">
               {{ row.slot.assignmentNote }}
             </p>
@@ -69,11 +69,10 @@ interface DisplaySlot {
   taskId: number
   workYmd: string
   dayPart: ScheduleDayPart
-  taskName: string
   projectName: string
+  siteAddress: string
   assignmentNote: string
   fullDateLabel: string
-  taskAddress: string
 }
 
 interface ScheduleListRow {
@@ -124,17 +123,16 @@ const sortedSlots = computed((): DisplaySlot[] => {
           })
         : ymd
       return {
-        entryKey: `${e.project_id}_${e.task_id}_${ymd}_${e.day_part}`,
+        entryKey: `${e.project_id}_${e.task_id ?? 0}_${ymd}_${e.day_part}_${e.id}`,
         scheduleEntryId: e.scheduleRowIdForMessages > 0 ? e.scheduleRowIdForMessages : 0,
         projectId: e.project_id,
-        taskId: e.task_id,
+        taskId: e.task_id != null && e.task_id > 0 ? e.task_id : 0,
         workYmd: ymd,
         dayPart: e.day_part,
-        taskName: (e.task?.name ?? `Task #${e.task_id}`).trim(),
         projectName: (e.project_name ?? '').trim(),
+        siteAddress: (e.project_address ?? e.task?.address ?? '').trim(),
         assignmentNote: (typeof e.assignment_note === 'string' ? e.assignment_note : '').trim(),
         fullDateLabel: dt,
-        taskAddress: (e.task?.address ?? '').trim(),
       }
     })
 })
@@ -184,6 +182,16 @@ function dayPartLabel(part: ScheduleDayPart): string {
   return 'All day'
 }
 
+function slotLink(slot: DisplaySlot): { path: string; query?: Record<string, string> } {
+  if (slot.taskId > 0) {
+    return {
+      path: `/tasks/schedule/task/${slot.projectId}/${slot.taskId}`,
+      query: { workDate: slot.workYmd, dayPart: slot.dayPart },
+    }
+  }
+  return { path: `/tasks/projects/${slot.projectId}` }
+}
+
 function buildScheduleRequestRanges(fromDate: Date, toDate: Date): Array<{ from: string; to: string }> {
   const ranges: Array<{ from: string; to: string }> = []
   const cursor = new Date(fromDate)
@@ -206,7 +214,7 @@ async function fetchScheduleChunked(fromDate: Date, toDate: Date): Promise<MySch
   const seen = new Set<string>()
   const unique: MyScheduleEntry[] = []
   for (const row of all) {
-    const key = `${row.id}_${row.project_id}_${row.task_id}_${String(row.work_date).slice(0, 10)}_${row.day_part}`
+    const key = `${row.id}_${row.project_id}_${row.task_id ?? 0}_${String(row.work_date).slice(0, 10)}_${row.day_part}`
     if (seen.has(key)) continue
     seen.add(key)
     unique.push(row)

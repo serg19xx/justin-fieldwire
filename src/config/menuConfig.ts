@@ -48,9 +48,13 @@ export const MENU_CONFIG: Record<string, MenuItem[]> = {
       ],
     },
     {
-      label: 'Calendar',
+      label: 'Planning',
       route: '/calendar',
       icon: 'calendar',
+      children: [
+        { label: 'Calendar', route: '/calendar' },
+        { label: 'Schedule', route: '/schedule' },
+      ],
     },
   ],
   project: [
@@ -92,9 +96,13 @@ export const MENU_CONFIG: Record<string, MenuItem[]> = {
       ],
     },
     {
-      label: 'Calendar',
+      label: 'Planning',
       route: '/calendar',
       icon: 'calendar',
+      children: [
+        { label: 'Calendar', route: '/calendar' },
+        { label: 'Schedule', route: '/schedule' },
+      ],
     },
   ],
   task: [

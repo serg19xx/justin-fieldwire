@@ -18,6 +18,8 @@ const props = defineProps<{
   initialEndTime?: string
   initialAllDay?: boolean
   canCreate?: boolean
+  /** Project address when creating/editing in project calendar (events may not have it yet). */
+  projectAddress?: string | null
 }>()
 
 const emit = defineEmits<{
@@ -53,6 +55,17 @@ const scopeLabel = computed(() => {
   if (!e) return ''
   if (e.scope === 'global') return 'Personal'
   return e.project_name ? `Project: ${e.project_name}` : 'Project event'
+})
+
+/** Project site address for project-scoped events (API) or create flow in project calendar. */
+const displayProjectAddress = computed(() => {
+  const fromEvent = props.event?.project_address?.trim()
+  if (fromEvent) return fromEvent
+  const fromProp = props.projectAddress?.trim()
+  if (fromProp && (props.mode === 'create' || props.event?.scope === 'project' || props.event?.project_id)) {
+    return fromProp
+  }
+  return ''
 })
 
 const presenceHint = computed(() =>
@@ -271,6 +284,10 @@ defineExpose({ showServerConflicts, resetSaving })
           <span class="text-xs font-medium text-gray-500 uppercase">Type</span>
           <p class="text-gray-700">{{ event.requires_presence ? 'Requires your presence' : 'Reminder' }}</p>
         </div>
+        <div v-if="displayProjectAddress">
+          <span class="text-xs font-medium text-gray-500 uppercase">Project address</span>
+          <p class="text-gray-700">{{ displayProjectAddress }}</p>
+        </div>
         <div v-if="event.description">
           <span class="text-xs font-medium text-gray-500 uppercase">Notes</span>
           <p class="text-gray-700 whitespace-pre-wrap">{{ event.description }}</p>
@@ -317,6 +334,10 @@ defineExpose({ showServerConflicts, resetSaving })
           </label>
         </div>
 
+        <div v-if="displayProjectAddress" class="rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
+          <span class="block text-xs font-medium text-gray-500 uppercase">Project address</span>
+          <p class="text-sm text-gray-800 mt-0.5">{{ displayProjectAddress }}</p>
+        </div>
         <div>
           <label class="block text-xs font-medium text-gray-700 mb-1">Notes</label>
           <textarea

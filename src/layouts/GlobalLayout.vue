@@ -42,13 +42,7 @@
           >
             Team
           </RouterLink>
-          <RouterLink
-            to="/calendar"
-            class="text-sm font-medium text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md"
-            :class="{ 'bg-gray-100 text-gray-900': $route.path === '/calendar' }"
-          >
-            Calendar
-          </RouterLink>
+          <CalendarNavDropdown />
           <SystemNavDropdown />
         </nav>
 
@@ -97,6 +91,7 @@ import { getDisplayRole } from '@/core/utils/role-utils'
 import { canAccessClientsRegistry } from '@/core/utils/clients-access'
 import TopBarAvatar from '@/components/TopBarAvatar.vue'
 import ClientsNavDropdown from '@/components/clients/ClientsNavDropdown.vue'
+import CalendarNavDropdown from '@/components/nav/CalendarNavDropdown.vue'
 import SystemNavDropdown from '@/components/nav/SystemNavDropdown.vue'
 
 const route = useRoute()

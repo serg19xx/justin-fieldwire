@@ -28,6 +28,7 @@ function eventDescription(event: CalendarEvent): string {
   const lines = [
     event.description?.trim() || '',
     event.location?.trim() ? `Location: ${event.location.trim()}` : '',
+    event.project_address?.trim() ? `Project address: ${event.project_address.trim()}` : '',
     event.requires_presence ? 'Requires your presence' : 'Reminder',
     event.project_name ? `Project: ${event.project_name}` : event.scope === 'global' ? 'Personal event' : '',
   ].filter(Boolean)
@@ -54,8 +55,9 @@ export function exportCalendarEventsToICal(
     const uid = `fw-calendar-${event.id}@fieldwire.com`
     const vevent = ['BEGIN:VEVENT', `UID:${uid}`, `DTSTAMP:${now}`, `SUMMARY:${summary}`]
 
-    if (event.location?.trim()) {
-      vevent.push(`LOCATION:${escapeIcalText(event.location.trim())}`)
+    const locationText = event.location?.trim() || event.project_address?.trim() || ''
+    if (locationText) {
+      vevent.push(`LOCATION:${escapeIcalText(locationText)}`)
     }
 
     const description = eventDescription(event)

@@ -42,7 +42,6 @@ import TasksSection from './TasksSection.vue'
 import TeamSection from './TeamSection.vue'
 import PhotosSection from './PhotosSection.vue'
 import SettingsSection from './SettingsSection.vue'
-import ProjectScheduleSection from '@/components/projects/ProjectScheduleSection.vue'
 import ProjectUserCalendarSection from '@/components/projects/ProjectUserCalendarSection.vue'
 import ProjectReportsSection from './ProjectReportsSection.vue'
 import TeamMemberDetailsDialog from './TeamMemberDetailsDialog.vue'
@@ -78,7 +77,7 @@ const error = ref<string | null>(null)
 const calendarRef = ref()
 
 // Navigation state
-const activeSection = ref<'plans' | 'tasks' | 'schedule' | 'calendar' | 'photos' | 'team' | 'reports' | 'settings'>('plans')
+const activeSection = ref<'plans' | 'tasks' | 'calendar' | 'photos' | 'team' | 'reports' | 'settings'>('plans')
 
 // Settings form state
 const settingsForm = ref<{
@@ -536,7 +535,7 @@ async function loadProject(options?: { silent?: boolean }) {
   }
 }
 
-type ProjectSection = 'plans' | 'tasks' | 'schedule' | 'calendar' | 'photos' | 'team' | 'reports' | 'settings'
+type ProjectSection = 'plans' | 'tasks' | 'calendar' | 'photos' | 'team' | 'reports' | 'settings'
 
 /** Loads lists/forms needed for the active tab (also used when opening a section via ?section= in the URL). */
 function runSectionDataLoads(section: ProjectSection): void {
@@ -550,10 +549,6 @@ function runSectionDataLoads(section: ProjectSection): void {
   }
   if (section === 'tasks') {
     loadTeamMembers()
-  }
-  if (section === 'schedule') {
-    loadTeamMembers()
-    loadProjectTasks()
   }
 }
 
@@ -2479,8 +2474,20 @@ function getStatusColor(status?: string) {
 function applySectionFromRouteQuery(): void {
   const raw = route.query.section
   const s = typeof raw === 'string' ? raw : undefined
+  // Schedule moved to global /schedule — keep old deep links working
+  if (s === 'schedule') {
+    const pid = project.value?.id ?? Number(route.params.id)
+    if (pid > 0) {
+      const query: Record<string, string> = { projectId: String(pid) }
+      const weekStart = route.query.week_start
+      if (typeof weekStart === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(weekStart)) {
+        query.week_start = weekStart
+      }
+      void router.replace({ path: '/schedule', query })
+    }
+    return
+  }
   if (
-    s !== 'schedule' &&
     s !== 'calendar' &&
     s !== 'tasks' &&
     s !== 'plans' &&
@@ -2643,27 +2650,7 @@ watch(
                   d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
                 ></path>
               </svg>
-              Tasks
-            </button>
-
-            <button
-              @click="setActiveSection('schedule')"
-              :class="[
-                'w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors',
-                activeSection === 'schedule'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-              ]"
-            >
-              <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                ></path>
-              </svg>
-              Schedule
+              Jobsite
             </button>
 
             <button
@@ -2771,7 +2758,7 @@ watch(
                   d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                 ></path>
               </svg>
-              Settings
+              Project Details
             </button>
           </nav>
         </div>
@@ -2779,16 +2766,21 @@ watch(
         <!-- Dynamic Section (will be populated based on active section) -->
         <div class="border-t border-gray-200 p-4">
           <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            {{ activeSection.toUpperCase() }}
+            {{
+              activeSection === 'tasks'
+                ? 'JOBSITE'
+                : activeSection === 'settings'
+                  ? 'PROJECT DETAILS'
+                  : activeSection.toUpperCase()
+            }}
           </h3>
           <div class="text-sm text-gray-500">
             <!-- This will be populated with dynamic content based on activeSection -->
             <p v-if="activeSection === 'plans'">Plans content will go here</p>
             <p v-if="activeSection === 'tasks'">Tasks content will go here</p>
-            <p v-if="activeSection === 'schedule'">Weekly worker–task schedule</p>
             <p v-if="activeSection === 'photos'">Photos content will go here</p>
             <p v-if="activeSection === 'team'">Team content will go here</p>
-            <p v-if="activeSection === 'settings'">Settings content will go here</p>
+            <p v-if="activeSection === 'settings'">Project details content will go here</p>
           </div>
         </div>
       </div>
@@ -3006,11 +2998,6 @@ watch(
               </div>
             </template>
 
-            <template v-else-if="activeSection === 'schedule'">
-              <span class="text-sm text-gray-500">Weekly assignments are edited in the main panel.</span>
-            </template>
-
-            <!-- Photos Section Buttons -->
             <template v-else-if="activeSection === 'photos'">
               <button
                 v-if="canEditProject"
@@ -3189,18 +3176,10 @@ watch(
             }"
           />
 
-          <ProjectScheduleSection
-            v-else-if="activeSection === 'schedule'"
-            :project-id="project.id"
-            :can-edit="canEditProject"
-            :team-members="teamMembers"
-            :tasks="projectTasks"
-            @tasks-synced="loadProjectTasks"
-          />
-
           <ProjectUserCalendarSection
             v-else-if="activeSection === 'calendar' && project"
             :project-id="project.id"
+            :project-address="project.address"
           />
 
           <!-- Photos Section -->

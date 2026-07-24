@@ -33,14 +33,17 @@ export interface MyScheduleEntry {
   project_id: number
   user_id?: number
   schedule_week_id?: number
-  task_id: number
+  /** Optional legacy; schedule presence is project-scoped, not task-scoped. */
+  task_id: number | null
   work_date: string
   day_part: ScheduleDayPart
   /** PM instruction for this slot (nullable) */
   assignment_note?: string | null
-  task?: MyScheduleTaskSummary
+  task?: MyScheduleTaskSummary | null
   /** Project display name (e.g. prj_name); optional for /me/schedule compatibility */
   project_name?: string
+  /** Job site address from the project */
+  project_address?: string
 }
 
 /**
@@ -90,8 +93,9 @@ function normalizeMyScheduleEntry(raw: unknown): MyScheduleEntry | null {
   const id = scheduleRowIdForMessages > 0 ? scheduleRowIdForMessages : snap
   const project_id = Number(r.project_id)
   if (!Number.isFinite(project_id) || project_id <= 0) return null
-  const task_id = Number(r.task_id)
-  if (!Number.isFinite(task_id) || task_id <= 0) return null
+  const tidRaw = r.task_id
+  const tidNum = tidRaw == null || tidRaw === '' ? 0 : Number(tidRaw)
+  const task_id = Number.isFinite(tidNum) && tidNum > 0 ? tidNum : null
   const work_date = String(r.work_date ?? '').trim()
   if (!work_date) return null
   const dp = String(r.day_part ?? 'am').toLowerCase()
@@ -105,8 +109,10 @@ function normalizeMyScheduleEntry(raw: unknown): MyScheduleEntry | null {
   const assignment_note: string | null = typeof an === 'string' ? an : null
   const pn = r.project_name ?? r.projectName
   const project_name = typeof pn === 'string' ? pn : undefined
+  const pa = r.project_address ?? r.projectAddress
+  const project_address = typeof pa === 'string' ? pa : undefined
 
-  let task: MyScheduleTaskSummary | undefined
+  let task: MyScheduleTaskSummary | null | undefined
   const t = r.task
   if (t != null && typeof t === 'object' && !Array.isArray(t)) {
     const o = t as Record<string, unknown>
@@ -132,8 +138,9 @@ function normalizeMyScheduleEntry(raw: unknown): MyScheduleEntry | null {
     work_date,
     day_part,
     assignment_note,
-    task,
+    task: task ?? null,
     project_name,
+    project_address,
   }
 }
 
@@ -149,7 +156,8 @@ export interface ScheduleWeekMeta {
 export interface ScheduleWeekEntryRow {
   id?: number
   user_id: number
-  task_id: number
+  /** Optional legacy; presence schedule does not require a task. */
+  task_id: number | null
   work_date: string
   day_part: ScheduleDayPart
   /** PM instruction for this slot; empty / omitted → null on save */
@@ -230,20 +238,19 @@ function sliceWorkYmd(workDate: string): string {
  * When several `entries[]` rows match the same slot key, `Array.find` order is arbitrary.
  * Messages are stored by `worker_task_schedules.id`; pick the **lowest** matching PK so we
  * align with the canonical row when the API returns duplicates or reordering (e.g. 40 vs 42).
+ * Slot identity is user + work_date + day_part (task is optional / legacy).
  */
 function pickWeekEntryIdForSlot(
   rows: ScheduleWeekEntryRow[],
   currentUserId: number,
-  taskId: number,
+  _taskId: number,
   workYmd: string,
   dayPart: ScheduleDayPart,
 ): number {
   const uid = Number(currentUserId)
-  const tid = Number(taskId)
   const candidates = rows.filter(
     (r) =>
       Number(r.user_id) === uid &&
-      Number(r.task_id) === tid &&
       sliceWorkYmd(r.work_date) === workYmd &&
       r.day_part === dayPart,
   )
@@ -406,7 +413,10 @@ function normalizeWeekResponse(raw: Record<string, unknown>): ProjectScheduleWee
       entries.push({
         id: pickScheduleWeekEntryId(e),
         user_id: normalizeScheduleWeekEntryUserId(e),
-        task_id: Number(e.task_id),
+        task_id: (() => {
+          const n = Number(e.task_id)
+          return Number.isFinite(n) && n > 0 ? n : null
+        })(),
         work_date: String(e.work_date ?? ''),
         day_part,
         assignment_note,
@@ -443,13 +453,7 @@ export async function resolveScheduleSlotIdForMessages(
   workDateYmd: string,
   dayPart: ScheduleDayPart,
 ): Promise<number> {
-  if (
-    projectId <= 0 ||
-    workerUserId <= 0 ||
-    !Number.isFinite(taskId) ||
-    taskId <= 0 ||
-    workDateYmd.length < 10
-  ) {
+  if (projectId <= 0 || workerUserId <= 0 || workDateYmd.length < 10) {
     return 0
   }
   const ymd = workDateYmd.slice(0, 10)
@@ -493,7 +497,7 @@ export async function enrichMyScheduleEntriesWithWeekEntryIds(
   for (const e of entries) {
     const ymd = myScheduleEntryWorkYmd(e)
     const rows = await rowsForProjectWeek(e.project_id, ymd)
-    const weekPk = pickWeekEntryIdForSlot(rows, currentUserId, e.task_id, ymd, e.day_part)
+    const weekPk = pickWeekEntryIdForSlot(rows, currentUserId, e.task_id ?? 0, ymd, e.day_part)
     out.push({
       ...e,
       scheduleRowIdForMessages: weekPk > 0 ? weekPk : 0,
@@ -524,14 +528,16 @@ export async function ensureProjectScheduleDraft(
 
 function scheduleEntryToApiPayload(
   e: ScheduleWeekEntryRow,
-): Pick<ScheduleWeekEntryRow, 'user_id' | 'task_id' | 'work_date' | 'day_part'> & {
+): Pick<ScheduleWeekEntryRow, 'user_id' | 'work_date' | 'day_part'> & {
+  task_id: number | null
   assignment_note: string | null
 } {
   const raw = e.assignment_note
   const trimmed = typeof raw === 'string' ? raw.trim() : ''
+  const tid = e.task_id != null && Number(e.task_id) > 0 ? Number(e.task_id) : null
   return {
     user_id: e.user_id,
-    task_id: e.task_id,
+    task_id: tid,
     work_date: e.work_date,
     day_part: e.day_part,
     assignment_note: trimmed.length > 0 ? trimmed : null,

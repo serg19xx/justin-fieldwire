@@ -14,6 +14,8 @@ import CalendarEventDialog from '@/components/calendar/CalendarEventDialog.vue'
 const props = defineProps<{
   mode: UserCalendarMode
   projectId?: number
+  /** Project site address (shown on project calendar create/edit). */
+  projectAddress?: string | null
 }>()
 
 const events = ref<CalendarEvent[]>([])
@@ -426,6 +428,7 @@ function toggleExportMenu() {
       :initial-start-time="dialog.initialStartTime"
       :initial-end-time="dialog.initialEndTime"
       :initial-all-day="dialog.initialAllDay"
+      :project-address="props.mode === 'project' ? props.projectAddress : null"
       @close="closeDialog"
       @save="handleSave"
       @delete="handleDelete"
