@@ -71,6 +71,20 @@ const remainingBars = computed(() =>
     })),
 )
 
+const completedDaysBars = computed(() =>
+  filteredRows.value
+    .filter((r) => !r.loadError && r.stats.completedWorkDays > 0)
+    .map((r) => ({
+      label: r.projectName,
+      value: r.stats.completedWorkDays,
+      color: '#059669',
+    })),
+)
+
+const hasActiveFilters = computed(
+  () => selectedProjectIds.value.length > 0 || filterSysStatus.value !== 'all',
+)
+
 const taskRows = computed(() => {
   const pid = taskProjectId.value
   const rows =
@@ -117,6 +131,11 @@ function clearProjectFilter(): void {
   selectedProjectIds.value = []
 }
 
+function clearAllFilters(): void {
+  selectedProjectIds.value = []
+  filterSysStatus.value = 'all'
+}
+
 function formatLoadedAt(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
@@ -132,10 +151,10 @@ function formatLoadedAt(iso: string): string {
 <template>
   <section class="bg-white rounded-lg border border-slate-200 shadow-sm p-4 md:p-5">
     <div class="mb-4">
-      <h2 class="text-sm font-semibold text-slate-900">Work portfolio</h2>
+      <h2 class="text-sm font-semibold text-slate-900">Live analytics</h2>
       <p class="text-xs text-slate-500 mt-0.5 max-w-2xl">
-        Live view across projects from Jobsite tasks — filters narrow charts and tables in place.
-        Nothing is stored; refresh reloads current data.
+        Computed when you open this page from Jobsite tasks across accessible projects.
+        Filters narrow charts and tables in place — nothing is stored as a dashboard report.
       </p>
       <p v-if="snapshot?.loadedAt" class="text-[11px] text-slate-400 mt-1">
         Calculated {{ formatLoadedAt(snapshot.loadedAt) }}
@@ -149,16 +168,13 @@ function formatLoadedAt(iso: string): string {
     </div>
 
     <template v-else-if="snapshot">
-      <!-- Filters -->
-      <div
-        class="flex flex-col gap-3 mb-5 pb-4 border-b border-slate-100"
-      >
+      <div class="flex flex-col gap-3 mb-5 pb-4 border-b border-slate-100">
         <div class="flex flex-wrap items-center gap-3">
           <label class="text-xs text-slate-500 flex items-center gap-2">
             Status
             <select
               v-model="filterSysStatus"
-              class="text-sm border border-slate-300 rounded-md px-2 py-1.5 bg-white"
+              class="text-sm border border-slate-300 rounded-md px-2 py-1.5 bg-white capitalize"
             >
               <option v-for="s in statusOptions" :key="s" :value="s">
                 {{ s === 'all' ? 'All' : s }}
@@ -173,17 +189,37 @@ function formatLoadedAt(iso: string): string {
           >
             Clear project filter ({{ selectedProjectIds.length }})
           </button>
+          <button
+            v-if="hasActiveFilters"
+            type="button"
+            class="text-xs text-slate-600 hover:text-slate-900 underline"
+            @click="clearAllFilters"
+          >
+            Clear all filters
+          </button>
         </div>
         <div v-if="snapshot.projects.length" class="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            class="text-xs px-2 py-1 rounded-md border transition-colors"
+            :class="
+              selectedProjectIds.length === 0
+                ? 'border-blue-300 bg-blue-50 text-blue-900'
+                : 'border-slate-200 bg-white text-slate-500'
+            "
+            @click="clearProjectFilter"
+          >
+            All projects
+          </button>
           <button
             v-for="p in snapshot.projects"
             :key="p.projectId"
             type="button"
             class="text-xs px-2 py-1 rounded-md border transition-colors max-w-[12rem] truncate"
             :class="
-              selectedProjectIds.length === 0 || selectedProjectIds.includes(p.projectId)
+              selectedProjectIds.includes(p.projectId)
                 ? 'border-blue-300 bg-blue-50 text-blue-900'
-                : 'border-slate-200 bg-white text-slate-400'
+                : 'border-slate-200 bg-white text-slate-600'
             "
             :title="p.projectName"
             @click="toggleProjectFilter(p.projectId)"
@@ -193,8 +229,7 @@ function formatLoadedAt(iso: string): string {
         </div>
       </div>
 
-      <!-- Portfolio KPIs -->
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 mb-6">
         <div class="rounded-md border border-slate-100 bg-slate-50/80 p-3">
           <p class="text-xs font-medium text-slate-500">Projects</p>
           <p class="mt-1 text-xl font-bold text-slate-900">{{ filteredRows.length }}</p>
@@ -216,6 +251,10 @@ function formatLoadedAt(iso: string): string {
           <p class="mt-1 text-xl font-bold text-blue-700">{{ filteredTotals.percentComplete }}%</p>
         </div>
         <div class="rounded-md border border-slate-100 bg-slate-50/80 p-3">
+          <p class="text-xs font-medium text-slate-500">Rem. days</p>
+          <p class="mt-1 text-xl font-bold text-slate-900">{{ filteredTotals.remainingWorkDays }}</p>
+        </div>
+        <div class="rounded-md border border-slate-100 bg-slate-50/80 p-3">
           <p class="text-xs font-medium text-slate-500">Earliest done</p>
           <p class="mt-1 text-sm font-bold text-slate-900 leading-snug">
             {{ filteredTotals.earliestCompletionLabel }}
@@ -224,33 +263,37 @@ function formatLoadedAt(iso: string): string {
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div>
+        <div class="rounded-md border border-slate-100 p-3">
           <h3 class="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-3">
             Tasks completed vs outstanding
           </h3>
           <SimpleDonutChart :slices="donutSlices" />
         </div>
-        <div>
+        <div class="rounded-md border border-slate-100 p-3">
           <h3 class="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-3">
             % complete by project
           </h3>
           <SimpleBarChart :items="percentBars" percent-scale value-suffix="%" />
         </div>
+        <div class="rounded-md border border-slate-100 p-3">
+          <h3 class="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-3">
+            Remaining work days by project
+          </h3>
+          <SimpleBarChart :items="remainingBars" value-suffix=" d" />
+        </div>
+        <div class="rounded-md border border-slate-100 p-3">
+          <h3 class="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-3">
+            Completed work days by project
+          </h3>
+          <SimpleBarChart :items="completedDaysBars" value-suffix=" d" />
+          <p class="mt-2 text-[11px] text-slate-400">
+            Remaining {{ filteredTotals.remainingWorkDays }} work days ≈
+            {{ filteredTotals.remainingWorkHours }} h ({{ ASSUMED_HOURS_PER_WORK_DAY }} h/day).
+            Earliest uses {{ WORK_DAYS_PER_MONTH }} work days/month.
+          </p>
+        </div>
       </div>
 
-      <div class="mb-6">
-        <h3 class="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-3">
-          Remaining work days by project
-        </h3>
-        <SimpleBarChart :items="remainingBars" value-suffix=" d" />
-        <p class="mt-2 text-[11px] text-slate-400">
-          Remaining {{ filteredTotals.remainingWorkDays }} work days ≈
-          {{ filteredTotals.remainingWorkHours }} h ({{ ASSUMED_HOURS_PER_WORK_DAY }} h/day).
-          Earliest uses {{ WORK_DAYS_PER_MONTH }} work days/month.
-        </p>
-      </div>
-
-      <!-- Projects table -->
       <h3 class="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2">Projects</h3>
       <div class="overflow-x-auto border border-slate-200 rounded-md mb-4">
         <table class="min-w-full text-sm">
@@ -262,6 +305,7 @@ function formatLoadedAt(iso: string): string {
               <th class="px-3 py-2 font-medium text-right">Done</th>
               <th class="px-3 py-2 font-medium text-right">Open</th>
               <th class="px-3 py-2 font-medium text-right">%</th>
+              <th class="px-3 py-2 font-medium text-right">Done days</th>
               <th class="px-3 py-2 font-medium text-right">Rem. days</th>
               <th class="px-3 py-2 font-medium">Earliest</th>
               <th class="px-3 py-2 font-medium" />
@@ -289,6 +333,7 @@ function formatLoadedAt(iso: string): string {
                 {{ r.stats.outstandingTasks }}
               </td>
               <td class="px-3 py-2 text-right tabular-nums">{{ r.stats.percentComplete }}%</td>
+              <td class="px-3 py-2 text-right tabular-nums">{{ r.stats.completedWorkDays }}</td>
               <td class="px-3 py-2 text-right tabular-nums">{{ r.stats.remainingWorkDays }}</td>
               <td class="px-3 py-2 text-slate-600 text-xs whitespace-nowrap">
                 {{ r.stats.earliestCompletionLabel }}
@@ -303,20 +348,19 @@ function formatLoadedAt(iso: string): string {
               </td>
             </tr>
             <tr v-if="filteredRows.length === 0">
-              <td colspan="9" class="px-3 py-6 text-center text-slate-400">No projects match filters.</td>
+              <td colspan="10" class="px-3 py-6 text-center text-slate-400">No projects match filters.</td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <!-- Task breakdown (optional) -->
       <div class="flex flex-wrap items-center gap-3 mb-2">
         <button
           type="button"
           class="text-xs font-medium text-slate-700 border border-slate-300 rounded-md px-2.5 py-1.5 hover:bg-slate-50"
           @click="showTaskBreakdown = !showTaskBreakdown"
         >
-          {{ showTaskBreakdown ? 'Hide task list' : 'Show task list' }}
+          {{ showTaskBreakdown ? 'Hide task breakdown' : 'Show task breakdown' }}
         </button>
         <label v-if="showTaskBreakdown" class="text-xs text-slate-500 flex items-center gap-2">
           Project

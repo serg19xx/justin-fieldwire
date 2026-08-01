@@ -4,8 +4,9 @@
       <div>
         <h1 v-if="title" class="text-xl font-semibold text-slate-900">{{ title }}</h1>
         <p v-if="subtitle" class="text-sm text-slate-500 mt-0.5">{{ subtitle }}</p>
-        <p v-if="payload?.generated_at" class="text-xs text-slate-400 mt-1">
-          Ops snapshot · {{ formatGeneratedAt(payload.generated_at) }}
+        <p class="text-xs text-slate-400 mt-1">
+          Live · computed now
+          <template v-if="liveStamp"> · {{ liveStamp }}</template>
         </p>
       </div>
       <div class="flex flex-wrap items-center gap-3">
@@ -69,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useAuthStore } from '@/core/stores/auth'
 import { dashboardApi, type DashboardPayload } from '@/core/utils/dashboard-api'
 import {
@@ -97,6 +98,19 @@ const isLoading = ref(false)
 const isPortfolioLoading = ref(false)
 const hasError = ref(false)
 const portfolioError = ref('')
+
+const liveStamp = computed(() => {
+  const iso = portfolio.value?.loadedAt || payload.value?.generated_at
+  if (!iso) return ''
+  const parsed = new Date(String(iso).replace(' ', 'T'))
+  if (Number.isNaN(parsed.getTime())) return ''
+  return parsed.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+})
 
 async function load(): Promise<void> {
   isLoading.value = true
@@ -128,17 +142,6 @@ async function load(): Promise<void> {
   await Promise.all([opsPromise, portfolioPromise])
   isLoading.value = false
   isPortfolioLoading.value = false
-}
-
-function formatGeneratedAt(value: string): string {
-  const parsed = new Date(value.replace(' ', 'T'))
-  if (Number.isNaN(parsed.getTime())) return value
-  return parsed.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
 }
 
 onMounted(load)
