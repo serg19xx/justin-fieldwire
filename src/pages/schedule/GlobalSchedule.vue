@@ -190,6 +190,7 @@ onMounted(() => {
       <ProjectScheduleSection
         :key="selectedProjectId"
         :project-id="selectedProjectId"
+        :project-name="selectedProject ? projectLabel(selectedProject) : ''"
         :can-edit="canEdit"
         :team-members="teamMembers"
       />

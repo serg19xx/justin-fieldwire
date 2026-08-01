@@ -6,7 +6,9 @@
         <p class="text-sm text-gray-500 mt-0.5">
           Choose <strong class="font-medium text-gray-700">one worker</strong> — the table lists
           <strong class="font-medium text-gray-700">seven days</strong> (Mon–Sun). Set morning / afternoon / all day
-          per day, or leave none. This tracks <strong class="font-medium text-gray-700">where the person should be</strong>
+          per day, or leave none. Choosing <strong class="font-medium text-gray-700">Morning</strong> also adds
+          <strong class="font-medium text-gray-700">Afternoon</strong> so you can plan each half separately.
+          This tracks <strong class="font-medium text-gray-700">where the person should be</strong>
           (this project). Tasks / Jobsite work stays separate — not linked here.
           Use the <strong class="font-medium text-gray-700">clipboard</strong> icon for slot notes/documents and the
           <strong class="font-medium text-gray-700">speech bubble</strong> for schedule messages.
@@ -188,6 +190,7 @@
               <tr>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Day</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Slot</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-700">Project</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Note</th>
                 <th class="px-2 py-2 text-center font-medium text-gray-700 w-[7.5rem]">
                   <span class="sr-only">Actions</span>
@@ -199,7 +202,7 @@
             <tbody class="divide-y divide-gray-100">
               <tr
                 v-for="slot in weekTemplateView"
-                :key="slot.ymd"
+                :key="slot.rowKey"
                 :class="[
                   slot.row &&
                   isScheduleEditable &&
@@ -254,6 +257,9 @@
                     + Assign
                   </button>
                   <span v-else class="text-gray-400">—</span>
+                </td>
+                <td class="px-3 py-2 align-top">
+                  <span class="text-sm text-gray-900">{{ displayProjectName }}</span>
                 </td>
                 <td class="px-3 py-2 align-top">
                   <template v-if="slot.row">
@@ -514,15 +520,25 @@ function sliceWorkYmd(work: string): string {
   return w.length >= 10 ? w.slice(0, 10) : w
 }
 
-const props = defineProps<{
-  projectId: number
-  canEdit: boolean
-  teamMembers: ProjectTeamMember[]
-  /** @deprecated Schedule is independent of tasks; kept optional for callers. */
-  tasks?: unknown[]
-}>()
+const props = withDefaults(
+  defineProps<{
+    projectId: number
+    canEdit: boolean
+    teamMembers: ProjectTeamMember[]
+    /** Display name for the Project column (this schedule week belongs to one project). */
+    projectName?: string
+    /** @deprecated Schedule is independent of tasks; kept optional for callers. */
+    tasks?: unknown[]
+  }>(),
+  { projectName: '' },
+)
 
 const route = useRoute()
+
+const displayProjectName = computed(() => {
+  const name = (props.projectName || '').trim()
+  return name || `Project #${props.projectId}`
+})
 
 /** Align with `?week_start=` when returning from slot assignment (Cancel / Back). */
 function weekOffsetFromWeekStartQuery(raw: unknown): number {
@@ -751,19 +767,43 @@ interface WeekDaySlotVm {
   ymd: string
   dayLabel: string
   row: ScheduleWeekEntryRow | null
+  rowKey: string
 }
 
-/** One row per calendar day (Mon–Sun) for the selected worker */
+function dayPartSortKey(part: ScheduleDayPart): number {
+  if (part === 'am') return 0
+  if (part === 'pm') return 1
+  return 2
+}
+
+/** One or more rows per calendar day (Morning + Afternoon can both exist). */
 const weekTemplateView = computed((): WeekDaySlotVm[] => {
   const uid = scheduleUserId(selectedPlannerWorkerId.value)
   if (uid <= 0) return []
-  return dayChoices.value.map((dc) => {
-    const matches = allDraftRows.value.filter(
-      (r) => scheduleUserId(r.user_id) === uid && sliceWorkYmd(r.work_date) === dc.ymd,
-    )
-    const row = matches.length > 0 ? matches[0]! : null
-    return { ymd: dc.ymd, dayLabel: dc.label, row }
-  })
+  const out: WeekDaySlotVm[] = []
+  for (const dc of dayChoices.value) {
+    const matches = allDraftRows.value
+      .filter((r) => scheduleUserId(r.user_id) === uid && sliceWorkYmd(r.work_date) === dc.ymd)
+      .slice()
+      .sort((a, b) => dayPartSortKey(a.day_part) - dayPartSortKey(b.day_part))
+    if (matches.length === 0) {
+      out.push({ ymd: dc.ymd, dayLabel: dc.label, row: null, rowKey: `${dc.ymd}-empty` })
+      continue
+    }
+    for (const row of matches) {
+      out.push({
+        ymd: dc.ymd,
+        dayLabel: dc.label,
+        row,
+        rowKey: `${dc.ymd}-${row.day_part}-${row.id ?? 'new'}-${scheduleUserId(row.user_id)}`,
+      })
+    }
+    // Allow adding the remaining half-day (e.g. Morning was cleared, Afternoon remains)
+    if (dayHasAssignableSlot(uid, dc.ymd)) {
+      out.push({ ymd: dc.ymd, dayLabel: dc.label, row: null, rowKey: `${dc.ymd}-add` })
+    }
+  }
+  return out
 })
 
 const hasAnySlotConflict = computed(() =>
@@ -924,6 +964,56 @@ function onDayOrSlotChange(row: ScheduleWeekEntryRow): void {
     const alt = firstFreeSlotOnDay(row.user_id, row.work_date, row)
     if (alt) row.day_part = alt
   }
+  if (row.day_part === 'full') {
+    removeOtherSameDayCompanions(row)
+  } else if (row.day_part === 'am') {
+    ensureAfternoonCompanion(row)
+  }
+}
+
+/** When Morning is chosen, also add Afternoon so both half-days can be planned. */
+function ensureAfternoonCompanion(seed: ScheduleWeekEntryRow): void {
+  if (!isScheduleEditable.value) return
+  if (seed.day_part !== 'am') return
+  const uid = scheduleUserId(seed.user_id)
+  const ymd = sliceWorkYmd(seed.work_date)
+  if (uid <= 0 || !ymd || isPastPlanDayYmd(ymd)) return
+
+  const hasFull = allDraftRows.value.some(
+    (r) =>
+      r !== seed &&
+      scheduleUserId(r.user_id) === uid &&
+      sliceWorkYmd(r.work_date) === ymd &&
+      r.day_part === 'full',
+  )
+  if (hasFull) return
+
+  const hasPm = allDraftRows.value.some(
+    (r) =>
+      scheduleUserId(r.user_id) === uid &&
+      sliceWorkYmd(r.work_date) === ymd &&
+      r.day_part === 'pm',
+  )
+  if (hasPm) return
+
+  const candidate: ScheduleWeekEntryRow = {
+    user_id: uid,
+    task_id: null,
+    work_date: ymd,
+    day_part: 'pm',
+    assignment_note: '',
+  }
+  if (isSlotTakenByOthers(uid, ymd, 'pm', candidate)) return
+  allDraftRows.value.push(candidate)
+}
+
+function removeOtherSameDayCompanions(keep: ScheduleWeekEntryRow): void {
+  const uid = scheduleUserId(keep.user_id)
+  const ymd = sliceWorkYmd(keep.work_date)
+  allDraftRows.value = allDraftRows.value.filter(
+    (r) =>
+      r === keep || scheduleUserId(r.user_id) !== uid || sliceWorkYmd(r.work_date) !== ymd,
+  )
 }
 
 function reconcileAllRows(): void {
@@ -959,8 +1049,8 @@ function pickBestDuplicateRow(list: ScheduleWeekEntryRow[]): ScheduleWeekEntryRo
 }
 
 /**
- * Collapse duplicate (worker, day) rows for the selected worker. Does not invent empty days —
- * presence is opt-in per day (Assign).
+ * Collapse duplicate (worker, day, day_part) rows for the selected worker.
+ * Morning + Afternoon on the same day are both kept.
  */
 function ensureWeekTemplateRowsForSelectedWorker(): void {
   if (!isScheduleEditable.value) return
@@ -975,18 +1065,19 @@ function ensureWeekTemplateRowsForSelectedWorker(): void {
     return weekSet.has(sliceWorkYmd(r.work_date))
   })
 
-  const byDay = new Map<string, ScheduleWeekEntryRow[]>()
+  const byKey = new Map<string, ScheduleWeekEntryRow[]>()
   for (const r of allDraftRows.value) {
     if (scheduleUserId(r.user_id) !== uid) continue
     const y = sliceWorkYmd(r.work_date)
     if (!weekSet.has(y)) continue
-    const list = byDay.get(y) ?? []
+    const key = `${y}|${r.day_part}`
+    const list = byKey.get(key) ?? []
     list.push(r)
-    byDay.set(y, list)
+    byKey.set(key, list)
   }
 
   const toRemove: ScheduleWeekEntryRow[] = []
-  for (const list of byDay.values()) {
+  for (const list of byKey.values()) {
     if (list.length <= 1) continue
     const keep = pickBestDuplicateRow(list)
     for (const r of list) {
@@ -1005,16 +1096,34 @@ function ensureWeekTemplateRowsForSelectedWorker(): void {
   }
 }
 
+function dayHasAssignableSlot(uid: number, ymd: string): boolean {
+  const dayRows = allDraftRows.value.filter(
+    (r) => scheduleUserId(r.user_id) === uid && sliceWorkYmd(r.work_date) === ymd,
+  )
+  if (dayRows.some((r) => r.day_part === 'full')) return false
+  const hasAm = dayRows.some((r) => r.day_part === 'am')
+  const hasPm = dayRows.some((r) => r.day_part === 'pm')
+  return !(hasAm && hasPm)
+}
+
 function assignWeekDay(ymd: string): void {
   if (!isScheduleEditable.value) return
   if (isPastPlanDayYmd(ymd)) return
   const uid = scheduleUserId(selectedPlannerWorkerId.value)
   if (uid <= 0) return
-  const exists = allDraftRows.value.some(
-    (r) => scheduleUserId(r.user_id) === uid && sliceWorkYmd(r.work_date) === ymd,
+  if (!dayHasAssignableSlot(uid, ymd)) return
+  const row = makeTemplateRowForDay(uid, ymd)
+  // Avoid pushing a conflicting part if the day is somehow full externally
+  if (isSlotTakenByOthers(uid, ymd, row.day_part, row)) return
+  const already = allDraftRows.value.some(
+    (r) =>
+      scheduleUserId(r.user_id) === uid &&
+      sliceWorkYmd(r.work_date) === ymd &&
+      r.day_part === row.day_part,
   )
-  if (exists) return
-  allDraftRows.value.push(makeTemplateRowForDay(uid, ymd))
+  if (already) return
+  allDraftRows.value.push(row)
+  if (row.day_part === 'am') ensureAfternoonCompanion(row)
 }
 
 function clearWeekDayRow(row: ScheduleWeekEntryRow): void {

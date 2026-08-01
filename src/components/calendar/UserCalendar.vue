@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -10,6 +10,12 @@ import { calendarApi, CalendarConflictError } from '@/core/utils/calendar-api'
 import { calendarEventToFcEvent, toHm, toYmd } from '@/core/utils/calendar-event-utils'
 import { downloadCalendarICal, openGoogleCalendarImportHint } from '@/core/utils/calendar-ical-export'
 import CalendarEventDialog from '@/components/calendar/CalendarEventDialog.vue'
+import { useAuthStore } from '@/core/stores/auth'
+import { projectApi, type Project } from '@/core/utils/project-api'
+import {
+  getProjectListQueryFiltersForUser,
+  parseProjectsFromListResponse,
+} from '@/core/utils/project-list-for-user'
 
 const props = defineProps<{
   mode: UserCalendarMode
@@ -17,6 +23,8 @@ const props = defineProps<{
   /** Project site address (shown on project calendar create/edit). */
   projectAddress?: string | null
 }>()
+
+const authStore = useAuthStore()
 
 const events = ref<CalendarEvent[]>([])
 const loading = ref(false)
@@ -30,11 +38,17 @@ const lastDateClick = ref<{ date: string; time: number } | null>(null)
 const isExporting = ref(false)
 const exportMenuOpen = ref(false)
 
+/** Global My Calendar filter: all | personal | project id as string */
+const filterSelect = ref('all')
+const projectsForFilter = ref<Project[]>([])
+
 const selectedDateLabel = computed(() => {
   if (!selectedDate.value) return null
   const d = new Date(selectedDate.value + 'T12:00:00')
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
 })
+
+const pageTitle = computed(() => (props.mode === 'global' ? 'My Calendar' : 'Project calendar'))
 
 const dialog = ref({
   isOpen: false,
@@ -71,10 +85,60 @@ const legendItems = computed(() => {
 
 const subtitle = computed(() => {
   if (props.mode === 'global') {
-    return 'Your personal calendar. Project events are shown for reference only.'
+    return 'Your calendar. Filter by project below to review any project calendar without opening the project.'
   }
   return 'Project events are editable here. Personal events are shown for reference only.'
 })
+
+const filterHint = computed(() => {
+  if (props.mode !== 'global') return ''
+  const f = filterSelect.value
+  if (f === 'all') return 'Showing personal + all project events you can see.'
+  if (f === 'personal') return 'Showing your personal events only.'
+  const p = projectsForFilter.value.find((x) => String(x.id) === f)
+  const name = p?.prj_name || `Project #${f}`
+  return `Showing events for ${name} (read-only here — edit inside that project).`
+})
+
+const projectFilterOptions = computed(() => {
+  const fromList = projectsForFilter.value.map((p) => ({
+    id: p.id,
+    label: p.prj_name || `Project #${p.id}`,
+  }))
+  const seen = new Set(fromList.map((p) => p.id))
+  for (const e of events.value) {
+    if (e.project_id != null && e.project_id > 0 && !seen.has(e.project_id)) {
+      seen.add(e.project_id)
+      fromList.push({
+        id: e.project_id,
+        label: e.project_name || `Project #${e.project_id}`,
+      })
+    }
+  }
+  return fromList.sort((a, b) => a.label.localeCompare(b.label))
+})
+
+function eventsMatchingFilter(list: CalendarEvent[]): CalendarEvent[] {
+  if (props.mode !== 'global') return list
+  const f = filterSelect.value
+  if (f === 'all') return list
+  if (f === 'personal') return list.filter((e) => e.project_id == null)
+  const pid = Number(f)
+  if (!Number.isFinite(pid) || pid <= 0) return list
+  return list.filter((e) => e.project_id === pid)
+}
+
+async function loadProjectsForFilter(): Promise<void> {
+  if (props.mode !== 'global') return
+  try {
+    const filters = getProjectListQueryFiltersForUser(authStore.currentUser)
+    const data = await projectApi.getAll(1, 200, filters)
+    projectsForFilter.value = parseProjectsFromListResponse(data)
+  } catch (e) {
+    console.error('Failed to load projects for calendar filter', e)
+    projectsForFilter.value = []
+  }
+}
 
 async function loadEvents(from?: string, to?: string) {
   loading.value = true
@@ -126,10 +190,14 @@ const calendarOptions = {
     rangeFrom.value = from
     rangeTo.value = to
     void loadEvents(from, to).then(() => {
-      successCallback(events.value.map(calendarEventToFcEvent))
+      successCallback(eventsMatchingFilter(events.value).map(calendarEventToFcEvent))
     })
   },
-  datesSet: (info: { start: Date; end: Date; view: { type: string; calendar: { setOption: (k: string, v: boolean) => void } } }) => {
+  datesSet: (info: {
+    start: Date
+    end: Date
+    view: { type: string; calendar: { setOption: (k: string, v: boolean) => void } }
+  }) => {
     const from = toYmd(info.start)
     const to = toYmd(new Date(info.end.getTime() - 86400000))
     const isTimeView = info.view.type.startsWith('timeGrid')
@@ -283,14 +351,19 @@ watch(selectedDate, () => {
   nextTick(() => calendarRef.value?.getApi()?.render())
 })
 
+watch(filterSelect, () => {
+  if (props.mode !== 'global') return
+  refreshCalendar()
+})
+
 async function fetchAllEventsForExport(): Promise<CalendarEvent[]> {
+  let list: CalendarEvent[] = []
   if (props.mode === 'global') {
-    return calendarApi.listGlobal()
+    list = await calendarApi.listGlobal()
+  } else if (props.projectId) {
+    list = await calendarApi.listForProject(props.projectId)
   }
-  if (props.projectId) {
-    return calendarApi.listForProject(props.projectId)
-  }
-  return []
+  return eventsMatchingFilter(list)
 }
 
 function exportFilename(extension: 'ics'): string {
@@ -298,11 +371,20 @@ function exportFilename(extension: 'ics'): string {
   if (props.mode === 'project' && props.projectId) {
     return `fieldwire_project_${props.projectId}_calendar_${dateStr}.${extension}`
   }
-  return `fieldwire_calendar_${dateStr}.${extension}`
+  const f = filterSelect.value
+  if (f === 'personal') return `fieldwire_my_calendar_personal_${dateStr}.${extension}`
+  if (f !== 'all') return `fieldwire_project_${f}_calendar_${dateStr}.${extension}`
+  return `fieldwire_my_calendar_${dateStr}.${extension}`
 }
 
 function calendarExportName(): string {
-  return props.mode === 'project' ? 'FieldWire Project Calendar' : 'FieldWire Calendar'
+  if (props.mode === 'project') return 'FieldWire Project Calendar'
+  if (filterSelect.value === 'personal') return 'FieldWire My Calendar (Personal)'
+  if (filterSelect.value !== 'all') {
+    const p = projectsForFilter.value.find((x) => String(x.id) === filterSelect.value)
+    return `FieldWire — ${p?.prj_name || 'Project'} Calendar`
+  }
+  return 'FieldWire My Calendar'
 }
 
 async function handleExportICal(): Promise<boolean> {
@@ -337,6 +419,10 @@ async function handleExportGoogleCalendar() {
 function toggleExportMenu() {
   exportMenuOpen.value = !exportMenuOpen.value
 }
+
+onMounted(() => {
+  void loadProjectsForFilter()
+})
 </script>
 
 <template>
@@ -344,7 +430,7 @@ function toggleExportMenu() {
     <div class="px-4 py-3 border-b border-gray-200 bg-white">
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h2 class="text-lg font-semibold text-gray-900">Calendar</h2>
+          <h2 class="text-lg font-semibold text-gray-900">{{ pageTitle }}</h2>
           <p class="text-xs text-gray-500 mt-0.5">{{ subtitle }}</p>
         </div>
         <div class="flex flex-wrap items-center gap-2 self-start">
@@ -395,6 +481,29 @@ function toggleExportMenu() {
           </div>
         </div>
       </div>
+
+      <div
+        v-if="mode === 'global'"
+        class="mt-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3"
+      >
+        <label class="text-xs font-medium text-gray-600 flex items-center gap-2 min-w-0">
+          <span class="shrink-0">Show</span>
+          <select
+            v-model="filterSelect"
+            class="text-sm border border-gray-300 rounded-md px-2 py-1.5 bg-white max-w-full sm:min-w-[14rem]"
+          >
+            <option value="all">All calendars</option>
+            <option value="personal">My personal only</option>
+            <optgroup v-if="projectFilterOptions.length" label="Project calendars">
+              <option v-for="p in projectFilterOptions" :key="p.id" :value="String(p.id)">
+                {{ p.label }}
+              </option>
+            </optgroup>
+          </select>
+        </label>
+        <p class="text-[11px] text-gray-500">{{ filterHint }}</p>
+      </div>
+
       <p class="text-xs text-gray-500 mt-2">
         Month: click a day to select; double-click or <strong>+ New event</strong> to create (default 10:00–12:00).
         Week/Day: drag a time range to create, or double-click a slot.

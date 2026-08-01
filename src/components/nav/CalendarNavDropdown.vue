@@ -16,7 +16,7 @@ const route = useRoute()
 const isOnDark = computed(() => props.variant === 'on-dark')
 
 const items = [
-  { label: 'Calendar', route: '/calendar' },
+  { label: 'My Calendar', route: '/calendar' },
   { label: 'Schedule', route: '/schedule' },
 ] as const
 
