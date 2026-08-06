@@ -140,7 +140,7 @@
           <table class="min-w-full divide-y divide-gray-200 text-sm">
             <thead class="bg-gray-50">
               <tr>
-                <th colspan="4" class="px-3 py-3 text-left align-middle border-b border-gray-200">
+                <th colspan="5" class="px-3 py-3 text-left align-middle border-b border-gray-200">
                   <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                     <label class="flex items-center gap-2 min-w-0">
                       <span class="text-xs font-medium text-gray-700 shrink-0">Worker</span>
@@ -190,6 +190,9 @@
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Day</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Projects</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Note</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-700 min-w-[9rem]">
+                  Km / Start / End
+                </th>
                 <th class="px-2 py-2 text-center font-medium text-gray-700 w-[7.5rem]">
                   <span class="sr-only">Actions</span>
                   <span class="inline sm:hidden text-xs font-normal text-gray-500">⋯</span>
@@ -273,6 +276,38 @@
                       {{ slot.row.assignment_note }}
                     </span>
                     <span v-else class="text-gray-400">—</span>
+                  </template>
+                  <span v-else class="text-gray-400">—</span>
+                </td>
+                <td class="px-3 py-2 align-top">
+                  <template v-if="slot.row">
+                    <div class="flex flex-col gap-1.5 min-w-[8rem]">
+                      <label class="block">
+                        <span class="text-[10px] uppercase tracking-wide text-gray-500">Km</span>
+                        <input
+                          v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
+                          v-model="slot.row.distance_km"
+                          type="text"
+                          class="mt-0.5 w-full rounded border border-gray-300 text-sm px-2 py-1"
+                          :maxlength="distanceKmMaxChars"
+                          placeholder="e.g. 12"
+                          @input="markProjectDirty(slot.row.project_id)"
+                        />
+                        <span v-else class="mt-0.5 block text-sm text-gray-800">
+                          {{ slot.row.distance_km?.trim() || '—' }}
+                        </span>
+                      </label>
+                      <div class="text-[11px] leading-snug text-gray-600">
+                        <div>
+                          <span class="font-medium text-gray-700">Start:</span>
+                          {{ formatCheckInChip(slot.row.work_start_at, slot.row.work_start_distance_km) }}
+                        </div>
+                        <div>
+                          <span class="font-medium text-gray-700">End:</span>
+                          {{ formatCheckInChip(slot.row.work_end_at, slot.row.work_end_distance_km) }}
+                        </div>
+                      </div>
+                    </div>
                   </template>
                   <span v-else class="text-gray-400">—</span>
                 </td>
@@ -501,6 +536,7 @@ import {
   type ScheduleDayPart,
   type MyScheduleEntry,
   ASSIGNMENT_NOTE_MAX_CHARS,
+  DISTANCE_KM_MAX_CHARS,
 } from '@/core/utils/schedule-weeks-api'
 import { addDays, startOfWeekMonday, toYmd, weekStartMondayYmdFromIsoDate } from '@/core/utils/week-utils'
 
@@ -640,6 +676,7 @@ function weekMetaForProject(projectId: number): ScheduleWeekMeta | null {
 }
 
 const assignmentNoteMaxChars = ASSIGNMENT_NOTE_MAX_CHARS
+const distanceKmMaxChars = DISTANCE_KM_MAX_CHARS
 
 const weekMonday = computed(() => {
   const base = new Date()
@@ -1001,6 +1038,7 @@ function makeTemplateRowForDay(uid: number, ymd: string): PlannerScheduleRow {
     work_date: ymd,
     day_part: 'full',
     assignment_note: '',
+    distance_km: '',
     project_id: fallbackProjectId.value,
   }
 }
@@ -1125,6 +1163,18 @@ function getApiErrorMessage(err: unknown, fallback: string): string {
   return fallback
 }
 
+function formatCheckInChip(at: string | null | undefined, distanceKm: number | null | undefined): string {
+  if (!at) return '—'
+  const d = new Date(at)
+  const time = Number.isNaN(d.getTime())
+    ? String(at)
+    : d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  if (distanceKm != null && Number.isFinite(distanceKm)) {
+    return `${time} · ${distanceKm} km from site`
+  }
+  return time
+}
+
 function mapEntries(list: ScheduleWeekEntryRow[], projectId: number): PlannerScheduleRow[] {
   return list.map((e) => ({
     user_id: scheduleUserId(e.user_id),
@@ -1133,6 +1183,15 @@ function mapEntries(list: ScheduleWeekEntryRow[], projectId: number): PlannerSch
     day_part: 'full',
     id: e.id,
     assignment_note: e.assignment_note == null ? '' : String(e.assignment_note),
+    distance_km: e.distance_km == null ? '' : String(e.distance_km),
+    work_start_lat: e.work_start_lat ?? null,
+    work_start_lng: e.work_start_lng ?? null,
+    work_start_at: e.work_start_at ?? null,
+    work_end_lat: e.work_end_lat ?? null,
+    work_end_lng: e.work_end_lng ?? null,
+    work_end_at: e.work_end_at ?? null,
+    work_start_distance_km: e.work_start_distance_km ?? null,
+    work_end_distance_km: e.work_end_distance_km ?? null,
     project_id: projectId,
   }))
 }

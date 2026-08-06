@@ -3,7 +3,7 @@
     <header class="mb-4">
       <h1 class="text-xl font-semibold text-gray-900">Schedule</h1>
       <p class="text-sm text-gray-500 mt-0.5">
-        Where you are scheduled (job site + morning / afternoon / all day). Tasks stay in Jobsite separately.
+        Where you are scheduled for a full working day. Use Start / End to drop a phone location pin.
       </p>
     </header>
 
@@ -12,6 +12,12 @@
       class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
     >
       {{ loadError }}
+    </div>
+    <div
+      v-if="actionError"
+      class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+    >
+      {{ actionError }}
     </div>
 
     <div v-if="isLoading" class="flex justify-center py-12">
@@ -23,9 +29,13 @@
     </div>
 
     <ul v-else class="space-y-2">
-      <li v-for="row in scheduleListRows" :key="row.slot.entryKey">
+      <li
+        v-for="row in scheduleListRows"
+        :key="row.slot.entryKey"
+        class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden"
+      >
         <RouterLink
-          class="flex w-full items-stretch rounded-xl border border-gray-200 bg-white text-left shadow-sm transition hover:border-orange-300 hover:bg-orange-50/30 active:bg-orange-50/50"
+          class="flex w-full items-stretch text-left transition hover:bg-orange-50/30 active:bg-orange-50/50"
           :to="slotLink(row.slot)"
         >
           <div class="min-w-0 flex-1 p-3">
@@ -41,6 +51,13 @@
             <p v-if="row.slot.assignmentNote" class="mt-2 text-xs text-gray-700 line-clamp-2">
               {{ row.slot.assignmentNote }}
             </p>
+            <p v-if="row.slot.distanceKm" class="mt-1 text-xs text-gray-600">
+              Distance: {{ row.slot.distanceKm }} km
+            </p>
+            <p class="mt-1 text-[11px] text-gray-500">
+              Start: {{ formatCheckIn(row.slot.workStartAt, row.slot.workStartDistanceKm) }}
+              · End: {{ formatCheckIn(row.slot.workEndAt, row.slot.workEndDistanceKm) }}
+            </p>
           </div>
           <div class="flex shrink-0 flex-col items-end justify-between border-l border-gray-100 px-2 py-2">
             <span
@@ -52,6 +69,36 @@
             <span class="text-gray-300 text-lg leading-none pr-0.5" aria-hidden="true">›</span>
           </div>
         </RouterLink>
+        <div
+          v-if="row.slot.scheduleEntryId > 0"
+          class="flex flex-wrap gap-2 border-t border-gray-100 px-3 py-2 bg-gray-50/80"
+        >
+          <button
+            type="button"
+            class="px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-45"
+            :disabled="
+              checkInBusyId === row.slot.scheduleEntryId ||
+              !!row.slot.workStartAt ||
+              isPastDay(row.slot.workYmd)
+            "
+            @click="onCheckIn(row.slot, 'start')"
+          >
+            Start work
+          </button>
+          <button
+            type="button"
+            class="px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-45"
+            :disabled="
+              checkInBusyId === row.slot.scheduleEntryId ||
+              !row.slot.workStartAt ||
+              !!row.slot.workEndAt ||
+              isPastDay(row.slot.workYmd)
+            "
+            @click="onCheckIn(row.slot, 'end')"
+          >
+            End work
+          </button>
+        </div>
       </li>
     </ul>
   </div>
@@ -59,7 +106,12 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { fetchMySchedule, type MyScheduleEntry, type ScheduleDayPart } from '@/core/utils/schedule-weeks-api'
+import {
+  checkInMyScheduleEntry,
+  fetchMySchedule,
+  type MyScheduleEntry,
+  type ScheduleDayPart,
+} from '@/core/utils/schedule-weeks-api'
 import { addDays, toYmd } from '@/core/utils/week-utils'
 
 interface DisplaySlot {
@@ -72,6 +124,11 @@ interface DisplaySlot {
   projectName: string
   siteAddress: string
   assignmentNote: string
+  distanceKm: string
+  workStartAt: string | null
+  workEndAt: string | null
+  workStartDistanceKm: number | null
+  workEndDistanceKm: number | null
   fullDateLabel: string
 }
 
@@ -83,13 +140,12 @@ interface ScheduleListRow {
 
 const isLoading = ref(false)
 const loadError = ref('')
+const actionError = ref('')
 const allEntries = ref<MyScheduleEntry[]>([])
+const checkInBusyId = ref(0)
 const rangeDaysPast = 180
 const rangeDaysFuture = 365
 const maxScheduleApiRangeDays = 60
-
-/** Bumps when the tab becomes visible again so list chips re-read TaskDayWorkPanel localStorage. */
-const listEpoch = ref(0)
 
 const rangeStart = computed(() => {
   const d = new Date()
@@ -102,6 +158,12 @@ const rangeEnd = computed(() => {
   d.setDate(d.getDate() + rangeDaysFuture)
   return d
 })
+
+const todayYmd = computed(() => toYmd(new Date()))
+
+function isPastDay(ymd: string): boolean {
+  return ymd < todayYmd.value
+}
 
 const sortedSlots = computed((): DisplaySlot[] => {
   const partRank: Record<ScheduleDayPart, number> = { am: 1, pm: 2, full: 3 }
@@ -132,54 +194,52 @@ const sortedSlots = computed((): DisplaySlot[] => {
         projectName: (e.project_name ?? '').trim(),
         siteAddress: (e.project_address ?? e.task?.address ?? '').trim(),
         assignmentNote: (typeof e.assignment_note === 'string' ? e.assignment_note : '').trim(),
+        distanceKm: (typeof e.distance_km === 'string' ? e.distance_km : '').trim(),
+        workStartAt: e.work_start_at ?? null,
+        workEndAt: e.work_end_at ?? null,
+        workStartDistanceKm: e.work_start_distance_km ?? null,
+        workEndDistanceKm: e.work_end_distance_km ?? null,
         fullDateLabel: dt,
       }
     })
 })
 
-function dayWorkStatusStorageKey(slot: DisplaySlot): string {
-  return `fw_task_day_status_${slot.projectId}_${slot.taskId}_${slot.workYmd}_${slot.dayPart}`
-}
-
-function dayWorkStatusLabel(slot: DisplaySlot): string {
-  try {
-    const raw = localStorage.getItem(dayWorkStatusStorageKey(slot))
-    if (raw === 'in_progress') return 'In progress'
-    if (raw === 'completed') return 'Completed'
-    if (raw === 'blocked') return 'Blocked'
-    if (raw === 'absent') return 'N/A'
-    return 'Not started'
-  } catch {
-    return 'Not started'
+function attendanceChip(slot: DisplaySlot): { label: string; className: string } {
+  if (slot.workEndAt) {
+    return { label: 'Ended', className: 'bg-emerald-50 text-emerald-700' }
   }
-}
-
-function dayWorkStatusChipClass(slot: DisplaySlot): string {
-  try {
-    const raw = localStorage.getItem(dayWorkStatusStorageKey(slot))
-    if (raw === 'in_progress') return 'bg-blue-50 text-blue-700'
-    if (raw === 'completed') return 'bg-emerald-50 text-emerald-700'
-    if (raw === 'blocked') return 'bg-amber-50 text-amber-800'
-    if (raw === 'absent') return 'bg-gray-100 text-gray-600'
-    return 'bg-gray-100 text-gray-700'
-  } catch {
-    return 'bg-gray-100 text-gray-700'
+  if (slot.workStartAt) {
+    return { label: 'Started', className: 'bg-blue-50 text-blue-700' }
   }
+  if (isPastDay(slot.workYmd)) {
+    return { label: 'No check-in', className: 'bg-gray-100 text-gray-600' }
+  }
+  return { label: 'Not started', className: 'bg-gray-100 text-gray-700' }
 }
 
-const scheduleListRows = computed((): ScheduleListRow[] => {
-  void listEpoch.value
-  return sortedSlots.value.map((slot) => ({
-    slot,
-    chipLabel: dayWorkStatusLabel(slot),
-    chipClass: dayWorkStatusChipClass(slot),
-  }))
-})
+const scheduleListRows = computed((): ScheduleListRow[] =>
+  sortedSlots.value.map((slot) => {
+    const chip = attendanceChip(slot)
+    return { slot, chipLabel: chip.label, chipClass: chip.className }
+  }),
+)
 
 function dayPartLabel(part: ScheduleDayPart): string {
   if (part === 'am') return 'Morning'
   if (part === 'pm') return 'Afternoon'
-  return 'All day'
+  return 'Full day'
+}
+
+function formatCheckIn(at: string | null, distanceKm: number | null): string {
+  if (!at) return '—'
+  const d = new Date(at)
+  const time = Number.isNaN(d.getTime())
+    ? at
+    : d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  if (distanceKm != null && Number.isFinite(distanceKm)) {
+    return `${time} (${distanceKm} km)`
+  }
+  return time
 }
 
 function slotLink(slot: DisplaySlot): { path: string; query?: Record<string, string> } {
@@ -226,9 +286,7 @@ async function fetchScheduleRange(): Promise<void> {
   isLoading.value = true
   loadError.value = ''
   try {
-    const rows = await fetchScheduleChunked(rangeStart.value, rangeEnd.value)
-    allEntries.value = rows
-    listEpoch.value++
+    allEntries.value = await fetchScheduleChunked(rangeStart.value, rangeEnd.value)
   } catch (e: unknown) {
     allEntries.value = []
     const err = e as { response?: { data?: { message?: string } } }
@@ -238,9 +296,68 @@ async function fetchScheduleRange(): Promise<void> {
   }
 }
 
+function readDevicePosition(): Promise<{ lat: number; lng: number }> {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocation is not available on this device.'))
+      return
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+      },
+      (err) => {
+        reject(new Error(err.message || 'Could not read location. Allow location access and try again.'))
+      },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
+    )
+  })
+}
+
+async function onCheckIn(slot: DisplaySlot, phase: 'start' | 'end'): Promise<void> {
+  if (slot.scheduleEntryId <= 0) {
+    actionError.value = 'This assignment has no live schedule id yet. Ask a PM to re-publish the week.'
+    return
+  }
+  actionError.value = ''
+  checkInBusyId.value = slot.scheduleEntryId
+  try {
+    const { lat, lng } = await readDevicePosition()
+    const updated = await checkInMyScheduleEntry(slot.scheduleEntryId, phase, lat, lng)
+    if (updated) {
+      const idx = allEntries.value.findIndex(
+        (e) =>
+          (e.scheduleRowIdForMessages > 0 ? e.scheduleRowIdForMessages : e.id) === slot.scheduleEntryId,
+      )
+      if (idx >= 0) {
+        const prev = allEntries.value[idx]!
+        allEntries.value[idx] = {
+          ...prev,
+          work_start_at: updated.work_start_at ?? prev.work_start_at,
+          work_end_at: updated.work_end_at ?? prev.work_end_at,
+          work_start_lat: updated.work_start_lat ?? prev.work_start_lat,
+          work_start_lng: updated.work_start_lng ?? prev.work_start_lng,
+          work_end_lat: updated.work_end_lat ?? prev.work_end_lat,
+          work_end_lng: updated.work_end_lng ?? prev.work_end_lng,
+          work_start_distance_km: updated.work_start_distance_km ?? prev.work_start_distance_km,
+          work_end_distance_km: updated.work_end_distance_km ?? prev.work_end_distance_km,
+        }
+      } else {
+        await fetchScheduleRange()
+      }
+    }
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } }; message?: string }
+    actionError.value =
+      err.response?.data?.message || err.message || 'Check-in failed.'
+  } finally {
+    checkInBusyId.value = 0
+  }
+}
+
 function onVisibilityChange(): void {
   if (document.visibilityState === 'visible') {
-    listEpoch.value++
+    void fetchScheduleRange()
   }
 }
 

@@ -39,11 +39,61 @@ export interface MyScheduleEntry {
   day_part: ScheduleDayPart
   /** PM instruction for this slot (nullable) */
   assignment_note?: string | null
+  /** Free-text km (PM) */
+  distance_km?: string | null
+  work_start_lat?: number | null
+  work_start_lng?: number | null
+  work_start_at?: string | null
+  work_end_lat?: number | null
+  work_end_lng?: number | null
+  work_end_at?: string | null
+  /** Haversine km from check-in to project site (API computed) */
+  work_start_distance_km?: number | null
+  work_end_distance_km?: number | null
   task?: MyScheduleTaskSummary | null
   /** Project display name (e.g. prj_name); optional for /me/schedule compatibility */
   project_name?: string
   /** Job site address from the project */
   project_address?: string
+}
+
+/** Matches DB `distance_km` VARCHAR(32) */
+export const DISTANCE_KM_MAX_CHARS = 32
+
+function pickNullableNumber(raw: unknown): number | null {
+  if (raw == null || raw === '') return null
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : null
+}
+
+function pickNullableString(raw: unknown): string | null {
+  return typeof raw === 'string' ? raw : null
+}
+
+function pickTripFieldsFromRow(r: Record<string, unknown>): Pick<
+  MyScheduleEntry,
+  | 'distance_km'
+  | 'work_start_lat'
+  | 'work_start_lng'
+  | 'work_start_at'
+  | 'work_end_lat'
+  | 'work_end_lng'
+  | 'work_end_at'
+  | 'work_start_distance_km'
+  | 'work_end_distance_km'
+> {
+  const dk = r.distance_km
+  return {
+    distance_km: typeof dk === 'string' || typeof dk === 'number' ? String(dk) : null,
+    work_start_lat: pickNullableNumber(r.work_start_lat),
+    work_start_lng: pickNullableNumber(r.work_start_lng),
+    work_start_at: pickNullableString(r.work_start_at),
+    work_end_lat: pickNullableNumber(r.work_end_lat),
+    work_end_lng: pickNullableNumber(r.work_end_lng),
+    work_end_at: pickNullableString(r.work_end_at),
+    work_start_distance_km: pickNullableNumber(r.work_start_distance_km),
+    work_end_distance_km: pickNullableNumber(r.work_end_distance_km),
+  }
 }
 
 /**
@@ -138,6 +188,7 @@ function normalizeMyScheduleEntry(raw: unknown): MyScheduleEntry | null {
     work_date,
     day_part,
     assignment_note,
+    ...pickTripFieldsFromRow(r),
     task: task ?? null,
     project_name,
     project_address,
@@ -162,6 +213,16 @@ export interface ScheduleWeekEntryRow {
   day_part: ScheduleDayPart
   /** PM instruction for this slot; empty / omitted → null on save */
   assignment_note?: string | null
+  /** Free-text km (PM) */
+  distance_km?: string | null
+  work_start_lat?: number | null
+  work_start_lng?: number | null
+  work_start_at?: string | null
+  work_end_lat?: number | null
+  work_end_lng?: number | null
+  work_end_at?: string | null
+  work_start_distance_km?: number | null
+  work_end_distance_km?: number | null
 }
 
 function readEnvelopeData<T>(body: unknown): T | null {
@@ -420,6 +481,7 @@ function normalizeWeekResponse(raw: Record<string, unknown>): ProjectScheduleWee
         work_date: String(e.work_date ?? ''),
         day_part,
         assignment_note,
+        ...pickTripFieldsFromRow(e),
       })
     }
   }
@@ -531,16 +593,57 @@ function scheduleEntryToApiPayload(
 ): Pick<ScheduleWeekEntryRow, 'user_id' | 'work_date' | 'day_part'> & {
   task_id: number | null
   assignment_note: string | null
+  distance_km: string | null
 } {
   const raw = e.assignment_note
   const trimmed = typeof raw === 'string' ? raw.trim() : ''
   const tid = e.task_id != null && Number(e.task_id) > 0 ? Number(e.task_id) : null
+  const dkRaw = e.distance_km
+  const dkTrimmed = typeof dkRaw === 'string' ? dkRaw.trim() : dkRaw != null ? String(dkRaw).trim() : ''
   return {
     user_id: e.user_id,
     task_id: tid,
     work_date: e.work_date,
     day_part: e.day_part,
     assignment_note: trimmed.length > 0 ? trimmed : null,
+    distance_km: dkTrimmed.length > 0 ? dkTrimmed.slice(0, DISTANCE_KM_MAX_CHARS) : null,
+  }
+}
+
+/**
+ * Worker geo check-in for a live schedule entry.
+ */
+export async function checkInMyScheduleEntry(
+  entryId: number,
+  phase: 'start' | 'end',
+  lat: number,
+  lng: number,
+): Promise<ScheduleWeekEntryRow | null> {
+  const response = await api.post(`/api/v1/me/schedule-entries/${entryId}/check-in`, {
+    phase,
+    lat,
+    lng,
+  })
+  const data = readEnvelopeData<{ entry?: unknown }>(response.data)
+  const entryRaw = data?.entry
+  if (entryRaw == null || typeof entryRaw !== 'object') return null
+  const e = entryRaw as Record<string, unknown>
+  const n = e.assignment_note
+  const assignment_note: string | null = typeof n === 'string' ? n : null
+  const dp = String(e.day_part ?? 'full').toLowerCase()
+  const day_part: ScheduleDayPart =
+    dp === 'pm' || dp === 'am' ? (dp as ScheduleDayPart) : 'full'
+  return {
+    id: pickScheduleWeekEntryId(e),
+    user_id: normalizeScheduleWeekEntryUserId(e),
+    task_id: (() => {
+      const t = Number(e.task_id)
+      return Number.isFinite(t) && t > 0 ? t : null
+    })(),
+    work_date: String(e.work_date ?? ''),
+    day_part,
+    assignment_note,
+    ...pickTripFieldsFromRow(e),
   }
 }
 
