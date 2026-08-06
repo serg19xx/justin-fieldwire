@@ -5,15 +5,14 @@
         <h2 class="text-lg font-semibold text-gray-900">Weekly job-site schedule</h2>
         <p class="text-sm text-gray-500 mt-0.5">
           Choose <strong class="font-medium text-gray-700">one worker</strong> — the table lists
-          <strong class="font-medium text-gray-700">seven days</strong> (Mon–Sun). Set morning / afternoon / all day
-          per day, or leave none. Choosing <strong class="font-medium text-gray-700">Morning</strong> also adds
-          <strong class="font-medium text-gray-700">Afternoon</strong> so you can plan each half separately.
-          This tracks <strong class="font-medium text-gray-700">where the person should be</strong>
-          (this project). Tasks / Jobsite work stays separate — not linked here.
-          Use the <strong class="font-medium text-gray-700">clipboard</strong> icon for slot notes/documents and the
+          <strong class="font-medium text-gray-700">seven days</strong> (Mon–Sun).
+          Each assignment is a <strong class="font-medium text-gray-700">full working day</strong> on one project
+          (or leave the day empty).
+          Tasks / Jobsite work stays separate — not linked here.
+          Use the <strong class="font-medium text-gray-700">clipboard</strong> icon for notes/documents and the
           <strong class="font-medium text-gray-700">speech bubble</strong> for schedule messages.
-          The week bar reflects free / partly busy / fully blocked days using this draft plus
-          <strong class="font-medium text-gray-700">published slots in other projects</strong> when available.
+          The week bar reflects free / booked days using this draft plus
+          <strong class="font-medium text-gray-700">published plans in other projects</strong> when available.
         </p>
       </div>
       <div class="flex flex-col gap-2">
@@ -178,7 +177,7 @@
                     </div>
                   </div>
                   <p v-if="showPlannerHint" class="mt-2 text-[11px] text-gray-500">
-                    Unavailable slots use this worker’s
+                    Booked days use this worker’s
                     <strong class="font-medium text-gray-600">published</strong> plans in
                     <strong class="font-medium text-gray-600">other projects</strong> when the server returns them.
                     <template v-if="!hasExternalOtherProjectSlots">
@@ -189,8 +188,7 @@
               </tr>
               <tr>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Day</th>
-                <th class="px-3 py-2 text-left font-medium text-gray-700">Slot</th>
-                <th class="px-3 py-2 text-left font-medium text-gray-700">Project</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-700">Projects</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Note</th>
                 <th class="px-2 py-2 text-center font-medium text-gray-700 w-[7.5rem]">
                   <span class="sr-only">Actions</span>
@@ -222,44 +220,40 @@
                       Past — read only
                     </span>
                   </div>
+                  <button
+                    v-if="!slot.row && isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
+                    type="button"
+                    class="mt-1 text-sm font-medium text-blue-700 hover:text-blue-900"
+                    @click="assignWeekDay(slot.ymd)"
+                  >
+                    + Assign
+                  </button>
+                  <span
+                    v-else-if="!slot.row"
+                    class="mt-1 block text-sm text-gray-400"
+                  >
+                    —
+                  </span>
                 </td>
                 <td class="px-3 py-2 align-top">
                   <template v-if="slot.row">
                     <select
                       v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
-                      v-model="slot.row.day_part"
-                      class="w-full min-w-[7rem] rounded border border-gray-300 text-sm"
-                      @change="onDayOrSlotChange(slot.row)"
+                      class="w-full min-w-[10rem] max-w-[16rem] rounded border border-gray-300 text-sm bg-white"
+                      :value="String(slot.row.project_id)"
+                      @change="onRowProjectChange(slot.row, $event)"
                     >
                       <option
-                        v-for="opt in dayPartOptions"
-                        :key="opt.value"
-                        :value="opt.value"
-                        :disabled="isSlotDisabledForRow(slot.row, opt.value)"
+                        v-for="p in projectOptions"
+                        :key="p.id"
+                        :value="String(p.id)"
                       >
-                        {{ opt.label }}{{ isSlotDisabledForRow(slot.row, opt.value) ? ' (busy)' : '' }}
+                        {{ p.name }}
                       </option>
                     </select>
-                    <span
-                      v-else-if="isScheduleEditable && isPastPlanDayYmd(slot.ymd)"
-                      class="text-sm text-gray-600"
-                    >
-                      {{ dayPartLabel(slot.row.day_part) }}
-                    </span>
-                    <span v-else class="text-gray-900">{{ dayPartLabel(slot.row.day_part) }}</span>
+                    <span v-else class="text-sm text-gray-900">{{ projectNameById(slot.row.project_id) }}</span>
                   </template>
-                  <button
-                    v-else-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
-                    type="button"
-                    class="text-sm font-medium text-blue-700 hover:text-blue-900"
-                    @click="assignWeekDay(slot.ymd)"
-                  >
-                    + Assign
-                  </button>
                   <span v-else class="text-gray-400">—</span>
-                </td>
-                <td class="px-3 py-2 align-top">
-                  <span class="text-sm text-gray-900">{{ displayProjectName }}</span>
                 </td>
                 <td class="px-3 py-2 align-top">
                   <template v-if="slot.row">
@@ -270,6 +264,7 @@
                       class="w-full min-w-[10rem] rounded border border-gray-300 text-sm px-2 py-1"
                       :maxlength="assignmentNoteMaxChars"
                       placeholder="Optional note for this day"
+                      @input="markProjectDirty(slot.row.project_id)"
                     />
                     <span
                       v-else-if="slot.row.assignment_note"
@@ -520,25 +515,74 @@ function sliceWorkYmd(work: string): string {
   return w.length >= 10 ? w.slice(0, 10) : w
 }
 
+/** Local planner row — `project_id` is UI/save routing only (not sent in entry payload). */
+interface PlannerScheduleRow extends ScheduleWeekEntryRow {
+  project_id: number
+}
+
+interface ScheduleProjectOption {
+  id: number
+  name: string
+}
+
 const props = withDefaults(
   defineProps<{
-    projectId: number
+    /** Projects available in the Projects column dropdown. */
+    projects: ScheduleProjectOption[]
+    /** Default project for new assignments (+ Assign). */
+    defaultProjectId?: number
     canEdit: boolean
     teamMembers: ProjectTeamMember[]
-    /** Display name for the Project column (this schedule week belongs to one project). */
+    /** @deprecated Prefer `projects` + `defaultProjectId`. */
+    projectId?: number
+    /** @deprecated Prefer `projects`. */
     projectName?: string
     /** @deprecated Schedule is independent of tasks; kept optional for callers. */
     tasks?: unknown[]
   }>(),
-  { projectName: '' },
+  { defaultProjectId: 0, projectId: 0, projectName: '' },
 )
 
 const route = useRoute()
 
-const displayProjectName = computed(() => {
-  const name = (props.projectName || '').trim()
-  return name || `Project #${props.projectId}`
+const projectOptions = computed((): ScheduleProjectOption[] => {
+  if (props.projects.length > 0) return props.projects
+  const id = props.defaultProjectId > 0 ? props.defaultProjectId : props.projectId
+  if (id > 0) {
+    const name = (props.projectName || '').trim() || `Project #${id}`
+    return [{ id, name }]
+  }
+  return []
 })
+
+const fallbackProjectId = computed(() => {
+  if (props.defaultProjectId > 0) return props.defaultProjectId
+  if (props.projectId > 0) return props.projectId
+  return projectOptions.value[0]?.id ?? 0
+})
+
+const managedProjectIdSet = computed(() => new Set(projectOptions.value.map((p) => p.id)))
+
+function projectNameById(projectId: number): string {
+  const found = projectOptions.value.find((p) => p.id === projectId)
+  if (found) return found.name
+  return projectId > 0 ? `Project #${projectId}` : '—'
+}
+
+async function mapPool<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length)
+  let next = 0
+  async function worker(): Promise<void> {
+    while (next < items.length) {
+      const idx = next++
+      results[idx] = await fn(items[idx]!)
+    }
+  }
+  const n = Math.min(Math.max(1, concurrency), Math.max(1, items.length))
+  if (items.length === 0) return results
+  await Promise.all(Array.from({ length: n }, () => worker()))
+  return results
+}
 
 /** Align with `?week_start=` when returning from slot assignment (Cancel / Back). */
 function weekOffsetFromWeekStartQuery(raw: unknown): number {
@@ -559,18 +603,43 @@ const isFetchingWeek = ref(false)
 const isSaving = ref(false)
 const metaError = ref('')
 const bannerError = ref('')
+/** Per-project week meta for the visible calendar week. */
+const weekByProjectId = ref<Record<number, ScheduleWeekMeta | null>>({})
+/** Aggregate week meta for badges / empty state (prefer a draft). */
 const weekMeta = ref<ScheduleWeekMeta | null>(null)
-const allDraftRows = ref<ScheduleWeekEntryRow[]>([])
+const allDraftRows = ref<PlannerScheduleRow[]>([])
+/** Projects whose entry sets must be written on Save / Publish. */
+const dirtyProjectIds = ref<Set<number>>(new Set())
 const selectedPlannerWorkerId = ref(0)
 const externalBusyEntries = ref<MyScheduleEntry[]>([])
 
-const assignmentNoteMaxChars = ASSIGNMENT_NOTE_MAX_CHARS
+function markProjectDirty(projectId: number): void {
+  if (projectId <= 0) return
+  const next = new Set(dirtyProjectIds.value)
+  next.add(projectId)
+  dirtyProjectIds.value = next
+}
 
-const dayPartOptions: { value: ScheduleDayPart; label: string }[] = [
-  { value: 'am', label: 'Morning' },
-  { value: 'pm', label: 'Afternoon' },
-  { value: 'full', label: 'Full day' },
-]
+function clearDirtyProjects(): void {
+  dirtyProjectIds.value = new Set()
+}
+
+function syncPrimaryWeekMeta(): void {
+  const metas = Object.values(weekByProjectId.value).filter((w): w is ScheduleWeekMeta => w != null)
+  const synced = metas.filter((w) => {
+    const raw = String(w.week_start ?? '').trim()
+    if (raw.length < 10) return false
+    return weekStartMondayYmdFromIsoDate(raw.slice(0, 10)) === weekStartYmd.value
+  })
+  const pool = synced.length > 0 ? synced : metas
+  weekMeta.value = pool.find((w) => w.status === 'draft') ?? pool[0] ?? null
+}
+
+function weekMetaForProject(projectId: number): ScheduleWeekMeta | null {
+  return weekByProjectId.value[projectId] ?? null
+}
+
+const assignmentNoteMaxChars = ASSIGNMENT_NOTE_MAX_CHARS
 
 const weekMonday = computed(() => {
   const base = new Date()
@@ -620,7 +689,7 @@ function isPastDayRowBlockingSave(r: ScheduleWeekEntryRow): boolean {
 const showPlannerHint = computed(() => selectedPlannerWorkerId.value > 0)
 
 const hasExternalOtherProjectSlots = computed(() =>
-  externalBusyEntries.value.some((e) => e.project_id !== props.projectId),
+  externalBusyEntries.value.some((e) => !managedProjectIdSet.value.has(e.project_id)),
 )
 
 const weekRangeLabel = computed(() => {
@@ -665,7 +734,9 @@ const selectedPlannerWorkerLabel = computed(() => {
   return (w?.label ?? '').trim()
 })
 
-const isDraft = computed(() => weekMeta.value?.status === 'draft')
+const isDraft = computed(() =>
+  Object.values(weekByProjectId.value).some((w) => w != null && w.status === 'draft'),
+)
 
 /** Any slot rows for this calendar week (all workers), from GET / PUT response */
 const hasAnyWeekEntries = computed(() => allDraftRows.value.length > 0)
@@ -675,17 +746,15 @@ function hasEntriesForWorkerUserId(userId: number): boolean {
   return allDraftRows.value.some((r) => scheduleUserId(r.user_id) === userId)
 }
 
-/** Server lifecycle for this calendar week only — not per worker */
+/** Server lifecycle — draft if any project week is draft; else published if any; else empty */
 const weekLifecycleStatusLabel = computed(() => {
   if (!weekMeta.value) return ''
-  return weekMeta.value.status === 'published' ? 'Published' : 'Draft'
+  return isDraft.value ? 'Draft' : 'Published'
 })
 
 const weekLifecycleBadgeClass = computed(() => {
   if (!weekMeta.value) return 'bg-gray-100 text-gray-700'
-  return weekMeta.value.status === 'published'
-    ? 'bg-green-100 text-green-800'
-    : 'bg-yellow-100 text-yellow-800'
+  return isDraft.value ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
 })
 
 /** Clarifies selected worker vs week when the week is published but this worker has no rows */
@@ -693,7 +762,7 @@ const selectedWorkerScheduleSummary = computed(() => {
   const sel = scheduleUserId(selectedPlannerWorkerId.value)
   if (sel <= 0) return ''
   if (hasEntriesForWorkerUserId(sel)) return ''
-  if (!weekMeta.value || weekMeta.value.status !== 'published') return ''
+  if (!weekMeta.value || isDraft.value) return ''
   const name = selectedPlannerWorkerLabel.value || 'This worker'
   if (!hasAnyWeekEntries.value) {
     return `${name} has no assignments. This week is published but has no schedule rows yet.`
@@ -766,42 +835,28 @@ const publishWeekDisabledTitle = computed(() => {
 interface WeekDaySlotVm {
   ymd: string
   dayLabel: string
-  row: ScheduleWeekEntryRow | null
+  row: PlannerScheduleRow | null
   rowKey: string
 }
 
-function dayPartSortKey(part: ScheduleDayPart): number {
-  if (part === 'am') return 0
-  if (part === 'pm') return 1
-  return 2
-}
-
-/** One or more rows per calendar day (Morning + Afternoon can both exist). */
+/** Exactly one row per calendar day (full working day only). */
 const weekTemplateView = computed((): WeekDaySlotVm[] => {
   const uid = scheduleUserId(selectedPlannerWorkerId.value)
   if (uid <= 0) return []
   const out: WeekDaySlotVm[] = []
   for (const dc of dayChoices.value) {
-    const matches = allDraftRows.value
-      .filter((r) => scheduleUserId(r.user_id) === uid && sliceWorkYmd(r.work_date) === dc.ymd)
-      .slice()
-      .sort((a, b) => dayPartSortKey(a.day_part) - dayPartSortKey(b.day_part))
-    if (matches.length === 0) {
-      out.push({ ymd: dc.ymd, dayLabel: dc.label, row: null, rowKey: `${dc.ymd}-empty` })
-      continue
-    }
-    for (const row of matches) {
-      out.push({
-        ymd: dc.ymd,
-        dayLabel: dc.label,
-        row,
-        rowKey: `${dc.ymd}-${row.day_part}-${row.id ?? 'new'}-${scheduleUserId(row.user_id)}`,
-      })
-    }
-    // Allow adding the remaining half-day (e.g. Morning was cleared, Afternoon remains)
-    if (dayHasAssignableSlot(uid, dc.ymd)) {
-      out.push({ ymd: dc.ymd, dayLabel: dc.label, row: null, rowKey: `${dc.ymd}-add` })
-    }
+    const matches = allDraftRows.value.filter(
+      (r) => scheduleUserId(r.user_id) === uid && sliceWorkYmd(r.work_date) === dc.ymd,
+    )
+    const row = matches.length > 0 ? pickBestDuplicateRow(matches) : null
+    out.push({
+      ymd: dc.ymd,
+      dayLabel: dc.label,
+      row,
+      rowKey: row
+        ? `${dc.ymd}-full-${row.id ?? 'new'}-${scheduleUserId(row.user_id)}`
+        : `${dc.ymd}-empty`,
+    })
   }
   return out
 })
@@ -815,26 +870,32 @@ function assignmentNoteLength(row: ScheduleWeekEntryRow): number {
   return typeof s === 'string' ? s.length : 0
 }
 
-function slotPlanLocation(row: ScheduleWeekEntryRow): RouteLocationRaw | null {
-  if (row.id == null || weekMeta.value == null || !scheduleViewSynced.value) return null
+function slotPlanLocation(row: PlannerScheduleRow): RouteLocationRaw | null {
+  const meta = weekMetaForProject(row.project_id)
+  if (row.id == null || meta == null) return null
+  const w = String(meta.week_start ?? '').trim()
+  if (w.length < 10) return null
+  if (weekStartMondayYmdFromIsoDate(w.slice(0, 10)) !== weekStartYmd.value) return null
   return {
-    path: `/projects/${props.projectId}/detail/schedule-slot/${row.id}`,
-    query: { week_start: weekMeta.value.week_start },
+    path: `/projects/${row.project_id}/detail/schedule-slot/${row.id}`,
+    query: { week_start: meta.week_start },
   }
 }
 
-function slotChatLocation(row: ScheduleWeekEntryRow): RouteLocationRaw | null {
+function slotChatLocation(row: PlannerScheduleRow): RouteLocationRaw | null {
   if (slotPlanLocation(row) == null || row.id == null) return null
+  const meta = weekMetaForProject(row.project_id)
+  if (meta == null) return null
   const ymd =
     typeof row.work_date === 'string' && row.work_date.length >= 10
       ? row.work_date.slice(0, 10)
       : String(row.work_date ?? '')
-  const dp = String(row.day_part ?? 'am').toLowerCase()
-  const slotPart = dp === 'pm' || dp === 'full' ? dp : 'am'
+  const dp = String(row.day_part ?? 'full').toLowerCase()
+  const slotPart = dp === 'pm' || dp === 'am' ? dp : 'full'
   return {
-    path: `/projects/${props.projectId}/detail/schedule-messages`,
+    path: `/projects/${row.project_id}/detail/schedule-messages`,
     query: {
-      week_start: weekMeta.value!.week_start,
+      week_start: meta.week_start,
       entryId: String(row.id),
       slotWorker: String(row.user_id),
       slotTask: row.task_id != null && row.task_id > 0 ? String(row.task_id) : '0',
@@ -851,9 +912,9 @@ const hasAnyAssignmentNoteTooLong = computed(() =>
 const canReopenPublishedWeek = computed(
   () =>
     props.canEdit &&
-    weekMeta.value?.status === 'published' &&
-    !isViewingPastWeek.value &&
+    !isDraft.value &&
     weekMeta.value != null &&
+    !isViewingPastWeek.value &&
     scheduleViewSynced.value &&
     weekStillHasPlanableDays.value &&
     hasAnyWeekEntries.value,
@@ -870,13 +931,11 @@ const weekDayBadges = computed(() => {
     if (isPastDay) {
       badgeClass = 'border-gray-200 bg-gray-100 text-gray-400 line-through decoration-gray-400'
       sub = ' · past'
-    } else if (level === 'full') {
+    } else if (level === 'full' || level === 'partial') {
       badgeClass = 'border-gray-300 bg-gray-200 text-gray-500'
-      sub = ' · full'
-    } else if (level === 'partial') {
-      badgeClass = 'border-amber-200 bg-amber-50 text-amber-900'
-      sub = ' · partly'
+      sub = ' · booked'
     } else {
+      badgeClass = 'border-emerald-200 bg-emerald-50 text-emerald-900'
       sub = ' · free'
     }
     return { ymd: d.ymd, weekdayShort: d.weekdayShort, dateShort: d.dateShort, sub, badgeClass }
@@ -890,7 +949,7 @@ function slotPartsConflict(a: ScheduleDayPart, b: ScheduleDayPart): boolean {
 }
 
 function externalEntriesForPlanner(): MyScheduleEntry[] {
-  return externalBusyEntries.value.filter((e) => e.project_id !== props.projectId)
+  return externalBusyEntries.value.filter((e) => !managedProjectIdSet.value.has(e.project_id))
 }
 
 function isSlotTakenByOthers(
@@ -900,17 +959,18 @@ function isSlotTakenByOthers(
   excludeRow: ScheduleWeekEntryRow,
 ): boolean {
   if (userId <= 0) return false
+  const ymd = sliceWorkYmd(workDate)
   const draftHit = allDraftRows.value.some(
     (r) =>
       r !== excludeRow &&
       scheduleUserId(r.user_id) === scheduleUserId(userId) &&
-      r.work_date === workDate &&
+      sliceWorkYmd(r.work_date) === ymd &&
       slotPartsConflict(r.day_part, dayPart),
   )
   if (draftHit) return true
   if (userId === scheduleUserId(selectedPlannerWorkerId.value)) {
     for (const e of externalEntriesForPlanner()) {
-      if (e.work_date !== workDate) continue
+      if (sliceWorkYmd(e.work_date) !== ymd) continue
       if (slotPartsConflict(e.day_part, dayPart)) return true
     }
   }
@@ -919,22 +979,8 @@ function isSlotTakenByOthers(
 
 function dayAvailabilityLevel(userId: number, ymd: string): 'free' | 'partial' | 'full' {
   if (ymd < todayYmd.value) return 'full'
-  const candidates: ScheduleDayPart[] = ['am', 'pm', 'full']
-  let anyFree = false
-  const sentinel = {} as ScheduleWeekEntryRow
-  for (const c of candidates) {
-    if (!isSlotTakenByOthers(userId, ymd, c, sentinel)) anyFree = true
-  }
-  const partsDraft = allDraftRows.value.filter(
-    (r) => scheduleUserId(r.user_id) === scheduleUserId(userId) && r.work_date === ymd,
-  )
-  let extCount = 0
-  if (userId === scheduleUserId(selectedPlannerWorkerId.value)) {
-    extCount = externalEntriesForPlanner().filter((e) => e.work_date === ymd).length
-  }
-  const hasAny = partsDraft.length > 0 || extCount > 0
-  if (!anyFree) return 'full'
-  if (hasAny) return 'partial'
+  const sentinel = { day_part: 'full' } as ScheduleWeekEntryRow
+  if (isSlotTakenByOthers(userId, ymd, 'full', sentinel)) return 'full'
   return 'free'
 }
 
@@ -943,114 +989,74 @@ function hasWorkerSlotConflict(row: ScheduleWeekEntryRow): boolean {
   return isSlotTakenByOthers(row.user_id, row.work_date, row.day_part, row)
 }
 
-function isSlotDisabledForRow(row: ScheduleWeekEntryRow, part: ScheduleDayPart): boolean {
-  return isSlotTakenByOthers(row.user_id, row.work_date, part, row)
-}
-
-function uIdsEqual(raw: number | string, userId: number): boolean {
-  const n = Number(raw)
-  return Number.isFinite(n) && n === userId
-}
-
-function firstFreeSlotOnDay(userId: number, ymd: string, excludeRow: ScheduleWeekEntryRow): ScheduleDayPart | null {
-  for (const part of ['am', 'pm', 'full'] as ScheduleDayPart[]) {
-    if (!isSlotTakenByOthers(userId, ymd, part, excludeRow)) return part
-  }
-  return null
-}
-
-function onDayOrSlotChange(row: ScheduleWeekEntryRow): void {
-  if (isSlotTakenByOthers(row.user_id, row.work_date, row.day_part, row)) {
-    const alt = firstFreeSlotOnDay(row.user_id, row.work_date, row)
-    if (alt) row.day_part = alt
-  }
-  if (row.day_part === 'full') {
-    removeOtherSameDayCompanions(row)
-  } else if (row.day_part === 'am') {
-    ensureAfternoonCompanion(row)
-  }
-}
-
-/** When Morning is chosen, also add Afternoon so both half-days can be planned. */
-function ensureAfternoonCompanion(seed: ScheduleWeekEntryRow): void {
-  if (!isScheduleEditable.value) return
-  if (seed.day_part !== 'am') return
-  const uid = scheduleUserId(seed.user_id)
-  const ymd = sliceWorkYmd(seed.work_date)
-  if (uid <= 0 || !ymd || isPastPlanDayYmd(ymd)) return
-
-  const hasFull = allDraftRows.value.some(
-    (r) =>
-      r !== seed &&
-      scheduleUserId(r.user_id) === uid &&
-      sliceWorkYmd(r.work_date) === ymd &&
-      r.day_part === 'full',
-  )
-  if (hasFull) return
-
-  const hasPm = allDraftRows.value.some(
-    (r) =>
-      scheduleUserId(r.user_id) === uid &&
-      sliceWorkYmd(r.work_date) === ymd &&
-      r.day_part === 'pm',
-  )
-  if (hasPm) return
-
-  const candidate: ScheduleWeekEntryRow = {
-    user_id: uid,
-    task_id: null,
-    work_date: ymd,
-    day_part: 'pm',
-    assignment_note: '',
-  }
-  if (isSlotTakenByOthers(uid, ymd, 'pm', candidate)) return
-  allDraftRows.value.push(candidate)
-}
-
-function removeOtherSameDayCompanions(keep: ScheduleWeekEntryRow): void {
-  const uid = scheduleUserId(keep.user_id)
-  const ymd = sliceWorkYmd(keep.work_date)
-  allDraftRows.value = allDraftRows.value.filter(
-    (r) =>
-      r === keep || scheduleUserId(r.user_id) !== uid || sliceWorkYmd(r.work_date) !== ymd,
-  )
-}
-
 function reconcileAllRows(): void {
-  // no-op: schedule is project presence, not task-linked
+  // Normalize legacy morning/afternoon rows to a single full working day.
+  collapseAllRowsToFullDay(isScheduleEditable.value)
 }
 
-function makeTemplateRowForDay(uid: number, ymd: string): ScheduleWeekEntryRow {
-  const row: ScheduleWeekEntryRow = {
+function makeTemplateRowForDay(uid: number, ymd: string): PlannerScheduleRow {
+  return {
     user_id: uid,
     task_id: null,
     work_date: ymd,
-    day_part: 'am',
+    day_part: 'full',
     assignment_note: '',
+    project_id: fallbackProjectId.value,
   }
-  const slot = firstFreeSlotOnDay(uid, ymd, row)
-  if (slot) row.day_part = slot
-  return row
 }
 
-function isRowSaveable(row: ScheduleWeekEntryRow): boolean {
+function isRowSaveable(row: PlannerScheduleRow): boolean {
   if (row.user_id <= 0) return false
+  if (row.project_id <= 0) return false
   if (row.work_date && row.work_date < todayYmd.value) return false
   if (hasWorkerSlotConflict(row)) return false
   return true
 }
 
-function pickBestDuplicateRow(list: ScheduleWeekEntryRow[]): ScheduleWeekEntryRow {
+function pickBestDuplicateRow(list: PlannerScheduleRow[]): PlannerScheduleRow {
   return (
     list.find((r) => r.id != null && isRowSaveable(r)) ??
     list.find((r) => r.id != null) ??
+    list.find((r) => r.day_part === 'full') ??
     list[0]!
   )
 }
 
 /**
- * Collapse duplicate (worker, day, day_part) rows for the selected worker.
- * Morning + Afternoon on the same day are both kept.
+ * Collapse to one full-day row per (worker, day). Removes legacy am/pm companions.
+ */
+function collapseAllRowsToFullDay(markDirtyOnChange: boolean): void {
+  const byKey = new Map<string, PlannerScheduleRow[]>()
+  for (const r of allDraftRows.value) {
+    const key = `${scheduleUserId(r.user_id)}|${sliceWorkYmd(r.work_date)}`
+    const list = byKey.get(key) ?? []
+    list.push(r)
+    byKey.set(key, list)
+  }
+
+  const keepSet = new Set<PlannerScheduleRow>()
+  for (const list of byKey.values()) {
+    const keep = pickBestDuplicateRow(list)
+    if (keep.day_part !== 'full') {
+      keep.day_part = 'full'
+      if (markDirtyOnChange) markProjectDirty(keep.project_id)
+    }
+    keepSet.add(keep)
+    if (markDirtyOnChange && list.length > 1) {
+      for (const r of list) {
+        if (r !== keep) markProjectDirty(r.project_id)
+      }
+    }
+  }
+
+  const next = allDraftRows.value.filter((r) => keepSet.has(r))
+  if (next.length !== allDraftRows.value.length) {
+    allDraftRows.value = next
+  }
+}
+
+/**
+ * Collapse duplicate (worker, day) rows for the selected worker to one full day.
  */
 function ensureWeekTemplateRowsForSelectedWorker(): void {
   if (!isScheduleEditable.value) return
@@ -1065,29 +1071,7 @@ function ensureWeekTemplateRowsForSelectedWorker(): void {
     return weekSet.has(sliceWorkYmd(r.work_date))
   })
 
-  const byKey = new Map<string, ScheduleWeekEntryRow[]>()
-  for (const r of allDraftRows.value) {
-    if (scheduleUserId(r.user_id) !== uid) continue
-    const y = sliceWorkYmd(r.work_date)
-    if (!weekSet.has(y)) continue
-    const key = `${y}|${r.day_part}`
-    const list = byKey.get(key) ?? []
-    list.push(r)
-    byKey.set(key, list)
-  }
-
-  const toRemove: ScheduleWeekEntryRow[] = []
-  for (const list of byKey.values()) {
-    if (list.length <= 1) continue
-    const keep = pickBestDuplicateRow(list)
-    for (const r of list) {
-      if (r !== keep) toRemove.push(r)
-    }
-  }
-  if (toRemove.length > 0) {
-    const rm = new Set(toRemove)
-    allDraftRows.value = allDraftRows.value.filter((r) => !rm.has(r))
-  }
+  collapseAllRowsToFullDay(true)
 
   for (const r of allDraftRows.value) {
     if (scheduleUserId(r.user_id) !== uid) continue
@@ -1097,13 +1081,9 @@ function ensureWeekTemplateRowsForSelectedWorker(): void {
 }
 
 function dayHasAssignableSlot(uid: number, ymd: string): boolean {
-  const dayRows = allDraftRows.value.filter(
+  return !allDraftRows.value.some(
     (r) => scheduleUserId(r.user_id) === uid && sliceWorkYmd(r.work_date) === ymd,
   )
-  if (dayRows.some((r) => r.day_part === 'full')) return false
-  const hasAm = dayRows.some((r) => r.day_part === 'am')
-  const hasPm = dayRows.some((r) => r.day_part === 'pm')
-  return !(hasAm && hasPm)
 }
 
 function assignWeekDay(ymd: string): void {
@@ -1113,23 +1093,28 @@ function assignWeekDay(ymd: string): void {
   if (uid <= 0) return
   if (!dayHasAssignableSlot(uid, ymd)) return
   const row = makeTemplateRowForDay(uid, ymd)
-  // Avoid pushing a conflicting part if the day is somehow full externally
-  if (isSlotTakenByOthers(uid, ymd, row.day_part, row)) return
-  const already = allDraftRows.value.some(
-    (r) =>
-      scheduleUserId(r.user_id) === uid &&
-      sliceWorkYmd(r.work_date) === ymd &&
-      r.day_part === row.day_part,
-  )
-  if (already) return
+  if (isSlotTakenByOthers(uid, ymd, 'full', row)) return
   allDraftRows.value.push(row)
-  if (row.day_part === 'am') ensureAfternoonCompanion(row)
+  markProjectDirty(row.project_id)
 }
 
-function clearWeekDayRow(row: ScheduleWeekEntryRow): void {
+function clearWeekDayRow(row: PlannerScheduleRow): void {
   if (!isScheduleEditable.value) return
   if (row.work_date && sliceWorkYmd(row.work_date) < todayYmd.value) return
+  markProjectDirty(row.project_id)
   allDraftRows.value = allDraftRows.value.filter((r) => r !== row)
+}
+
+function onRowProjectChange(row: PlannerScheduleRow, event: Event): void {
+  const el = event.target as HTMLSelectElement
+  const nextId = Number(el.value)
+  if (!Number.isFinite(nextId) || nextId <= 0 || nextId === row.project_id) return
+  markProjectDirty(row.project_id)
+  markProjectDirty(nextId)
+  row.project_id = nextId
+  row.day_part = 'full'
+  // Entry PK belongs to the previous project's week — clear so save inserts into the new project.
+  delete row.id
 }
 
 function getApiErrorMessage(err: unknown, fallback: string): string {
@@ -1140,19 +1125,15 @@ function getApiErrorMessage(err: unknown, fallback: string): string {
   return fallback
 }
 
-function dayPartLabel(part: ScheduleDayPart): string {
-  const f = dayPartOptions.find((o) => o.value === part)
-  return f?.label ?? part
-}
-
-function mapEntries(list: ScheduleWeekEntryRow[]): ScheduleWeekEntryRow[] {
+function mapEntries(list: ScheduleWeekEntryRow[], projectId: number): PlannerScheduleRow[] {
   return list.map((e) => ({
     user_id: scheduleUserId(e.user_id),
     task_id: e.task_id != null && Number(e.task_id) > 0 ? Number(e.task_id) : null,
     work_date: e.work_date,
-    day_part: e.day_part,
+    day_part: 'full',
     id: e.id,
     assignment_note: e.assignment_note == null ? '' : String(e.assignment_note),
+    project_id: projectId,
   }))
 }
 
@@ -1178,17 +1159,51 @@ async function loadWeek(): Promise<void> {
   bannerError.value = ''
   isFetchingWeek.value = true
   try {
-    const { week, entries } = await fetchProjectScheduleWeek(props.projectId, weekStartYmd.value)
-    weekMeta.value = mergeScheduleWeekMetaAfterWrite(week, null, weekStartYmd.value)
-    allDraftRows.value = mapEntries(entries)
+    const options = projectOptions.value
+    if (options.length === 0) {
+      weekByProjectId.value = {}
+      weekMeta.value = null
+      allDraftRows.value = []
+      clearDirtyProjects()
+      metaError.value = 'No projects available for scheduling.'
+      return
+    }
+
+    const results = await mapPool(options, 6, async (p) => {
+      try {
+        const res = await fetchProjectScheduleWeek(p.id, weekStartYmd.value)
+        return { projectId: p.id, ...res, ok: true as const }
+      } catch {
+        return { projectId: p.id, week: null, entries: [] as ScheduleWeekEntryRow[], ok: false as const }
+      }
+    })
+
+    const nextMeta: Record<number, ScheduleWeekMeta | null> = {}
+    const merged: PlannerScheduleRow[] = []
+    let anyOk = false
+    for (const r of results) {
+      anyOk = anyOk || r.ok
+      const week = mergeScheduleWeekMetaAfterWrite(r.week, null, weekStartYmd.value)
+      nextMeta[r.projectId] = week
+      if (week) merged.push(...mapEntries(r.entries, r.projectId))
+    }
+    weekByProjectId.value = nextMeta
+    syncPrimaryWeekMeta()
+    allDraftRows.value = merged
+    clearDirtyProjects()
     reconcileAllRows()
     primePlannerWorkerFromRows()
     await nextTick()
     ensureWeekTemplateRowsForSelectedWorker()
     await loadExternalScheduleForPlanner()
+    if (!anyOk && weekMeta.value == null) {
+      metaError.value = 'Could not load schedule (API unavailable or no access).'
+    }
   } catch {
+    weekByProjectId.value = {}
     weekMeta.value = null
     allDraftRows.value = []
+    clearDirtyProjects()
     metaError.value = 'Could not load schedule (API unavailable or no access).'
   } finally {
     isFetchingWeek.value = false
@@ -1203,6 +1218,9 @@ function onRemovePastDayRows(): void {
     `Clear ${n} assignment(s) on calendar days before today?\n\nThis only updates your draft in the browser. To update the server, click Save draft afterward.`,
   )
   if (!ok) return
+  for (const r of allDraftRows.value) {
+    if (isPastDayRowBlockingSave(r)) markProjectDirty(r.project_id)
+  }
   allDraftRows.value = allDraftRows.value.filter((r) => !isPastDayRowBlockingSave(r))
   bannerError.value = ''
   void nextTick(() => ensureWeekTemplateRowsForSelectedWorker())
@@ -1213,24 +1231,113 @@ async function onReloadWeekFromServer(): Promise<void> {
   await loadWeek()
 }
 
+async function ensureDraftMetaForProject(projectId: number): Promise<ScheduleWeekMeta> {
+  const existing = weekMetaForProject(projectId)
+  if (existing?.status === 'draft') return existing
+  if (existing?.status === 'published') {
+    const { week, entries } = await reopenProjectScheduleWeekAsDraft(
+      projectId,
+      existing.id,
+      existing.week_start,
+    )
+    const merged = mergeScheduleWeekMetaAfterWrite(week, existing, weekStartYmd.value)
+    if (!merged || merged.status !== 'draft') {
+      throw new Error(`Could not reopen project #${projectId} as draft`)
+    }
+    weekByProjectId.value = { ...weekByProjectId.value, [projectId]: merged }
+    // Merge server entries for other workers; keep local rows for this project that we are editing.
+    const localForProject = allDraftRows.value.filter((r) => r.project_id === projectId)
+    const localKeys = new Set(
+      localForProject.map(
+        (r) => `${scheduleUserId(r.user_id)}|${sliceWorkYmd(r.work_date)}|${r.day_part}`,
+      ),
+    )
+    const fromServer = mapEntries(entries, projectId).filter((r) => {
+      const key = `${scheduleUserId(r.user_id)}|${sliceWorkYmd(r.work_date)}|${r.day_part}`
+      return !localKeys.has(key)
+    })
+    allDraftRows.value = [
+      ...allDraftRows.value.filter((r) => r.project_id !== projectId),
+      ...localForProject,
+      ...fromServer,
+    ]
+    syncPrimaryWeekMeta()
+    return merged
+  }
+
+  const { week, entries } = await ensureProjectScheduleDraft(projectId, weekStartYmd.value)
+  const merged = mergeScheduleWeekMetaAfterWrite(week, null, weekStartYmd.value)
+  if (!merged) throw new Error(`Could not create draft for project #${projectId}`)
+  weekByProjectId.value = { ...weekByProjectId.value, [projectId]: merged }
+  if (entries.length > 0) {
+    const existingKeys = new Set(
+      allDraftRows.value
+        .filter((r) => r.project_id === projectId)
+        .map((r) => `${scheduleUserId(r.user_id)}|${sliceWorkYmd(r.work_date)}|${r.day_part}`),
+    )
+    for (const row of mapEntries(entries, projectId)) {
+      const key = `${scheduleUserId(row.user_id)}|${sliceWorkYmd(row.work_date)}|${row.day_part}`
+      if (!existingKeys.has(key)) allDraftRows.value.push(row)
+    }
+  }
+  syncPrimaryWeekMeta()
+  return merged
+}
+
+function projectIdsNeedingPersist(): number[] {
+  const ids = new Set<number>([...dirtyProjectIds.value])
+  if (ids.size === 0) {
+    // Fallback: persist every project that currently has rows (e.g. note-only edits).
+    for (const r of allDraftRows.value) {
+      if (r.project_id > 0) ids.add(r.project_id)
+    }
+  }
+  return [...ids].filter((id) => id > 0)
+}
+
+async function persistDirtyProjectEntries(): Promise<void> {
+  const projectIds = projectIdsNeedingPersist()
+  for (const projectId of projectIds) {
+    const meta = await ensureDraftMetaForProject(projectId)
+    const valid = allDraftRows.value.filter((r) => r.project_id === projectId && isRowSaveable(r))
+    const { week, entries } = await replaceProjectScheduleEntries(projectId, meta.id, valid)
+    const merged = mergeScheduleWeekMetaAfterWrite(week, meta, weekStartYmd.value)
+    if (merged) weekByProjectId.value = { ...weekByProjectId.value, [projectId]: merged }
+    // Refresh this project's rows from server response; keep other projects intact.
+    const others = allDraftRows.value.filter((r) => r.project_id !== projectId)
+    allDraftRows.value = [...others, ...mapEntries(entries, projectId)]
+  }
+  clearDirtyProjects()
+  syncPrimaryWeekMeta()
+}
+
 async function onReopenPublishedWeekAsDraft(): Promise<void> {
-  if (!canReopenPublishedWeek.value || !weekMeta.value) return
+  if (!canReopenPublishedWeek.value) return
   const ok = window.confirm(
-    'Reopen this week as a draft? Workers keep seeing the last published version until you publish your changes again.',
+    'Reopen this week as a draft for all projects that have a published week? Workers keep seeing the last published version until you publish your changes again.',
   )
   if (!ok) return
   isSaving.value = true
   bannerError.value = ''
-  const snap = weekMeta.value.week_start
   try {
-    const { week, entries } = await reopenProjectScheduleWeekAsDraft(
-      props.projectId,
-      weekMeta.value.id,
-      snap,
+    const published = Object.entries(weekByProjectId.value).filter(
+      ([, w]) => w != null && w.status === 'published',
     )
-    if (week) weekMeta.value = mergeScheduleWeekMetaAfterWrite(week, weekMeta.value, weekStartYmd.value)
-    allDraftRows.value = mapEntries(entries)
-    reconcileAllRows()
+    for (const [pidStr, meta] of published) {
+      if (!meta) continue
+      const projectId = Number(pidStr)
+      const { week, entries } = await reopenProjectScheduleWeekAsDraft(
+        projectId,
+        meta.id,
+        meta.week_start,
+      )
+      const merged = mergeScheduleWeekMetaAfterWrite(week, meta, weekStartYmd.value)
+      weekByProjectId.value = { ...weekByProjectId.value, [projectId]: merged }
+      const others = allDraftRows.value.filter((r) => r.project_id !== projectId)
+      allDraftRows.value = [...others, ...mapEntries(entries, projectId)]
+    }
+    clearDirtyProjects()
+    syncPrimaryWeekMeta()
     await nextTick()
     ensureWeekTemplateRowsForSelectedWorker()
     await loadExternalScheduleForPlanner()
@@ -1249,12 +1356,32 @@ async function onCreateDraft(): Promise<void> {
     bannerError.value = 'Drafts cannot be created for past weeks.'
     return
   }
+  const options = projectOptions.value
+  if (options.length === 0) {
+    bannerError.value = 'No projects available.'
+    return
+  }
   isSaving.value = true
   bannerError.value = ''
   try {
-    const { week, entries } = await ensureProjectScheduleDraft(props.projectId, weekStartYmd.value)
-    weekMeta.value = mergeScheduleWeekMetaAfterWrite(week, null, weekStartYmd.value)
-    allDraftRows.value = mapEntries(entries)
+    // Create drafts only where no week exists yet (skip published — those need Reopen).
+    const toCreate = options.filter((p) => weekMetaForProject(p.id) == null)
+    const targets = toCreate.length > 0 ? toCreate : options.filter((p) => weekMetaForProject(p.id)?.status !== 'published')
+    if (targets.length === 0) {
+      bannerError.value = 'All projects already have a published week. Use Reopen as draft.'
+      return
+    }
+    await mapPool(targets, 4, async (p) => {
+      const { week, entries } = await ensureProjectScheduleDraft(p.id, weekStartYmd.value)
+      const merged = mergeScheduleWeekMetaAfterWrite(week, null, weekStartYmd.value)
+      weekByProjectId.value = { ...weekByProjectId.value, [p.id]: merged }
+      if (merged && entries.length > 0) {
+        const others = allDraftRows.value.filter((r) => r.project_id !== p.id)
+        allDraftRows.value = [...others, ...mapEntries(entries, p.id)]
+      }
+    })
+    clearDirtyProjects()
+    syncPrimaryWeekMeta()
     reconcileAllRows()
     primePlannerWorkerFromRows()
     await nextTick()
@@ -1268,7 +1395,7 @@ async function onCreateDraft(): Promise<void> {
 }
 
 async function onSaveEntries(): Promise<void> {
-  if (!isScheduleEditable.value || !weekMeta.value || weekMeta.value.status !== 'draft') return
+  if (!isScheduleEditable.value) return
   if (hasAnySlotConflict.value) {
     bannerError.value = 'Resolve overlapping slots before saving.'
     return
@@ -1282,23 +1409,16 @@ async function onSaveEntries(): Promise<void> {
     bannerError.value = `Shorten assignment text to ${assignmentNoteMaxChars} characters or less.`
     return
   }
-  const valid = allDraftRows.value.filter((r) => isRowSaveable(r))
   isSaving.value = true
   bannerError.value = ''
   try {
-    const { week, entries } = await replaceProjectScheduleEntries(
-      props.projectId,
-      weekMeta.value.id,
-      valid,
-    )
-    if (week) weekMeta.value = mergeScheduleWeekMetaAfterWrite(week, weekMeta.value, weekStartYmd.value)
-    allDraftRows.value = mapEntries(entries)
+    await persistDirtyProjectEntries()
     await nextTick()
     ensureWeekTemplateRowsForSelectedWorker()
   } catch (err) {
     bannerError.value = getApiErrorMessage(
       err,
-      'Save failed. If the week is published, create a new draft week on the server.',
+      'Save failed. If a week is published, reopen it as a draft first.',
     )
   } finally {
     isSaving.value = false
@@ -1306,7 +1426,7 @@ async function onSaveEntries(): Promise<void> {
 }
 
 async function onPublish(): Promise<void> {
-  if (!isScheduleEditable.value || !weekMeta.value || weekMeta.value.status !== 'draft') return
+  if (!isScheduleEditable.value) return
   if (hasAnySlotConflict.value) {
     bannerError.value = 'Resolve overlapping slots before publishing.'
     return
@@ -1328,22 +1448,28 @@ async function onPublish(): Promise<void> {
   }
   isSaving.value = true
   bannerError.value = ''
-  const weekStartSnap = weekMeta.value.week_start
   try {
-    const { week, entries } = await replaceProjectScheduleEntries(
-      props.projectId,
-      weekMeta.value.id,
-      valid,
+    // Ensure every project with saveable rows is dirty so we persist them before publish.
+    for (const r of valid) markProjectDirty(r.project_id)
+    await persistDirtyProjectEntries()
+
+    const draftMetas = Object.entries(weekByProjectId.value).filter(
+      ([, w]) => w != null && w.status === 'draft',
     )
-    if (week) weekMeta.value = mergeScheduleWeekMetaAfterWrite(week, weekMeta.value, weekStartYmd.value)
-    allDraftRows.value = mapEntries(entries)
-    const published = await publishProjectScheduleWeek(
-      props.projectId,
-      weekMeta.value!.id,
-      weekStartSnap,
-    )
-    if (published)
-      weekMeta.value = mergeScheduleWeekMetaAfterWrite(published, weekMeta.value, weekStartYmd.value)
+    for (const [pidStr, meta] of draftMetas) {
+      if (!meta) continue
+      const projectId = Number(pidStr)
+      const hasRows = allDraftRows.value.some((r) => r.project_id === projectId && isRowSaveable(r))
+      if (!hasRows) continue
+      const published = await publishProjectScheduleWeek(projectId, meta.id, meta.week_start)
+      if (published) {
+        weekByProjectId.value = {
+          ...weekByProjectId.value,
+          [projectId]: mergeScheduleWeekMetaAfterWrite(published, meta, weekStartYmd.value),
+        }
+      }
+    }
+    syncPrimaryWeekMeta()
     await nextTick()
     ensureWeekTemplateRowsForSelectedWorker()
   } catch (err) {
@@ -1354,9 +1480,9 @@ async function onPublish(): Promise<void> {
 }
 
 watch(
-  () => props.projectId,
+  () => [fallbackProjectId.value, projectOptions.value.map((p) => p.id).join(',')] as const,
   () => {
-    loadWeek()
+    void loadWeek()
   },
 )
 
