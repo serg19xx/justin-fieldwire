@@ -1,111 +1,33 @@
 <template>
   <div class="space-y-5">
-    <!-- Work time (required for submit) -->
-    <section class="rounded-xl border border-orange-200 bg-white p-4 shadow-sm">
-      <h2 class="text-sm font-semibold text-gray-900 mb-1">Work time <span class="text-red-600">*</span></h2>
-      <p class="text-xs text-gray-500 mb-1">
-        Tap Start / End to record task field work with your phone location (for this task / reporting).
-        Day clock-in on Schedule is separate and does not update here.
-        Use Edit only if you need to correct the clock or add a reason.
+    <!-- Day clock-in lives on Schedule (per shift / day), not on the multi-day task -->
+    <section
+      v-if="!hideDayClockInBanner"
+      class="rounded-xl border border-blue-200 bg-blue-50/60 p-4 shadow-sm"
+    >
+      <h2 class="text-sm font-semibold text-gray-900 mb-1">Day start / end (timesheet)</h2>
+      <p class="text-xs text-gray-600 mb-2">
+        Clock in and out
+        <strong class="font-medium text-gray-800">once per working day</strong>
+        on Schedule — by project and place for that day. This task may span several days; a single
+        Start/End on the task itself is not used.
       </p>
-      <p v-if="plannedHint" class="text-xs text-gray-600 mb-4 font-medium">{{ plannedHint }}</p>
-      <p v-else class="mb-4" />
-
-      <div class="space-y-3">
-        <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0 flex-1">
-              <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Start work</p>
-              <p class="text-sm font-medium text-gray-900 mt-0.5">{{ startedLabel }}</p>
-              <p v-if="startDistanceLabel" class="text-[11px] text-gray-500 mt-0.5">{{ startDistanceLabel }}</p>
-              <p
-                v-if="workStartReason?.trim()"
-                class="text-xs text-gray-600 mt-1 whitespace-pre-wrap break-words"
-              >
-                <span class="font-medium text-gray-500">Reason:</span> {{ workStartReason }}
-              </p>
-            </div>
-            <div v-if="canEdit && !isLocked" class="shrink-0 flex flex-col items-end gap-1.5">
-              <button
-                v-if="!workStartedAt"
-                type="button"
-                class="rounded-lg px-3 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
-                :disabled="isSaving"
-                @click="onGeoCheckIn('start')"
-              >
-                Start work
-              </button>
-              <button
-                v-else
-                type="button"
-                class="rounded-lg px-3 py-2 text-xs font-semibold text-white bg-gray-600 hover:bg-gray-700 disabled:opacity-50"
-                :disabled="isSaving"
-                @click="openDialog('start')"
-              >
-                Edit
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0 flex-1">
-              <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">End work</p>
-              <p class="text-sm font-medium text-gray-900 mt-0.5">{{ endedLabel }}</p>
-              <p v-if="endDistanceLabel" class="text-[11px] text-gray-500 mt-0.5">{{ endDistanceLabel }}</p>
-              <p
-                v-if="workEndReason?.trim()"
-                class="text-xs text-gray-600 mt-1 whitespace-pre-wrap break-words"
-              >
-                <span class="font-medium text-gray-500">Reason:</span> {{ workEndReason }}
-              </p>
-            </div>
-            <div v-if="canEdit && !isLocked" class="shrink-0 flex flex-col items-end gap-1.5">
-              <button
-                v-if="!workEndedAt"
-                type="button"
-                class="rounded-lg px-3 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
-                :disabled="isSaving || !workStartedAt"
-                @click="onGeoCheckIn('end')"
-              >
-                End work
-              </button>
-              <button
-                v-else
-                type="button"
-                class="rounded-lg px-3 py-2 text-xs font-semibold text-white bg-gray-600 hover:bg-gray-700 disabled:opacity-50"
-                :disabled="isSaving"
-                @click="openDialog('end')"
-              >
-                Edit
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <p v-if="timeMessage" class="text-xs mt-3" :class="timeError ? 'text-red-700' : 'text-green-700'">
-        {{ timeMessage }}
+      <p v-if="plannedHint" class="text-xs text-gray-700 mb-3 font-medium">
+        Task planned: {{ plannedHint }}
       </p>
+      <RouterLink
+        to="/tasks/schedule"
+        class="inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+      >
+        Open Schedule — Start / End for today
+      </RouterLink>
     </section>
-
-    <TaskWorkTimeDialog
-      :open="dialogOpen"
-      :kind="dialogKind"
-      :planned-hint="plannedHint"
-      :planned-start-local="plannedStartLocal"
-      :initial-at="dialogInitialAt"
-      :initial-reason="dialogInitialReason"
-      :min-datetime-local="dialogMinDatetimeLocal"
-      :is-saving="isSaving"
-      @close="dialogOpen = false"
-      @save="onDialogSave"
-    />
 
     <!-- Photos (optional) -->
     <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <h2 class="text-sm font-semibold text-gray-900 mb-1">Site photos <span class="text-gray-400 font-normal">(optional)</span></h2>
+      <h2 class="text-sm font-semibold text-gray-900 mb-1">
+        Site photos <span class="text-gray-400 font-normal">(optional)</span>
+      </h2>
       <p class="text-xs text-gray-500 mb-4">
         Before and after photos. Saved on the server and included in the project daily report.
         On Mac/PC use <strong class="font-medium text-gray-600">JPG or PNG</strong> (if Photos exports HEIC, choose “Export as JPEG”).
@@ -170,7 +92,7 @@
     <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <h2 class="text-sm font-semibold text-gray-900 mb-1">Your notes &amp; additions</h2>
       <p class="text-xs text-gray-500 mb-3">
-        General site report for the PM. Use the reason fields above when start/end times differ from the plan.
+        General site report for the PM (materials, access issues, handoff). Day hours are recorded on Schedule.
       </p>
       <textarea
         v-model="fieldNotesDraft"
@@ -189,14 +111,9 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import type { Task } from '@/core/types/task'
-import { readDevicePosition } from '@/core/utils/device-geolocation'
-import {
-  formatPlannedWorkHint,
-  formatTaskDateTimeDisplay,
-  plannedStartDatetimeLocal,
-  toDatetimeLocalValue,
-} from '@/core/utils/task-field-work-datetime'
+import { formatPlannedWorkHint } from '@/core/utils/task-field-work-datetime'
 import { tasksApi } from '@/core/utils/tasks-api'
 import {
   taskFieldPhotosApi,
@@ -209,35 +126,33 @@ import {
   MAX_TASK_FIELD_PHOTOS_PER_SLOT,
   type TaskFieldPhotoSlot,
 } from '@/core/utils/task-field-photos-storage'
-import TaskWorkTimeDialog, { type WorkTimeDialogKind } from '@/components/task-role/TaskWorkTimeDialog.vue'
 
-const props = defineProps<{
-  projectId: number
-  taskId: string
-  task: Task
-  canEdit: boolean
-  isLocked: boolean
-}>()
+const props = withDefaults(
+  defineProps<{
+    projectId: number
+    taskId: string
+    task: Task
+    canEdit: boolean
+    isLocked: boolean
+    /** Selected work day (YYYY-MM-DD) for copy / photo date. */
+    workYmd?: string
+    /** When parent already shows day Start/End, hide the schedule CTA banner. */
+    hideDayClockInBanner?: boolean
+  }>(),
+  {
+    workYmd: '',
+    hideDayClockInBanner: false,
+  },
+)
 
 const emit = defineEmits<{
   updated: [task: Task]
 }>()
 
-const workStartedAt = ref<string | null>(props.task.field_work_started_at ?? null)
-const workEndedAt = ref<string | null>(props.task.field_work_ended_at ?? null)
-const workStartReason = ref(props.task.field_work_start_reason ?? '')
-const workEndReason = ref(props.task.field_work_end_reason ?? '')
-const startDistanceKm = ref<number | null>(props.task.field_work_start_distance_km ?? null)
-const endDistanceKm = ref<number | null>(props.task.field_work_end_distance_km ?? null)
 const fieldNotesDraft = ref(props.task.field_notes ?? '')
 const isSaving = ref(false)
-const timeMessage = ref('')
-const timeError = ref(false)
 const notesMessage = ref('')
 const notesError = ref(false)
-
-const dialogOpen = ref(false)
-const dialogKind = ref<WorkTimeDialogKind>('start')
 
 const photoBefore = ref<TaskFieldPhotoUiRecord[]>([])
 const photoAfter = ref<TaskFieldPhotoUiRecord[]>([])
@@ -247,8 +162,20 @@ const photoBeforeLoading = ref(false)
 const photoAfterLoading = ref(false)
 
 const maxPhotosPerSlot = MAX_TASK_FIELD_PHOTOS_PER_SLOT
-const photoWorkDate = computed(() => resolveFieldWorkPhotoWorkDate(workStartedAt.value))
+/** Photos keyed by selected work day (or today). */
+const photoWorkDate = computed(() =>
+  resolveFieldWorkPhotoWorkDate(props.workYmd || null),
+)
 const numericTaskId = computed(() => Number(props.taskId))
+
+const plannedHint = computed(() =>
+  formatPlannedWorkHint(
+    props.task.start_planned,
+    props.task.end_planned,
+    props.task.start_time,
+    props.task.end_time,
+  ),
+)
 
 function revokePhotoPreviewUrls(photos: TaskFieldPhotoUiRecord[]): void {
   for (const photo of photos) {
@@ -301,43 +228,6 @@ onBeforeUnmount(() => {
   revokePhotoPreviewUrls([...photoBefore.value, ...photoAfter.value])
 })
 
-const plannedHint = computed(() =>
-  formatPlannedWorkHint(
-    props.task.start_planned,
-    props.task.end_planned,
-    props.task.start_time,
-    props.task.end_time,
-  ),
-)
-
-const plannedStartLocal = computed(() =>
-  plannedStartDatetimeLocal(props.task.start_planned, props.task.start_time),
-)
-
-const startedLabel = computed(() => formatTaskDateTimeDisplay(workStartedAt.value))
-const endedLabel = computed(() => formatTaskDateTimeDisplay(workEndedAt.value))
-
-function formatDistanceLabel(km: number | null): string {
-  if (km == null || !Number.isFinite(km)) return ''
-  return `${km.toFixed(2)} km from project site`
-}
-
-const startDistanceLabel = computed(() => formatDistanceLabel(startDistanceKm.value))
-const endDistanceLabel = computed(() => formatDistanceLabel(endDistanceKm.value))
-
-const dialogInitialAt = computed(() =>
-  dialogKind.value === 'start' ? workStartedAt.value : workEndedAt.value,
-)
-
-const dialogInitialReason = computed(() =>
-  dialogKind.value === 'start' ? workStartReason.value : workEndReason.value,
-)
-
-const dialogMinDatetimeLocal = computed(() => {
-  if (dialogKind.value !== 'end' || !workStartedAt.value) return null
-  return toDatetimeLocalValue(workStartedAt.value)
-})
-
 const photoSlots = computed(() => [
   {
     id: 'before' as const,
@@ -355,155 +245,14 @@ const photoSlots = computed(() => [
   },
 ])
 
-function syncFromTask(task: Task): void {
-  workStartedAt.value = task.field_work_started_at ?? null
-  workEndedAt.value = task.field_work_ended_at ?? null
-  workStartReason.value = task.field_work_start_reason ?? ''
-  workEndReason.value = task.field_work_end_reason ?? ''
-  startDistanceKm.value = task.field_work_start_distance_km ?? null
-  endDistanceKm.value = task.field_work_end_distance_km ?? null
-  fieldNotesDraft.value = task.field_notes ?? ''
-}
-
 watch(
   () => [props.task, props.projectId, props.taskId, photoWorkDate.value] as const,
   ([task]) => {
-    syncFromTask(task)
+    fieldNotesDraft.value = task.field_notes ?? ''
     void loadPhotos()
   },
   { immediate: true, deep: true },
 )
-
-function openDialog(kind: WorkTimeDialogKind): void {
-  dialogKind.value = kind
-  dialogOpen.value = true
-  timeMessage.value = ''
-  timeError.value = false
-}
-
-function buildWorkTimePatch(
-  kind: WorkTimeDialogKind,
-  payload: { at: string; reason: string; urgent: boolean },
-): {
-  field_work_started_at?: string
-  field_work_ended_at?: string
-  field_work_start_reason?: string | null
-  field_work_end_reason?: string | null
-  notify_urgent?: boolean
-} {
-  const trimmedReason = payload.reason.trim()
-  if (kind === 'start') {
-    const patch: {
-      field_work_started_at: string
-      field_work_start_reason?: string | null
-      notify_urgent?: boolean
-    } = { field_work_started_at: payload.at }
-    if (trimmedReason) {
-      patch.field_work_start_reason = trimmedReason
-    } else if (workStartReason.value?.trim()) {
-      patch.field_work_start_reason = null
-    }
-    if (payload.urgent) {
-      patch.notify_urgent = true
-    }
-    return patch
-  }
-  const patch: {
-    field_work_ended_at: string
-    field_work_end_reason?: string | null
-    notify_urgent?: boolean
-  } = { field_work_ended_at: payload.at }
-  if (trimmedReason) {
-    patch.field_work_end_reason = trimmedReason
-  } else if (workEndReason.value?.trim()) {
-    patch.field_work_end_reason = null
-  }
-  if (payload.urgent) {
-    patch.notify_urgent = true
-  }
-  return patch
-}
-
-function resolveSaveErrorMessage(error: unknown): string {
-  if (error && typeof error === 'object' && 'response' in error) {
-    const axiosError = error as { response?: { data?: { message?: unknown }; status?: number } }
-    const apiMessage = axiosError.response?.data?.message
-    if (typeof apiMessage === 'string' && apiMessage.trim()) return apiMessage
-    if (axiosError.response?.status === 403) {
-      return 'You are not allowed to update this task. Check that you are the task lead.'
-    }
-    if (axiosError.response?.status === 400) {
-      return 'Invalid data. If this persists, restart the API after DB migrations.'
-    }
-  }
-  if (error instanceof Error && error.message.trim()) return error.message
-  return 'Could not save. Check connection and try again.'
-}
-
-async function onDialogSave(payload: { at: string; reason: string; urgent: boolean }): Promise<void> {
-  const patch = buildWorkTimePatch(dialogKind.value, payload)
-
-  const ok = await persistFieldWork(
-    patch,
-    dialogKind.value === 'start' ? 'Work start time saved.' : 'Work end time saved.',
-  )
-  if (ok) dialogOpen.value = false
-}
-
-async function onGeoCheckIn(phase: 'start' | 'end'): Promise<void> {
-  if (!props.canEdit || props.isLocked) return
-  isSaving.value = true
-  timeMessage.value = ''
-  timeError.value = false
-  try {
-    const { lat, lng } = await readDevicePosition()
-    const updated = await tasksApi.checkInFieldWork(
-      props.projectId,
-      props.taskId,
-      phase,
-      lat,
-      lng,
-    )
-    emit('updated', updated)
-    syncFromTask(updated)
-    timeMessage.value =
-      phase === 'start' ? 'Work start recorded with location.' : 'Work end recorded with location.'
-  } catch (error) {
-    timeError.value = true
-    timeMessage.value = resolveSaveErrorMessage(error)
-  } finally {
-    isSaving.value = false
-  }
-}
-
-async function persistFieldWork(
-  patch: {
-    field_work_started_at?: string | null
-    field_work_ended_at?: string | null
-    field_work_start_reason?: string | null
-    field_work_end_reason?: string | null
-    field_notes?: string | null
-    notify_urgent?: boolean
-  },
-  successMsg: string,
-): Promise<boolean> {
-  isSaving.value = true
-  timeMessage.value = ''
-  timeError.value = false
-  try {
-    const updated = await tasksApi.updateFieldWork(props.projectId, props.taskId, patch)
-    emit('updated', updated)
-    syncFromTask(updated)
-    timeMessage.value = successMsg
-    return true
-  } catch (error) {
-    timeError.value = true
-    timeMessage.value = resolveSaveErrorMessage(error)
-    return false
-  } finally {
-    isSaving.value = false
-  }
-}
 
 async function saveFieldNotes(): Promise<void> {
   if (!props.canEdit) return
@@ -569,51 +318,41 @@ async function onPhotoSelected(event: Event, slot: TaskFieldPhotoSlot): Promise<
         const blob = await taskFieldPhotosApi.download(props.projectId, taskId, saved.id, true)
         listRef.value = [
           ...listRef.value,
-          {
-            ...saved,
-            previewUrl: URL.createObjectURL(blob),
-          },
+          { ...saved, previewUrl: URL.createObjectURL(blob) },
         ]
         added += 1
-      } catch (e) {
-        errors.push(e instanceof Error ? e.message : `${file.name}: could not upload.`)
+      } catch {
+        errors.push(`${file.name}: upload failed.`)
       }
-    }
-    if (added > 0 && errors.length === 0) {
-      errRef.value = ''
-    } else if (errors.length) {
-      errRef.value = errors.slice(0, 2).join(' ')
     }
   } finally {
     loadingRef.value = false
+    if (errors.length) errRef.value = errors.join(' ')
   }
 }
 
 async function removePhoto(slot: TaskFieldPhotoSlot, photoId: number): Promise<void> {
   const taskId = numericTaskId.value
   if (!Number.isFinite(taskId) || taskId <= 0) return
-
   const listRef = slot === 'before' ? photoBefore : photoAfter
   const errRef = slot === 'before' ? photoBeforeError : photoAfterError
-  const removed = listRef.value.find((p) => p.id === photoId)
   try {
     await taskFieldPhotosApi.remove(props.projectId, taskId, photoId)
-    if (removed?.previewUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(removed.previewUrl)
-    }
-    listRef.value = listRef.value.filter((p) => p.id !== photoId)
-    errRef.value = ''
+    const next = listRef.value.filter((p) => p.id !== photoId)
+    const removed = listRef.value.find((p) => p.id === photoId)
+    if (removed?.previewUrl.startsWith('blob:')) URL.revokeObjectURL(removed.previewUrl)
+    listRef.value = next
   } catch {
     errRef.value = 'Could not remove photo.'
   }
 }
 
+/** Submit no longer requires task-lifetime start/end punches. */
 function hasRequiredWorkTimes(): boolean {
-  return Boolean(workStartedAt.value && workEndedAt.value)
+  return true
 }
 
 defineExpose({
   hasRequiredWorkTimes,
-  getFieldNotes: () => fieldNotesDraft.value.trim(),
 })
 </script>

@@ -135,6 +135,15 @@ export const useAuthStore = defineStore('auth', () => {
       console.log('📥 After destructuring - token:', token)
       console.log('📥 After destructuring - requires_2fa:', requires_2fa)
 
+      if (!user || typeof user !== 'object') {
+        console.error('❌ Login response missing user object:', responseData)
+        return {
+          success: false,
+          error:
+            'Login response was incomplete (no user). Check that the API is running and returning JSON.',
+        }
+      }
+
       console.log('👤 User data from backend:', user)
       console.log('🔐 Token from backend:', token ? 'present' : 'missing')
       console.log('🔒 2FA required:', requires_2fa)

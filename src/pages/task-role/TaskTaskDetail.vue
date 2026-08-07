@@ -90,7 +90,10 @@
       <!-- 4. Day status + description + your uploads -->
       <section class="mb-6 rounded-xl border border-orange-200 bg-white p-4 shadow-sm" aria-labelledby="your-work-title">
         <h2 id="your-work-title" class="text-sm font-semibold text-gray-900">Your work today</h2>
-        <p class="text-xs text-gray-500 mt-1 mb-4">Status and notes are for this scheduled day. Start / End below pin your phone location on the schedule slot.</p>
+        <p class="text-xs text-gray-500 mt-1 mb-4">
+          Status and notes are for this scheduled day. Start / End pin your phone location on today’s
+          schedule row (day timesheet — not a single punch for the whole multi-day task).
+        </p>
 
         <div
           v-if="fromSchedule && scheduleEntryId > 0"
@@ -98,7 +101,7 @@
         >
           <p class="text-xs font-semibold uppercase tracking-wide text-blue-900 mb-1">Schedule day check-in</p>
           <p class="text-[11px] text-blue-800/80 mb-2">
-            Saved on the schedule row (separate from task field work below).
+            One Start / End pair per working day on this project assignment.
           </p>
           <p class="text-[11px] text-gray-600 mb-2">
             Start: {{ formatScheduleCheckIn(scheduleWorkStartAt, scheduleWorkStartDistanceKm) }}

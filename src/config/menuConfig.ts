@@ -119,6 +119,11 @@ export const MENU_CONFIG: Record<string, MenuItem[]> = {
       icon: 'checklist',
     },
     {
+      label: 'Timesheet',
+      route: '/tasks/timesheet',
+      icon: 'checklist',
+    },
+    {
       label: 'My Calendar',
       route: '/calendar',
       icon: 'calendar',

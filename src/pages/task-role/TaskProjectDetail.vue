@@ -2,20 +2,26 @@
   <div class="px-4 py-4 max-w-lg mx-auto">
     <nav class="mb-4">
       <RouterLink
-        to="/tasks/projects"
+        :to="projectsBackLink"
         class="inline-flex items-center gap-1 text-sm font-medium text-orange-600 hover:text-orange-700"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
-        Projects
+        Day list
       </RouterLink>
     </nav>
 
-    <header class="mb-4">
+    <header class="mb-3">
       <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Site</p>
       <h1 class="text-xl font-semibold text-gray-900 mt-0.5">{{ projectName }}</h1>
+      <p v-if="projectAddress" class="text-xs text-gray-500 mt-1">{{ projectAddress }}</p>
     </header>
+
+    <TaskWorkDayPicker v-model="workYmd" class="mb-4" :disabled="isLoading" />
+    <p class="mb-4 text-xs text-gray-500">
+      Tasks shown for this day come from the Gantt plan (planned dates). Pay clock-in is on Schedule.
+    </p>
 
     <div v-if="isForeman" class="mb-3 flex rounded-lg border border-gray-200 p-1 bg-gray-50">
       <button
@@ -80,7 +86,7 @@
     <ul v-else class="space-y-2">
       <li v-for="task in visibleTasks" :key="task.id">
         <RouterLink
-          :to="`/tasks/projects/${projectId}/tasks/${task.id}`"
+          :to="taskLink(task.id)"
           class="block bg-white rounded-xl border border-gray-200 p-4 active:bg-orange-50"
         >
           <div class="flex items-start justify-between gap-2">
@@ -94,12 +100,10 @@
             {{ taskSiteAddress(task) }}
           </p>
           <p class="text-xs text-gray-500 mt-1">{{ formatBackendTaskStatus(String(task.status)) }}</p>
-          <p
-            v-if="task.start_planned"
-            class="text-xs text-gray-400 mt-0.5"
-          >
-            {{ formatTaskDates(task) }}
+          <p v-if="task.start_planned" class="text-xs text-gray-400 mt-0.5">
+            Planned: {{ formatTaskDates(task) }}
           </p>
+          <p class="text-[11px] text-orange-700 mt-1 font-medium">Work day: {{ dayLabel }}</p>
         </RouterLink>
       </li>
     </ul>
@@ -108,7 +112,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
 import type { Task } from '@/core/types/task'
 import { projectApi } from '@/core/utils/project-api'
@@ -123,11 +127,20 @@ import {
   type TaskRoleStatusBucket,
 } from '@/core/utils/task-role-ux'
 import { tasksApi } from '@/core/utils/tasks-api'
+import TaskWorkDayPicker from '@/components/task-role/TaskWorkDayPicker.vue'
+import {
+  formatWorkYmdLabel,
+  parseWorkYmd,
+  taskCoversWorkYmd,
+  todayWorkYmd,
+} from '@/core/utils/work-day'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 
 const projectId = computed(() => Number(route.params.projectId))
+const workYmd = ref(parseWorkYmd(route.query.workDate) ?? todayWorkYmd())
 const projectName = ref('Project')
 const projectAddress = ref('')
 const tasks = ref<Task[]>([])
@@ -136,13 +149,19 @@ const loadError = ref('')
 const scopeFilter = ref<'mine' | 'all'>('mine')
 const statusBucket = ref<TaskRoleStatusBucket>('planned')
 
+const dayLabel = computed(() => formatWorkYmdLabel(workYmd.value))
+const projectsBackLink = computed(
+  () => `/tasks/projects?workDate=${encodeURIComponent(workYmd.value)}`,
+)
+
 const isForeman = computed(() =>
   isTaskRoleForeman(authStore.currentUser?.role_code, authStore.currentUser?.role_id),
 )
 
 const scopedTasks = computed(() => {
   const uid = resolveSessionUserId(authStore.currentUser)
-  let list = tasks.value
+  const day = workYmd.value
+  let list = tasks.value.filter((t) => taskCoversWorkYmd(t, day))
   if (isForeman.value && scopeFilter.value === 'all') {
     return list
   }
@@ -179,13 +198,20 @@ const visibleTasks = computed(() => {
 })
 
 const emptyBucketMessage = computed(() => {
-  if (statusBucket.value === 'active') return 'No tasks in progress.'
-  if (statusBucket.value === 'planned') return 'No planned tasks.'
-  return 'No closed tasks.'
+  if (scopedTasks.value.length === 0) {
+    return `No tasks cover ${dayLabel.value} on this site.`
+  }
+  if (statusBucket.value === 'active') return 'No tasks in progress for this day.'
+  if (statusBucket.value === 'planned') return 'No planned tasks for this day.'
+  return 'No closed tasks for this day.'
 })
 
 function taskSiteAddress(task: Task): string {
   return resolveTaskSiteAddress(task, { address: projectAddress.value })
+}
+
+function taskLink(taskId: number | string): string {
+  return `/tasks/projects/${projectId.value}/tasks/${taskId}?workDate=${encodeURIComponent(workYmd.value)}`
 }
 
 function formatTaskDates(task: Task): string {
@@ -248,8 +274,22 @@ watch(projectId, () => {
 })
 
 watch(scopeFilter, () => {
-  if (visibleTasks.value.length === 0 && scopedTasks.value.length > 0) {
-    pickDefaultBucket()
-  }
+  pickDefaultBucket()
 })
+
+watch(workYmd, (day) => {
+  const parsed = parseWorkYmd(day) ?? todayWorkYmd()
+  if (String(route.query.workDate ?? '') !== parsed) {
+    void router.replace({ query: { ...route.query, workDate: parsed } })
+  }
+  pickDefaultBucket()
+})
+
+watch(
+  () => route.query.workDate,
+  (q) => {
+    const parsed = parseWorkYmd(q)
+    if (parsed && parsed !== workYmd.value) workYmd.value = parsed
+  },
+)
 </script>

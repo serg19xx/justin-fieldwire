@@ -78,6 +78,16 @@
         <span class="text-[10px] sm:text-xs mt-0.5 truncate w-full text-center px-0.5 leading-tight">Tasks</span>
       </RouterLink>
       <RouterLink
+        to="/tasks/timesheet"
+        class="flex flex-col items-center justify-center flex-1 py-2 min-w-0"
+        :class="isTimesheetTabActive ? 'text-orange-600 bg-orange-50 font-medium' : 'text-gray-500 hover:bg-gray-50'"
+      >
+        <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span class="text-[10px] sm:text-xs mt-0.5 truncate w-full text-center px-0.5 leading-tight">Hours</span>
+      </RouterLink>
+      <RouterLink
         to="/calendar"
         class="flex flex-col items-center justify-center flex-1 py-2 min-w-0"
         :class="$route.path === '/calendar' ? 'text-orange-600 bg-orange-50 font-medium' : 'text-gray-500 hover:bg-gray-50'"
@@ -115,6 +125,8 @@ const authStore = useAuthStore()
 const isTasksTabActive = computed(
   () => route.path === '/tasks/projects' || route.path.startsWith('/tasks/projects/'),
 )
+
+const isTimesheetTabActive = computed(() => route.path === '/tasks/timesheet')
 
 const displayRole = computed(() => {
   const u = authStore.currentUser

@@ -98,6 +98,10 @@ const router = createRouter({
       component: () => import('../pages/task-role/TaskScheduleWeek.vue'),
     },
     {
+      path: '/tasks/timesheet',
+      component: () => import('../pages/task-role/TaskWorkTimesheet.vue'),
+    },
+    {
       path: '/tasks/schedule/task/:projectId/:taskId/chat',
       component: () => import('../pages/task-role/TaskScheduleSlotChat.vue'),
     },

@@ -8,6 +8,8 @@
       </p>
     </header>
 
+    <TaskWorkDayPicker v-model="workYmd" class="mb-4" :disabled="isLoading" />
+
     <div
       v-if="loadError"
       class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
@@ -26,7 +28,7 @@
     </div>
 
     <div v-else-if="sortedSlots.length === 0" class="rounded-xl border border-gray-200 bg-white p-4 text-sm text-gray-500">
-      No published assignments found.
+      No published assignments for this day.
     </div>
 
     <ul v-else class="space-y-2">
@@ -115,7 +117,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   checkInMyScheduleEntry,
   fetchMySchedule,
@@ -123,7 +126,8 @@ import {
   type ScheduleDayPart,
 } from '@/core/utils/schedule-weeks-api'
 import { readDevicePosition } from '@/core/utils/device-geolocation'
-import { addDays, toYmd } from '@/core/utils/week-utils'
+import TaskWorkDayPicker from '@/components/task-role/TaskWorkDayPicker.vue'
+import { parseWorkYmd, todayWorkYmd } from '@/core/utils/work-day'
 
 interface DisplaySlot {
   entryKey: string
@@ -151,42 +155,28 @@ interface ScheduleListRow {
   chipClass: string
 }
 
+const route = useRoute()
+const router = useRouter()
+
 const isLoading = ref(false)
 const loadError = ref('')
 const actionError = ref('')
 const allEntries = ref<MyScheduleEntry[]>([])
 const checkInBusyId = ref(0)
-const rangeDaysPast = 180
-const rangeDaysFuture = 365
-const maxScheduleApiRangeDays = 60
+const workYmd = ref(parseWorkYmd(route.query.workDate) ?? todayWorkYmd())
 
-const rangeStart = computed(() => {
-  const d = new Date()
-  d.setDate(d.getDate() - rangeDaysPast)
-  return d
-})
-
-const rangeEnd = computed(() => {
-  const d = new Date()
-  d.setDate(d.getDate() + rangeDaysFuture)
-  return d
-})
-
-const todayYmd = computed(() => toYmd(new Date()))
+const todayYmd = computed(() => todayWorkYmd())
 
 function isPastDay(ymd: string): boolean {
   return ymd < todayYmd.value
 }
 
 const sortedSlots = computed((): DisplaySlot[] => {
+  const day = workYmd.value
   const partRank: Record<ScheduleDayPart, number> = { am: 1, pm: 2, full: 3 }
   return [...allEntries.value]
-    .sort((a, b) => {
-      const da = String(a.work_date || '').slice(0, 10)
-      const db = String(b.work_date || '').slice(0, 10)
-      if (da !== db) return da.localeCompare(db)
-      return partRank[a.day_part] - partRank[b.day_part]
-    })
+    .filter((e) => String(e.work_date || '').slice(0, 10) === day)
+    .sort((a, b) => partRank[a.day_part] - partRank[b.day_part])
     .map((e) => {
       const ymd = String(e.work_date || '').slice(0, 10)
       const dt = /^\d{4}-\d{2}-\d{2}$/.test(ymd)
@@ -258,50 +248,20 @@ function formatCheckIn(at: string | null, distanceKm: number | null): string {
 }
 
 function slotLink(slot: DisplaySlot): { path: string; query?: Record<string, string> } {
-  if (slot.taskId > 0) {
-    return {
-      path: `/tasks/schedule/task/${slot.projectId}/${slot.taskId}`,
-      query: { workDate: slot.workYmd, dayPart: slot.dayPart },
-    }
+  // Day context always goes to project task list / site for that day (schedule is project-scoped).
+  return {
+    path: `/tasks/projects/${slot.projectId}`,
+    query: { workDate: slot.workYmd },
   }
-  return { path: `/tasks/projects/${slot.projectId}` }
-}
-
-function buildScheduleRequestRanges(fromDate: Date, toDate: Date): Array<{ from: string; to: string }> {
-  const ranges: Array<{ from: string; to: string }> = []
-  const cursor = new Date(fromDate)
-  while (cursor <= toDate) {
-    const chunkEnd = addDays(cursor, maxScheduleApiRangeDays - 1)
-    const boundedEnd = chunkEnd <= toDate ? chunkEnd : toDate
-    ranges.push({ from: toYmd(cursor), to: toYmd(boundedEnd) })
-    cursor.setDate(cursor.getDate() + maxScheduleApiRangeDays)
-  }
-  return ranges
-}
-
-async function fetchScheduleChunked(fromDate: Date, toDate: Date): Promise<MyScheduleEntry[]> {
-  const ranges = buildScheduleRequestRanges(fromDate, toDate)
-  const all: MyScheduleEntry[] = []
-  for (const r of ranges) {
-    const rows = await fetchMySchedule(r.from, r.to)
-    all.push(...rows)
-  }
-  const seen = new Set<string>()
-  const unique: MyScheduleEntry[] = []
-  for (const row of all) {
-    const key = `${row.id}_${row.project_id}_${row.task_id ?? 0}_${String(row.work_date).slice(0, 10)}_${row.day_part}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    unique.push(row)
-  }
-  return unique
 }
 
 async function fetchScheduleRange(): Promise<void> {
+  const day = parseWorkYmd(workYmd.value) ?? todayWorkYmd()
+  workYmd.value = day
   isLoading.value = true
   loadError.value = ''
   try {
-    allEntries.value = await fetchScheduleChunked(rangeStart.value, rangeEnd.value)
+    allEntries.value = await fetchMySchedule(day, day)
   } catch (e: unknown) {
     allEntries.value = []
     const err = e as { response?: { data?: { message?: string } } }
@@ -362,6 +322,22 @@ onMounted(() => {
   void fetchScheduleRange()
   document.addEventListener('visibilitychange', onVisibilityChange)
 })
+
+watch(workYmd, (day) => {
+  const parsed = parseWorkYmd(day) ?? todayWorkYmd()
+  if (String(route.query.workDate ?? '') !== parsed) {
+    void router.replace({ query: { ...route.query, workDate: parsed } })
+  }
+  void fetchScheduleRange()
+})
+
+watch(
+  () => route.query.workDate,
+  (q) => {
+    const parsed = parseWorkYmd(q)
+    if (parsed && parsed !== workYmd.value) workYmd.value = parsed
+  },
+)
 
 onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', onVisibilityChange)

@@ -904,6 +904,57 @@ export const tasksApi = {
     }
   },
 
+  /** Per-day actual Start/End on a task; optionally mirrors to project timesheet row. */
+  async checkInTaskDayWork(
+    projectId: number,
+    taskId: string,
+    workDateYmd: string,
+    phase: 'start' | 'end',
+    lat: number,
+    lng: number,
+    alsoSchedule = true,
+  ): Promise<{
+    day_work: TaskDayWorkRow
+    schedule_entry: Record<string, unknown> | null
+  }> {
+    const response = await api.post(
+      `/api/v1/projects/${projectId}/tasks/${taskId}/day-work/check-in`,
+      {
+        work_date: workDateYmd,
+        phase,
+        lat,
+        lng,
+        also_schedule: alsoSchedule,
+      },
+    )
+    const data = (response.data as { data?: unknown })?.data
+    if (data == null || typeof data !== 'object') {
+      throw new Error('Invalid day-work check-in response')
+    }
+    const raw = data as {
+      day_work?: unknown
+      schedule_entry?: Record<string, unknown> | null
+    }
+    const day = normalizeTaskDayWorkRow(raw.day_work)
+    if (!day) throw new Error('Invalid day_work in response')
+    return {
+      day_work: day,
+      schedule_entry: raw.schedule_entry ?? null,
+    }
+  },
+
+  async getTaskDayWork(
+    projectId: number,
+    taskId: string,
+    workDateYmd: string,
+  ): Promise<TaskDayWorkRow | null> {
+    const response = await api.get(`/api/v1/projects/${projectId}/tasks/${taskId}/day-work`, {
+      params: { work_date: workDateYmd },
+    })
+    const data = (response.data as { data?: { day_work?: unknown } })?.data
+    return normalizeTaskDayWorkRow(data?.day_work ?? null)
+  },
+
   // Update task status (PM only — use full update from project UI)
   async updateStatus(projectId: number, taskId: string, status: string): Promise<Task> {
     try {
@@ -1000,3 +1051,45 @@ export const tasksApi = {
     }
   },
 }
+
+export interface TaskDayWorkRow {
+  id: number
+  project_id: number
+  task_id: number
+  user_id: number
+  work_date: string
+  work_start_lat: number | null
+  work_start_lng: number | null
+  work_start_at: string | null
+  work_end_lat: number | null
+  work_end_lng: number | null
+  work_end_at: string | null
+}
+
+function normalizeTaskDayWorkRow(raw: unknown): TaskDayWorkRow | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const id = Number(r.id)
+  const taskId = Number(r.task_id)
+  if (!Number.isFinite(id) || id <= 0 || !Number.isFinite(taskId) || taskId <= 0) return null
+  const numOrNull = (v: unknown): number | null => {
+    if (v == null || v === '') return null
+    const n = Number(v)
+    return Number.isFinite(n) ? n : null
+  }
+  const strOrNull = (v: unknown): string | null => (typeof v === 'string' ? v : null)
+  return {
+    id,
+    project_id: Number(r.project_id) || 0,
+    task_id: taskId,
+    user_id: Number(r.user_id) || 0,
+    work_date: String(r.work_date ?? '').slice(0, 10),
+    work_start_lat: numOrNull(r.work_start_lat),
+    work_start_lng: numOrNull(r.work_start_lng),
+    work_start_at: strOrNull(r.work_start_at),
+    work_end_lat: numOrNull(r.work_end_lat),
+    work_end_lng: numOrNull(r.work_end_lng),
+    work_end_at: strOrNull(r.work_end_at),
+  }
+}
+
