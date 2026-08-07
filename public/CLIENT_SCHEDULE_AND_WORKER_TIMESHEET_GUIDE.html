@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FieldWire — Schedule &amp; worker timesheet (testing guide)</title>
+  <style>
+    :root { --text:#1a1a1a; --muted:#555; --border:#ccc; --bg-alt:#f7f7f7; --accent:#2563eb; --ok:#166534; --warn:#92400e; }
+    * { box-sizing:border-box; }
+    body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.55; color:var(--text); max-width:50rem; margin:0 auto; padding:1.25rem 1rem 3rem; font-size:15px; }
+    .howto-open { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:0.75rem 1rem; margin-bottom:1.5rem; font-size:14px; }
+    .howto-open strong { color:var(--accent); }
+    .howto-open code { font-size:12px; word-break:break-all; background:#fff; padding:0.1rem 0.35rem; border-radius:4px; border:1px solid #bfdbfe; }
+    .note { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:0.75rem 1rem; margin:1rem 0; }
+    .ok { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:0.75rem 1rem; margin:1rem 0; }
+    h1 { font-size:1.55rem; margin:0 0 0.5rem; line-height:1.25; }
+    .subtitle { color:var(--muted); margin:0 0 1.25rem; font-size:14px; }
+    h2 { font-size:1.15rem; margin:1.75rem 0 0.75rem; padding-bottom:0.25rem; border-bottom:2px solid var(--border); }
+    h3 { font-size:1rem; margin:1.25rem 0 0.5rem; }
+    p { margin:0.5rem 0; }
+    ul,ol { margin:0.5rem 0; padding-left:1.35rem; }
+    li { margin:0.35rem 0; }
+    hr { border:none; border-top:1px solid var(--border); margin:1.5rem 0; }
+    table { width:100%; border-collapse:collapse; margin:0.75rem 0 1rem; font-size:13px; }
+    th, td { border:1px solid var(--border); padding:0.45rem 0.55rem; text-align:left; vertical-align:top; }
+    th { background:var(--bg-alt); }
+    a { color:var(--accent); }
+    .day { background:var(--bg-alt); border-radius:8px; padding:0.85rem 1rem; margin:0.75rem 0; }
+    .day h3 { margin-top:0; }
+  </style>
+</head>
+<body>
+  <div class="howto-open">
+    <strong>How to open:</strong> this page is available at
+    <code id="self-url">…</code>
+    (no login required). Open it from the <strong>User guide</strong> link on Schedule / Hours pages, or share this URL.
+  </div>
+  <script>
+    (function(){ try { var el=document.getElementById('self-url'); if(el&&window.location&&window.location.origin) el.textContent=window.location.origin+'/CLIENT_SCHEDULE_AND_WORKER_TIMESHEET_GUIDE.html'; } catch(e){} })();
+  </script>
+
+  <h1>Schedule &amp; worker timesheet — testing guide</h1>
+  <p class="subtitle">
+    For the product owner / client. Plain language. Covers what was added recently:
+    manager Schedule (payroll timesheet), worker Start/End on tasks, and worker Hours (read-only timesheet).
+  </p>
+
+  <div class="note">
+    <strong>Plan length:</strong> test over <strong>2–3 real work days</strong>.
+    Start and End must be checked on different days in real time (same-day clock only).
+    A short interval (Start, then End an hour later) is enough — full 8-hour days are not required.
+  </div>
+
+  <hr />
+
+  <h2>1. Two apps — what each is for</h2>
+
+  <h3>A) Manager app (you / PM)</h3>
+  <p>
+    Desktop-style app after login as <strong>project manager</strong> or <strong>admin</strong>.
+  </p>
+  <ul>
+    <li><strong>Gantt / Tasks</strong> — the work plan (what to build, when, who is on the task).</li>
+    <li><strong>Schedule</strong> (menu: Planning → Schedule) — your <strong>payroll notebook</strong> for the day:
+      where the person goes (project + address), expected hours, optional KM.
+      You assign the project <strong>by hand</strong> for that day (from memory, notes, or a glance at Gantt).
+      This is <strong>not</strong> the same system as tasks.</li>
+  </ul>
+  <p>
+    <strong>Why separate?</strong> Pay days and job-site destinations are your decision for payroll.
+    The app does not invent that from Gantt automatically.
+  </p>
+
+  <h3>B) Worker app (field crew)</h3>
+  <p>
+    Mobile-first app after login as <strong>worker / foreman / contractor</strong> (task role).
+  </p>
+  <ul>
+    <li><strong>Tasks</strong> — today’s work from the plan (Gantt).</li>
+    <li><strong>Start work / End work</strong> on a task for <strong>today</strong> — records actual time with phone GPS near the jobsite (~200 m).</li>
+    <li><strong>Schedule</strong> — days you published for them (destination + expected hours); they can also clock there when a row exists.</li>
+    <li><strong>Hours</strong> (bottom tab) — monthly <strong>read-only</strong> timesheet built from tasks + their Start/End.
+      No manual project pick. Different from your Schedule notebook on purpose.</li>
+  </ul>
+
+  <div class="ok">
+    <strong>Remember:</strong> Manager Schedule ≠ Worker Hours.
+    Same idea (time + place), different purpose — so you are not looking at a duplicate of your own model.
+  </div>
+
+  <hr />
+
+  <h2>2. What to prepare (once, ~15 minutes)</h2>
+  <ol>
+    <li>Project with a real <strong>address</strong> saved (needed for GPS check).</li>
+    <li>Task on Gantt covering the next 2–3 days; worker assigned to the task.</li>
+    <li>In <strong>Schedule</strong>, for those days: assign that worker to that project; set Expected start/end if you use them.</li>
+    <li>Worker phone: allow <strong>location</strong>, open the worker app on site when testing Start/End.</li>
+  </ol>
+
+  <hr />
+
+  <h2>3. Multi-day test plan</h2>
+
+  <div class="day">
+    <h3>Day 1 — morning (on the jobsite)</h3>
+    <ol>
+      <li><strong>Worker:</strong> open the task for <strong>today</strong> → <strong>Start work</strong>.</li>
+      <li><strong>Expect:</strong> Start time is recorded (local time makes sense).</li>
+      <li><strong>You (PM):</strong> open Schedule for that person/day — if you had a row for that project+day, Actual start should appear.</li>
+      <li><strong>Worker:</strong> open <strong>Hours</strong> — today shows project, address, Start.</li>
+    </ol>
+    <p><strong>Why:</strong> proves real clock-in on site and that both your notebook and their Hours can see it.</p>
+    <p><strong>Negative test (optional, off site / at home):</strong> try Start → should be refused (“too far from the job site”).</p>
+  </div>
+
+  <div class="day">
+    <h3>Day 1 — evening (on the jobsite again)</h3>
+    <ol>
+      <li><strong>Worker:</strong> same task, <strong>today</strong> → <strong>End work</strong>.</li>
+      <li><strong>Expect:</strong> End time recorded; day duration looks right.</li>
+      <li><strong>You:</strong> Schedule shows Actual end (when a row exists).</li>
+      <li><strong>Worker Hours:</strong> Start and End for the day.</li>
+    </ol>
+    <p><strong>Why:</strong> start and end belong to the <strong>same calendar day</strong> and near the <strong>same place</strong>.</p>
+    <p><strong>Negative:</strong> End off site → refused. End without Start → refused. Other day in the day picker → Start/End buttons not available.</p>
+  </div>
+
+  <div class="day">
+    <h3>Day 2 — repeat a normal day</h3>
+    <p>Again: Start on site in the morning, End on site later.</p>
+    <ul>
+      <li><strong>Hours</strong> should show two days with different times.</li>
+      <li>Your <strong>Schedule</strong> still uses <strong>your</strong> project picks for payroll — even if that sometimes differs from Gantt (that is intentional in your model).</li>
+    </ul>
+    <p><strong>Why day 2:</strong> not a one-off demo — a daily habit.</p>
+  </div>
+
+  <div class="day">
+    <h3>Day 3 — short check / review</h3>
+    <ol>
+      <li>One more Start/End <em>or</em> only review.</li>
+      <li>Open worker <strong>Hours</strong> for the month: projects, addresses, total hours.</li>
+      <li>Open your <strong>Schedule</strong>: Expected vs Actual.</li>
+      <li>Try Start on <strong>yesterday</strong> → should not be allowed.</li>
+    </ol>
+    <p><strong>Why:</strong> no backdating past days with the clock buttons.</p>
+  </div>
+
+  <hr />
+
+  <h2>4. Success checklist</h2>
+  <table>
+    <thead>
+      <tr><th>Check</th><th>Expected result</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Start/End on site</td><td>Times saved; look like real local times</td></tr>
+      <tr><td>Start/End off site</td><td>Refused; nothing saved</td></tr>
+      <tr><td>Only today</td><td>Cannot clock another calendar day</td></tr>
+      <tr><td>Worker Hours</td><td>Read-only month view: project, address, actual hours</td></tr>
+      <tr><td>Manager Schedule</td><td>Manual destinations + Expected; Actual when row exists</td></tr>
+      <tr><td>Two worlds</td><td>Schedule is not auto-copied from Gantt; Hours is not your editable notebook</td></tr>
+    </tbody>
+  </table>
+
+  <hr />
+
+  <h2>5. Short “why” (for conversation, not for programmers)</h2>
+  <ul>
+    <li><strong>Your Schedule</strong> — notebook for pay: where they went that day by your decision, expected hours, phone Actuals.</li>
+    <li><strong>Tasks / Gantt</strong> — plan of the job.</li>
+    <li><strong>Worker Hours</strong> — automatic sheet from plan + their Start/End; they cannot edit it by hand.</li>
+    <li><strong>GPS</strong> — Start/End only near the project address (~200 m), so the punch is “on the site”, not from home.</li>
+  </ul>
+
+  <hr />
+  <p style="color:var(--muted);font-size:13px;">
+    FieldWire — Schedule &amp; worker timesheet testing guide. Share this URL with anyone who needs to run the 2–3 day check.
+  </p>
+</body>
+</html>

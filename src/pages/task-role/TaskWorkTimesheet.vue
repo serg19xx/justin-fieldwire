@@ -2,6 +2,12 @@
   <div class="px-4 py-4 max-w-lg mx-auto pb-8">
     <header class="mb-4">
       <h1 class="text-xl font-semibold text-gray-900">Timesheet</h1>
+      <p class="mt-1">
+        <PageUserGuideLink
+          href="/CLIENT_SCHEDULE_AND_WORKER_TIMESHEET_GUIDE.html"
+          label="Testing guide"
+        />
+      </p>
       <p class="text-sm text-gray-500 mt-1">
         Actual hours from your tasks (Gantt plan + day Start/End). Read-only — not the PM schedule
         notebook.
@@ -119,6 +125,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+import PageUserGuideLink from '@/components/PageUserGuideLink.vue'
 import {
   fetchMyWorkTimesheet,
   type WorkerTimesheetEntry,

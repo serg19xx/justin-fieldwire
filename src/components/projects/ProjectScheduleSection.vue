@@ -3,6 +3,12 @@
     <div class="mb-4 space-y-4">
       <div>
         <h2 class="text-lg font-semibold text-gray-900">Weekly job-site schedule</h2>
+        <p class="mt-1">
+          <PageUserGuideLink
+            href="/CLIENT_SCHEDULE_AND_WORKER_TIMESHEET_GUIDE.html"
+            label="Testing guide (Schedule &amp; worker Hours)"
+          />
+        </p>
         <p class="text-sm text-gray-500 mt-0.5">
           Choose <strong class="font-medium text-gray-700">one worker</strong> — the table lists
           <strong class="font-medium text-gray-700">seven days</strong> (Mon–Sun).
@@ -569,6 +575,7 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute, type RouteLocationRaw } from 'vue-router'
 import axios from 'axios'
+import PageUserGuideLink from '@/components/PageUserGuideLink.vue'
 import type { ProjectTeamMember } from '@/core/utils/project-api'
 import {
   fetchProjectScheduleWeek,

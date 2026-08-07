@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import PageUserGuideLink from '@/components/PageUserGuideLink.vue'
 import ProjectScheduleSection from '@/components/projects/ProjectScheduleSection.vue'
 import { useAuthStore } from '@/core/stores/auth'
 import { projectApi, type Project, type ProjectTeamMember } from '@/core/utils/project-api'
@@ -107,6 +108,12 @@ onMounted(async () => {
     <div class="border-b border-gray-200 bg-white">
       <div class="max-w-5xl mx-auto px-4 py-3">
         <h1 class="text-lg font-semibold text-gray-900">Schedule</h1>
+        <p class="mt-1">
+          <PageUserGuideLink
+            href="/CLIENT_SCHEDULE_AND_WORKER_TIMESHEET_GUIDE.html"
+            label="Testing guide (Schedule &amp; worker Hours)"
+          />
+        </p>
         <p class="text-sm text-gray-500">
           Timesheet: where each person goes that day (project / address), expected hours, trip KM when
           needed, and actual clock in/out from the phone. Separate from Gantt tasks.

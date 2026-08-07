@@ -36,6 +36,12 @@
       <!-- Day timesheet punch (schedule row for this project + day) -->
       <section class="mb-5 rounded-xl border border-blue-200 bg-blue-50/50 p-4 shadow-sm">
         <h2 class="text-sm font-semibold text-gray-900 mb-1">Work on {{ dayLabel }}</h2>
+        <p class="mb-2">
+          <PageUserGuideLink
+            href="/CLIENT_SCHEDULE_AND_WORKER_TIMESHEET_GUIDE.html"
+            label="Testing guide"
+          />
+        </p>
         <p class="text-xs text-gray-600 mb-3">
           Start / End record actual time for <strong class="font-medium text-gray-800">this task on this day</strong>
           and also write to the PM timesheet for the project day when a row exists.
@@ -240,6 +246,7 @@ import { readDevicePosition } from '@/core/utils/device-geolocation'
 import TaskSiteLocation from '@/components/task-role/TaskSiteLocation.vue'
 import TaskFieldWorkPanel from '@/components/task-role/TaskFieldWorkPanel.vue'
 import TaskWorkDayPicker from '@/components/task-role/TaskWorkDayPicker.vue'
+import PageUserGuideLink from '@/components/PageUserGuideLink.vue'
 import {
   formatWorkYmdLabel,
   parseWorkYmd,

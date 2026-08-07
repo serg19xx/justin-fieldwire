@@ -2,6 +2,12 @@
   <div class="px-4 py-4 max-w-3xl mx-auto pb-8">
     <header class="mb-4">
       <h1 class="text-xl font-semibold text-gray-900">Schedule</h1>
+      <p class="mt-1">
+        <PageUserGuideLink
+          href="/CLIENT_SCHEDULE_AND_WORKER_TIMESHEET_GUIDE.html"
+          label="Testing guide"
+        />
+      </p>
       <p class="text-sm text-gray-500 mt-0.5">
         Where you are going that day (project and address), expected hours, and clock in/out with
         your phone for actual time — day hours only, not a task.
@@ -119,6 +125,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import PageUserGuideLink from '@/components/PageUserGuideLink.vue'
 import {
   checkInMyScheduleEntry,
   fetchMySchedule,
