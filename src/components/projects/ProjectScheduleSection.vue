@@ -109,9 +109,8 @@
             and the future; days before today cannot be chosen in an editable draft.
           </template>
           <template v-else>
-            Month and custom ranges are <strong class="font-medium text-gray-700">read-only</strong>.
-            Switch to <strong class="font-medium text-gray-700">Week</strong> to edit drafts and publish.
-            Actual hours total at the bottom updates for the selected period.
+            Use Month / Custom to review days and the actual-hours total. To change destinations or reopen a
+            published plan, open <strong class="font-medium text-gray-700">Week</strong>.
           </template>
         </p>
       </div>
@@ -200,13 +199,16 @@
         >
         <div class="flex flex-col gap-1.5 mb-3">
           <div class="flex flex-wrap items-center gap-2">
-            <span
-              class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
-              :class="weekLifecycleBadgeClass"
-            >
-              {{ weekLifecycleStatusLabel }}
-            </span>
-            <span class="text-xs text-gray-500">{{ periodRangeLabel }}</span>
+            <template v-if="periodMode === 'week'">
+              <span
+                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                :class="weekLifecycleBadgeClass"
+              >
+                {{ weekLifecycleStatusLabel }}
+              </span>
+              <span class="text-xs text-gray-500">{{ periodRangeLabel }}</span>
+            </template>
+            <span v-else class="text-xs text-gray-500">{{ periodRangeLabel }}</span>
           </div>
           <p v-if="selectedWorkerScheduleSummary" class="text-xs text-gray-600 max-w-3xl leading-snug">
             {{ selectedWorkerScheduleSummary }}
@@ -230,6 +232,28 @@
             @click="onReopenPublishedWeekAsDraft"
           >
             Reopen week for editing
+          </button>
+        </div>
+
+        <div
+          v-else-if="showPeriodReadOnlyBanner"
+          class="mb-3 flex flex-col sm:flex-row sm:items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5"
+        >
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-medium text-slate-900">Month and Custom are review-only</p>
+            <p class="text-xs text-slate-700 mt-0.5">
+              Here you browse days and see the <strong class="font-medium text-slate-900">Actual hours</strong> total.
+              Drafts, Reopen, Save, and Publish work only in
+              <strong class="font-medium text-slate-900">Week</strong> (one calendar week at a time).
+            </p>
+          </div>
+          <button
+            type="button"
+            class="shrink-0 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-45"
+            :disabled="isFetchingWeek"
+            @click="goToWeekForEditing"
+          >
+            Edit in Week view
           </button>
         </div>
 
@@ -845,6 +869,12 @@ function setPeriodMode(mode: SchedulePeriodMode): void {
   void loadScheduleForCurrentPeriod()
 }
 
+/** From Month/Custom: jump to Week so PM can draft / reopen / publish. */
+function goToWeekForEditing(): void {
+  weekOffset.value = 0
+  setPeriodMode('week')
+}
+
 function shiftMonth(delta: number): void {
   const d = new Date(monthCursor.value.getFullYear(), monthCursor.value.getMonth() + delta, 1)
   monthCursor.value = d
@@ -1109,6 +1139,11 @@ const canReopenPublishedWeek = computed(
     scheduleViewSynced.value &&
     weekStillHasPlanableDays.value &&
     hasAnyWeekEntries.value,
+)
+
+/** Banner in Month/Custom: explain that Reopen/Save live only in Week. */
+const showPeriodReadOnlyBanner = computed(
+  () => props.canEdit && periodMode.value !== 'week' && showScheduleTable.value,
 )
 
 function slotPartsConflict(a: ScheduleDayPart, b: ScheduleDayPart): boolean {
