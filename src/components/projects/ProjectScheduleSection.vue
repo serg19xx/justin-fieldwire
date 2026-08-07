@@ -17,8 +17,7 @@
           <strong class="font-medium text-gray-700">expected</strong> start/finish; workers
           <strong class="font-medium text-gray-700">clock in/out</strong> on the phone for actual hours.
           KM only when travel applies. Tasks stay on Gantt / Jobsite work.
-          Use the <strong class="font-medium text-gray-700">clipboard</strong> icon for notes/documents and the
-          <strong class="font-medium text-gray-700">speech bubble</strong> for schedule messages.
+          Use <strong class="font-medium text-gray-700">Clear</strong> on a day to remove that assignment.
           The week bar reflects free / booked days using this draft plus
           <strong class="font-medium text-gray-700">published plans in other projects</strong> when available.
         </p>
@@ -207,11 +206,6 @@
                     <span title="Actual clock-out from phone">Act end</span>
                   </div>
                 </th>
-                <th class="px-2 py-2 text-center font-medium text-gray-700 w-[7.5rem]">
-                  <span class="sr-only">Actions</span>
-                  <span class="inline sm:hidden text-xs font-normal text-gray-500">⋯</span>
-                  <span class="hidden sm:inline text-xs font-normal text-gray-500">Plan / chat / clear</span>
-                </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -254,28 +248,49 @@
                 </td>
                 <td class="px-3 py-2 align-top">
                   <template v-if="slot.row">
-                    <select
-                      v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
-                      class="w-full min-w-[10rem] max-w-[16rem] rounded border border-gray-300 text-sm bg-white"
-                      :value="String(slot.row.project_id)"
-                      @change="onRowProjectChange(slot.row, $event)"
-                    >
-                      <option
-                        v-for="p in projectOptions"
-                        :key="p.id"
-                        :value="String(p.id)"
+                    <div class="flex items-start gap-1">
+                      <div class="min-w-0 flex-1">
+                        <select
+                          v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
+                          class="w-full min-w-[10rem] max-w-[16rem] rounded border border-gray-300 text-sm bg-white"
+                          :value="String(slot.row.project_id)"
+                          @change="onRowProjectChange(slot.row, $event)"
+                        >
+                          <option
+                            v-for="p in projectOptions"
+                            :key="p.id"
+                            :value="String(p.id)"
+                          >
+                            {{ p.name }}
+                          </option>
+                        </select>
+                        <span v-else class="text-sm text-gray-900">{{ projectNameById(slot.row.project_id) }}</span>
+                        <p
+                          v-if="projectAddressById(slot.row.project_id)"
+                          class="mt-1 text-[11px] text-gray-500 leading-snug max-w-[16rem] line-clamp-2"
+                          :title="projectAddressById(slot.row.project_id) || undefined"
+                        >
+                          {{ projectAddressById(slot.row.project_id) }}
+                        </p>
+                      </div>
+                      <button
+                        v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
+                        type="button"
+                        class="inline-flex shrink-0 items-center justify-center p-1.5 rounded-md transition-colors text-gray-600 hover:text-amber-700 hover:bg-amber-50"
+                        title="Clear this day"
+                        aria-label="Clear this day"
+                        @click="clearWeekDayRow(slot.row)"
                       >
-                        {{ p.name }}
-                      </option>
-                    </select>
-                    <span v-else class="text-sm text-gray-900">{{ projectNameById(slot.row.project_id) }}</span>
-                    <p
-                      v-if="projectAddressById(slot.row.project_id)"
-                      class="mt-1 text-[11px] text-gray-500 leading-snug max-w-[16rem] line-clamp-2"
-                      :title="projectAddressById(slot.row.project_id) || undefined"
-                    >
-                      {{ projectAddressById(slot.row.project_id) }}
-                    </p>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </div>
                   </template>
                   <span v-else class="text-gray-400">—</span>
                 </td>
@@ -363,88 +378,6 @@
                     </div>
                   </template>
                   <span v-else class="text-gray-400">—</span>
-                </td>
-                <td class="px-1 py-2 align-middle">
-                  <div v-if="slot.row" class="flex items-center justify-center gap-0.5 sm:gap-1">
-                    <RouterLink
-                      v-if="slotPlanLocation(slot.row)"
-                      :to="slotPlanLocation(slot.row)!"
-                      class="inline-flex items-center justify-center p-1.5 rounded-md transition-colors text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                      title="Assignment — instructions and documents"
-                      aria-label="Open assignment"
-                    >
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                        />
-                      </svg>
-                    </RouterLink>
-                    <span
-                      v-else
-                      class="inline-flex items-center justify-center p-1.5 rounded-md text-gray-300 cursor-not-allowed"
-                      title="Save the draft first to open assignment documents"
-                    >
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                        />
-                      </svg>
-                    </span>
-                    <RouterLink
-                      v-if="slotChatLocation(slot.row)"
-                      :to="slotChatLocation(slot.row)!"
-                      class="inline-flex items-center justify-center p-1.5 rounded-md transition-colors text-gray-600 hover:text-blue-600 hover:bg-blue-50"
-                      title="Chat for this slot"
-                      aria-label="Open slot chat"
-                    >
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                        />
-                      </svg>
-                    </RouterLink>
-                    <span
-                      v-else
-                      class="inline-flex items-center justify-center p-1.5 rounded-md text-gray-300 cursor-not-allowed"
-                      title="Save the draft first to open chat"
-                    >
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                        />
-                      </svg>
-                    </span>
-                    <button
-                      v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
-                      type="button"
-                      class="inline-flex items-center justify-center p-1.5 rounded-md transition-colors text-gray-600 hover:text-amber-700 hover:bg-amber-50"
-                      title="Clear this day"
-                      aria-label="Clear this day"
-                      @click="clearWeekDayRow(slot.row)"
-                    >
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M6 18L18 6M6 6l12 12"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                  <span v-else class="text-gray-300">—</span>
                 </td>
               </tr>
             </tbody>
@@ -573,7 +506,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
-import { useRoute, type RouteLocationRaw } from 'vue-router'
+import { useRoute } from 'vue-router'
 import axios from 'axios'
 import PageUserGuideLink from '@/components/PageUserGuideLink.vue'
 import type { ProjectTeamMember } from '@/core/utils/project-api'
@@ -966,41 +899,6 @@ const hasAnySlotConflict = computed(() =>
 function assignmentNoteLength(row: ScheduleWeekEntryRow): number {
   const s = row.assignment_note
   return typeof s === 'string' ? s.length : 0
-}
-
-function slotPlanLocation(row: PlannerScheduleRow): RouteLocationRaw | null {
-  const meta = weekMetaForProject(row.project_id)
-  if (row.id == null || meta == null) return null
-  const w = String(meta.week_start ?? '').trim()
-  if (w.length < 10) return null
-  if (weekStartMondayYmdFromIsoDate(w.slice(0, 10)) !== weekStartYmd.value) return null
-  return {
-    path: `/projects/${row.project_id}/detail/schedule-slot/${row.id}`,
-    query: { week_start: meta.week_start },
-  }
-}
-
-function slotChatLocation(row: PlannerScheduleRow): RouteLocationRaw | null {
-  if (slotPlanLocation(row) == null || row.id == null) return null
-  const meta = weekMetaForProject(row.project_id)
-  if (meta == null) return null
-  const ymd =
-    typeof row.work_date === 'string' && row.work_date.length >= 10
-      ? row.work_date.slice(0, 10)
-      : String(row.work_date ?? '')
-  const dp = String(row.day_part ?? 'full').toLowerCase()
-  const slotPart = dp === 'pm' || dp === 'am' ? dp : 'full'
-  return {
-    path: `/projects/${row.project_id}/detail/schedule-messages`,
-    query: {
-      week_start: meta.week_start,
-      entryId: String(row.id),
-      slotWorker: String(row.user_id),
-      slotTask: row.task_id != null && row.task_id > 0 ? String(row.task_id) : '0',
-      slotDate: ymd,
-      slotPart,
-    },
-  }
 }
 
 const hasAnyAssignmentNoteTooLong = computed(() =>
