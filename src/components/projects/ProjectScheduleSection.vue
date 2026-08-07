@@ -1,29 +1,45 @@
 <template>
   <div class="p-4 md:p-6 max-w-5xl mx-auto w-full min-w-0">
-    <div class="mb-4 space-y-4">
-      <div>
-        <h2 class="text-lg font-semibold text-gray-900">Weekly job-site schedule</h2>
-        <p class="mt-1">
-          <PageUserGuideLink
-            href="/CLIENT_SCHEDULE_AND_WORKER_TIMESHEET_GUIDE.html"
-            label="Testing guide (Schedule &amp; worker Hours)"
-          />
-        </p>
-        <p class="text-sm text-gray-500 mt-0.5">
-          Choose <strong class="font-medium text-gray-700">one worker</strong> — the table lists
-          <strong class="font-medium text-gray-700">seven days</strong> (Mon–Sun).
-          Each day is a <strong class="font-medium text-gray-700">jobsite destination</strong>
-          (project / place) — not a task assignment. Set
-          <strong class="font-medium text-gray-700">expected</strong> start/finish; workers
-          <strong class="font-medium text-gray-700">clock in/out</strong> on the phone for actual hours.
-          KM only when travel applies. Tasks stay on Gantt / Jobsite work.
-          Use <strong class="font-medium text-gray-700">Clear</strong> on a day to remove that assignment.
-          The week bar reflects free / booked days using this draft plus
-          <strong class="font-medium text-gray-700">published plans in other projects</strong> when available.
-        </p>
-      </div>
+    <div class="mb-4 space-y-3">
       <div class="flex flex-col gap-2">
-        <div class="flex flex-wrap items-center gap-2">
+        <div
+          class="flex flex-wrap gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 w-fit"
+          role="tablist"
+          aria-label="Schedule period"
+        >
+          <button
+            type="button"
+            role="tab"
+            class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors"
+            :class="periodMode === 'week' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+            :aria-selected="periodMode === 'week'"
+            @click="setPeriodMode('week')"
+          >
+            Week
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors"
+            :class="periodMode === 'month' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+            :aria-selected="periodMode === 'month'"
+            @click="setPeriodMode('month')"
+          >
+            Month
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="px-3 py-1.5 text-xs font-medium rounded-md transition-colors"
+            :class="periodMode === 'custom' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-600 hover:text-gray-900'"
+            :aria-selected="periodMode === 'custom'"
+            @click="setPeriodMode('custom')"
+          >
+            Custom
+          </button>
+        </div>
+
+        <div v-if="periodMode === 'week'" class="flex flex-wrap items-center gap-2">
           <button
             type="button"
             class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
@@ -43,9 +59,60 @@
             Next week →
           </button>
         </div>
+
+        <div v-else-if="periodMode === 'month'" class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm disabled:opacity-50"
+            :disabled="isFetchingWeek"
+            @click="shiftMonth(-1)"
+          >
+            ← Prev month
+          </button>
+          <span class="text-sm font-medium text-gray-900 min-w-0">{{ monthRangeLabel }}</span>
+          <button
+            type="button"
+            class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm disabled:opacity-50"
+            :disabled="isFetchingWeek"
+            @click="shiftMonth(1)"
+          >
+            Next month →
+          </button>
+        </div>
+
+        <div v-else class="flex flex-wrap items-end gap-3">
+          <label class="flex flex-col gap-1 text-xs font-medium text-gray-700">
+            From
+            <input
+              v-model="customFromYmd"
+              type="date"
+              class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-normal text-gray-900"
+              :disabled="isFetchingWeek"
+            />
+          </label>
+          <label class="flex flex-col gap-1 text-xs font-medium text-gray-700">
+            To
+            <input
+              v-model="customToYmd"
+              type="date"
+              class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-normal text-gray-900"
+              :disabled="isFetchingWeek"
+            />
+          </label>
+          <p v-if="customRangeError" class="text-xs text-red-700 max-w-xs">{{ customRangeError }}</p>
+          <p v-else class="text-xs text-gray-500">{{ periodRangeLabel }}</p>
+        </div>
+
         <p class="text-xs text-gray-500 max-w-xl">
-          You can open past weeks to review published history. Planning and drafts are only for this week
-          and the future; days before today cannot be chosen in an editable draft.
+          <template v-if="periodMode === 'week'">
+            You can open past weeks to review published history. Planning and drafts are only for this week
+            and the future; days before today cannot be chosen in an editable draft.
+          </template>
+          <template v-else>
+            Month and custom ranges are <strong class="font-medium text-gray-700">read-only</strong>.
+            Switch to <strong class="font-medium text-gray-700">Week</strong> to edit drafts and publish.
+            Actual hours total at the bottom updates for the selected period.
+          </template>
         </p>
       </div>
     </div>
@@ -66,25 +133,48 @@
     </div>
 
     <template v-else>
-      <div v-if="!weekMeta" class="rounded-xl border border-gray-200 bg-white p-6 text-center">
-        <p class="text-sm text-gray-600 mb-4">
-          {{ isViewingPastWeek ? 'No schedule data for this week.' : 'No schedule draft for this week yet.' }}
-        </p>
-        <button
-          v-if="canEdit && !isViewingPastWeek"
-          type="button"
-          class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-          :disabled="isSaving || isFetchingWeek"
-          @click="onCreateDraft"
-        >
-          Create draft week
-        </button>
-        <p v-else-if="canEdit && isViewingPastWeek" class="text-xs text-gray-500">
-          Past weeks cannot be created or edited here.
-        </p>
-        <p v-else-if="!canEdit && !isViewingPastWeek" class="text-xs text-gray-500">
-          Only project managers can create the schedule.
-        </p>
+      <div v-if="!showScheduleTable" class="rounded-xl border border-gray-200 bg-white p-6 text-center">
+        <template v-if="metaError">
+          <p class="text-sm text-gray-600 mb-4">
+            Schedule did not load. Fix the issue above, then retry.
+          </p>
+          <button
+            type="button"
+            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            :disabled="isFetchingWeek"
+            @click="onReloadWeekFromServer"
+          >
+            Retry load
+          </button>
+        </template>
+        <template v-else>
+          <p class="text-sm text-gray-600 mb-4">
+            <template v-if="periodMode === 'week'">
+              {{ isViewingPastWeek ? 'No schedule data for this week.' : 'No schedule draft for this week yet.' }}
+            </template>
+            <template v-else>
+              No schedule data for this period yet.
+            </template>
+          </p>
+          <button
+            v-if="canEdit && periodMode === 'week' && !isViewingPastWeek"
+            type="button"
+            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
+            :disabled="isSaving || isFetchingWeek"
+            @click="onCreateDraft"
+          >
+            Create draft week
+          </button>
+          <p v-else-if="canEdit && periodMode === 'week' && isViewingPastWeek" class="text-xs text-gray-500">
+            Past weeks cannot be created or edited here.
+          </p>
+          <p v-else-if="canEdit && periodMode !== 'week'" class="text-xs text-gray-500">
+            Switch to Week to create or edit a draft.
+          </p>
+          <p v-else-if="!canEdit && periodMode === 'week' && !isViewingPastWeek" class="text-xs text-gray-500">
+            Only project managers can create the schedule.
+          </p>
+        </template>
       </div>
 
       <div v-else class="relative">
@@ -99,7 +189,7 @@
               <div
                 class="animate-spin w-9 h-9 border-2 border-blue-500 border-t-transparent rounded-full"
               />
-              <span class="text-xs font-medium text-gray-600">Loading week…</span>
+              <span class="text-xs font-medium text-gray-600">Loading…</span>
             </div>
           </div>
         </Transition>
@@ -116,7 +206,7 @@
             >
               {{ weekLifecycleStatusLabel }}
             </span>
-            <span class="text-xs text-gray-500">Week starts {{ weekStartYmd }}</span>
+            <span class="text-xs text-gray-500">{{ periodRangeLabel }}</span>
           </div>
           <p v-if="selectedWorkerScheduleSummary" class="text-xs text-gray-600 max-w-3xl leading-snug">
             {{ selectedWorkerScheduleSummary }}
@@ -163,34 +253,6 @@
                       </select>
                     </label>
                   </div>
-                  <div
-                    v-if="selectedPlannerWorkerId > 0"
-                    class="mt-3 flex gap-1 w-full"
-                    title="Day availability for this worker (this draft + other projects if loaded)"
-                  >
-                    <div
-                      v-for="d in weekDayBadges"
-                      :key="d.ymd"
-                      class="flex-1 min-w-0 rounded-md border px-0.5 py-1.5 text-center text-[10px] sm:text-xs font-medium leading-tight"
-                      :class="d.badgeClass"
-                    >
-                      <div class="flex flex-col items-center gap-0.5 min-w-0">
-                        <span class="leading-tight truncate w-full">{{ d.weekdayShort }}</span>
-                        <span
-                          class="leading-tight text-[9px] sm:text-[10px] font-normal opacity-90 truncate w-full"
-                        >{{ d.dateShort }}</span>
-                        <span class="hidden sm:block text-[9px] opacity-80 leading-tight">{{ d.sub }}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <p v-if="showPlannerHint" class="mt-2 text-[11px] text-gray-500">
-                    Booked days use this worker’s
-                    <strong class="font-medium text-gray-600">published</strong> plans in
-                    <strong class="font-medium text-gray-600">other projects</strong> when the server returns them.
-                    <template v-if="!hasExternalOtherProjectSlots">
-                      No other-project overlap in this range, or the request failed (e.g. 403).
-                    </template>
-                  </p>
                 </th>
               </tr>
               <tr>
@@ -381,6 +443,20 @@
                 </td>
               </tr>
             </tbody>
+            <tfoot v-if="selectedPlannerWorkerId > 0 && weekTemplateView.length > 0">
+              <tr class="bg-gray-50 border-t border-gray-200">
+                <td colspan="4" class="px-3 py-3 text-sm text-gray-700">
+                  <span class="font-medium text-gray-900">Actual hours</span>
+                  <span class="text-gray-500"> (sum of Act end − Act start for days with both punches)</span>
+                </td>
+                <td class="px-3 py-3 text-right text-sm font-semibold text-gray-900 tabular-nums whitespace-nowrap">
+                  {{ formatHoursTotal(periodActualHoursTotal) }}
+                  <span class="font-normal text-gray-500 text-xs ml-1">
+                    · {{ periodActualDaysCounted }} day{{ periodActualDaysCounted === 1 ? '' : 's' }}
+                  </span>
+                </td>
+              </tr>
+            </tfoot>
           </table>
         </div>
         <p
@@ -391,7 +467,7 @@
         </p>
 
         <div v-if="selectedPlannerWorkerId <= 0" class="text-sm text-gray-500 mt-2">
-          Select a worker in the table header to see the seven-day template for that week.
+          Select a worker in the table header to see days for this period.
         </div>
 
         <div
@@ -508,7 +584,6 @@
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
-import PageUserGuideLink from '@/components/PageUserGuideLink.vue'
 import type { ProjectTeamMember } from '@/core/utils/project-api'
 import {
   fetchProjectScheduleWeek,
@@ -524,7 +599,7 @@ import {
   type MyScheduleEntry,
   ASSIGNMENT_NOTE_MAX_CHARS,
 } from '@/core/utils/schedule-weeks-api'
-import { addDays, startOfWeekMonday, toYmd, weekStartMondayYmdFromIsoDate } from '@/core/utils/week-utils'
+import { addDays, startOfWeekMonday, startOfMonth, endOfMonth, toYmd, weekStartMondayYmdFromIsoDate, eachYmdInRange, mondaysCoveringRange, parseYmdLocal, hoursBetweenTimestamps } from '@/core/utils/week-utils'
 
 /** Stable positive user id for schedule rows (avoids string/number mismatch vs worker select). */
 function scheduleUserId(raw: unknown): number {
@@ -627,8 +702,39 @@ function weekOffsetFromWeekStartQuery(raw: unknown): number {
 }
 
 const weekOffset = ref(weekOffsetFromWeekStartQuery(route.query.week_start))
+
+type SchedulePeriodMode = 'week' | 'month' | 'custom'
+const periodMode = ref<SchedulePeriodMode>('week')
+const monthCursor = ref(startOfMonth(new Date()))
+const todayStr = toYmd(new Date())
+const customFromYmd = ref(todayStr)
+const customToYmd = ref(todayStr)
+/** True after a successful month/custom load (even if there are zero rows). */
+const periodDataReady = ref(false)
+/** Monotonic token so overlapping loads cannot overwrite a newer result. */
+let scheduleLoadGen = 0
+
+const MAX_PERIOD_DAYS = 62
 /** True while GET schedule-weeks is in flight */
 const isFetchingWeek = ref(false)
+
+function scheduleLoadFailureMessage(statuses: Array<number | undefined>): string {
+  if (statuses.some((s) => s === 401)) {
+    return 'Could not load schedule (not authorized). Refresh the page or sign in again.'
+  }
+  if (statuses.some((s) => s === 403)) {
+    return 'Could not load schedule (no access to this project).'
+  }
+  if (statuses.some((s) => s === 404)) {
+    return 'Could not load schedule (project not found).'
+  }
+  return 'Could not load schedule (API unavailable or no access).'
+}
+
+function axiosStatus(err: unknown): number | undefined {
+  if (axios.isAxiosError(err)) return err.response?.status
+  return undefined
+}
 const isSaving = ref(false)
 const metaError = ref('')
 const bannerError = ref('')
@@ -683,6 +789,73 @@ const weekStartYmd = computed(() => toYmd(weekMonday.value))
 
 const weekEndYmd = computed(() => toYmd(addDays(weekMonday.value, 6)))
 
+const customRangeError = computed(() => {
+  if (periodMode.value !== 'custom') return ''
+  const from = customFromYmd.value
+  const to = customToYmd.value
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+    return 'Pick valid From and To dates.'
+  }
+  if (from > to) return 'From must be on or before To.'
+  const days = eachYmdInRange(from, to, MAX_PERIOD_DAYS + 1)
+  if (days.length > MAX_PERIOD_DAYS) {
+    return `Range is limited to ${MAX_PERIOD_DAYS} days.`
+  }
+  return ''
+})
+
+const viewFromYmd = computed(() => {
+  if (periodMode.value === 'week') return weekStartYmd.value
+  if (periodMode.value === 'month') return toYmd(startOfMonth(monthCursor.value))
+  return customFromYmd.value
+})
+
+const viewToYmd = computed(() => {
+  if (periodMode.value === 'week') return weekEndYmd.value
+  if (periodMode.value === 'month') return toYmd(endOfMonth(monthCursor.value))
+  return customToYmd.value
+})
+
+const showScheduleTable = computed(() => {
+  if (periodMode.value === 'week') return weekMeta.value != null
+  return periodDataReady.value
+})
+
+const monthRangeLabel = computed(() =>
+  monthCursor.value.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }),
+)
+
+const periodRangeLabel = computed(() => {
+  if (periodMode.value === 'week') return `Week ${weekStartYmd.value} – ${weekEndYmd.value}`
+  if (periodMode.value === 'month') return monthRangeLabel.value
+  return `${viewFromYmd.value} – ${viewToYmd.value}`
+})
+
+function setPeriodMode(mode: SchedulePeriodMode): void {
+  if (periodMode.value === mode) return
+  periodMode.value = mode
+  if (mode === 'month') {
+    monthCursor.value = startOfMonth(new Date())
+  }
+  if (mode === 'custom') {
+    const t = toYmd(new Date())
+    customFromYmd.value = t
+    customToYmd.value = t
+  }
+  void loadScheduleForCurrentPeriod()
+}
+
+function shiftMonth(delta: number): void {
+  const d = new Date(monthCursor.value.getFullYear(), monthCursor.value.getMonth() + delta, 1)
+  monthCursor.value = d
+}
+
+function formatHoursTotal(n: number): string {
+  if (!Number.isFinite(n) || n === 0) return '0 h'
+  const s = Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '')
+  return `${s} h`
+}
+
 /** GET response matches the week the user navigated to (toolbar / template dates). */
 const scheduleViewSynced = computed(() => {
   if (weekMeta.value == null) return false
@@ -717,12 +890,6 @@ function isPastDayRowBlockingSave(r: ScheduleWeekEntryRow): boolean {
   return scheduleUserId(r.user_id) > 0
 }
 
-const showPlannerHint = computed(() => selectedPlannerWorkerId.value > 0)
-
-const hasExternalOtherProjectSlots = computed(() =>
-  externalBusyEntries.value.some((e) => !managedProjectIdSet.value.has(e.project_id)),
-)
-
 const weekRangeLabel = computed(() => {
   const end = addDays(weekMonday.value, 6)
   const a = weekMonday.value.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -731,14 +898,18 @@ const weekRangeLabel = computed(() => {
 })
 
 const dayChoices = computed(() => {
-  const out: { ymd: string; label: string; weekdayShort: string; dateShort: string }[] = []
-  for (let i = 0; i < 7; i++) {
-    const d = addDays(weekMonday.value, i)
+  const ymds =
+    periodMode.value === 'week'
+      ? eachYmdInRange(weekStartYmd.value, weekEndYmd.value, 7)
+      : customRangeError.value
+        ? []
+        : eachYmdInRange(viewFromYmd.value, viewToYmd.value, MAX_PERIOD_DAYS)
+  const out: { ymd: string; label: string }[] = []
+  for (const ymd of ymds) {
+    const d = parseYmdLocal(ymd)
     out.push({
-      ymd: toYmd(d),
+      ymd,
       label: d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }),
-      weekdayShort: d.toLocaleDateString(undefined, { weekday: 'short' }),
-      dateShort: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
     })
   }
   return out
@@ -779,11 +950,13 @@ function hasEntriesForWorkerUserId(userId: number): boolean {
 
 /** Server lifecycle — draft if any project week is draft; else published if any; else empty */
 const weekLifecycleStatusLabel = computed(() => {
+  if (periodMode.value !== 'week') return 'Read-only'
   if (!weekMeta.value) return ''
   return isDraft.value ? 'Draft' : 'Published'
 })
 
 const weekLifecycleBadgeClass = computed(() => {
+  if (periodMode.value !== 'week') return 'bg-slate-100 text-slate-700'
   if (!weekMeta.value) return 'bg-gray-100 text-gray-700'
   return isDraft.value ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
 })
@@ -806,9 +979,13 @@ const workerSelectDisabled = computed(() => isDraft.value && !props.canEdit)
 /** Navigated before the current ISO week — browse historical schedules read-only */
 const isViewingPastWeek = computed(() => weekOffset.value < 0)
 
-/** Editable draft rows: PM role, draft status, and not a past calendar week */
+/** Editable draft rows: PM role, draft status, week mode only, and not a past calendar week */
 const isScheduleEditable = computed(
-  () => props.canEdit && isDraft.value && !isViewingPastWeek.value,
+  () =>
+    periodMode.value === 'week' &&
+    props.canEdit &&
+    isDraft.value &&
+    !isViewingPastWeek.value,
 )
 
 const hasRowsOnPastDays = computed(
@@ -892,6 +1069,23 @@ const weekTemplateView = computed((): WeekDaySlotVm[] => {
   return out
 })
 
+const periodActualHoursTotal = computed(() => {
+  let sum = 0
+  for (const slot of weekTemplateView.value) {
+    const h = hoursBetweenTimestamps(slot.row?.work_start_at, slot.row?.work_end_at)
+    if (h != null) sum += h
+  }
+  return Math.round(sum * 100) / 100
+})
+
+const periodActualDaysCounted = computed(() => {
+  let n = 0
+  for (const slot of weekTemplateView.value) {
+    if (hoursBetweenTimestamps(slot.row?.work_start_at, slot.row?.work_end_at) != null) n += 1
+  }
+  return n
+})
+
 const hasAnySlotConflict = computed(() =>
   allDraftRows.value.some((r) => r.user_id > 0 && hasWorkerSlotConflict(r)),
 )
@@ -907,6 +1101,7 @@ const hasAnyAssignmentNoteTooLong = computed(() =>
 
 const canReopenPublishedWeek = computed(
   () =>
+    periodMode.value === 'week' &&
     props.canEdit &&
     !isDraft.value &&
     weekMeta.value != null &&
@@ -915,28 +1110,6 @@ const canReopenPublishedWeek = computed(
     weekStillHasPlanableDays.value &&
     hasAnyWeekEntries.value,
 )
-
-const weekDayBadges = computed(() => {
-  const uid = scheduleUserId(selectedPlannerWorkerId.value)
-  if (uid <= 0) return []
-  return dayChoices.value.map((d) => {
-    const isPastDay = d.ymd < todayYmd.value
-    const level = isPastDay ? 'past' : dayAvailabilityLevel(uid, d.ymd)
-    let badgeClass = 'border-gray-200 bg-white text-gray-800'
-    let sub = ''
-    if (isPastDay) {
-      badgeClass = 'border-gray-200 bg-gray-100 text-gray-400 line-through decoration-gray-400'
-      sub = ' · past'
-    } else if (level === 'full' || level === 'partial') {
-      badgeClass = 'border-gray-300 bg-gray-200 text-gray-500'
-      sub = ' · booked'
-    } else {
-      badgeClass = 'border-emerald-200 bg-emerald-50 text-emerald-900'
-      sub = ' · free'
-    }
-    return { ymd: d.ymd, weekdayShort: d.weekdayShort, dateShort: d.dateShort, sub, badgeClass }
-  })
-})
 
 function slotPartsConflict(a: ScheduleDayPart, b: ScheduleDayPart): boolean {
   if (a === b) return true
@@ -971,13 +1144,6 @@ function isSlotTakenByOthers(
     }
   }
   return false
-}
-
-function dayAvailabilityLevel(userId: number, ymd: string): 'free' | 'partial' | 'full' {
-  if (ymd < todayYmd.value) return 'full'
-  const sentinel = { day_part: 'full' } as ScheduleWeekEntryRow
-  if (isSlotTakenByOthers(userId, ymd, 'full', sentinel)) return 'full'
-  return 'free'
 }
 
 function hasWorkerSlotConflict(row: ScheduleWeekEntryRow): boolean {
@@ -1189,19 +1355,22 @@ async function loadExternalScheduleForPlanner(): Promise<void> {
   const uid = scheduleUserId(selectedPlannerWorkerId.value)
   if (uid <= 0) return
   try {
-    externalBusyEntries.value = await fetchUserSchedule(uid, weekStartYmd.value, weekEndYmd.value)
+    externalBusyEntries.value = await fetchUserSchedule(uid, viewFromYmd.value, viewToYmd.value)
   } catch {
     externalBusyEntries.value = []
   }
 }
 
 async function loadWeek(): Promise<void> {
+  const gen = ++scheduleLoadGen
+  periodDataReady.value = false
   metaError.value = ''
   bannerError.value = ''
   isFetchingWeek.value = true
   try {
     const options = projectOptions.value
     if (options.length === 0) {
+      if (gen !== scheduleLoadGen) return
       weekByProjectId.value = {}
       weekMeta.value = null
       allDraftRows.value = []
@@ -1213,17 +1382,26 @@ async function loadWeek(): Promise<void> {
     const results = await mapPool(options, 6, async (p) => {
       try {
         const res = await fetchProjectScheduleWeek(p.id, weekStartYmd.value)
-        return { projectId: p.id, ...res, ok: true as const }
-      } catch {
-        return { projectId: p.id, week: null, entries: [] as ScheduleWeekEntryRow[], ok: false as const }
+        return { projectId: p.id, ...res, ok: true as const, status: 200 as number | undefined }
+      } catch (err) {
+        return {
+          projectId: p.id,
+          week: null,
+          entries: [] as ScheduleWeekEntryRow[],
+          ok: false as const,
+          status: axiosStatus(err),
+        }
       }
     })
+    if (gen !== scheduleLoadGen) return
 
     const nextMeta: Record<number, ScheduleWeekMeta | null> = {}
     const merged: PlannerScheduleRow[] = []
     let anyOk = false
+    const failStatuses: Array<number | undefined> = []
     for (const r of results) {
       anyOk = anyOk || r.ok
+      if (!r.ok) failStatuses.push(r.status)
       const week = mergeScheduleWeekMetaAfterWrite(r.week, null, weekStartYmd.value)
       nextMeta[r.projectId] = week
       if (week) merged.push(...mapEntries(r.entries, r.projectId))
@@ -1235,20 +1413,135 @@ async function loadWeek(): Promise<void> {
     reconcileAllRows()
     primePlannerWorkerFromRows()
     await nextTick()
+    if (gen !== scheduleLoadGen) return
     ensureWeekTemplateRowsForSelectedWorker()
     await loadExternalScheduleForPlanner()
+    if (gen !== scheduleLoadGen) return
     if (!anyOk && weekMeta.value == null) {
-      metaError.value = 'Could not load schedule (API unavailable or no access).'
+      metaError.value = scheduleLoadFailureMessage(failStatuses)
     }
-  } catch {
+  } catch (err) {
+    if (gen !== scheduleLoadGen) return
     weekByProjectId.value = {}
     weekMeta.value = null
     allDraftRows.value = []
     clearDirtyProjects()
-    metaError.value = 'Could not load schedule (API unavailable or no access).'
+    metaError.value = scheduleLoadFailureMessage([axiosStatus(err)])
   } finally {
-    isFetchingWeek.value = false
+    if (gen === scheduleLoadGen) isFetchingWeek.value = false
   }
+}
+
+/** Month / custom: load every ISO week that overlaps the range (read-only). */
+async function loadMultiWeekPeriod(): Promise<void> {
+  const gen = ++scheduleLoadGen
+  periodDataReady.value = false
+  metaError.value = ''
+  bannerError.value = ''
+  isFetchingWeek.value = true
+  try {
+    if (customRangeError.value) {
+      if (gen !== scheduleLoadGen) return
+      weekByProjectId.value = {}
+      weekMeta.value = null
+      allDraftRows.value = []
+      clearDirtyProjects()
+      return
+    }
+    const options = projectOptions.value
+    if (options.length === 0) {
+      if (gen !== scheduleLoadGen) return
+      weekByProjectId.value = {}
+      weekMeta.value = null
+      allDraftRows.value = []
+      clearDirtyProjects()
+      metaError.value = 'No projects available for scheduling.'
+      return
+    }
+
+    const mondays = mondaysCoveringRange(viewFromYmd.value, viewToYmd.value)
+    const jobs: { projectId: number; weekStart: string }[] = []
+    for (const mon of mondays) {
+      for (const p of options) {
+        jobs.push({ projectId: p.id, weekStart: mon })
+      }
+    }
+
+    const results = await mapPool(jobs, 6, async (job) => {
+      try {
+        const res = await fetchProjectScheduleWeek(job.projectId, job.weekStart)
+        return { ...job, ...res, ok: true as const, status: 200 as number | undefined }
+      } catch (err) {
+        return {
+          ...job,
+          week: null,
+          entries: [] as ScheduleWeekEntryRow[],
+          ok: false as const,
+          status: axiosStatus(err),
+        }
+      }
+    })
+    if (gen !== scheduleLoadGen) return
+
+    const fromYmd = viewFromYmd.value
+    const toYmdBound = viewToYmd.value
+    const nextMeta: Record<number, ScheduleWeekMeta | null> = {}
+    const merged: PlannerScheduleRow[] = []
+    let anyOk = false
+    let anyWeek = false
+    const failStatuses: Array<number | undefined> = []
+    for (const r of results) {
+      anyOk = anyOk || r.ok
+      if (!r.ok) failStatuses.push(r.status)
+      const week = mergeScheduleWeekMetaAfterWrite(r.week, null, r.weekStart)
+      if (week) {
+        anyWeek = true
+        // Keep latest non-null meta per project for badges (period view is read-only).
+        nextMeta[r.projectId] = week
+        for (const row of mapEntries(r.entries, r.projectId)) {
+          const d = sliceWorkYmd(row.work_date)
+          if (d >= fromYmd && d <= toYmdBound) merged.push(row)
+        }
+      } else if (!(r.projectId in nextMeta)) {
+        nextMeta[r.projectId] = null
+      }
+    }
+    weekByProjectId.value = nextMeta
+    const metas = Object.values(nextMeta).filter((w): w is ScheduleWeekMeta => w != null)
+    weekMeta.value = metas.find((w) => w.status === 'draft') ?? metas[0] ?? null
+    allDraftRows.value = merged
+    clearDirtyProjects()
+    reconcileAllRows()
+    primePlannerWorkerFromRows()
+    await nextTick()
+    if (gen !== scheduleLoadGen) return
+    periodDataReady.value = true
+    await loadExternalScheduleForPlanner()
+    if (gen !== scheduleLoadGen) return
+    if (!anyOk && !anyWeek) {
+      metaError.value = scheduleLoadFailureMessage(failStatuses)
+      periodDataReady.value = false
+    }
+  } catch (err) {
+    if (gen !== scheduleLoadGen) return
+    weekByProjectId.value = {}
+    weekMeta.value = null
+    allDraftRows.value = []
+    clearDirtyProjects()
+    periodDataReady.value = false
+    metaError.value = scheduleLoadFailureMessage([axiosStatus(err)])
+  } finally {
+    if (gen === scheduleLoadGen) isFetchingWeek.value = false
+  }
+}
+
+async function loadScheduleForCurrentPeriod(): Promise<void> {
+  if (periodMode.value === 'week') {
+    periodDataReady.value = false
+    await loadWeek()
+    return
+  }
+  await loadMultiWeekPeriod()
 }
 
 function onRemovePastDayRows(): void {
@@ -1269,7 +1562,7 @@ function onRemovePastDayRows(): void {
 
 async function onReloadWeekFromServer(): Promise<void> {
   bannerError.value = ''
-  await loadWeek()
+  await loadScheduleForCurrentPeriod()
 }
 
 async function ensureDraftMetaForProject(projectId: number): Promise<ScheduleWeekMeta> {
@@ -1523,38 +1816,47 @@ async function onPublish(): Promise<void> {
 watch(
   () => [fallbackProjectId.value, projectOptions.value.map((p) => p.id).join(',')] as const,
   () => {
-    void loadWeek()
+    void loadScheduleForCurrentPeriod()
   },
 )
 
 watch(weekOffset, () => {
-  loadWeek()
+  if (periodMode.value === 'week') void loadScheduleForCurrentPeriod()
+})
+
+watch(monthCursor, () => {
+  if (periodMode.value === 'month') void loadScheduleForCurrentPeriod()
+})
+
+watch([customFromYmd, customToYmd], () => {
+  if (periodMode.value === 'custom') void loadScheduleForCurrentPeriod()
 })
 
 watch(
   () => route.query.week_start,
   (w) => {
+    if (periodMode.value !== 'week') return
     const next = weekOffsetFromWeekStartQuery(w)
     if (next !== weekOffset.value) weekOffset.value = next
-    else void loadWeek()
+    else void loadScheduleForCurrentPeriod()
   },
 )
 
-watch([selectedPlannerWorkerId, weekStartYmd], () => {
+watch([selectedPlannerWorkerId, viewFromYmd, viewToYmd], () => {
   void loadExternalScheduleForPlanner()
 })
 
 watch(
-  () => [selectedPlannerWorkerId.value, isScheduleEditable.value, weekStartYmd.value],
+  () => [selectedPlannerWorkerId.value, isScheduleEditable.value, weekStartYmd.value, periodMode.value],
   () => {
     void nextTick(() => {
-      ensureWeekTemplateRowsForSelectedWorker()
+      if (periodMode.value === 'week') ensureWeekTemplateRowsForSelectedWorker()
     })
   },
 )
 
 onMounted(() => {
-  loadWeek()
+  void loadScheduleForCurrentPeriod()
 })
 </script>
 

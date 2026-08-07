@@ -114,13 +114,9 @@ onMounted(async () => {
             label="Testing guide (Schedule &amp; worker Hours)"
           />
         </p>
-        <p class="text-sm text-gray-500">
-          Timesheet: where each person goes that day (project / address), expected hours, trip KM when
-          needed, and actual clock in/out from the phone. Separate from Gantt tasks.
-        </p>
-        <p class="mt-2 text-sm text-gray-600">
-          Pick the jobsite destination per day. Expected start/finish are planned; Start/End on the
-          phone fill actual times.
+        <p class="mt-2 text-sm text-gray-500">
+          Assign each worker a jobsite destination per day (Week, Month, or Custom period).
+          Expected times are planned here; Act start/end come from phone clock-in. Footer sums actual hours.
         </p>
         <p class="mt-2 text-sm">
           <RouterLink
@@ -130,7 +126,7 @@ onMounted(async () => {
             Open work plan from tasks (read-only)
           </RouterLink>
           <span class="text-gray-500">
-            — Excel-like view of task detail for reporting. Day timesheet stays on Schedule.
+            — Excel-like task view for reporting. Day timesheet stays here.
           </span>
         </p>
       </div>
