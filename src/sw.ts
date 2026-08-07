@@ -1,22 +1,44 @@
 /// <reference lib="webworker" />
 import { clientsClaim } from 'workbox-core'
-import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
+import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
+import { NetworkFirst } from 'workbox-strategies'
+import { ExpirationPlugin } from 'workbox-expiration'
 
 declare let self: ServiceWorkerGlobalScope
 
-precacheAndRoute(self.__WB_MANIFEST)
-cleanupOutdatedCaches()
+// Required with injectManifest + autoUpdate: activate this SW immediately after install.
+self.skipWaiting()
 clientsClaim()
 
+precacheAndRoute(self.__WB_MANIFEST)
+cleanupOutdatedCaches()
+
+/**
+ * SPA navigations must prefer the network after deploy.
+ * Cache-only (createHandlerBoundToURL) kept serving a stale index.html after FTP
+ * uploads — hard refresh showed the new app, normal reload showed the old one.
+ */
 try {
   registerRoute(
-    new NavigationRoute(createHandlerBoundToURL('/index.html'), {
-      denylist: [/^\/api\//],
-    }),
+    new NavigationRoute(
+      new NetworkFirst({
+        cacheName: 'fw-spa-navigations',
+        networkTimeoutSeconds: 4,
+        plugins: [
+          new ExpirationPlugin({
+            maxEntries: 16,
+            maxAgeSeconds: 24 * 60 * 60,
+          }),
+        ],
+      }),
+      {
+        denylist: [/^\/api\//],
+      },
+    ),
   )
 } catch {
-  // createHandlerBoundToURL may fail outside a full Vite PWA build
+  // NavigationRoute may fail outside a full Vite PWA build
 }
 
 interface PushPayload {

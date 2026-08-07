@@ -7,6 +7,7 @@ import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './core/stores/auth'
 
+/** After deploy, new SW activates immediately (see skipWaiting in sw.ts). */
 registerSW({ immediate: true })
 
 async function bootstrap() {

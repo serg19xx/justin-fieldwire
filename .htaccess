@@ -2,6 +2,15 @@
 RewriteEngine On
 RewriteBase /
 
+# Do not cache the service worker script — browsers must always check for a new SW after deploy.
+<Files "sw.js">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </IfModule>
+</Files>
+
 # Do not cache the SPA shell — after deploy, index.html must load fresh so script
 # hashes match files on disk (otherwise lazy routes load stale/missing chunks).
 <Files "index.html">
