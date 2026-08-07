@@ -125,6 +125,10 @@ const router = createRouter({
       component: () => import('@/pages/schedule/GlobalSchedule.vue'),
     },
     {
+      path: '/schedule/work-plan',
+      component: () => import('@/pages/schedule/TaskWorkPlanSheet.vue'),
+    },
+    {
       path: '/clients',
       redirect: '/clients/pharma',
     },

@@ -6,9 +6,11 @@
         <p class="text-sm text-gray-500 mt-0.5">
           Choose <strong class="font-medium text-gray-700">one worker</strong> — the table lists
           <strong class="font-medium text-gray-700">seven days</strong> (Mon–Sun).
-          Each assignment is a <strong class="font-medium text-gray-700">full working day</strong> on one project
-          (or leave the day empty).
-          Tasks / Jobsite work stays separate — not linked here.
+          Each day is a <strong class="font-medium text-gray-700">jobsite destination</strong>
+          (project / place) — not a task assignment. Set
+          <strong class="font-medium text-gray-700">expected</strong> start/finish; workers
+          <strong class="font-medium text-gray-700">clock in/out</strong> on the phone for actual hours.
+          KM only when travel applies. Tasks stay on Gantt / Jobsite work.
           Use the <strong class="font-medium text-gray-700">clipboard</strong> icon for notes/documents and the
           <strong class="font-medium text-gray-700">speech bubble</strong> for schedule messages.
           The week bar reflects free / booked days using this draft plus
@@ -188,10 +190,16 @@
               </tr>
               <tr>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Day</th>
-                <th class="px-3 py-2 text-left font-medium text-gray-700">Projects</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-700">Destination</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Note</th>
-                <th class="px-3 py-2 text-left font-medium text-gray-700 min-w-[9rem]">
-                  Km / Start / End
+                <th class="px-2 py-2 text-left font-medium text-gray-700 min-w-[16rem]">
+                  <div class="grid grid-cols-5 gap-1 text-[9px] uppercase tracking-wide text-gray-500 font-medium">
+                    <span>Km</span>
+                    <span title="Expected start">Exp start</span>
+                    <span title="Expected finish">Exp end</span>
+                    <span title="Actual clock-in from phone">Act start</span>
+                    <span title="Actual clock-out from phone">Act end</span>
+                  </div>
                 </th>
                 <th class="px-2 py-2 text-center font-medium text-gray-700 w-[7.5rem]">
                   <span class="sr-only">Actions</span>
@@ -229,7 +237,7 @@
                     class="mt-1 text-sm font-medium text-blue-700 hover:text-blue-900"
                     @click="assignWeekDay(slot.ymd)"
                   >
-                    + Assign
+                    + Set day
                   </button>
                   <span
                     v-else-if="!slot.row"
@@ -255,6 +263,13 @@
                       </option>
                     </select>
                     <span v-else class="text-sm text-gray-900">{{ projectNameById(slot.row.project_id) }}</span>
+                    <p
+                      v-if="projectAddressById(slot.row.project_id)"
+                      class="mt-1 text-[11px] text-gray-500 leading-snug max-w-[16rem] line-clamp-2"
+                      :title="projectAddressById(slot.row.project_id) || undefined"
+                    >
+                      {{ projectAddressById(slot.row.project_id) }}
+                    </p>
                   </template>
                   <span v-else class="text-gray-400">—</span>
                 </td>
@@ -279,34 +294,66 @@
                   </template>
                   <span v-else class="text-gray-400">—</span>
                 </td>
-                <td class="px-3 py-2 align-top">
+                <td class="px-2 py-2 align-top">
                   <template v-if="slot.row">
-                    <div class="flex flex-col gap-1.5 min-w-[8rem]">
-                      <label class="block">
-                        <span class="text-[10px] uppercase tracking-wide text-gray-500">Km</span>
+                    <div class="grid grid-cols-5 gap-1 items-center min-w-[16rem]">
+                      <div>
                         <input
                           v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
-                          v-model="slot.row.distance_km"
+                          :value="slot.row.distance_km"
                           type="text"
-                          class="mt-0.5 w-full rounded border border-gray-300 text-sm px-2 py-1"
+                          inputmode="numeric"
+                          pattern="[0-9]*"
+                          class="w-full max-w-[3.25rem] rounded border border-gray-300 text-sm px-1.5 py-1 tabular-nums"
                           :maxlength="distanceKmMaxChars"
-                          placeholder="e.g. 12"
-                          @input="markProjectDirty(slot.row.project_id)"
+                          placeholder="—"
+                          title="Trip km when travel applies"
+                          @input="onDistanceKmInput(slot.row, $event)"
                         />
-                        <span v-else class="mt-0.5 block text-sm text-gray-800">
+                        <span v-else class="block text-sm text-gray-800 tabular-nums">
                           {{ slot.row.distance_km?.trim() || '—' }}
                         </span>
-                      </label>
-                      <div class="text-[11px] leading-snug text-gray-600">
-                        <div>
-                          <span class="font-medium text-gray-700">Start:</span>
-                          {{ formatCheckInChip(slot.row.work_start_at, slot.row.work_start_distance_km) }}
-                        </div>
-                        <div>
-                          <span class="font-medium text-gray-700">End:</span>
-                          {{ formatCheckInChip(slot.row.work_end_at, slot.row.work_end_distance_km) }}
-                        </div>
                       </div>
+                      <div>
+                        <input
+                          v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
+                          type="time"
+                          class="w-full min-w-0 rounded border border-gray-300 text-[11px] px-0.5 py-1 tabular-nums"
+                          :value="slot.row.expected_start_time || ''"
+                          title="Expected start"
+                          @input="onExpectedTimeInput(slot.row, 'expected_start_time', $event)"
+                        />
+                        <span v-else class="block text-sm tabular-nums text-gray-800">
+                          {{ slot.row.expected_start_time || '—' }}
+                        </span>
+                      </div>
+                      <div>
+                        <input
+                          v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
+                          type="time"
+                          class="w-full min-w-0 rounded border border-gray-300 text-[11px] px-0.5 py-1 tabular-nums"
+                          :value="slot.row.expected_end_time || ''"
+                          title="Expected finish"
+                          @input="onExpectedTimeInput(slot.row, 'expected_end_time', $event)"
+                        />
+                        <span v-else class="block text-sm tabular-nums text-gray-800">
+                          {{ slot.row.expected_end_time || '—' }}
+                        </span>
+                      </div>
+                      <span
+                        class="text-sm tabular-nums"
+                        :class="slot.row.work_start_at ? 'text-gray-800' : 'text-gray-400'"
+                        title="Actual clock-in from phone"
+                      >
+                        {{ formatCheckInTime(slot.row.work_start_at) }}
+                      </span>
+                      <span
+                        class="text-sm tabular-nums"
+                        :class="slot.row.work_end_at ? 'text-gray-800' : 'text-gray-400'"
+                        title="Actual clock-out from phone"
+                      >
+                        {{ formatCheckInTime(slot.row.work_end_at) }}
+                      </span>
                     </div>
                   </template>
                   <span v-else class="text-gray-400">—</span>
@@ -536,7 +583,6 @@ import {
   type ScheduleDayPart,
   type MyScheduleEntry,
   ASSIGNMENT_NOTE_MAX_CHARS,
-  DISTANCE_KM_MAX_CHARS,
 } from '@/core/utils/schedule-weeks-api'
 import { addDays, startOfWeekMonday, toYmd, weekStartMondayYmdFromIsoDate } from '@/core/utils/week-utils'
 
@@ -559,6 +605,7 @@ interface PlannerScheduleRow extends ScheduleWeekEntryRow {
 interface ScheduleProjectOption {
   id: number
   name: string
+  address?: string
 }
 
 const props = withDefaults(
@@ -603,6 +650,12 @@ function projectNameById(projectId: number): string {
   const found = projectOptions.value.find((p) => p.id === projectId)
   if (found) return found.name
   return projectId > 0 ? `Project #${projectId}` : '—'
+}
+
+function projectAddressById(projectId: number): string {
+  const found = projectOptions.value.find((p) => p.id === projectId)
+  const addr = (found?.address || '').trim()
+  return addr
 }
 
 async function mapPool<T, R>(items: T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
@@ -676,7 +729,8 @@ function weekMetaForProject(projectId: number): ScheduleWeekMeta | null {
 }
 
 const assignmentNoteMaxChars = ASSIGNMENT_NOTE_MAX_CHARS
-const distanceKmMaxChars = DISTANCE_KM_MAX_CHARS
+/** Max digits for PM distance_km input (e.g. 12, 125). */
+const distanceKmMaxChars = 3
 
 const weekMonday = computed(() => {
   const base = new Date()
@@ -1039,6 +1093,8 @@ function makeTemplateRowForDay(uid: number, ymd: string): PlannerScheduleRow {
     day_part: 'full',
     assignment_note: '',
     distance_km: '',
+    expected_start_time: '',
+    expected_end_time: '',
     project_id: fallbackProjectId.value,
   }
 }
@@ -1163,27 +1219,48 @@ function getApiErrorMessage(err: unknown, fallback: string): string {
   return fallback
 }
 
-function formatCheckInChip(at: string | null | undefined, distanceKm: number | null | undefined): string {
-  if (!at) return '—'
+function onDistanceKmInput(row: PlannerScheduleRow, event: Event): void {
+  const el = event.target as HTMLInputElement
+  const digits = String(el.value ?? '')
+    .replace(/\D/g, '')
+    .slice(0, distanceKmMaxChars)
+  row.distance_km = digits
+  el.value = digits
+  markProjectDirty(row.project_id)
+}
+
+function onExpectedTimeInput(
+  row: PlannerScheduleRow,
+  field: 'expected_start_time' | 'expected_end_time',
+  event: Event,
+): void {
+  const el = event.target as HTMLInputElement
+  const v = String(el.value ?? '').trim()
+  row[field] = v.length > 0 ? v : ''
+  markProjectDirty(row.project_id)
+}
+
+/** Check-in timestamp as HH:mm (24h). Empty → placeholder. */
+function formatCheckInTime(at: string | null | undefined): string {
+  if (!at) return 'hh:mm'
   const d = new Date(at)
-  const time = Number.isNaN(d.getTime())
-    ? String(at)
-    : d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-  if (distanceKm != null && Number.isFinite(distanceKm)) {
-    return `${time} · ${distanceKm} km from site`
-  }
-  return time
+  if (Number.isNaN(d.getTime())) return 'hh:mm'
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${hh}:${mm}`
 }
 
 function mapEntries(list: ScheduleWeekEntryRow[], projectId: number): PlannerScheduleRow[] {
   return list.map((e) => ({
     user_id: scheduleUserId(e.user_id),
-    task_id: e.task_id != null && Number(e.task_id) > 0 ? Number(e.task_id) : null,
+    task_id: null,
     work_date: e.work_date,
     day_part: 'full',
     id: e.id,
     assignment_note: e.assignment_note == null ? '' : String(e.assignment_note),
-    distance_km: e.distance_km == null ? '' : String(e.distance_km),
+    distance_km: e.distance_km == null ? '' : String(e.distance_km).replace(/\D/g, '').slice(0, 3),
+    expected_start_time: e.expected_start_time ? String(e.expected_start_time) : '',
+    expected_end_time: e.expected_end_time ? String(e.expected_end_time) : '',
     work_start_lat: e.work_start_lat ?? null,
     work_start_lng: e.work_start_lng ?? null,
     work_start_at: e.work_start_at ?? null,

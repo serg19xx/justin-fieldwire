@@ -41,6 +41,10 @@ export interface MyScheduleEntry {
   assignment_note?: string | null
   /** Free-text km (PM) */
   distance_km?: string | null
+  /** PM expected day start (HH:MM) */
+  expected_start_time?: string | null
+  /** PM expected day finish (HH:MM) */
+  expected_end_time?: string | null
   work_start_lat?: number | null
   work_start_lng?: number | null
   work_start_at?: string | null
@@ -58,7 +62,7 @@ export interface MyScheduleEntry {
 }
 
 /** Matches DB `distance_km` VARCHAR(32) */
-export const DISTANCE_KM_MAX_CHARS = 32
+export const DISTANCE_KM_MAX_CHARS = 3
 
 function pickNullableNumber(raw: unknown): number | null {
   if (raw == null || raw === '') return null
@@ -73,6 +77,8 @@ function pickNullableString(raw: unknown): string | null {
 function pickTripFieldsFromRow(r: Record<string, unknown>): Pick<
   MyScheduleEntry,
   | 'distance_km'
+  | 'expected_start_time'
+  | 'expected_end_time'
   | 'work_start_lat'
   | 'work_start_lng'
   | 'work_start_at'
@@ -85,6 +91,8 @@ function pickTripFieldsFromRow(r: Record<string, unknown>): Pick<
   const dk = r.distance_km
   return {
     distance_km: typeof dk === 'string' || typeof dk === 'number' ? String(dk) : null,
+    expected_start_time: normalizeExpectedTimeHm(r.expected_start_time),
+    expected_end_time: normalizeExpectedTimeHm(r.expected_end_time),
     work_start_lat: pickNullableNumber(r.work_start_lat),
     work_start_lng: pickNullableNumber(r.work_start_lng),
     work_start_at: pickNullableString(r.work_start_at),
@@ -94,6 +102,18 @@ function pickTripFieldsFromRow(r: Record<string, unknown>): Pick<
     work_start_distance_km: pickNullableNumber(r.work_start_distance_km),
     work_end_distance_km: pickNullableNumber(r.work_end_distance_km),
   }
+}
+
+/** Normalize API/DB time to HH:MM for time inputs. */
+export function normalizeExpectedTimeHm(raw: unknown): string | null {
+  if (raw == null || raw === '') return null
+  const s = String(raw).trim()
+  const m = /^(\d{1,2}):(\d{2})/.exec(s)
+  if (!m) return null
+  const hh = Number(m[1])
+  const mm = Number(m[2])
+  if (!Number.isFinite(hh) || !Number.isFinite(mm) || hh > 23 || mm > 59) return null
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`
 }
 
 /**
@@ -215,6 +235,10 @@ export interface ScheduleWeekEntryRow {
   assignment_note?: string | null
   /** Free-text km (PM) */
   distance_km?: string | null
+  /** PM expected day start HH:MM */
+  expected_start_time?: string | null
+  /** PM expected day finish HH:MM */
+  expected_end_time?: string | null
   work_start_lat?: number | null
   work_start_lng?: number | null
   work_start_at?: string | null
@@ -594,19 +618,23 @@ function scheduleEntryToApiPayload(
   task_id: number | null
   assignment_note: string | null
   distance_km: string | null
+  expected_start_time: string | null
+  expected_end_time: string | null
 } {
   const raw = e.assignment_note
   const trimmed = typeof raw === 'string' ? raw.trim() : ''
-  const tid = e.task_id != null && Number(e.task_id) > 0 ? Number(e.task_id) : null
   const dkRaw = e.distance_km
   const dkTrimmed = typeof dkRaw === 'string' ? dkRaw.trim() : dkRaw != null ? String(dkRaw).trim() : ''
   return {
     user_id: e.user_id,
-    task_id: tid,
+    // Schedule = person + project + day (timesheet). Tasks stay on Gantt / field work only.
+    task_id: null,
     work_date: e.work_date,
     day_part: e.day_part,
     assignment_note: trimmed.length > 0 ? trimmed : null,
     distance_km: dkTrimmed.length > 0 ? dkTrimmed.slice(0, DISTANCE_KM_MAX_CHARS) : null,
+    expected_start_time: normalizeExpectedTimeHm(e.expected_start_time),
+    expected_end_time: normalizeExpectedTimeHm(e.expected_end_time),
   }
 }
 

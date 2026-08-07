@@ -6,14 +6,20 @@ interface ApiConfig {
   withCredentials: boolean
 }
 
-export const LOCAL_API_URL = 'http://localhost:8000'
+export const LOCAL_API_URL = 'http://127.0.0.1:8000'
 export const REMOTE_API_URL = 'https://fwapi.medicalcontractor.ca'
 
 export function getApiBaseUrl(): string {
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL
+  const fromEnv = import.meta.env.VITE_API_URL
+  // Explicit non-empty override (direct API host).
+  if (typeof fromEnv === 'string' && fromEnv.trim() !== '') {
+    return fromEnv.trim().replace(/\/$/, '')
   }
-  return import.meta.env.PROD ? REMOTE_API_URL : LOCAL_API_URL
+  // Local Vite: empty baseURL → requests hit same origin; vite.config proxy forwards /api → PHP.
+  if (import.meta.env.DEV) {
+    return ''
+  }
+  return REMOTE_API_URL
 }
 
 /** Rewrite stale localhost media URLs to the current API host. */

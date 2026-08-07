@@ -3,7 +3,8 @@
     <header class="mb-4">
       <h1 class="text-xl font-semibold text-gray-900">Schedule</h1>
       <p class="text-sm text-gray-500 mt-0.5">
-        Where you are scheduled for a full working day. Use Start / End to drop a phone location pin.
+        Where you are going that day (project and address), expected hours, and clock in/out with
+        your phone for actual time — day hours only, not a task.
       </p>
     </header>
 
@@ -54,9 +55,18 @@
             <p v-if="row.slot.distanceKm" class="mt-1 text-xs text-gray-600">
               Distance: {{ row.slot.distanceKm }} km
             </p>
+            <p
+              v-if="row.slot.expectedStartTime || row.slot.expectedEndTime"
+              class="mt-1 text-xs text-gray-700"
+            >
+              Expected:
+              {{ row.slot.expectedStartTime || '—' }}
+              –
+              {{ row.slot.expectedEndTime || '—' }}
+            </p>
             <p class="mt-1 text-[11px] text-gray-500">
-              Start: {{ formatCheckIn(row.slot.workStartAt, row.slot.workStartDistanceKm) }}
-              · End: {{ formatCheckIn(row.slot.workEndAt, row.slot.workEndDistanceKm) }}
+              Actual start: {{ formatCheckIn(row.slot.workStartAt, row.slot.workStartDistanceKm) }}
+              · Actual end: {{ formatCheckIn(row.slot.workEndAt, row.slot.workEndDistanceKm) }}
             </p>
           </div>
           <div class="flex shrink-0 flex-col items-end justify-between border-l border-gray-100 px-2 py-2">
@@ -112,6 +122,7 @@ import {
   type MyScheduleEntry,
   type ScheduleDayPart,
 } from '@/core/utils/schedule-weeks-api'
+import { readDevicePosition } from '@/core/utils/device-geolocation'
 import { addDays, toYmd } from '@/core/utils/week-utils'
 
 interface DisplaySlot {
@@ -125,6 +136,8 @@ interface DisplaySlot {
   siteAddress: string
   assignmentNote: string
   distanceKm: string
+  expectedStartTime: string
+  expectedEndTime: string
   workStartAt: string | null
   workEndAt: string | null
   workStartDistanceKm: number | null
@@ -195,6 +208,8 @@ const sortedSlots = computed((): DisplaySlot[] => {
         siteAddress: (e.project_address ?? e.task?.address ?? '').trim(),
         assignmentNote: (typeof e.assignment_note === 'string' ? e.assignment_note : '').trim(),
         distanceKm: (typeof e.distance_km === 'string' ? e.distance_km : '').trim(),
+        expectedStartTime: (e.expected_start_time ?? '').trim(),
+        expectedEndTime: (e.expected_end_time ?? '').trim(),
         workStartAt: e.work_start_at ?? null,
         workEndAt: e.work_end_at ?? null,
         workStartDistanceKm: e.work_start_distance_km ?? null,
@@ -294,24 +309,6 @@ async function fetchScheduleRange(): Promise<void> {
   } finally {
     isLoading.value = false
   }
-}
-
-function readDevicePosition(): Promise<{ lat: number; lng: number }> {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('Geolocation is not available on this device.'))
-      return
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-      },
-      (err) => {
-        reject(new Error(err.message || 'Could not read location. Allow location access and try again.'))
-      },
-      { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
-    )
-  })
 }
 
 async function onCheckIn(slot: DisplaySlot, phase: 'start' | 'end'): Promise<void> {

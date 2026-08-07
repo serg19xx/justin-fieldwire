@@ -77,9 +77,17 @@ export interface Task {
   /** Foreman-recorded work start (site clock) */
   field_work_started_at?: string | null
   field_work_started_by?: number | null
+  field_work_start_lat?: number | null
+  field_work_start_lng?: number | null
+  /** Distance from project site when start was geo check-in */
+  field_work_start_distance_km?: number | null
   /** Foreman-recorded work end (site clock) */
   field_work_ended_at?: string | null
   field_work_ended_by?: number | null
+  field_work_end_lat?: number | null
+  field_work_end_lng?: number | null
+  /** Distance from project site when end was geo check-in */
+  field_work_end_distance_km?: number | null
   /** Foreman notes / additions (does not replace PM task description) */
   field_notes?: string | null
   field_work_start_reason?: string | null

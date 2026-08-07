@@ -18,13 +18,24 @@ const isOnDark = computed(() => props.variant === 'on-dark')
 const items = [
   { label: 'My Calendar', route: '/calendar' },
   { label: 'Schedule', route: '/schedule' },
+  { label: 'Work plan (from tasks)', route: '/schedule/work-plan' },
 ] as const
 
+function itemIsActive(itemRoute: string): boolean {
+  if (itemRoute === '/schedule') {
+    return route.path === '/schedule'
+  }
+  return route.path === itemRoute || route.path.startsWith(`${itemRoute}/`)
+}
+
 const isActive = computed(
-  () => route.path === '/calendar' || route.path === '/schedule' || route.path.startsWith('/schedule/'),
+  () =>
+    route.path === '/calendar' ||
+    route.path === '/schedule' ||
+    route.path.startsWith('/schedule/'),
 )
 
-const activeItem = computed(() => items.find((item) => route.path === item.route || route.path.startsWith(`${item.route}/`)))
+const activeItem = computed(() => items.find((item) => itemIsActive(item.route)))
 
 const rootRef = ref<HTMLElement | null>(null)
 const open = ref(false)
@@ -77,7 +88,7 @@ onUnmounted(() => {
         :class="{ 'rotate-180': open }"
       />
     </button>
-    <div v-if="open" class="absolute left-0 top-full pt-1 w-44 z-50">
+    <div v-if="open" class="absolute left-0 top-full pt-1 w-56 z-50">
       <div class="bg-white border border-gray-200 rounded-md shadow-lg py-1">
         <p class="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">
           {{ activeItem?.label ?? 'Planning' }}
@@ -87,7 +98,7 @@ onUnmounted(() => {
           :key="item.route"
           :to="item.route"
           class="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-          :class="{ 'bg-blue-50 text-blue-800 font-medium': route.path === item.route || route.path.startsWith(`${item.route}/`) }"
+          :class="{ 'bg-blue-50 text-blue-800 font-medium': itemIsActive(item.route) }"
           @click="close"
         >
           {{ item.label }}

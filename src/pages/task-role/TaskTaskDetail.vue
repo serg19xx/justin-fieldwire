@@ -90,7 +90,49 @@
       <!-- 4. Day status + description + your uploads -->
       <section class="mb-6 rounded-xl border border-orange-200 bg-white p-4 shadow-sm" aria-labelledby="your-work-title">
         <h2 id="your-work-title" class="text-sm font-semibold text-gray-900">Your work today</h2>
-        <p class="text-xs text-gray-500 mt-1 mb-4">Status and notes are saved on this device until the server sync is ready.</p>
+        <p class="text-xs text-gray-500 mt-1 mb-4">Status and notes are for this scheduled day. Start / End below pin your phone location on the schedule slot.</p>
+
+        <div
+          v-if="fromSchedule && scheduleEntryId > 0"
+          class="mb-4 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-3"
+        >
+          <p class="text-xs font-semibold uppercase tracking-wide text-blue-900 mb-1">Schedule day check-in</p>
+          <p class="text-[11px] text-blue-800/80 mb-2">
+            Saved on the schedule row (separate from task field work below).
+          </p>
+          <p class="text-[11px] text-gray-600 mb-2">
+            Start: {{ formatScheduleCheckIn(scheduleWorkStartAt, scheduleWorkStartDistanceKm) }}
+            · End: {{ formatScheduleCheckIn(scheduleWorkEndAt, scheduleWorkEndDistanceKm) }}
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-45"
+              :disabled="
+                scheduleCheckInBusy || !!scheduleWorkStartAt || isSchedulePastDay
+              "
+              @click="onScheduleCheckIn('start')"
+            >
+              Start work
+            </button>
+            <button
+              type="button"
+              class="px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-45"
+              :disabled="
+                scheduleCheckInBusy ||
+                !scheduleWorkStartAt ||
+                !!scheduleWorkEndAt ||
+                isSchedulePastDay
+              "
+              @click="onScheduleCheckIn('end')"
+            >
+              End work
+            </button>
+          </div>
+          <p v-if="scheduleCheckInMessage" class="mt-2 text-xs" :class="scheduleCheckInError ? 'text-red-700' : 'text-emerald-700'">
+            {{ scheduleCheckInMessage }}
+          </p>
+        </div>
 
         <div v-if="showDayWorkPanel" class="space-y-4">
           <div>
@@ -178,6 +220,17 @@
         <p v-if="documentsMessage" class="mt-3 text-xs text-emerald-700">{{ documentsMessage }}</p>
         <p v-if="documentsError" class="mt-2 text-xs text-red-700">{{ documentsError }}</p>
       </section>
+
+      <TaskFieldWorkPanel
+        v-if="task && canEditFieldWork"
+        class="mb-6"
+        :project-id="Number(projectId)"
+        :task-id="taskId"
+        :task="task"
+        :can-edit="canEditFieldWork"
+        :is-locked="Boolean(task.field_submitted_at)"
+        @updated="onFieldWorkUpdated"
+      />
 
       <section
         class="mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
@@ -536,14 +589,17 @@ import axios from 'axios'
 import { useRoute } from 'vue-router'
 import type { RouteLocationRaw } from 'vue-router'
 import {
+  checkInMyScheduleEntry,
   fetchMySchedule,
   resolveScheduleSlotIdForMessages,
   type ScheduleDayPart,
 } from '@/core/utils/schedule-weeks-api'
+import { readDevicePosition } from '@/core/utils/device-geolocation'
 import { useAuthStore } from '@/core/stores/auth'
 import { tasksApi } from '@/core/utils/tasks-api'
 import { getTaskStatusLabel, MILESTONE_ICON } from '@/core/utils/task-utils'
 import {
+  canEditTaskProgress,
   isTaskRoleForeman,
   isUserInvolvedInTask,
   resolveSessionUserId,
@@ -551,6 +607,7 @@ import {
 import { isMilestone } from '@/core/types/task'
 import type { Task, TaskStatus } from '@/core/types/task'
 import TaskDayWorkPanel from '@/components/task-role/TaskDayWorkPanel.vue'
+import TaskFieldWorkPanel from '@/components/task-role/TaskFieldWorkPanel.vue'
 import {
   scheduleSlotAllowedUploadAccept,
   scheduleSlotDocumentsApi,
@@ -645,8 +702,35 @@ const showDayWorkPanel = computed(() => fromSchedule.value && effectiveDaySliceY
 
 /** Real worker_task_schedules id for messages API (from GET /me/schedule explicit FKs only). */
 const scheduleEntryId = ref(0)
+const scheduleWorkStartAt = ref<string | null>(null)
+const scheduleWorkEndAt = ref<string | null>(null)
+const scheduleWorkStartDistanceKm = ref<number | null>(null)
+const scheduleWorkEndDistanceKm = ref<number | null>(null)
+const scheduleCheckInBusy = ref(false)
+const scheduleCheckInMessage = ref('')
+const scheduleCheckInError = ref(false)
 /** When URL has no dayPart, inferred from /me/schedule so chat links still include a concrete slot part. */
 const scheduleSlotDayPartResolved = ref<ScheduleDayPart | ''>('')
+
+const isSchedulePastDay = computed(() => {
+  const d = scheduleWorkDate.value
+  if (!d) return false
+  const today = new Date()
+  const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  return d < ymd
+})
+
+function formatScheduleCheckIn(at: string | null, distanceKm: number | null): string {
+  if (!at) return '—'
+  const t = new Date(at)
+  const time = Number.isNaN(t.getTime())
+    ? at
+    : t.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  if (distanceKm != null && Number.isFinite(distanceKm)) {
+    return `${time} (${distanceKm.toFixed(2)} km)`
+  }
+  return time
+}
 
 const scheduleSlotChatLocation = computed((): RouteLocationRaw | null => {
   if (!fromSchedule.value) return null
@@ -688,6 +772,22 @@ const taskWideStatusLabel = computed(() =>
 )
 
 const task = ref<Task | null>(null)
+
+const uid = computed(() => resolveSessionUserId(authStore.currentUser))
+
+const canEditFieldWork = computed(() => {
+  if (!task.value || uid.value == null) return false
+  return canEditTaskProgress(
+    task.value,
+    uid.value,
+    authStore.currentUser?.role_code,
+    authStore.currentUser?.role_id,
+  )
+})
+
+function onFieldWorkUpdated(updated: Task): void {
+  task.value = updated
+}
 /** Loaded from GET /me/schedule when opening task from weekly schedule (published rows). */
 const scheduleAssignmentNote = ref('')
 const isLoading = ref(true)
@@ -782,6 +882,10 @@ async function loadScheduleAssignmentNote(): Promise<void> {
   scheduleAssignmentNote.value = ''
   scheduleEntryId.value = 0
   scheduleSlotDayPartResolved.value = ''
+  scheduleWorkStartAt.value = null
+  scheduleWorkEndAt.value = null
+  scheduleWorkStartDistanceKm.value = null
+  scheduleWorkEndDistanceKm.value = null
   if (!fromSchedule.value) return
   const d = scheduleWorkDate.value
   if (!d) return
@@ -790,7 +894,7 @@ async function loadScheduleAssignmentNote(): Promise<void> {
   if (!pid || !Number.isFinite(tid)) return
   isScheduleSlotMetaLoading.value = true
   try {
-    const uid = resolveSessionUserId(authStore.currentUser)
+    const userId = resolveSessionUserId(authStore.currentUser)
     const entries = await fetchMySchedule(d, d)
     const dayMatches = entries.filter((e) => {
       if (e.project_id !== pid || Number(e.task_id) !== tid) return false
@@ -804,8 +908,8 @@ async function loadScheduleAssignmentNote(): Promise<void> {
       const dp = String(dayMatches[0].day_part ?? '').toLowerCase()
       if (dp === 'am' || dp === 'pm' || dp === 'full') part = dp
     }
-    if (uid != null && part != null) {
-      const rid = await resolveScheduleSlotIdForMessages(pid, uid, tid, d, part)
+    if (userId != null && part != null) {
+      const rid = await resolveScheduleSlotIdForMessages(pid, userId, tid, d, part)
       if (rid > 0) scheduleEntryId.value = rid
       if (
         !(scheduleDayPart.value === 'am' || scheduleDayPart.value === 'pm' || scheduleDayPart.value === 'full')
@@ -821,6 +925,27 @@ async function loadScheduleAssignmentNote(): Promise<void> {
     })
     const note = hit?.assignment_note
     scheduleAssignmentNote.value = typeof note === 'string' ? note.trim() : ''
+    if (hit) {
+      scheduleWorkStartAt.value = hit.work_start_at ? String(hit.work_start_at) : null
+      scheduleWorkEndAt.value = hit.work_end_at ? String(hit.work_end_at) : null
+      scheduleWorkStartDistanceKm.value =
+        hit.work_start_distance_km != null && Number.isFinite(Number(hit.work_start_distance_km))
+          ? Number(hit.work_start_distance_km)
+          : null
+      scheduleWorkEndDistanceKm.value =
+        hit.work_end_distance_km != null && Number.isFinite(Number(hit.work_end_distance_km))
+          ? Number(hit.work_end_distance_km)
+          : null
+      const liveId =
+        hit.scheduleRowIdForMessages > 0
+          ? hit.scheduleRowIdForMessages
+          : Number(hit.id) > 0
+            ? Number(hit.id)
+            : 0
+      if (liveId > 0 && scheduleEntryId.value <= 0) {
+        scheduleEntryId.value = liveId
+      }
+    }
   } catch {
     scheduleAssignmentNote.value = ''
     scheduleEntryId.value = 0
@@ -828,6 +953,43 @@ async function loadScheduleAssignmentNote(): Promise<void> {
     isScheduleSlotMetaLoading.value = false
   }
   await loadSlotDocuments()
+}
+
+async function onScheduleCheckIn(phase: 'start' | 'end'): Promise<void> {
+  if (scheduleEntryId.value <= 0) {
+    scheduleCheckInError.value = true
+    scheduleCheckInMessage.value =
+      'This assignment has no live schedule id yet. Ask a PM to re-publish the week.'
+    return
+  }
+  scheduleCheckInBusy.value = true
+  scheduleCheckInMessage.value = ''
+  scheduleCheckInError.value = false
+  try {
+    const { lat, lng } = await readDevicePosition()
+    const updated = await checkInMyScheduleEntry(scheduleEntryId.value, phase, lat, lng)
+    if (updated) {
+      scheduleWorkStartAt.value = updated.work_start_at ? String(updated.work_start_at) : scheduleWorkStartAt.value
+      scheduleWorkEndAt.value = updated.work_end_at ? String(updated.work_end_at) : scheduleWorkEndAt.value
+      scheduleWorkStartDistanceKm.value =
+        updated.work_start_distance_km != null
+          ? Number(updated.work_start_distance_km)
+          : scheduleWorkStartDistanceKm.value
+      scheduleWorkEndDistanceKm.value =
+        updated.work_end_distance_km != null
+          ? Number(updated.work_end_distance_km)
+          : scheduleWorkEndDistanceKm.value
+      scheduleCheckInMessage.value =
+        phase === 'start' ? 'Schedule start recorded.' : 'Schedule end recorded.'
+    }
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } }; message?: string }
+    scheduleCheckInError.value = true
+    scheduleCheckInMessage.value =
+      err.response?.data?.message || err.message || 'Schedule check-in failed.'
+  } finally {
+    scheduleCheckInBusy.value = false
+  }
 }
 
 async function loadSlotDocuments(): Promise<void> {

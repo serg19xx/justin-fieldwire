@@ -54,6 +54,7 @@ export const MENU_CONFIG: Record<string, MenuItem[]> = {
       children: [
         { label: 'My Calendar', route: '/calendar' },
         { label: 'Schedule', route: '/schedule' },
+        { label: 'Work plan (from tasks)', route: '/schedule/work-plan' },
       ],
     },
   ],
@@ -102,6 +103,7 @@ export const MENU_CONFIG: Record<string, MenuItem[]> = {
       children: [
         { label: 'My Calendar', route: '/calendar' },
         { label: 'Schedule', route: '/schedule' },
+        { label: 'Work plan (from tasks)', route: '/schedule/work-plan' },
       ],
     },
   ],

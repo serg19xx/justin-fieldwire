@@ -4,7 +4,9 @@
     <section class="rounded-xl border border-orange-200 bg-white p-4 shadow-sm">
       <h2 class="text-sm font-semibold text-gray-900 mb-1">Work time <span class="text-red-600">*</span></h2>
       <p class="text-xs text-gray-500 mb-1">
-        Set when work started and finished. You can adjust the time if it differs from when you opened the app.
+        Tap Start / End to record task field work with your phone location (for this task / reporting).
+        Day clock-in on Schedule is separate and does not update here.
+        Use Edit only if you need to correct the clock or add a reason.
       </p>
       <p v-if="plannedHint" class="text-xs text-gray-600 mb-4 font-medium">{{ plannedHint }}</p>
       <p v-else class="mb-4" />
@@ -15,6 +17,7 @@
             <div class="min-w-0 flex-1">
               <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Start work</p>
               <p class="text-sm font-medium text-gray-900 mt-0.5">{{ startedLabel }}</p>
+              <p v-if="startDistanceLabel" class="text-[11px] text-gray-500 mt-0.5">{{ startDistanceLabel }}</p>
               <p
                 v-if="workStartReason?.trim()"
                 class="text-xs text-gray-600 mt-1 whitespace-pre-wrap break-words"
@@ -22,16 +25,26 @@
                 <span class="font-medium text-gray-500">Reason:</span> {{ workStartReason }}
               </p>
             </div>
-            <button
-              v-if="canEdit && !isLocked"
-              type="button"
-              class="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-              :class="workStartedAt ? 'bg-gray-600 hover:bg-gray-700' : 'bg-green-600 hover:bg-green-700'"
-              :disabled="isSaving"
-              @click="openDialog('start')"
-            >
-              {{ workStartedAt ? 'Edit' : 'Start work' }}
-            </button>
+            <div v-if="canEdit && !isLocked" class="shrink-0 flex flex-col items-end gap-1.5">
+              <button
+                v-if="!workStartedAt"
+                type="button"
+                class="rounded-lg px-3 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
+                :disabled="isSaving"
+                @click="onGeoCheckIn('start')"
+              >
+                Start work
+              </button>
+              <button
+                v-else
+                type="button"
+                class="rounded-lg px-3 py-2 text-xs font-semibold text-white bg-gray-600 hover:bg-gray-700 disabled:opacity-50"
+                :disabled="isSaving"
+                @click="openDialog('start')"
+              >
+                Edit
+              </button>
+            </div>
           </div>
         </div>
 
@@ -40,6 +53,7 @@
             <div class="min-w-0 flex-1">
               <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">End work</p>
               <p class="text-sm font-medium text-gray-900 mt-0.5">{{ endedLabel }}</p>
+              <p v-if="endDistanceLabel" class="text-[11px] text-gray-500 mt-0.5">{{ endDistanceLabel }}</p>
               <p
                 v-if="workEndReason?.trim()"
                 class="text-xs text-gray-600 mt-1 whitespace-pre-wrap break-words"
@@ -47,16 +61,26 @@
                 <span class="font-medium text-gray-500">Reason:</span> {{ workEndReason }}
               </p>
             </div>
-            <button
-              v-if="canEdit && !isLocked"
-              type="button"
-              class="shrink-0 rounded-lg px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-              :class="workEndedAt ? 'bg-gray-600 hover:bg-gray-700' : 'bg-red-600 hover:bg-red-700'"
-              :disabled="isSaving || !workStartedAt"
-              @click="openDialog('end')"
-            >
-              {{ workEndedAt ? 'Edit' : 'End work' }}
-            </button>
+            <div v-if="canEdit && !isLocked" class="shrink-0 flex flex-col items-end gap-1.5">
+              <button
+                v-if="!workEndedAt"
+                type="button"
+                class="rounded-lg px-3 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                :disabled="isSaving || !workStartedAt"
+                @click="onGeoCheckIn('end')"
+              >
+                End work
+              </button>
+              <button
+                v-else
+                type="button"
+                class="rounded-lg px-3 py-2 text-xs font-semibold text-white bg-gray-600 hover:bg-gray-700 disabled:opacity-50"
+                :disabled="isSaving"
+                @click="openDialog('end')"
+              >
+                Edit
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -166,6 +190,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import type { Task } from '@/core/types/task'
+import { readDevicePosition } from '@/core/utils/device-geolocation'
 import {
   formatPlannedWorkHint,
   formatTaskDateTimeDisplay,
@@ -202,6 +227,8 @@ const workStartedAt = ref<string | null>(props.task.field_work_started_at ?? nul
 const workEndedAt = ref<string | null>(props.task.field_work_ended_at ?? null)
 const workStartReason = ref(props.task.field_work_start_reason ?? '')
 const workEndReason = ref(props.task.field_work_end_reason ?? '')
+const startDistanceKm = ref<number | null>(props.task.field_work_start_distance_km ?? null)
+const endDistanceKm = ref<number | null>(props.task.field_work_end_distance_km ?? null)
 const fieldNotesDraft = ref(props.task.field_notes ?? '')
 const isSaving = ref(false)
 const timeMessage = ref('')
@@ -290,6 +317,14 @@ const plannedStartLocal = computed(() =>
 const startedLabel = computed(() => formatTaskDateTimeDisplay(workStartedAt.value))
 const endedLabel = computed(() => formatTaskDateTimeDisplay(workEndedAt.value))
 
+function formatDistanceLabel(km: number | null): string {
+  if (km == null || !Number.isFinite(km)) return ''
+  return `${km.toFixed(2)} km from project site`
+}
+
+const startDistanceLabel = computed(() => formatDistanceLabel(startDistanceKm.value))
+const endDistanceLabel = computed(() => formatDistanceLabel(endDistanceKm.value))
+
 const dialogInitialAt = computed(() =>
   dialogKind.value === 'start' ? workStartedAt.value : workEndedAt.value,
 )
@@ -325,6 +360,8 @@ function syncFromTask(task: Task): void {
   workEndedAt.value = task.field_work_ended_at ?? null
   workStartReason.value = task.field_work_start_reason ?? ''
   workEndReason.value = task.field_work_end_reason ?? ''
+  startDistanceKm.value = task.field_work_start_distance_km ?? null
+  endDistanceKm.value = task.field_work_end_distance_km ?? null
   fieldNotesDraft.value = task.field_notes ?? ''
 }
 
@@ -411,6 +448,32 @@ async function onDialogSave(payload: { at: string; reason: string; urgent: boole
     dialogKind.value === 'start' ? 'Work start time saved.' : 'Work end time saved.',
   )
   if (ok) dialogOpen.value = false
+}
+
+async function onGeoCheckIn(phase: 'start' | 'end'): Promise<void> {
+  if (!props.canEdit || props.isLocked) return
+  isSaving.value = true
+  timeMessage.value = ''
+  timeError.value = false
+  try {
+    const { lat, lng } = await readDevicePosition()
+    const updated = await tasksApi.checkInFieldWork(
+      props.projectId,
+      props.taskId,
+      phase,
+      lat,
+      lng,
+    )
+    emit('updated', updated)
+    syncFromTask(updated)
+    timeMessage.value =
+      phase === 'start' ? 'Work start recorded with location.' : 'Work end recorded with location.'
+  } catch (error) {
+    timeError.value = true
+    timeMessage.value = resolveSaveErrorMessage(error)
+  } finally {
+    isSaving.value = false
+  }
 }
 
 async function persistFieldWork(

@@ -272,11 +272,37 @@ function transformTaskFromApiRow(task: Record<string, unknown>): Task {
       task.field_work_started_by != null && Number(task.field_work_started_by) > 0
         ? Number(task.field_work_started_by)
         : null,
+    field_work_start_lat:
+      task.field_work_start_lat != null && Number.isFinite(Number(task.field_work_start_lat))
+        ? Number(task.field_work_start_lat)
+        : null,
+    field_work_start_lng:
+      task.field_work_start_lng != null && Number.isFinite(Number(task.field_work_start_lng))
+        ? Number(task.field_work_start_lng)
+        : null,
+    field_work_start_distance_km:
+      task.field_work_start_distance_km != null &&
+      Number.isFinite(Number(task.field_work_start_distance_km))
+        ? Number(task.field_work_start_distance_km)
+        : null,
     field_work_ended_at:
       task.field_work_ended_at != null ? String(task.field_work_ended_at) : null,
     field_work_ended_by:
       task.field_work_ended_by != null && Number(task.field_work_ended_by) > 0
         ? Number(task.field_work_ended_by)
+        : null,
+    field_work_end_lat:
+      task.field_work_end_lat != null && Number.isFinite(Number(task.field_work_end_lat))
+        ? Number(task.field_work_end_lat)
+        : null,
+    field_work_end_lng:
+      task.field_work_end_lng != null && Number.isFinite(Number(task.field_work_end_lng))
+        ? Number(task.field_work_end_lng)
+        : null,
+    field_work_end_distance_km:
+      task.field_work_end_distance_km != null &&
+      Number.isFinite(Number(task.field_work_end_distance_km))
+        ? Number(task.field_work_end_distance_km)
         : null,
     field_notes: task.field_notes != null ? String(task.field_notes) : null,
     field_work_start_reason:
@@ -854,6 +880,26 @@ export const tasksApi = {
       return parseTaskFromApiEnvelope(response.data)
     } catch (error) {
       console.error('Error updating field work:', error)
+      throw error
+    }
+  },
+
+  /** Phone geo check-in for task field work (fw_prj_tasks; separate from schedule slots). */
+  async checkInFieldWork(
+    projectId: number,
+    taskId: string,
+    phase: 'start' | 'end',
+    lat: number,
+    lng: number,
+  ): Promise<Task> {
+    try {
+      const response = await api.post(
+        `/api/v1/projects/${projectId}/tasks/${taskId}/field-work/check-in`,
+        { phase, lat, lng },
+      )
+      return parseTaskFromApiEnvelope(response.data)
+    } catch (error) {
+      console.error('Error checking in field work:', error)
       throw error
     }
   },

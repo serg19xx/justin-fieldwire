@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import ProjectScheduleSection from '@/components/projects/ProjectScheduleSection.vue'
 import { useAuthStore } from '@/core/stores/auth'
 import { projectApi, type Project, type ProjectTeamMember } from '@/core/utils/project-api'
@@ -30,6 +31,7 @@ const scheduleProjects = computed(() =>
   projects.value.map((p) => ({
     id: p.id,
     name: (p.prj_name || '').trim() || `Project #${p.id}`,
+    address: (p.address || '').trim(),
   })),
 )
 
@@ -106,8 +108,23 @@ onMounted(async () => {
       <div class="max-w-5xl mx-auto px-4 py-3">
         <h1 class="text-lg font-semibold text-gray-900">Schedule</h1>
         <p class="text-sm text-gray-500">
-          Who is on which job site for a full working day. Pick the project in each table row.
-          Independent from Tasks.
+          Timesheet: where each person goes that day (project / address), expected hours, trip KM when
+          needed, and actual clock in/out from the phone. Separate from Gantt tasks.
+        </p>
+        <p class="mt-2 text-sm text-gray-600">
+          Pick the jobsite destination per day. Expected start/finish are planned; Start/End on the
+          phone fill actual times.
+        </p>
+        <p class="mt-2 text-sm">
+          <RouterLink
+            to="/schedule/work-plan"
+            class="font-medium text-blue-700 hover:text-blue-800 underline-offset-2 hover:underline"
+          >
+            Open work plan from tasks (read-only)
+          </RouterLink>
+          <span class="text-gray-500">
+            — Excel-like view of task detail for reporting. Day timesheet stays on Schedule.
+          </span>
         </p>
       </div>
     </div>
