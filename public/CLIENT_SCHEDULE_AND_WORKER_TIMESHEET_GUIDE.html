@@ -41,8 +41,8 @@
 
   <h1>Schedule &amp; worker timesheet — testing guide</h1>
   <p class="subtitle">
-    For the product owner / client. Plain language. Covers what was added recently:
-    manager Schedule (payroll timesheet), worker Start/End on tasks, and worker Hours (read-only timesheet).
+    For the product owner / client. Plain language. Covers manager Schedule (payroll notebook,
+    Week / Month / Custom periods), worker Start/End on tasks, and worker Hours (read-only timesheet).
   </p>
 
   <div class="note">
@@ -90,7 +90,75 @@
 
   <hr />
 
-  <h2>2. What to prepare (once, ~15 minutes)</h2>
+  <h2>2. Manager Schedule periods — Week vs Month / Custom</h2>
+
+  <p>
+    On <strong>Planning → Schedule</strong> you can switch the period:
+  </p>
+  <table>
+    <thead>
+      <tr><th>Mode</th><th>What it is for</th><th>Can you edit?</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Week</strong></td>
+        <td>Plan one calendar week (Mon–Sun): destinations, Expected times, Save draft, Publish, Reopen</td>
+        <td><strong>Yes</strong> — only here</td>
+      </tr>
+      <tr>
+        <td><strong>Month</strong></td>
+        <td>Review many days at once; see Actual hours total for the month</td>
+        <td><strong>No</strong> — review only</td>
+      </tr>
+      <tr>
+        <td><strong>Custom</strong></td>
+        <td>Same as Month, but you pick From / To (up to ~62 days)</td>
+        <td><strong>No</strong> — review only</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>How to edit when you are looking at a month:</strong>
+    use the banner button <strong>Edit in Week view</strong> (or tap <strong>Week</strong>).
+    If that week shows <strong>Published</strong>, click <strong>Reopen week for editing</strong>, change days, then
+    <strong>Save draft</strong> / <strong>Publish</strong>.
+    Repeat for the next week if needed. Month and Custom stay for browsing and the hours total.
+  </div>
+
+  <h3>Why Month / Custom cannot be edited (product decision)</h3>
+  <p>
+    The plan is stored <strong>per calendar week</strong>, with a clear lifecycle:
+    <strong>Draft → Publish → (optional) Reopen → Draft again</strong>.
+    Workers see the last <strong>published</strong> week until you publish again.
+  </p>
+  <p>
+    A month (or a custom range) always covers <strong>several weeks</strong>, and those weeks can mix
+    Draft and Published status. There is no single “Publish this month” or “Reopen this month”
+    without breaking that week model.
+  </p>
+
+  <div class="ok">
+    <strong>If the request sounds like:</strong>
+    “I also want to edit inside Month and Custom” —
+    that conflicts with the week Draft / Publish / Reopen rules already agreed for payroll planning.
+    <br /><br />
+    <strong>What we deliver instead (no contradiction):</strong>
+    <ul style="margin-bottom:0;">
+      <li><strong>Variable period</strong> (Week / Month / Custom) for <em>review</em> and <em>Actual hours sum</em>.</li>
+      <li><strong>Editing</strong> only in <strong>Week</strong>, one week at a time, with Reopen when published.</li>
+    </ul>
+  </div>
+
+  <p>
+    Building true month/custom <em>editing</em> would mean a different product: editing many weeks in one screen,
+    deciding which weeks to reopen/save/publish together, and new conflict rules across week boundaries.
+    That is a separate scope — not a small switch on the current Schedule.
+  </p>
+
+  <hr />
+
+  <h2>3. What to prepare (once, ~15 minutes)</h2>
   <ol>
     <li>Project with a real <strong>address</strong> saved (needed for GPS check).</li>
     <li>Task on Gantt covering the next 2–3 days; worker assigned to the task.</li>
@@ -100,7 +168,7 @@
 
   <hr />
 
-  <h2>3. Multi-day test plan</h2>
+  <h2>4. Multi-day test plan</h2>
 
   <div class="day">
     <h3>Day 1 — morning (on the jobsite)</h3>
@@ -149,7 +217,7 @@
 
   <hr />
 
-  <h2>4. Success checklist</h2>
+  <h2>5. Success checklist</h2>
   <table>
     <thead>
       <tr><th>Check</th><th>Expected result</th></tr>
@@ -160,15 +228,18 @@
       <tr><td>Only today</td><td>Cannot clock another calendar day</td></tr>
       <tr><td>Worker Hours</td><td>Read-only month view: project, address, actual hours</td></tr>
       <tr><td>Manager Schedule</td><td>Manual destinations + Expected; Actual when row exists</td></tr>
+      <tr><td>Week vs Month/Custom</td><td>Edit / Reopen / Publish only in Week; Month &amp; Custom review + hours total</td></tr>
       <tr><td>Two worlds</td><td>Schedule is not auto-copied from Gantt; Hours is not your editable notebook</td></tr>
     </tbody>
   </table>
 
   <hr />
 
-  <h2>5. Short “why” (for conversation, not for programmers)</h2>
+  <h2>6. Short “why” (for conversation, not for programmers)</h2>
   <ul>
     <li><strong>Your Schedule</strong> — notebook for pay: where they went that day by your decision, expected hours, phone Actuals.</li>
+    <li><strong>Week</strong> — the only place to change the notebook and publish it.</li>
+    <li><strong>Month / Custom</strong> — look across days and sum Actual hours; not a second editor.</li>
     <li><strong>Tasks / Gantt</strong> — plan of the job.</li>
     <li><strong>Worker Hours</strong> — automatic sheet from plan + their Start/End; they cannot edit it by hand.</li>
     <li><strong>GPS</strong> — Start/End only near the project address (~200 m), so the punch is “on the site”, not from home.</li>
