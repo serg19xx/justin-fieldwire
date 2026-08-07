@@ -127,8 +127,12 @@
       {{ metaError }}
     </div>
 
-    <div v-if="showInitialScheduleSpinner" class="flex justify-center py-16">
+    <div v-if="showInitialScheduleSpinner" class="flex flex-col items-center justify-center gap-3 py-16">
       <div class="animate-spin w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full" />
+      <span class="text-sm font-medium text-gray-600">{{ scheduleLoadingLabel }}</span>
+      <span v-if="periodMode !== 'week'" class="text-xs text-gray-500 max-w-xs text-center">
+        Loading every week in this range — this can take a few seconds.
+      </span>
     </div>
 
     <template v-else>
@@ -188,7 +192,7 @@
               <div
                 class="animate-spin w-9 h-9 border-2 border-blue-500 border-t-transparent rounded-full"
               />
-              <span class="text-xs font-medium text-gray-600">Loading…</span>
+              <span class="text-xs font-medium text-gray-600">{{ scheduleLoadingLabel }}</span>
             </div>
           </div>
         </Transition>
@@ -895,11 +899,21 @@ const scheduleViewSynced = computed(() => {
   return metaMon === weekStartYmd.value
 })
 
-/** Full-page spinner only when nothing to show yet (first paint or empty week → empty week). */
-const showInitialScheduleSpinner = computed(() => isFetchingWeek.value && weekMeta.value == null)
+/** Full-page spinner when there is nothing useful to show yet (first load / empty → loading). */
+const showInitialScheduleSpinner = computed(
+  () => isFetchingWeek.value && !showScheduleTable.value,
+)
 
-/** In-place overlay when switching weeks so the layout does not jump to a blank spinner. */
-const showScheduleOverlay = computed(() => isFetchingWeek.value && weekMeta.value != null)
+/** In-place overlay when switching periods while the previous table is still on screen. */
+const showScheduleOverlay = computed(
+  () => isFetchingWeek.value && showScheduleTable.value,
+)
+
+const scheduleLoadingLabel = computed(() => {
+  if (periodMode.value === 'month') return 'Loading month…'
+  if (periodMode.value === 'custom') return 'Loading period…'
+  return 'Loading week…'
+})
 
 /** Local calendar today YYYY-MM-DD — no draft planning on earlier dates */
 const todayYmd = computed(() => toYmd(new Date()))
@@ -1470,7 +1484,8 @@ async function loadWeek(): Promise<void> {
 /** Month / custom: load every ISO week that overlaps the range (read-only). */
 async function loadMultiWeekPeriod(): Promise<void> {
   const gen = ++scheduleLoadGen
-  periodDataReady.value = false
+  // Keep previous month/custom table visible with overlay while reloading.
+  // When nothing is ready yet (e.g. Week → Month), the full-page spinner shows instead.
   metaError.value = ''
   bannerError.value = ''
   isFetchingWeek.value = true
@@ -1481,6 +1496,7 @@ async function loadMultiWeekPeriod(): Promise<void> {
       weekMeta.value = null
       allDraftRows.value = []
       clearDirtyProjects()
+      periodDataReady.value = false
       return
     }
     const options = projectOptions.value
