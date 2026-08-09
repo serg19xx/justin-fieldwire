@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-gray-100">
     <!-- Global Header -->
     <header
-      class="bg-white shadow-sm border-b border-gray-200 h-12 fixed top-0 left-0 right-0 z-50"
+      class="bg-white shadow-sm border-b border-gray-200 h-12 fixed top-0 left-0 right-0 z-[60] overflow-visible"
     >
       <div class="flex justify-between items-center h-12 px-4">
         <!-- Left side -->

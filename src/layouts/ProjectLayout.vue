@@ -2,7 +2,7 @@
   <div class="bg-gray-100">
     <!-- Project Header -->
     <header
-      class="bg-green-600 shadow-sm border-b border-green-700 h-12 fixed top-0 left-0 right-0 z-50"
+      class="bg-green-600 shadow-sm border-b border-green-700 h-12 fixed top-0 left-0 right-0 z-[60] overflow-visible"
     >
       <div class="flex justify-between items-center h-12 px-4">
         <div class="flex items-center space-x-3">
@@ -143,7 +143,7 @@
             Team
           </RouterLink>
           <p class="px-4 pt-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
-            Calendar
+            Planning
           </p>
           <RouterLink
             to="/calendar"
@@ -151,18 +151,27 @@
             class="block px-4 py-2.5 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
             :class="{ 'border-green-500 bg-green-50 font-medium': $route.path === '/calendar' }"
           >
-            Calendar
+            My Calendar
           </RouterLink>
           <RouterLink
             to="/schedule"
             @click="closeMobileMenu"
             class="block px-4 py-2.5 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
             :class="{
-              'border-green-500 bg-green-50 font-medium':
-                $route.path === '/schedule' || $route.path.startsWith('/schedule/'),
+              'border-green-500 bg-green-50 font-medium': $route.path === '/schedule',
             }"
           >
             Schedule
+          </RouterLink>
+          <RouterLink
+            to="/schedule/work-plan"
+            @click="closeMobileMenu"
+            class="block px-4 py-2.5 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
+            :class="{
+              'border-green-500 bg-green-50 font-medium': $route.path.startsWith('/schedule/work-plan'),
+            }"
+          >
+            Work plan (from tasks)
           </RouterLink>
           <template v-if="systemNavItems.length > 0">
             <p class="px-4 pt-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
