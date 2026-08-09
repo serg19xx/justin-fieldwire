@@ -13,7 +13,7 @@ Same content as `public/CLIENT_SCHEDULE_AND_WORKER_TIMESHEET_GUIDE.html`.
 | App | What to test (recent additions) |
 |-----|----------------------------------|
 | **Manager** | Schedule as payroll notebook: project/address per day, Expected hours, Actual from phone when published; **Day notes** = short message to the crew for that day |
-| **Worker** | Sees Day notes on **worker Schedule** for that day; Start/End + GPS; Hours monthly read-only — notes are **not** inside Tasks |
+| **Worker** | Sees Day notes on **worker Schedule**; Start/End only on **Tasks** (mirrors to timesheet); Hours monthly read-only |
 
 Test over **2–3 real days** (same-day Start/End + on-site GPS).
 

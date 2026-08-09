@@ -88,49 +88,20 @@
       <section class="mb-6 rounded-xl border border-orange-200 bg-white p-4 shadow-sm" aria-labelledby="your-work-title">
         <h2 id="your-work-title" class="text-sm font-semibold text-gray-900">Your work today</h2>
         <p class="text-xs text-gray-500 mt-1 mb-4">
-          Status and notes are for this scheduled day. Start / End pin your phone location on today’s
-          schedule row (day timesheet — not a single punch for the whole multi-day task).
+          Status and notes are for this scheduled day. Start / End for actual time are on the task
+          day screen (they also update the PM timesheet when a schedule row exists).
         </p>
 
         <div
           v-if="fromSchedule && scheduleEntryId > 0"
-          class="mb-4 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-3"
+          class="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3"
         >
-          <p class="text-xs font-semibold uppercase tracking-wide text-blue-900 mb-1">Schedule day check-in</p>
-          <p class="text-[11px] text-blue-800/80 mb-2">
-            One Start / End pair per working day on this project assignment.
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-700 mb-1">
+            Timesheet actual (read-only)
           </p>
-          <p class="text-[11px] text-gray-600 mb-2">
+          <p class="text-[11px] text-gray-600">
             Start: {{ formatScheduleCheckIn(scheduleWorkStartAt, scheduleWorkStartDistanceKm) }}
             · End: {{ formatScheduleCheckIn(scheduleWorkEndAt, scheduleWorkEndDistanceKm) }}
-          </p>
-          <div class="flex flex-wrap gap-2">
-            <button
-              type="button"
-              class="px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-45"
-              :disabled="
-                scheduleCheckInBusy || !!scheduleWorkStartAt || isSchedulePastDay
-              "
-              @click="onScheduleCheckIn('start')"
-            >
-              Start work
-            </button>
-            <button
-              type="button"
-              class="px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-45"
-              :disabled="
-                scheduleCheckInBusy ||
-                !scheduleWorkStartAt ||
-                !!scheduleWorkEndAt ||
-                isSchedulePastDay
-              "
-              @click="onScheduleCheckIn('end')"
-            >
-              End work
-            </button>
-          </div>
-          <p v-if="scheduleCheckInMessage" class="mt-2 text-xs" :class="scheduleCheckInError ? 'text-red-700' : 'text-emerald-700'">
-            {{ scheduleCheckInMessage }}
           </p>
         </div>
 
@@ -589,12 +560,10 @@ import axios from 'axios'
 import { useRoute } from 'vue-router'
 import type { RouteLocationRaw } from 'vue-router'
 import {
-  checkInMyScheduleEntry,
   fetchMySchedule,
   resolveScheduleSlotIdForMessages,
   type ScheduleDayPart,
 } from '@/core/utils/schedule-weeks-api'
-import { readDevicePosition } from '@/core/utils/device-geolocation'
 import { useAuthStore } from '@/core/stores/auth'
 import { tasksApi } from '@/core/utils/tasks-api'
 import { getTaskStatusLabel, MILESTONE_ICON } from '@/core/utils/task-utils'
@@ -706,19 +675,8 @@ const scheduleWorkStartAt = ref<string | null>(null)
 const scheduleWorkEndAt = ref<string | null>(null)
 const scheduleWorkStartDistanceKm = ref<number | null>(null)
 const scheduleWorkEndDistanceKm = ref<number | null>(null)
-const scheduleCheckInBusy = ref(false)
-const scheduleCheckInMessage = ref('')
-const scheduleCheckInError = ref(false)
 /** When URL has no dayPart, inferred from /me/schedule so chat links still include a concrete slot part. */
 const scheduleSlotDayPartResolved = ref<ScheduleDayPart | ''>('')
-
-const isSchedulePastDay = computed(() => {
-  const d = scheduleWorkDate.value
-  if (!d) return false
-  const today = new Date()
-  const ymd = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-  return d < ymd
-})
 
 function formatScheduleCheckIn(at: string | null, distanceKm: number | null): string {
   if (!at) return '—'
@@ -949,43 +907,6 @@ async function loadScheduleSlotMeta(): Promise<void> {
     isScheduleSlotMetaLoading.value = false
   }
   await loadSlotDocuments()
-}
-
-async function onScheduleCheckIn(phase: 'start' | 'end'): Promise<void> {
-  if (scheduleEntryId.value <= 0) {
-    scheduleCheckInError.value = true
-    scheduleCheckInMessage.value =
-      'This assignment has no live schedule id yet. Ask a PM to re-publish the week.'
-    return
-  }
-  scheduleCheckInBusy.value = true
-  scheduleCheckInMessage.value = ''
-  scheduleCheckInError.value = false
-  try {
-    const { lat, lng } = await readDevicePosition()
-    const updated = await checkInMyScheduleEntry(scheduleEntryId.value, phase, lat, lng)
-    if (updated) {
-      scheduleWorkStartAt.value = updated.work_start_at ? String(updated.work_start_at) : scheduleWorkStartAt.value
-      scheduleWorkEndAt.value = updated.work_end_at ? String(updated.work_end_at) : scheduleWorkEndAt.value
-      scheduleWorkStartDistanceKm.value =
-        updated.work_start_distance_km != null
-          ? Number(updated.work_start_distance_km)
-          : scheduleWorkStartDistanceKm.value
-      scheduleWorkEndDistanceKm.value =
-        updated.work_end_distance_km != null
-          ? Number(updated.work_end_distance_km)
-          : scheduleWorkEndDistanceKm.value
-      scheduleCheckInMessage.value =
-        phase === 'start' ? 'Schedule start recorded.' : 'Schedule end recorded.'
-    }
-  } catch (e: unknown) {
-    const err = e as { response?: { data?: { message?: string } }; message?: string }
-    scheduleCheckInError.value = true
-    scheduleCheckInMessage.value =
-      err.response?.data?.message || err.message || 'Schedule check-in failed.'
-  } finally {
-    scheduleCheckInBusy.value = false
-  }
 }
 
 async function loadSlotDocuments(): Promise<void> {

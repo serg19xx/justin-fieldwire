@@ -3,8 +3,8 @@
     <header class="mb-4">
       <h1 class="text-xl font-semibold text-gray-900">My work</h1>
       <p class="text-sm text-gray-500 mt-1">
-        Projects and tasks from the plan (Gantt) for the selected day. Actual hours live on
-        Timesheet; PM payroll clock-in is on Schedule.
+        Projects and tasks from the plan (Gantt) for the selected day. Start / End on Tasks;
+        Schedule shows destination, PM notes, and hours.
       </p>
     </header>
 
@@ -121,7 +121,7 @@
         <RouterLink to="/tasks/schedule" class="font-medium text-blue-700 hover:underline">
           Open Schedule
         </RouterLink>
-        — clock in/out for pay on days your PM assigned.
+        — destination, PM notes, and expected / actual hours for the day.
       </span>
     </p>
   </div>

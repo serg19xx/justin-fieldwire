@@ -9,8 +9,9 @@
         />
       </p>
       <p class="text-sm text-gray-500 mt-0.5">
-        Where you are going that day (project and address), a short note from your PM when they
-        left one, expected hours, and clock in/out with your phone — day hours only, not a task.
+        Where you are going that day (project and address), a short note from your PM when they left
+        one, and expected / actual hours. Start and End work are on Tasks — they also update this
+        timesheet when a row exists.
       </p>
     </header>
 
@@ -21,12 +22,6 @@
       class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
     >
       {{ loadError }}
-    </div>
-    <div
-      v-if="actionError"
-      class="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
-    >
-      {{ actionError }}
     </div>
 
     <div v-if="isLoading" class="flex justify-center py-12">
@@ -82,6 +77,9 @@
               Actual start: {{ formatCheckIn(row.slot.workStartAt, row.slot.workStartDistanceKm) }}
               · Actual end: {{ formatCheckIn(row.slot.workEndAt, row.slot.workEndDistanceKm) }}
             </p>
+            <p class="mt-1 text-[11px] text-gray-400">
+              Clock in/out on Tasks for this day.
+            </p>
           </div>
           <div class="flex shrink-0 flex-col items-end justify-between border-l border-gray-100 px-2 py-2">
             <span
@@ -93,36 +91,6 @@
             <span class="text-gray-300 text-lg leading-none pr-0.5" aria-hidden="true">›</span>
           </div>
         </RouterLink>
-        <div
-          v-if="row.slot.scheduleEntryId > 0"
-          class="flex flex-wrap gap-2 border-t border-gray-100 px-3 py-2 bg-gray-50/80"
-        >
-          <button
-            type="button"
-            class="px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-45"
-            :disabled="
-              checkInBusyId === row.slot.scheduleEntryId ||
-              !!row.slot.workStartAt ||
-              isPastDay(row.slot.workYmd)
-            "
-            @click="onCheckIn(row.slot, 'start')"
-          >
-            Start work
-          </button>
-          <button
-            type="button"
-            class="px-3 py-1.5 text-xs font-medium rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-45"
-            :disabled="
-              checkInBusyId === row.slot.scheduleEntryId ||
-              !row.slot.workStartAt ||
-              !!row.slot.workEndAt ||
-              isPastDay(row.slot.workYmd)
-            "
-            @click="onCheckIn(row.slot, 'end')"
-          >
-            End work
-          </button>
-        </div>
       </li>
     </ul>
   </div>
@@ -133,12 +101,10 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageUserGuideLink from '@/components/PageUserGuideLink.vue'
 import {
-  checkInMyScheduleEntry,
   fetchMySchedule,
   type MyScheduleEntry,
   type ScheduleDayPart,
 } from '@/core/utils/schedule-weeks-api'
-import { readDevicePosition } from '@/core/utils/device-geolocation'
 import TaskWorkDayPicker from '@/components/task-role/TaskWorkDayPicker.vue'
 import { parseWorkYmd, todayWorkYmd } from '@/core/utils/work-day'
 
@@ -174,9 +140,7 @@ const router = useRouter()
 
 const isLoading = ref(false)
 const loadError = ref('')
-const actionError = ref('')
 const allEntries = ref<MyScheduleEntry[]>([])
-const checkInBusyId = ref(0)
 const workYmd = ref(parseWorkYmd(route.query.workDate) ?? todayWorkYmd())
 
 const todayYmd = computed(() => todayWorkYmd())
@@ -282,47 +246,6 @@ async function fetchScheduleRange(): Promise<void> {
     loadError.value = err.response?.data?.message || 'Could not load schedule.'
   } finally {
     isLoading.value = false
-  }
-}
-
-async function onCheckIn(slot: DisplaySlot, phase: 'start' | 'end'): Promise<void> {
-  if (slot.scheduleEntryId <= 0) {
-    actionError.value = 'This assignment has no live schedule id yet. Ask a PM to re-publish the week.'
-    return
-  }
-  actionError.value = ''
-  checkInBusyId.value = slot.scheduleEntryId
-  try {
-    const { lat, lng } = await readDevicePosition()
-    const updated = await checkInMyScheduleEntry(slot.scheduleEntryId, phase, lat, lng)
-    if (updated) {
-      const idx = allEntries.value.findIndex(
-        (e) =>
-          (e.scheduleRowIdForMessages > 0 ? e.scheduleRowIdForMessages : e.id) === slot.scheduleEntryId,
-      )
-      if (idx >= 0) {
-        const prev = allEntries.value[idx]!
-        allEntries.value[idx] = {
-          ...prev,
-          work_start_at: updated.work_start_at ?? prev.work_start_at,
-          work_end_at: updated.work_end_at ?? prev.work_end_at,
-          work_start_lat: updated.work_start_lat ?? prev.work_start_lat,
-          work_start_lng: updated.work_start_lng ?? prev.work_start_lng,
-          work_end_lat: updated.work_end_lat ?? prev.work_end_lat,
-          work_end_lng: updated.work_end_lng ?? prev.work_end_lng,
-          work_start_distance_km: updated.work_start_distance_km ?? prev.work_start_distance_km,
-          work_end_distance_km: updated.work_end_distance_km ?? prev.work_end_distance_km,
-        }
-      } else {
-        await fetchScheduleRange()
-      }
-    }
-  } catch (e: unknown) {
-    const err = e as { response?: { data?: { message?: string } }; message?: string }
-    actionError.value =
-      err.response?.data?.message || err.message || 'Check-in failed.'
-  } finally {
-    checkInBusyId.value = 0
   }
 }
 
