@@ -22,8 +22,8 @@
 
     <template v-else-if="targetEntry && weekMeta">
       <header class="mb-6">
-        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Slot assignment</p>
-        <h1 class="text-xl font-semibold text-gray-900 mt-1">{{ taskName }}</h1>
+        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide">Day assignment</p>
+        <h1 class="text-xl font-semibold text-gray-900 mt-1">{{ dayTitle }}</h1>
 
         <div class="mt-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
           <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Assigned worker</h2>
@@ -63,7 +63,7 @@
 
       <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <label for="assignment-note" class="block text-sm font-medium text-gray-800 mb-2">
-          Instructions for this slot
+          Expectations for the day
         </label>
         <textarea
           id="assignment-note"
@@ -73,7 +73,7 @@
           :maxlength="assignmentNoteMaxChars"
           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-600"
           :class="noteDraft.length > assignmentNoteMaxChars ? 'border-red-400' : ''"
-          placeholder="What the worker should do for this day and slot…"
+          placeholder="Add details on expectations for this day (what to do on site, materials, contacts, etc.)…"
         />
         <p class="text-xs text-gray-500 mt-1">{{ noteDraft.length }} / {{ assignmentNoteMaxChars }}</p>
         <p v-if="!canEditNote" class="text-sm text-amber-800 mt-3 rounded-md bg-amber-50 border border-amber-100 px-3 py-2">
@@ -538,11 +538,15 @@ const canEditNote = computed(
 
 const canSave = computed(() => canEditNote.value && weekMeta.value != null)
 
-const taskName = computed(() => {
+const dayTitle = computed(() => {
   const e = targetEntry.value
-  if (!e) return '—'
-  const t = tasks.value.find((x) => Number(x.id) === e.task_id)
-  return t?.name?.trim() || `Task #${e.task_id}`
+  if (!e) return 'Day notes'
+  if (e.task_id != null && Number(e.task_id) > 0) {
+    const t = tasks.value.find((x) => Number(x.id) === e.task_id)
+    const name = t?.name?.trim()
+    if (name) return name
+  }
+  return dayLabel.value || 'Day notes'
 })
 
 const workerInfo = computed((): SlotWorkerInfo => {

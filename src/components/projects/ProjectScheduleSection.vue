@@ -286,7 +286,9 @@
               <tr>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Day</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Destination</th>
-                <th class="px-3 py-2 text-left font-medium text-gray-700">Note</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-700 min-w-[12rem]">
+                  Day notes
+                </th>
                 <th class="px-2 py-2 text-left font-medium text-gray-700 min-w-[16rem]">
                   <div class="grid grid-cols-5 gap-1 text-[9px] uppercase tracking-wide text-gray-500 font-medium">
                     <span>Km</span>
@@ -389,19 +391,44 @@
                     <textarea
                       v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
                       v-model="slot.row.assignment_note"
-                      rows="2"
-                      class="w-full min-w-[10rem] rounded border border-gray-300 text-sm px-2 py-1"
+                      rows="3"
+                      class="w-full min-w-[11rem] rounded border border-gray-300 text-sm px-2 py-1"
                       :maxlength="assignmentNoteMaxChars"
-                      placeholder="Optional note for this day"
+                      placeholder="Expectations for the day…"
                       @input="markProjectDirty(slot.row.project_id)"
                     />
                     <span
                       v-else-if="slot.row.assignment_note"
-                      class="text-sm text-gray-700 whitespace-pre-wrap"
+                      class="text-sm text-gray-800 whitespace-pre-wrap break-words"
                     >
                       {{ slot.row.assignment_note }}
                     </span>
                     <span v-else class="text-gray-400">—</span>
+                    <div class="mt-1.5">
+                      <RouterLink
+                        v-if="slotPlanLocation(slot.row)"
+                        :to="slotPlanLocation(slot.row)!"
+                        class="inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:text-blue-900"
+                        title="Open the full day-notes editor (longer text + optional setup docs)"
+                      >
+                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                          />
+                        </svg>
+                        Full day notes
+                      </RouterLink>
+                      <span
+                        v-else-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
+                        class="text-[11px] text-gray-400"
+                        title="Save the draft first so this day has a server id"
+                      >
+                        Save draft to open full day notes
+                      </span>
+                    </div>
                   </template>
                   <span v-else class="text-gray-400">—</span>
                 </td>
@@ -610,7 +637,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, RouterLink, type RouteLocationRaw } from 'vue-router'
 import axios from 'axios'
 import type { ProjectTeamMember } from '@/core/utils/project-api'
 import {
@@ -1137,6 +1164,23 @@ const hasAnySlotConflict = computed(() =>
 function assignmentNoteLength(row: ScheduleWeekEntryRow): number {
   const s = row.assignment_note
   return typeof s === 'string' ? s.length : 0
+}
+
+/** Full day-notes editor (ProjectScheduleSlotPlan) — requires a saved entry id. */
+function slotPlanLocation(row: PlannerScheduleRow): RouteLocationRaw | null {
+  if (row.id == null || row.project_id <= 0) return null
+  const workYmd = sliceWorkYmd(row.work_date)
+  if (workYmd.length < 10) return null
+  const workMon = weekStartMondayYmdFromIsoDate(workYmd)
+  const meta = weekMetaForProject(row.project_id)
+  const metaRaw = meta != null ? String(meta.week_start ?? '').trim() : ''
+  const metaMon =
+    metaRaw.length >= 10 ? weekStartMondayYmdFromIsoDate(metaRaw.slice(0, 10)) : ''
+  const week_start = metaMon === workMon && metaRaw.length >= 10 ? metaRaw.slice(0, 10) : workMon
+  return {
+    path: `/projects/${row.project_id}/detail/schedule-slot/${row.id}`,
+    query: { week_start },
+  }
 }
 
 const hasAnyAssignmentNoteTooLong = computed(() =>
