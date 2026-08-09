@@ -57,15 +57,19 @@
       aria-label="Main"
     >
       <RouterLink
-        to="/dashboard"
+        to="/tasks/schedule"
         class="flex flex-col items-center justify-center flex-1 py-2 min-w-0"
-        :class="$route.path === '/dashboard' ? 'text-orange-600 bg-orange-50 font-medium' : 'text-gray-500 hover:bg-gray-50'"
+        :class="isScheduleTabActive ? 'text-orange-600 bg-orange-50 font-medium' : 'text-gray-500 hover:bg-gray-50'"
       >
         <svg class="w-6 h-6 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 6h6m-3 3v3m0 0v3m0-3h3m-3 0h-3" />
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
         </svg>
-        <span class="text-[10px] sm:text-xs mt-0.5 truncate w-full text-center px-0.5 leading-tight">Home</span>
+        <span class="text-[10px] sm:text-xs mt-0.5 truncate w-full text-center px-0.5 leading-tight">Schedule</span>
       </RouterLink>
       <RouterLink
         to="/tasks/projects"
@@ -122,8 +126,16 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
+const isScheduleTabActive = computed(
+  () => route.path === '/tasks/schedule' || route.path.startsWith('/tasks/schedule/'),
+)
+
 const isTasksTabActive = computed(
-  () => route.path === '/tasks/projects' || route.path.startsWith('/tasks/projects/'),
+  () =>
+    route.path === '/tasks/projects' ||
+    route.path.startsWith('/tasks/projects/') ||
+    route.path.startsWith('/tasks/project/') ||
+    route.path === '/tasks/my-week',
 )
 
 const isTimesheetTabActive = computed(() => route.path === '/tasks/timesheet')
