@@ -63,9 +63,10 @@
 
       <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <label for="assignment-note" class="block text-sm font-medium text-gray-800 mb-2">
-          Expectations for the day
+          Note for the worker (this day)
           <span class="block text-xs font-normal text-gray-500 mt-0.5">
-            PM notebook only — workers do not see this text (Schedule is separate from their tasks).
+            Short message from you for that day/jobsite. Workers see it on their Schedule — not inside a
+            Task.
           </span>
         </label>
         <textarea
@@ -76,7 +77,7 @@
           :maxlength="assignmentNoteMaxChars"
           class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-600"
           :class="noteDraft.length > assignmentNoteMaxChars ? 'border-red-400' : ''"
-          placeholder="Add details on expectations for this day (what to do on site, materials, contacts, etc.)…"
+          placeholder="Message for the worker this day (site context, materials, who to call, etc.)…"
         />
         <p class="text-xs text-gray-500 mt-1">{{ noteDraft.length }} / {{ assignmentNoteMaxChars }}</p>
         <p v-if="!canEditNote" class="text-sm text-amber-800 mt-3 rounded-md bg-amber-50 border border-amber-100 px-3 py-2">

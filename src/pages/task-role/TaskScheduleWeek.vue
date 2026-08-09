@@ -9,8 +9,8 @@
         />
       </p>
       <p class="text-sm text-gray-500 mt-0.5">
-        Where you are going that day (project and address), expected hours, and clock in/out with
-        your phone for actual time — day hours only, not a task.
+        Where you are going that day (project and address), a short note from your PM when they
+        left one, expected hours, and clock in/out with your phone — day hours only, not a task.
       </p>
     </header>
 
@@ -56,6 +56,15 @@
             </p>
             <p v-if="row.slot.siteAddress" class="text-xs text-gray-600 truncate mt-0.5">
               {{ row.slot.siteAddress }}
+            </p>
+            <p
+              v-if="row.slot.assignmentNote"
+              class="mt-2 text-xs text-gray-800 whitespace-pre-wrap break-words rounded-md bg-amber-50 border border-amber-100 px-2 py-1.5"
+            >
+              <span class="block text-[10px] font-semibold uppercase tracking-wide text-amber-900/80 mb-0.5"
+                >Note from PM</span
+              >
+              {{ row.slot.assignmentNote }}
             </p>
             <p v-if="row.slot.distanceKm" class="mt-1 text-xs text-gray-600">
               Distance: {{ row.slot.distanceKm }} km
@@ -142,6 +151,8 @@ interface DisplaySlot {
   dayPart: ScheduleDayPart
   projectName: string
   siteAddress: string
+  /** Day note from PM Schedule (communication for the day — not a task). */
+  assignmentNote: string
   distanceKm: string
   expectedStartTime: string
   expectedEndTime: string
@@ -199,6 +210,7 @@ const sortedSlots = computed((): DisplaySlot[] => {
         dayPart: e.day_part,
         projectName: (e.project_name ?? '').trim(),
         siteAddress: (e.project_address ?? e.task?.address ?? '').trim(),
+        assignmentNote: (typeof e.assignment_note === 'string' ? e.assignment_note : '').trim(),
         distanceKm: (typeof e.distance_km === 'string' ? e.distance_km : '').trim(),
         expectedStartTime: (e.expected_start_time ?? '').trim(),
         expectedEndTime: (e.expected_end_time ?? '').trim(),

@@ -58,7 +58,7 @@
         </p>
       </section>
 
-      <!-- 3. PM setup documents (day notes stay on manager Schedule only — not shown to workers) -->
+      <!-- 3. PM setup documents (day notes are on worker Schedule for the day — not on this task screen) -->
       <section
         v-if="isSlotDocumentsLoading || setupDocuments.length > 0"
         class="mb-6 rounded-xl border border-amber-200/90 bg-amber-50/50 p-4 shadow-sm scroll-mt-4"
@@ -921,7 +921,7 @@ async function loadScheduleSlotMeta(): Promise<void> {
       if (part === 'am' || part === 'pm' || part === 'full') return e.day_part === part
       return dayMatches.length === 1 && e === dayMatches[0]
     })
-    // assignment_note is PM-only (manager Schedule notebook) — never surface to workers.
+    // assignment_note is day communication on worker Schedule — not shown on task screens.
     if (hit) {
       scheduleWorkStartAt.value = hit.work_start_at ? String(hit.work_start_at) : null
       scheduleWorkEndAt.value = hit.work_end_at ? String(hit.work_end_at) : null

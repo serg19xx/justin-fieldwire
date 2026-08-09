@@ -294,7 +294,9 @@
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Destination</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">
                   Day notes
-                  <span class="block text-[10px] font-normal text-gray-500">PM only — not shown to workers</span>
+                  <span class="block text-[10px] font-normal text-gray-500"
+                    >Shown on worker Schedule for that day (not in Tasks)</span
+                  >
                 </th>
                 <th class="px-2 py-2 text-left font-medium text-gray-700">
                   <div class="grid grid-cols-5 gap-1 w-full text-[9px] uppercase tracking-wide text-gray-500 font-medium">
@@ -401,7 +403,7 @@
                       rows="3"
                       class="w-full rounded border border-gray-300 text-sm px-2 py-1"
                       :maxlength="assignmentNoteMaxChars"
-                      placeholder="Expectations for the day…"
+                      placeholder="Note for the worker this day…"
                       @input="markProjectDirty(slot.row.project_id)"
                     />
                     <span

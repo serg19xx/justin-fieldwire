@@ -12,8 +12,8 @@ Same content as `public/CLIENT_SCHEDULE_AND_WORKER_TIMESHEET_GUIDE.html`.
 
 | App | What to test (recent additions) |
 |-----|----------------------------------|
-| **Manager** | Schedule as payroll notebook: project/address per day, Expected hours, Actual from phone when published; **Day notes are PM-only** |
-| **Worker** | Start/End on task for today + GPS near site; Hours monthly read-only timesheet; **does not see Day notes** |
+| **Manager** | Schedule as payroll notebook: project/address per day, Expected hours, Actual from phone when published; **Day notes** = short message to the crew for that day |
+| **Worker** | Sees Day notes on **worker Schedule** for that day; Start/End + GPS; Hours monthly read-only — notes are **not** inside Tasks |
 
 Test over **2–3 real days** (same-day Start/End + on-site GPS).
 
@@ -40,12 +40,10 @@ A month or custom range always spans **several weeks**, which may mix Draft and 
 
 True month/custom *editing* would be a separate product scope (multi-week reopen/save/publish and new conflict rules) — not a small UI toggle.
 
-## Day notes (PM only)
+## Day notes (PM → worker Schedule, not Tasks)
 
-**Day notes / Expectations for the day** live on the manager Schedule row (worker + day + destination project). They are a **PM payroll notebook** aid — materials reminder, who to call, site context — **not** worker task instructions.
+**Day notes** live on the manager Schedule row (worker + day + destination project). They are a **short message from the PM for that day/jobsite** — materials, contacts, site context — **not** Gantt task instructions.
 
-- Visible and editable only in **manager Schedule** (Week draft / Full day notes).
-- **Not shown** in the worker Schedule list or task day screen.
-- This matches the agreed autonomy of Schedule vs Tasks: the notebook is not the worker’s task app.
-
-If Justin later wants workers to see day expectations, that is a separate product decision (and would need a clear place that is not “which Gantt task?”).
+- PM writes them in **manager Schedule** (Week / Full day notes).
+- Workers **see them on their Schedule** for that day (next to destination and hours).
+- They are **not** shown inside a Task screen — so Schedule stays independent of Tasks.
