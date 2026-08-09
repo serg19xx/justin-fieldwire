@@ -176,7 +176,12 @@ function normalizeMyScheduleEntry(raw: unknown): MyScheduleEntry | null {
   const swNum = r.schedule_week_id != null ? Number(r.schedule_week_id) : NaN
   const schedule_week_id = Number.isFinite(swNum) && swNum > 0 ? swNum : undefined
   const an = r.assignment_note
-  const assignment_note: string | null = typeof an === 'string' ? an : null
+  const assignment_note: string | null =
+    an == null || an === ''
+      ? null
+      : typeof an === 'string'
+        ? an
+        : String(an)
   const pn = r.project_name ?? r.projectName
   const project_name = typeof pn === 'string' ? pn : undefined
   const pa = r.project_address ?? r.projectAddress
@@ -491,7 +496,8 @@ function normalizeWeekResponse(raw: Record<string, unknown>): ProjectScheduleWee
       if (row == null || typeof row !== 'object') continue
       const e = row as Record<string, unknown>
       const n = e.assignment_note
-      const assignment_note: string | null = typeof n === 'string' ? n : null
+      const assignment_note: string | null =
+        n == null || n === '' ? null : typeof n === 'string' ? n : String(n)
       const dp = String(e.day_part ?? 'am').toLowerCase()
       const day_part: ScheduleDayPart =
         dp === 'pm' || dp === 'full' ? (dp as ScheduleDayPart) : 'am'
