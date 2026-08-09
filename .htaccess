@@ -2,31 +2,12 @@
 RewriteEngine On
 RewriteBase /
 
-# Do not cache the service worker script — browsers must always check for a new SW after deploy.
-<Files "sw.js">
-  <IfModule mod_headers.c>
-    Header set Cache-Control "no-cache, no-store, must-revalidate"
-    Header set Pragma "no-cache"
-    Header set Expires "0"
-  </IfModule>
-</Files>
-
-# Do not cache the SPA shell — after deploy, index.html must load fresh so script
-# hashes match files on disk (otherwise lazy routes load stale/missing chunks).
-<Files "index.html">
-  <IfModule mod_headers.c>
-    Header set Cache-Control "no-cache, no-store, must-revalidate"
-    Header set Pragma "no-cache"
-    Header set Expires "0"
-  </IfModule>
-</Files>
-
 # Handle Vue.js routing - redirect all requests to index.html
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule . /index.html [L]
 
-# Cache static assets
+# Cache static assets (hashed build files under /assets/)
 <IfModule mod_expires.c>
     ExpiresActive on
     ExpiresByType text/css "access plus 1 year"
@@ -65,6 +46,34 @@ RewriteRule . /index.html [L]
     Header always set Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline' 'unsafe-eval'"
 </IfModule>
 
+# Long-cache hashed assets only (not sw.js / index.html — those are overridden below).
+<IfModule mod_expires.c>
+    <FilesMatch "\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)$">
+        ExpiresActive On
+        ExpiresDefault "access plus 1 year"
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+</IfModule>
+
+# Do not cache the service worker — must win over the *.js rule above.
+<Files "sw.js">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </IfModule>
+</Files>
+
+# Do not cache the SPA shell — after deploy, index.html must load fresh so script
+# hashes match files on disk (otherwise lazy routes load stale/missing chunks).
+<Files "index.html">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </IfModule>
+</Files>
+
 # Prevent access to sensitive files
 <Files ".env*">
     Order allow,deny
@@ -75,12 +84,3 @@ RewriteRule . /index.html [L]
     Order allow,deny
     Deny from all
 </Files>
-
-# Enable browser caching for static assets
-<IfModule mod_expires.c>
-    <FilesMatch "\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)$">
-        ExpiresActive On
-        ExpiresDefault "access plus 1 year"
-        Header append Cache-Control "public, immutable"
-    </FilesMatch>
-</IfModule>

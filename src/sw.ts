@@ -2,7 +2,7 @@
 import { clientsClaim } from 'workbox-core'
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
-import { NetworkFirst } from 'workbox-strategies'
+import { NetworkFirst, NetworkOnly } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 
 declare let self: ServiceWorkerGlobalScope
@@ -11,8 +11,19 @@ declare let self: ServiceWorkerGlobalScope
 self.skipWaiting()
 clientsClaim()
 
+/**
+ * Precache only the SPA shell (see vite.config injectManifest.globPatterns).
+ * Hashed /assets/* chunks must NOT be precached — a stale Workbox entry after
+ * deploy causes "ServiceWorker intercepted … unexpected error" on lazy imports.
+ */
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
+
+// Hashed build chunks: always go to the network (browser HTTP cache still applies).
+registerRoute(
+  ({ url }) => url.pathname.startsWith('/assets/'),
+  new NetworkOnly(),
+)
 
 /**
  * SPA navigations must prefer the network after deploy.
@@ -40,6 +51,24 @@ try {
 } catch {
   // NavigationRoute may fail outside a full Vite PWA build
 }
+
+/** Drop leftover Workbox / runtime caches from older SW versions. */
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    (async () => {
+      cleanupOutdatedCaches()
+      const keep = new Set(['fw-spa-navigations'])
+      const keys = await caches.keys()
+      await Promise.all(
+        keys.map(async (key) => {
+          // Keep current precache (workbox-precache-v2-*) and navigation cache.
+          if (keep.has(key) || key.startsWith('workbox-precache')) return
+          await caches.delete(key)
+        }),
+      )
+    })(),
+  )
+})
 
 interface PushPayload {
   title?: string

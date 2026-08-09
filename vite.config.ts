@@ -48,7 +48,9 @@ export default defineConfig(async ({ mode }) => {
         ],
       },
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        // Precache shell only. Hashed /assets/* JS+CSS are NetworkOnly in sw.ts —
+        // precaching them after FTP deploys caused broken lazy-route imports.
+        globPatterns: ['index.html', 'favicon.ico', 'icons/**/*.{png,svg,ico}'],
       },
       devOptions: {
         enabled: true,

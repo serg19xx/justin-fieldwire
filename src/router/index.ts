@@ -290,7 +290,7 @@ const router = createRouter({
   ],
 })
 
-// After deploy, cached index.html can point at removed hashed chunks — recover once.
+// After deploy, a stale service worker can break hashed chunk imports — recover once.
 router.onError((err) => {
   console.error('Router lazy-load error:', err)
   const msg = err instanceof Error ? err.message : String(err)
@@ -299,14 +299,27 @@ router.onError((err) => {
     msg.includes('Importing a module script failed') ||
     msg.includes('error loading dynamically imported module')
   if (!isChunkFail) return
-  try {
-    const url = new URL(window.location.href)
-    if (url.searchParams.has('_chunk_reload')) return
-    url.searchParams.set('_chunk_reload', '1')
-    window.location.replace(url.toString())
-  } catch {
-    window.location.reload()
-  }
+
+  void (async () => {
+    try {
+      const url = new URL(window.location.href)
+      if (url.searchParams.has('_chunk_reload')) return
+
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations()
+        await Promise.all(regs.map((r) => r.unregister()))
+      }
+      if ('caches' in window) {
+        const keys = await caches.keys()
+        await Promise.all(keys.map((k) => caches.delete(k)))
+      }
+
+      url.searchParams.set('_chunk_reload', '1')
+      window.location.replace(url.toString())
+    } catch {
+      window.location.reload()
+    }
+  })()
 })
 
 // Navigation guard
