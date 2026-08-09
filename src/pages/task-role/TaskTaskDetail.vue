@@ -58,16 +58,14 @@
         </p>
       </section>
 
-      <!-- 3. PM setup text + setup documents -->
+      <!-- 3. PM setup documents (day notes stay on manager Schedule only — not shown to workers) -->
       <section
+        v-if="isSlotDocumentsLoading || setupDocuments.length > 0"
         class="mb-6 rounded-xl border border-amber-200/90 bg-amber-50/50 p-4 shadow-sm scroll-mt-4"
         aria-labelledby="pm-setup-title"
       >
         <h2 id="pm-setup-title" class="text-sm font-semibold text-amber-950">PM setup</h2>
-        <p class="mt-2 text-sm text-gray-900 whitespace-pre-wrap break-words min-h-[1.25rem]">
-          {{ scheduleAssignmentNote || '—' }}
-        </p>
-        <div class="mt-4 border-t border-amber-200/80 pt-4">
+        <div class="mt-2">
           <p class="text-xs font-semibold uppercase tracking-wide text-amber-900 mb-2">Documents (drawings, plans, photos)</p>
           <p v-if="isSlotDocumentsLoading" class="text-xs text-gray-500">Loading…</p>
           <ul v-else-if="setupDocuments.length > 0" class="space-y-2">
@@ -83,7 +81,6 @@
               </button>
             </li>
           </ul>
-          <p v-else class="text-xs text-gray-600">No files attached by PM for this slot yet.</p>
         </div>
       </section>
 
@@ -792,7 +789,6 @@ function onFieldWorkUpdated(updated: Task): void {
   task.value = updated
 }
 /** Loaded from GET /me/schedule when opening task from weekly schedule (published rows). */
-const scheduleAssignmentNote = ref('')
 const isLoading = ref(true)
 const selectedStatus = ref('')
 const isSavingStatus = ref(false)
@@ -881,8 +877,7 @@ function entryWorkYmdFromSchedule(e: { work_date?: string }): string {
   return typeof w === 'string' && w.length >= 10 ? w.slice(0, 10) : String(w ?? '')
 }
 
-async function loadScheduleAssignmentNote(): Promise<void> {
-  scheduleAssignmentNote.value = ''
+async function loadScheduleSlotMeta(): Promise<void> {
   scheduleEntryId.value = 0
   scheduleSlotDayPartResolved.value = ''
   scheduleWorkStartAt.value = null
@@ -926,8 +921,7 @@ async function loadScheduleAssignmentNote(): Promise<void> {
       if (part === 'am' || part === 'pm' || part === 'full') return e.day_part === part
       return dayMatches.length === 1 && e === dayMatches[0]
     })
-    const note = hit?.assignment_note
-    scheduleAssignmentNote.value = typeof note === 'string' ? note.trim() : ''
+    // assignment_note is PM-only (manager Schedule notebook) — never surface to workers.
     if (hit) {
       scheduleWorkStartAt.value = hit.work_start_at ? String(hit.work_start_at) : null
       scheduleWorkEndAt.value = hit.work_end_at ? String(hit.work_end_at) : null
@@ -950,7 +944,6 @@ async function loadScheduleAssignmentNote(): Promise<void> {
       }
     }
   } catch {
-    scheduleAssignmentNote.value = ''
     scheduleEntryId.value = 0
   } finally {
     isScheduleSlotMetaLoading.value = false
@@ -1336,20 +1329,18 @@ async function loadTask() {
       !openedFromPublishedSchedule
     ) {
       task.value = null
-      scheduleAssignmentNote.value = ''
       scheduleEntryId.value = 0
     } else {
       task.value = loaded
       selectedStatus.value = mapStatusFromBackend(task.value?.status)
       loadWorkerNotes()
       if (fromSchedule.value) {
-        await loadScheduleAssignmentNote()
+        await loadScheduleSlotMeta()
         loadSlotDayStatusFromStorage()
       }
     }
   } catch {
     task.value = null
-    scheduleAssignmentNote.value = ''
     scheduleEntryId.value = 0
   } finally {
     isLoading.value = false
@@ -1410,7 +1401,7 @@ watch(
   () => [route.query.workDate, route.query.dayPart, projectId.value, taskId.value] as const,
   () => {
     if (task.value && fromSchedule.value) {
-      void loadScheduleAssignmentNote().then(() => loadSlotDayStatusFromStorage())
+      void loadScheduleSlotMeta().then(() => loadSlotDayStatusFromStorage())
     }
   },
 )

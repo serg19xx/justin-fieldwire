@@ -64,6 +64,9 @@
       <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <label for="assignment-note" class="block text-sm font-medium text-gray-800 mb-2">
           Expectations for the day
+          <span class="block text-xs font-normal text-gray-500 mt-0.5">
+            PM notebook only — workers do not see this text (Schedule is separate from their tasks).
+          </span>
         </label>
         <textarea
           id="assignment-note"

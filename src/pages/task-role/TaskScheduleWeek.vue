@@ -57,9 +57,6 @@
             <p v-if="row.slot.siteAddress" class="text-xs text-gray-600 truncate mt-0.5">
               {{ row.slot.siteAddress }}
             </p>
-            <p v-if="row.slot.assignmentNote" class="mt-2 text-xs text-gray-700 line-clamp-2">
-              {{ row.slot.assignmentNote }}
-            </p>
             <p v-if="row.slot.distanceKm" class="mt-1 text-xs text-gray-600">
               Distance: {{ row.slot.distanceKm }} km
             </p>
@@ -145,7 +142,6 @@ interface DisplaySlot {
   dayPart: ScheduleDayPart
   projectName: string
   siteAddress: string
-  assignmentNote: string
   distanceKm: string
   expectedStartTime: string
   expectedEndTime: string
@@ -203,7 +199,6 @@ const sortedSlots = computed((): DisplaySlot[] => {
         dayPart: e.day_part,
         projectName: (e.project_name ?? '').trim(),
         siteAddress: (e.project_address ?? e.task?.address ?? '').trim(),
-        assignmentNote: (typeof e.assignment_note === 'string' ? e.assignment_note : '').trim(),
         distanceKm: (typeof e.distance_km === 'string' ? e.distance_km : '').trim(),
         expectedStartTime: (e.expected_start_time ?? '').trim(),
         expectedEndTime: (e.expected_end_time ?? '').trim(),

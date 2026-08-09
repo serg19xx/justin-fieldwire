@@ -292,7 +292,10 @@
               <tr>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Day</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Destination</th>
-                <th class="px-3 py-2 text-left font-medium text-gray-700">Day notes</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-700">
+                  Day notes
+                  <span class="block text-[10px] font-normal text-gray-500">PM only — not shown to workers</span>
+                </th>
                 <th class="px-2 py-2 text-left font-medium text-gray-700">
                   <div class="grid grid-cols-5 gap-1 w-full text-[9px] uppercase tracking-wide text-gray-500 font-medium">
                     <span>Km</span>

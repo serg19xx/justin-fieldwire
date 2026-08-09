@@ -52,7 +52,7 @@ Invalid values → **400** with message.
 
 ## 3.1 `assignment_note`
 
-Optional **per schedule entry** (not duplicated on the task row). PM-facing instruction for that worker / day / slot.
+Optional **per schedule entry** (not duplicated on the task row). **PM-only** notebook text for that worker / day / destination (payroll planning aid). The worker SPA **does not display** this field; treat it as manager Schedule UI only.
 
 | Rule | Detail |
 |------|--------|
@@ -60,7 +60,7 @@ Optional **per schedule entry** (not duplicated on the task row). PM-facing inst
 | Max length | **2000** characters after trim; longer → **400** |
 | Empty | Trim whitespace; empty string stored as **`null`** |
 | Writes | Only via **PUT** `.../entries` on a **draft** week (same RBAC as other entry fields) |
-| Reads | Included on each entry in **GET** project week, and on each row in **GET** `/me/schedule` (published only) |
+| Reads | Included on each entry in **GET** project week. May still appear on **GET** `/me/schedule` payloads historically — **clients must not show it to workers**. Preferred backend hardening: omit or null on worker `/me/schedule`. |
 
 ---
 

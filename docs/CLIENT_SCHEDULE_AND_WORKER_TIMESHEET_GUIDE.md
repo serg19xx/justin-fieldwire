@@ -12,8 +12,8 @@ Same content as `public/CLIENT_SCHEDULE_AND_WORKER_TIMESHEET_GUIDE.html`.
 
 | App | What to test (recent additions) |
 |-----|----------------------------------|
-| **Manager** | Schedule as payroll notebook: project/address per day, Expected hours, Actual from phone when published |
-| **Worker** | Start/End on task for today + GPS near site; Hours monthly read-only timesheet |
+| **Manager** | Schedule as payroll notebook: project/address per day, Expected hours, Actual from phone when published; **Day notes are PM-only** |
+| **Worker** | Start/End on task for today + GPS near site; Hours monthly read-only timesheet; **does not see Day notes** |
 
 Test over **2–3 real days** (same-day Start/End + on-site GPS).
 
@@ -39,3 +39,13 @@ A month or custom range always spans **several weeks**, which may mix Draft and 
 2. **Editing** only in **Week**, one week at a time.
 
 True month/custom *editing* would be a separate product scope (multi-week reopen/save/publish and new conflict rules) — not a small UI toggle.
+
+## Day notes (PM only)
+
+**Day notes / Expectations for the day** live on the manager Schedule row (worker + day + destination project). They are a **PM payroll notebook** aid — materials reminder, who to call, site context — **not** worker task instructions.
+
+- Visible and editable only in **manager Schedule** (Week draft / Full day notes).
+- **Not shown** in the worker Schedule list or task day screen.
+- This matches the agreed autonomy of Schedule vs Tasks: the notebook is not the worker’s task app.
+
+If Justin later wants workers to see day expectations, that is a separate product decision (and would need a clear place that is not “which Gantt task?”).
