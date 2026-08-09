@@ -106,7 +106,7 @@ onMounted(async () => {
 <template>
   <div class="min-h-screen bg-gray-100">
     <div class="border-b border-gray-200 bg-white">
-      <div class="max-w-5xl mx-auto px-4 py-3">
+      <div class="max-w-6xl mx-auto px-4 py-3">
         <h1 class="text-lg font-semibold text-gray-900">Schedule</h1>
         <p class="mt-1">
           <PageUserGuideLink
@@ -132,7 +132,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div v-if="loadError" class="max-w-5xl mx-auto px-4 pt-4">
+    <div v-if="loadError" class="max-w-6xl mx-auto px-4 pt-4">
       <div class="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
         {{ loadError }}
       </div>
@@ -147,7 +147,7 @@ onMounted(async () => {
 
     <div
       v-else-if="projects.length === 0"
-      class="max-w-5xl mx-auto px-4 py-10 text-center text-sm text-gray-500"
+      class="max-w-6xl mx-auto px-4 py-10 text-center text-sm text-gray-500"
     >
       No projects available for scheduling.
     </div>

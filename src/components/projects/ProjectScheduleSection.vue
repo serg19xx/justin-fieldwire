@@ -1,5 +1,5 @@
 <template>
-  <div class="p-4 md:p-6 max-w-5xl mx-auto w-full min-w-0">
+  <div class="p-4 md:p-6 max-w-6xl mx-auto w-full min-w-0">
     <div class="mb-4 space-y-3">
       <div class="flex flex-col gap-2">
         <div
@@ -261,11 +261,17 @@
           </button>
         </div>
 
-        <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
-          <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm w-full">
+          <table class="w-full table-fixed divide-y divide-gray-200 text-sm">
+            <colgroup>
+              <col class="w-[14%]" />
+              <col class="w-[28%]" />
+              <col class="w-[28%]" />
+              <col class="w-[30%]" />
+            </colgroup>
             <thead class="bg-gray-50">
               <tr>
-                <th colspan="5" class="px-3 py-3 text-left align-middle border-b border-gray-200">
+                <th colspan="4" class="px-3 py-3 text-left align-middle border-b border-gray-200">
                   <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                     <label class="flex items-center gap-2 min-w-0">
                       <span class="text-xs font-medium text-gray-700 shrink-0">Worker</span>
@@ -286,11 +292,9 @@
               <tr>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Day</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-700">Destination</th>
-                <th class="px-3 py-2 text-left font-medium text-gray-700 min-w-[12rem]">
-                  Day notes
-                </th>
-                <th class="px-2 py-2 text-left font-medium text-gray-700 min-w-[16rem]">
-                  <div class="grid grid-cols-5 gap-1 text-[9px] uppercase tracking-wide text-gray-500 font-medium">
+                <th class="px-3 py-2 text-left font-medium text-gray-700">Day notes</th>
+                <th class="px-2 py-2 text-left font-medium text-gray-700">
+                  <div class="grid grid-cols-5 gap-1 w-full text-[9px] uppercase tracking-wide text-gray-500 font-medium">
                     <span>Km</span>
                     <span title="Expected start">Exp start</span>
                     <span title="Expected finish">Exp end</span>
@@ -344,7 +348,7 @@
                       <div class="min-w-0 flex-1">
                         <select
                           v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
-                          class="w-full min-w-[10rem] max-w-[16rem] rounded border border-gray-300 text-sm bg-white"
+                          class="w-full rounded border border-gray-300 text-sm bg-white"
                           :value="String(slot.row.project_id)"
                           @change="onRowProjectChange(slot.row, $event)"
                         >
@@ -359,7 +363,7 @@
                         <span v-else class="text-sm text-gray-900">{{ projectNameById(slot.row.project_id) }}</span>
                         <p
                           v-if="projectAddressById(slot.row.project_id)"
-                          class="mt-1 text-[11px] text-gray-500 leading-snug max-w-[16rem] line-clamp-2"
+                          class="mt-1 text-[11px] text-gray-500 leading-snug line-clamp-2"
                           :title="projectAddressById(slot.row.project_id) || undefined"
                         >
                           {{ projectAddressById(slot.row.project_id) }}
@@ -392,7 +396,7 @@
                       v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
                       v-model="slot.row.assignment_note"
                       rows="3"
-                      class="w-full min-w-[11rem] rounded border border-gray-300 text-sm px-2 py-1"
+                      class="w-full rounded border border-gray-300 text-sm px-2 py-1"
                       :maxlength="assignmentNoteMaxChars"
                       placeholder="Expectations for the day…"
                       @input="markProjectDirty(slot.row.project_id)"
@@ -434,7 +438,7 @@
                 </td>
                 <td class="px-2 py-2 align-top">
                   <template v-if="slot.row">
-                    <div class="grid grid-cols-5 gap-1 items-center min-w-[16rem]">
+                    <div class="grid grid-cols-5 gap-1 items-center w-full">
                       <div>
                         <input
                           v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
@@ -500,7 +504,7 @@
             </tbody>
             <tfoot v-if="selectedPlannerWorkerId > 0 && weekTemplateView.length > 0">
               <tr class="bg-gray-50 border-t border-gray-200">
-                <td colspan="4" class="px-3 py-3 text-sm text-gray-700">
+                <td colspan="3" class="px-3 py-3 text-sm text-gray-700">
                   <span class="font-medium text-gray-900">Actual hours</span>
                   <span class="text-gray-500"> (sum of Act end − Act start for days with both punches)</span>
                 </td>
