@@ -5,12 +5,6 @@ import type { ClientListRow, ClientRowActionId, ClientToolbarActionId } from '@/
 import { getClientRegistryEntry } from '@/config/clients-registry'
 import { clientsRegistryApi } from '@/core/utils/clients-registry-api'
 import { getDefaultClientSort, type ClientSortDirection } from '@/core/utils/client-list-sort'
-import {
-  formatContactFilterLabel,
-  getClientContactFilterFields,
-  type ClientContactFilterFieldKey,
-  type ClientContactFilterMode,
-} from '@/core/utils/client-contact-filter'
 import AppIcon from '@/components/AppIcon.vue'
 import ClientsPagination from '@/components/clients/ClientsPagination.vue'
 import ClientsTableShell from '@/components/clients/ClientsTableShell.vue'
@@ -48,8 +42,6 @@ const actionBusy = ref(false)
 const saveNotice = ref<string | null>(null)
 const sortBy = ref('')
 const sortDir = ref<ClientSortDirection>('asc')
-const contactFilterField = ref<ClientContactFilterFieldKey | ''>('')
-const contactFilterMode = ref<ClientContactFilterMode>('filled')
 
 const commDialogOpen = ref(false)
 const commChannel = ref<ClientCommChannel>('sms')
@@ -64,17 +56,6 @@ const meetingInviteClientName = ref('')
 const meetingInvitePhone = ref('')
 
 const exportDialogOpen = ref(false)
-
-const contactFilterFields = computed(() =>
-  entry.value ? getClientContactFilterFields(entry.value.key) : [],
-)
-
-const activeContactFilterLabel = computed(() => {
-  if (!contactFilterField.value) return null
-  const field = contactFilterFields.value.find((f) => f.key === contactFilterField.value)
-  if (!field) return null
-  return formatContactFilterLabel(field, contactFilterMode.value)
-})
 
 function resetSort() {
   if (!entry.value) {
@@ -147,13 +128,6 @@ function buildQuery() {
     sortBy: sortBy.value,
     sortDir: sortDir.value,
   }
-  if (contactFilterField.value) {
-    if (contactFilterMode.value === 'filled') {
-      q.nonEmpty = contactFilterField.value
-    } else {
-      q.empty = contactFilterField.value
-    }
-  }
   for (const f of entry.value?.filters ?? []) {
     const v = filterValues.value[f.key]
     if (v) q[f.queryParam] = v
@@ -216,27 +190,8 @@ async function load() {
 function resetFilters() {
   filterValues.value = {}
   regionOptions.value = []
-  contactFilterField.value = ''
-  contactFilterMode.value = 'filled'
   page.value = 1
   resetSort()
-}
-
-function onContactFilterChange() {
-  page.value = 1
-  void load()
-}
-
-function setContactFilterMode(mode: ClientContactFilterMode) {
-  if (!contactFilterField.value) return
-  contactFilterMode.value = mode
-  onContactFilterChange()
-}
-
-function clearContactFilter() {
-  contactFilterField.value = ''
-  contactFilterMode.value = 'filled'
-  onContactFilterChange()
 }
 
 function onCountryChange() {
@@ -362,8 +317,6 @@ function clearSaveNotice() {
 
 function clearSearchAndFilters() {
   search.value = ''
-  contactFilterField.value = ''
-  contactFilterMode.value = 'filled'
   resetFilters()
   saveNotice.value = null
   void load()
@@ -698,53 +651,6 @@ onMounted(async () => {
           </template>
         </div>
 
-        <div v-if="entry" class="flex flex-wrap items-center gap-2">
-          <label class="text-sm text-gray-600 whitespace-nowrap">Field filter:</label>
-          <select
-            v-model="contactFilterField"
-            class="border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white min-w-[10rem] max-w-full"
-            @change="onContactFilterChange"
-          >
-            <option value="">All records</option>
-            <option v-for="f in contactFilterFields" :key="f.key" :value="f.key">
-              {{ f.label }}
-            </option>
-          </select>
-          <div
-            class="inline-flex rounded-md border border-gray-300 bg-white text-xs overflow-hidden shrink-0"
-            :class="{ 'opacity-50 pointer-events-none': !contactFilterField }"
-            role="group"
-            aria-label="Has or empty value"
-          >
-            <button
-              type="button"
-              class="px-2.5 py-1.5 transition-colors"
-              :class="
-                contactFilterMode === 'filled'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              "
-              :disabled="!contactFilterField"
-              @click="setContactFilterMode('filled')"
-            >
-              Has value
-            </button>
-            <button
-              type="button"
-              class="px-2.5 py-1.5 border-l border-gray-300 transition-colors"
-              :class="
-                contactFilterMode === 'empty'
-                  ? 'bg-blue-600 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              "
-              :disabled="!contactFilterField"
-              @click="setContactFilterMode('empty')"
-            >
-              No value
-            </button>
-          </div>
-        </div>
-
         <div class="flex items-center gap-2">
           <label class="text-sm text-gray-600 whitespace-nowrap">Search:</label>
           <div class="relative w-full sm:w-48">
@@ -761,21 +667,6 @@ onMounted(async () => {
           </div>
         </div>
       </div>
-
-      <p
-        v-if="activeContactFilterLabel"
-        class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2"
-      >
-        Showing:
-        <span class="font-medium">{{ activeContactFilterLabel }}</span>
-        <button
-          type="button"
-          class="ml-2 text-amber-900 hover:underline"
-          @click="clearContactFilter"
-        >
-          Clear
-        </button>
-      </p>
 
       <ClientsPagination
         v-if="pagination.total > 0"

@@ -8,9 +8,6 @@ export interface ClientListQuery {
   search?: string
   sortBy?: string
   sortDir?: 'asc' | 'desc'
-  nonEmpty?: string
-  empty?: string
-  missingContacts?: boolean
   country?: string
   region?: string
   city?: string
@@ -68,9 +65,6 @@ export const clientsRegistryApi = {
     if (query.search?.trim()) params.search = query.search.trim()
     if (query.sortBy) params.sortBy = query.sortBy
     if (query.sortDir) params.sortDir = query.sortDir
-    if (query.nonEmpty) params.nonEmpty = query.nonEmpty
-    if (query.empty) params.empty = query.empty
-    if (query.missingContacts) params.missingContacts = 1
 
     const response = await api.get(`/api/v1${entry.listApiPath}`, { params })
     let { rows, pagination } = extractListPayload(response.data, entry.listResponseKey)

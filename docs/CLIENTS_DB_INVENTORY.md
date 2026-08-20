@@ -30,10 +30,10 @@ Projects reference clients without duplicating full records:
 
 | UI key | DB table | List API (existing) | Name field | In project `client_table` |
 |--------|----------|---------------------|------------|---------------------------|
-| `pharma` | `pharma` | `GET /api/v1/pharmacies` | `operName` | yes |
-| `physician` | `physician` | `GET /api/v1/physicians` | `fullName` | yes |
-| `pharmacist` | `pharmacist` | `GET /api/v1/pharmacists` | `fullName` | yes |
-| `medical_clinic` | `medical_clinic` | `GET /api/v1/medical-clinics` | `clinicName` | yes |
+| `pharma` | `fw_pharma` | `GET /api/v1/pharmacies` | `operName` | yes |
+| `physician` | `fw_physician` | `GET /api/v1/physicians` | `fullName` | yes |
+| `pharmacist` | `fw_pharmacist` | `GET /api/v1/pharmacists` | `fullName` | yes |
+| `medical_clinic` | `fw_medical_clinic` | `GET /api/v1/medical-clinics` | `clinicName` | yes |
 
 **Not in Clients UI:** `driver`, `patient` (legacy `client2_table` enum values only).
 
