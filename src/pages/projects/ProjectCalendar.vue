@@ -3562,125 +3562,117 @@ defineExpose({
 <template>
   <div class="relative flex-1 flex flex-col h-full min-h-[calc(100vh-12rem)] overflow-x-clip max-w-full">
     <!-- Legend Section -->
-    <div v-show="!taskEditPanel.isOpen" class="px-4 py-1 bg-transparent text-xs text-gray-600 mb-2">
-      <div class="flex items-start justify-center space-x-6 flex-wrap">
+    <div v-show="!taskEditPanel.isOpen" class="px-4 py-2 bg-transparent text-xs text-gray-600 mb-2">
+      <div class="flex flex-wrap justify-center gap-3">
         <!-- Status Legend -->
         <div
-          class="flex items-start space-x-2 text-xs border border-gray-300 rounded-md px-3 py-1 bg-gray-50"
+          class="flex flex-wrap items-center gap-2 border border-gray-300 rounded-md px-3 py-2 bg-gray-50"
         >
-          <span class="text-xs font-medium text-gray-700 pt-0.5">Tasks:</span>
-          <div class="flex gap-x-3 gap-y-0.5">
-            <!-- Left column -->
-            <div class="flex flex-col gap-y-0.5">
-              <div class="flex items-center space-x-1">
-                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: #3B82F6"></div>
-                <span class="text-gray-600 text-xs">Planned</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: #6366F1"></div>
-                <span class="text-gray-600 text-xs">Scheduled</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: #8B5CF6"></div>
-                <span class="text-gray-600 text-xs">Scheduled Accepted</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: #10B981"></div>
-                <span class="text-gray-600 text-xs">In Progress</span>
-              </div>
+          <span class="text-xs font-medium text-gray-700 shrink-0">Tasks:</span>
+          <div class="flex flex-wrap gap-2">
+            <div class="flex items-center gap-1">
+              <div class="w-3 h-3 rounded-full shrink-0" style="background-color: #3B82F6"></div>
+              <span class="text-gray-600 text-xs whitespace-nowrap">Planned</span>
             </div>
-            <!-- Right column -->
-            <div class="flex flex-col gap-y-0.5">
-              <div class="flex items-center space-x-1">
-                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: #14B8A6"></div>
-                <span class="text-gray-600 text-xs">Partially Completed</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: #F59E0B"></div>
-                <span class="text-gray-600 text-xs">Delayed Due To Issue</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: #06B6D4"></div>
-                <span class="text-gray-600 text-xs">Ready For Inspection</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <div class="w-3 h-3 rounded-full flex-shrink-0" style="background-color: #6B7280"></div>
-                <span class="text-gray-600 text-xs">Completed</span>
-              </div>
+            <div class="flex items-center gap-1">
+              <div class="w-3 h-3 rounded-full shrink-0" style="background-color: #6366F1"></div>
+              <span class="text-gray-600 text-xs whitespace-nowrap">Scheduled</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <div class="w-3 h-3 rounded-full shrink-0" style="background-color: #8B5CF6"></div>
+              <span class="text-gray-600 text-xs whitespace-nowrap">Scheduled Accepted</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <div class="w-3 h-3 rounded-full shrink-0" style="background-color: #10B981"></div>
+              <span class="text-gray-600 text-xs whitespace-nowrap">In Progress</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <div class="w-3 h-3 rounded-full shrink-0" style="background-color: #14B8A6"></div>
+              <span class="text-gray-600 text-xs whitespace-nowrap">Partially Completed</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <div class="w-3 h-3 rounded-full shrink-0" style="background-color: #F59E0B"></div>
+              <span class="text-gray-600 text-xs whitespace-nowrap">Delayed Due To Issue</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <div class="w-3 h-3 rounded-full shrink-0" style="background-color: #06B6D4"></div>
+              <span class="text-gray-600 text-xs whitespace-nowrap">Ready For Inspection</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <div class="w-3 h-3 rounded-full shrink-0" style="background-color: #6B7280"></div>
+              <span class="text-gray-600 text-xs whitespace-nowrap">Completed</span>
             </div>
           </div>
         </div>
 
-        <div class="flex items-center space-x-6">
-          <!-- Dependencies Group -->
-          <div
-            v-if="shouldShowDependencyIndicators"
-            class="flex items-center space-x-2 bg-blue-50 px-3 py-1 rounded-md border border-blue-200"
-          >
-            <span class="text-xs font-medium text-blue-700">Dependencies:</span>
-            <div class="flex items-center gap-2 text-xs">
-              <div class="flex items-center space-x-1">
-                <span class="text-xs">🔗</span>
-                <span class="text-gray-600">FS</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <span class="text-xs">⚡</span>
-                <span class="text-gray-600">SS</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <span class="text-xs">🏁</span>
-                <span class="text-gray-600">FF</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <span class="text-xs">🔄</span>
-                <span class="text-gray-600">SF</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <span class="text-xs">⏱️</span>
-                <span class="text-gray-600">Lag</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <span class="text-xs">📋</span>
-                <span class="text-gray-600">Deps</span>
-              </div>
+        <!-- Dependencies Group -->
+        <div
+          v-if="shouldShowDependencyIndicators"
+          class="flex flex-wrap items-center gap-2 bg-blue-50 px-3 py-2 rounded-md border border-blue-200"
+        >
+          <span class="text-xs font-medium text-blue-700 shrink-0">Dependencies:</span>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <div class="flex items-center gap-1">
+              <span class="text-xs shrink-0">🔗</span>
+              <span class="text-gray-600 whitespace-nowrap">FS</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="text-xs shrink-0">⚡</span>
+              <span class="text-gray-600 whitespace-nowrap">SS</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="text-xs shrink-0">🏁</span>
+              <span class="text-gray-600 whitespace-nowrap">FF</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="text-xs shrink-0">🔄</span>
+              <span class="text-gray-600 whitespace-nowrap">SF</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="text-xs shrink-0">⏱️</span>
+              <span class="text-gray-600 whitespace-nowrap">Lag</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="text-xs shrink-0">📋</span>
+              <span class="text-gray-600 whitespace-nowrap">Deps</span>
             </div>
           </div>
+        </div>
 
-          <!-- Milestones Group -->
-          <div
-            v-if="shouldShowDependencyIndicators"
-            class="flex items-center space-x-2 bg-purple-50 px-3 py-1 rounded-md border border-purple-200"
-          >
-            <span class="text-xs font-medium text-purple-700">Milestones:</span>
-            <div class="flex items-center gap-2 text-xs">
-              <div class="flex items-center space-x-1">
-                <span class="text-xs">🔍</span>
-                <span class="text-gray-600">Inspection</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <span class="text-xs">🏗️</span>
-                <span class="text-gray-600">Visit</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <span class="text-xs">👥</span>
-                <span class="text-gray-600">Meeting</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <span class="text-xs">📋</span>
-                <span class="text-gray-600">Review</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <span class="text-xs">📦</span>
-                <span class="text-gray-600">Delivery</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <span class="text-xs">✅</span>
-                <span class="text-gray-600">Approval</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <span class="text-xs">🎯</span>
-                <span class="text-gray-600">Other</span>
-              </div>
+        <!-- Milestones Group -->
+        <div
+          v-if="shouldShowDependencyIndicators"
+          class="flex flex-wrap items-center gap-2 bg-purple-50 px-3 py-2 rounded-md border border-purple-200"
+        >
+          <span class="text-xs font-medium text-purple-700 shrink-0">Milestones:</span>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <div class="flex items-center gap-1">
+              <span class="text-xs shrink-0">🔍</span>
+              <span class="text-gray-600 whitespace-nowrap">Inspection</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="text-xs shrink-0">🏗️</span>
+              <span class="text-gray-600 whitespace-nowrap">Visit</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="text-xs shrink-0">👥</span>
+              <span class="text-gray-600 whitespace-nowrap">Meeting</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="text-xs shrink-0">📋</span>
+              <span class="text-gray-600 whitespace-nowrap">Review</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="text-xs shrink-0">📦</span>
+              <span class="text-gray-600 whitespace-nowrap">Delivery</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="text-xs shrink-0">✅</span>
+              <span class="text-gray-600 whitespace-nowrap">Approval</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="text-xs shrink-0">🎯</span>
+              <span class="text-gray-600 whitespace-nowrap">Other</span>
             </div>
           </div>
         </div>
