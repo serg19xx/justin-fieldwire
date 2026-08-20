@@ -45,9 +45,6 @@ import SettingsSection from './SettingsSection.vue'
 import ProjectUserCalendarSection from '@/components/projects/ProjectUserCalendarSection.vue'
 import ProjectReportsSection from './ProjectReportsSection.vue'
 import TeamMemberDetailsDialog from './TeamMemberDetailsDialog.vue'
-import {
-  MILESTONE_ICON,
-} from '@/core/utils/task-utils'
 import { filesApi, type FileUpload, type Folder, isFolderReadOnlyInPlanUi, isFileReadOnlyInPlanUi, isFolderUnderScheduleSlotDocumentsPlanBranch, isPlanFolderInboundContentBlocked } from '@/core/utils/files-api'
 import {
   normalizeContentsOfSpace,
@@ -172,12 +169,6 @@ const loadingTasks = ref(false)
 const isTaskEditPanelOpen = ref(false)
 const editingTask = ref<Task | null>(null)
 const editingMode = ref<'create' | 'edit'>('edit')
-
-// Search state
-const selectedTask = ref<Task | null>(null)
-const searchQuery = ref('')
-const isSearching = ref(false)
-const allTasks = ref<Task[]>([])
 
 // Files state
 const showFileUploadDialog = ref(false)
@@ -2115,12 +2106,6 @@ function handleFileDoubleClick(file: FileUpload) {
 
 // Folder management functions
 
-function uploadPhoto() {
-  console.log('📸 Upload photo for project:', project.value?.id)
-  // TODO: Open file upload dialog
-  alert('Upload photo dialog will be implemented here')
-}
-
 function addTeamMember() {
   console.log('👥 Add team member for project:', project.value?.id)
   showAddTeamMemberDialog.value = true
@@ -2179,55 +2164,6 @@ function handleAddWorkerToTask(taskId: string) {
     // Switch to Team Members tab in edit panel
     // This will be handled by TaskEditPanel itself
   }
-}
-
-// Load all tasks for search
-async function loadTasksForSearch() {
-  if (!project.value?.id) return
-
-  try {
-    isSearching.value = true
-    const tasksResponse = await tasksApi.getAll(project.value.id, 1, 500)
-    allTasks.value = tasksResponse.tasks
-    console.log(`📋 Loaded ${allTasks.value.length} tasks for search`)
-  } catch (error) {
-    console.error('❌ Failed to load tasks for search:', error)
-    allTasks.value = []
-  } finally {
-    isSearching.value = false
-  }
-}
-
-// Filter tasks based on search query
-const filteredTasks = computed(() => {
-  if (!searchQuery.value.trim()) return []
-
-  const query = searchQuery.value.toLowerCase()
-  return allTasks.value.filter(
-    (task) =>
-      task.name.toLowerCase().includes(query) ||
-      (task.notes && task.notes.toLowerCase().includes(query)) ||
-      (task.address && task.address.toLowerCase().includes(query)),
-  )
-})
-
-// Handle task selection
-function handleTaskSelect(task: Task) {
-  console.log('🎯 Selected task:', task.name)
-  selectedTask.value = task
-
-  // Switch to tasks section and navigate to the task
-  activeSection.value = 'tasks'
-
-  // Clear search
-  searchQuery.value = ''
-
-  // Navigate to task in calendar
-  nextTick(() => {
-    if (calendarRef.value && typeof calendarRef.value.searchTasks === 'function') {
-      calendarRef.value.searchTasks(task.name)
-    }
-  })
 }
 
 // Handle team member added
@@ -2520,18 +2456,6 @@ watch(
     applySectionFromRouteQuery()
   },
 )
-
-// Load tasks and files when project is loaded
-watch(
-  project,
-  (newProject) => {
-    if (newProject) {
-      loadTasksForSearch()
-      // Files will be loaded by FolderManager
-    }
-  },
-  { immediate: true },
-)
 </script>
 
 <template>
@@ -2548,21 +2472,6 @@ watch(
           {{ error }}
         </div>
         <div v-else>
-          <!-- Project Selector -->
-          <div class="mb-3">
-            <label class="block text-xs font-medium text-gray-700 mb-1"> Select Project </label>
-            <select
-              :value="project?.id"
-              @change="switchProject(parseInt(($event.target as HTMLSelectElement).value))"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              <option value="" disabled>Choose a project...</option>
-              <option v-for="proj in projects" :key="proj.id" :value="proj.id">
-                {{ proj.name }}
-              </option>
-            </select>
-          </div>
-
           <!-- Current Project Info -->
           <div v-if="project">
             <h2 class="text-lg font-semibold text-gray-900 truncate">
@@ -2786,306 +2695,10 @@ watch(
       </div>
     </div>
 
-    <!-- Main Content Area: do not use overflow-x-clip here — it clips position:fixed descendants (toolbar). -->
+    <!-- Main Content Area -->
     <div class="flex-1 flex flex-col ml-64 max-w-full min-w-0">
-      <!-- Content Header -->
-      <div
-        class="bg-white shadow-sm border-b border-gray-200 px-6 fixed top-12 left-64 right-0 z-40 flex items-center min-h-[4.5rem]"
-      >
-        <div class="flex items-center justify-between gap-2 min-w-0 w-full">
-          <!-- Dynamic Action Buttons -->
-          <div class="flex-1 min-w-0 overflow-x-auto overflow-y-visible flex items-center [&::-webkit-scrollbar]:h-1.5">
-            <!-- Plans Section Buttons -->
-            <template v-if="activeSection === 'plans'">
-              <div class="flex flex-nowrap items-center space-x-2">
-                <!-- Create Actions -->
-                <button
-                  @click="createNewFolder"
-                  :disabled="!canAddItemsToCurrentPlansFolder"
-                  class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors h-7 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                  :title="
-                    plansCurrentFolderMutationState.blocked
-                      ? plansCurrentFolderMutationState.reason
-                      : 'Create a new folder in the current location'
-                  "
-                >
-                  + New Folder
-                </button>
-                <button
-                  @click="createNewDocument"
-                  :disabled="!canAddItemsToCurrentPlansFolder"
-                  class="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors h-7 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                  :title="
-                    plansCurrentFolderMutationState.blocked
-                      ? plansCurrentFolderMutationState.reason
-                      : 'Upload documents to the current folder'
-                  "
-                >
-                  + New Document
-                </button>
-
-                <!-- View Mode Toggle -->
-                <div class="flex items-center space-x-1">
-                  <button
-                    @click="viewMode = 'icons'"
-                    :class="
-                      viewMode === 'icons' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'
-                    "
-                    class="px-3 py-1.5 text-xs rounded-l hover:bg-blue-600 transition-colors h-7 flex items-center"
-                    title="Icons View"
-                  >
-                    🗂️
-                  </button>
-                  <button
-                    @click="viewMode = 'details'"
-                    :class="
-                      viewMode === 'details'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-100 text-gray-700'
-                    "
-                    class="px-3 py-1.5 text-xs rounded-r hover:bg-blue-600 transition-colors h-7 flex items-center"
-                    title="Details View"
-                  >
-                    📋
-                  </button>
-                </div>
-
-                <!-- Divider -->
-                <div class="w-px h-6 bg-gray-300 mx-2"></div>
-
-                <!-- File Actions -->
-                <button
-                  @click="deleteSelected"
-                  :disabled="!canDelete"
-                  class="px-3 py-1.5 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
-                  :title="
-                    plansSelectionMutationState.blocked
-                      ? plansSelectionMutationState.reason
-                      : `Delete (${selectedItems.length} selected) - Delete / Backspace`
-                  "
-                >
-                  Delete
-                </button>
-                <button
-                  @click="moveSelected"
-                  :disabled="!canMove"
-                  class="px-3 py-1.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
-                  :title="
-                    plansSelectionMutationState.blocked
-                      ? plansSelectionMutationState.reason
-                      : `Move (${selectedItems.length} selected) - Permanent move to new location`
-                  "
-                >
-                  📁 Move
-                </button>
-                <button
-                  @click="renameSelected"
-                  :disabled="!canRename"
-                  class="px-3 py-1.5 text-xs bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
-                  :title="
-                    plansSelectionMutationState.blocked
-                      ? plansSelectionMutationState.reason
-                      : `Rename (${selectedItems.length} selected) - Rename selected items`
-                  "
-                >
-                  ✏️ Rename
-                </button>
-                <button
-                  @click="cutSelected"
-                  :disabled="!canCut"
-                  class="px-3 py-1.5 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
-                  :title="
-                    plansSelectionMutationState.blocked
-                      ? plansSelectionMutationState.reason
-                      : `Cut (${selectedItems.length} selected) - Cut for paste - Ctrl+X / Cmd+X`
-                  "
-                >
-                  ✂️ Cut
-                </button>
-                <button
-                  @click="copySelected"
-                  :disabled="!canCopy"
-                  class="px-3 py-1.5 text-xs bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
-                  :title="
-                    plansSelectionMutationState.blocked
-                      ? plansSelectionMutationState.reason
-                      : `Copy (${selectedItems.length} selected) - Ctrl+C / Cmd+C`
-                  "
-                >
-                  📋 Copy
-                </button>
-                <button
-                  @click="pasteToCurrentFolder"
-                  :disabled="!canPaste"
-                  class="px-3 py-1.5 text-xs bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
-                  :title="
-                    plansCurrentFolderMutationState.blocked
-                      ? plansCurrentFolderMutationState.reason
-                      : `Paste (${clipboard.length} in clipboard) - Ctrl+V / Cmd+V${clipboard.some((item) => item.action === 'copy') ? ' (can paste multiple times)' : ''}`
-                  "
-                >
-                  📋 Paste
-                </button>
-                <button
-                  @click="downloadSelected"
-                  :disabled="!canDownload"
-                  class="px-3 py-1.5 text-xs bg-indigo-500 text-white rounded hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
-                  :title="`Download (${selectedItems.length} selected)`"
-                >
-                  ⬇️ Download
-                </button>
-                <button
-                  @click="clearClipboard"
-                  :disabled="!canClear"
-                  class="px-3 py-1.5 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center"
-                  :title="`Clear Clipboard (${clipboard.length} items)`"
-                >
-                  🗑️ Clear
-                </button>
-              </div>
-            </template>
-
-
-            <!-- Tasks Section Buttons - Edit Panel Mode -->
-            <template v-else-if="activeSection === 'tasks' && isTaskEditPanelOpen">
-              <div class="flex items-center justify-between flex-1">
-                <div class="flex items-center space-x-3">
-                  <button
-                    @click="handleCloseEditPanel"
-                    class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
-                    title="Close edit panel"
-                  >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M15 19l-7-7 7-7"
-                      ></path>
-                    </svg>
-                  </button>
-                  <div class="border-l border-gray-300 h-8"></div>
-                  <div>
-                    <h3 class="text-sm font-semibold text-gray-900">
-                      {{ editingMode === 'create' ? 'Create New Task' : 'Edit Task' }}
-                    </h3>
-                    <p v-if="editingTask" class="text-xs text-gray-500">{{ editingTask.name }}</p>
-                    <p
-                      v-if="editingTask?.address?.trim()"
-                      class="text-xs text-gray-600 mt-0.5 max-w-xl truncate"
-                      :title="editingTask.address"
-                    >
-                      {{ editingTask.address }}
-                    </p>
-                  </div>
-                </div>
-                <div v-if="editingMode === 'edit' && canEditProject" class="flex items-center space-x-2">
-                  <button
-                    @click="handleDuplicateFromHeader"
-                    class="px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-1 h-7"
-                  >
-                    <span>📋</span>
-                    <span>Duplicate</span>
-                  </button>
-                  <button
-                    @click="handleDeleteFromHeader"
-                    class="px-3 py-1.5 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center space-x-1 h-7"
-                  >
-                    <span>🗑️</span>
-                    <span>Delete</span>
-                  </button>
-                </div>
-              </div>
-            </template>
-
-            <template v-else-if="activeSection === 'photos'">
-              <button
-                v-if="canEditProject"
-                @click="uploadPhoto"
-                class="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium h-7 flex items-center"
-              >
-                + Upload Photo
-              </button>
-            </template>
-
-            <!-- Team Section Buttons -->
-            <template v-else-if="activeSection === 'team'">
-              <button
-                v-if="canEditProject"
-                @click="addTeamMember"
-                class="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium h-7 flex items-center"
-              >
-                + Add Member
-              </button>
-            </template>
-
-            <!-- Reports Section Buttons -->
-            <template v-else-if="activeSection === 'reports'">
-              <!-- Read-only archive, no actions -->
-            </template>
-
-            <!-- Settings Section Buttons -->
-            <template v-else-if="activeSection === 'settings'">
-              <!-- Settings form has its own save button -->
-            </template>
-          </div>
-
-          <!-- Search Bar -->
-          <div v-if="!isTaskEditPanelOpen" class="w-64 shrink-0 relative">
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Search tasks..."
-              class="w-full pl-8 pr-10 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            />
-            <svg
-              class="absolute left-2.5 top-2 h-4 w-4 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              ></path>
-            </svg>
-
-            <!-- Search Results Dropdown -->
-            <div
-              v-if="searchQuery.trim() && filteredTasks.length > 0"
-              class="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto"
-            >
-              <div
-                v-for="task in filteredTasks"
-                :key="task.id"
-                @click="handleTaskSelect(task)"
-                class="px-3 py-2 cursor-pointer text-sm border-b border-gray-100 last:border-b-0 hover:bg-gray-50"
-              >
-                <div class="flex items-center space-x-2">
-                  <span class="text-xs">{{ task.milestone ? MILESTONE_ICON : '📋' }}</span>
-                  <div class="flex-1 min-w-0">
-                    <div class="font-medium truncate">{{ task.name }}</div>
-                    <div v-if="task.address?.trim()" class="text-xs text-gray-500 truncate">
-                      {{ task.address }}
-                    </div>
-                    <div v-if="task.notes" class="text-xs text-gray-500 truncate">
-                      {{ task.notes }}
-                    </div>
-                  </div>
-                  <span class="text-xs px-2 py-1 bg-gray-100 rounded">{{ task.status }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Content Body: avoid overflow-x-hidden on this ancestor — it also clips fixed siblings in some browsers. -->
-      <div class="flex-1 overflow-y-auto min-w-0 px-6" style="padding-bottom: 0;">
-        <!-- Spacer for fixed toolbar -->
-        <div class="h-[4.5rem]"></div>
+      <!-- Content Body -->
+      <div class="flex-1 overflow-y-auto min-w-0 px-6 pt-4" style="padding-bottom: 0;">
         <!-- Loading State -->
         <div v-if="loading" class="flex items-center justify-center h-full">
           <div class="text-center">
@@ -3143,6 +2756,202 @@ watch(
           v-else-if="project"
           class="flex-1 flex flex-col min-w-0 max-w-full"
         >
+          <!-- Plans actions (on page, not in a fixed toolbar) -->
+          <div
+            v-if="activeSection === 'plans'"
+            class="mb-3 overflow-x-auto bg-white border border-gray-200 rounded-lg px-3 py-2"
+          >
+            <div class="flex flex-nowrap items-center gap-2 min-w-0">
+              <button
+                @click="createNewFolder"
+                :disabled="!canAddItemsToCurrentPlansFolder"
+                class="px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors h-7 flex items-center disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                :title="
+                  plansCurrentFolderMutationState.blocked
+                    ? plansCurrentFolderMutationState.reason
+                    : 'Create a new folder in the current location'
+                "
+              >
+                + New Folder
+              </button>
+              <button
+                @click="createNewDocument"
+                :disabled="!canAddItemsToCurrentPlansFolder"
+                class="px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors h-7 flex items-center disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                :title="
+                  plansCurrentFolderMutationState.blocked
+                    ? plansCurrentFolderMutationState.reason
+                    : 'Upload documents to the current folder'
+                "
+              >
+                + New Document
+              </button>
+
+              <div class="flex items-center shrink-0">
+                <button
+                  @click="viewMode = 'icons'"
+                  :class="viewMode === 'icons' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'"
+                  class="px-3 py-1.5 text-xs rounded-l hover:bg-blue-600 transition-colors h-7 flex items-center"
+                  title="Icons View"
+                >
+                  🗂️
+                </button>
+                <button
+                  @click="viewMode = 'details'"
+                  :class="viewMode === 'details' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-700'"
+                  class="px-3 py-1.5 text-xs rounded-r hover:bg-blue-600 transition-colors h-7 flex items-center"
+                  title="Details View"
+                >
+                  📋
+                </button>
+              </div>
+
+              <div class="w-px h-6 bg-gray-300 mx-1 shrink-0"></div>
+
+              <button
+                @click="deleteSelected"
+                :disabled="!canDelete"
+                class="px-3 py-1.5 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center shrink-0"
+                :title="
+                  plansSelectionMutationState.blocked
+                    ? plansSelectionMutationState.reason
+                    : `Delete (${selectedItems.length} selected)`
+                "
+              >
+                Delete
+              </button>
+              <button
+                @click="moveSelected"
+                :disabled="!canMove"
+                class="px-3 py-1.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center shrink-0"
+                :title="
+                  plansSelectionMutationState.blocked
+                    ? plansSelectionMutationState.reason
+                    : `Move (${selectedItems.length} selected)`
+                "
+              >
+                📁 Move
+              </button>
+              <button
+                @click="renameSelected"
+                :disabled="!canRename"
+                class="px-3 py-1.5 text-xs bg-yellow-500 text-white rounded hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center shrink-0"
+                :title="
+                  plansSelectionMutationState.blocked
+                    ? plansSelectionMutationState.reason
+                    : `Rename (${selectedItems.length} selected)`
+                "
+              >
+                ✏️ Rename
+              </button>
+              <button
+                @click="cutSelected"
+                :disabled="!canCut"
+                class="px-3 py-1.5 text-xs bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center shrink-0"
+                :title="
+                  plansSelectionMutationState.blocked
+                    ? plansSelectionMutationState.reason
+                    : `Cut (${selectedItems.length} selected)`
+                "
+              >
+                ✂️ Cut
+              </button>
+              <button
+                @click="copySelected"
+                :disabled="!canCopy"
+                class="px-3 py-1.5 text-xs bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center shrink-0"
+                :title="
+                  plansSelectionMutationState.blocked
+                    ? plansSelectionMutationState.reason
+                    : `Copy (${selectedItems.length} selected)`
+                "
+              >
+                📋 Copy
+              </button>
+              <button
+                @click="pasteToCurrentFolder"
+                :disabled="!canPaste"
+                class="px-3 py-1.5 text-xs bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center shrink-0"
+                :title="
+                  plansCurrentFolderMutationState.blocked
+                    ? plansCurrentFolderMutationState.reason
+                    : `Paste (${clipboard.length} in clipboard)`
+                "
+              >
+                📋 Paste
+              </button>
+              <button
+                @click="downloadSelected"
+                :disabled="!canDownload"
+                class="px-3 py-1.5 text-xs bg-indigo-500 text-white rounded hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center shrink-0"
+                :title="`Download (${selectedItems.length} selected)`"
+              >
+                ⬇️ Download
+              </button>
+              <button
+                @click="clearClipboard"
+                :disabled="!canClear"
+                class="px-3 py-1.5 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed h-7 flex items-center shrink-0"
+                :title="`Clear Clipboard (${clipboard.length} items)`"
+              >
+                🗑️ Clear
+              </button>
+            </div>
+          </div>
+
+          <!-- Task edit header (on page when edit panel is open) -->
+          <div
+            v-if="activeSection === 'tasks' && isTaskEditPanelOpen"
+            class="mb-3 flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-lg px-3 py-2"
+          >
+            <div class="flex items-center space-x-3 min-w-0">
+              <button
+                @click="handleCloseEditPanel"
+                class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors shrink-0"
+                title="Close edit panel"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M15 19l-7-7 7-7"
+                  ></path>
+                </svg>
+              </button>
+              <div class="border-l border-gray-300 h-8 shrink-0"></div>
+              <div class="min-w-0">
+                <h3 class="text-sm font-semibold text-gray-900">
+                  {{ editingMode === 'create' ? 'Create New Task' : 'Edit Task' }}
+                </h3>
+                <p v-if="editingTask" class="text-xs text-gray-500 truncate">{{ editingTask.name }}</p>
+                <p
+                  v-if="editingTask?.address?.trim()"
+                  class="text-xs text-gray-600 mt-0.5 max-w-xl truncate"
+                  :title="editingTask.address"
+                >
+                  {{ editingTask.address }}
+                </p>
+              </div>
+            </div>
+            <div v-if="editingMode === 'edit' && canEditProject" class="flex items-center space-x-2 shrink-0">
+              <button
+                @click="handleDuplicateFromHeader"
+                class="px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors flex items-center space-x-1 h-7"
+              >
+                <span>📋</span>
+                <span>Duplicate</span>
+              </button>
+              <button
+                @click="handleDeleteFromHeader"
+                class="px-3 py-1.5 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center space-x-1 h-7"
+              >
+                <span>🗑️</span>
+                <span>Delete</span>
+              </button>
+            </div>
+          </div>
+
           <!-- Plans Section -->
           <PlansSection
             v-if="activeSection === 'plans'"
@@ -3150,7 +2959,7 @@ watch(
             :project="project"
             :file-manager-key="String(fileManagerKey)"
             :current-folder-path="currentFolderPath"
-                  :view-mode="viewMode"
+            :view-mode="viewMode"
             @files-selected="(files: unknown[]) => handleFilesSelected(files as File[])"
             @folder-created="(folder: unknown) => handleFolderCreated(folder as Folder)"
             @file-uploaded="(file: unknown) => handleFileUploaded(file as FileUpload)"

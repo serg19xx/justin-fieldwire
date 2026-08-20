@@ -84,6 +84,24 @@
       </select>
     </div>
 
+    <!-- Category Filter -->
+    <div>
+      <label class="block text-xs font-medium text-gray-700 mb-1">Category</label>
+      <select
+        :value="filterState.category || ''"
+        @change="handleCategoryChange($event)"
+        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+      >
+        <option value="">All Categories</option>
+        <option v-for="category in availableCategories" :key="category" :value="category">
+          {{ category }}
+        </option>
+      </select>
+      <p v-if="availableCategories.length === 0" class="mt-1 text-xs text-gray-500">
+        No categories available yet
+      </p>
+    </div>
+
     <!-- Active Filters Count & Clear -->
     <div class="flex items-center justify-between pt-2 border-t border-gray-200">
       <span class="text-xs text-gray-600">
@@ -107,11 +125,14 @@ import type { TaskFilterState } from '@/composables/useTaskFilters'
 interface Props {
   filterState: TaskFilterState
   availableWorkers: Array<{ id: number; name: string; role: string }>
+  availableCategories?: string[]
   clearFilters: () => void
   activeFiltersCount: number
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  availableCategories: () => [],
+})
 
 const emit = defineEmits<{
   'update:filterState': [state: TaskFilterState]
@@ -141,6 +162,11 @@ function handleWorkerChange(event: Event) {
   // Convert empty string to null, otherwise convert to number
   const workerId = value === '' ? null : Number(value)
   updateFilter('workerId', workerId)
+}
+
+function handleCategoryChange(event: Event) {
+  const value = (event.target as HTMLSelectElement).value
+  updateFilter('category', value === '' ? null : value)
 }
 
 function toggleStatus(status: TaskStatus) {

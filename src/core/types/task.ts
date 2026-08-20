@@ -47,6 +47,8 @@ export interface Task {
   /** Work site / location for this task (replaces legacy wbs_path) */
   address?: string
   name: string
+  /** Same meaning as fw_task_templates.category — used for filtering */
+  category?: string | null
   start_planned: string // DATE from database
   start_time?: string // TIME from database (HH:mm:ss format, e.g., "08:00:00")
   end_planned?: string // DATE from database
@@ -123,6 +125,7 @@ export interface TaskCreateUpdate {
   project_id?: number
   address?: string
   name: string
+  category?: string | null
   start_planned: string
   start_time?: string // TIME format (HH:mm:ss, e.g., "08:00:00")
   end_planned?: string

@@ -289,6 +289,7 @@ export function templateToTaskData(
   const taskData: TaskCreateUpdate = {
     project_id: projectId,
     name: template.name,
+    category: template.category?.trim() || null,
     start_planned: startPlanned,
     end_planned: endPlanned,
     duration_days: finalDuration,

@@ -90,9 +90,7 @@ export function useTaskFilters(tasks: Ref<Task[]>) {
 
     // Category filter
     if (filterState.value.category) {
-      // Note: Tasks don't have category field directly, might need to add it
-      // For now, this is a placeholder
-      // result = result.filter((task) => task.category === filterState.value.category)
+      result = result.filter((task) => task.category === filterState.value.category)
     }
 
     return result
@@ -145,6 +143,10 @@ export function useTaskFilters(tasks: Ref<Task[]>) {
 
     if (filterState.value.search) {
       filter.search = filterState.value.search
+    }
+
+    if (filterState.value.category) {
+      filter.category = filterState.value.category
     }
 
     return filter

@@ -247,6 +247,10 @@ function transformTaskFromApiRow(task: Record<string, unknown>): Task {
     status: normalizeApiTaskStatus(task.status),
     progress_pct,
     notes: task.notes != null ? String(task.notes) : undefined,
+    category:
+      task.category != null && String(task.category).trim() !== ''
+        ? String(task.category).trim()
+        : null,
     task_lead_id: task_lead_id ?? undefined,
     team_members,
     assignees,
@@ -581,6 +585,10 @@ export const tasksApi = {
         }
       }
       if (data.notes !== undefined) apiData.notes = data.notes
+      if (data.category !== undefined) {
+        const raw = typeof data.category === 'string' ? data.category.trim() : ''
+        apiData.category = raw === '' ? null : raw
+      }
 
       // Use task_lead_id from data if provided and valid (not null, 0, or empty string)
       if (data.task_lead_id !== undefined && data.task_lead_id !== null && data.task_lead_id !== 0) {
@@ -733,6 +741,10 @@ export const tasksApi = {
       if (data.status !== undefined) apiData.status = mapStatusToBackend(String(data.status))
       if (data.progress_pct !== undefined) apiData.progress_pct = data.progress_pct
       if (data.notes !== undefined) apiData.notes = data.notes
+      if (data.category !== undefined) {
+        const raw = typeof data.category === 'string' ? data.category.trim() : ''
+        apiData.category = raw === '' ? null : raw
+      }
       // Use task_lead_id from data if provided and valid (not null, 0, or empty string)
       if (data.task_lead_id !== undefined && data.task_lead_id !== null && data.task_lead_id !== 0) {
         const leadId = Number(data.task_lead_id)

@@ -46,6 +46,24 @@
             />
           </div>
 
+          <!-- Category -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Category <span class="text-gray-400">(optional)</span>
+            </label>
+            <select
+              v-model="form.category"
+              :disabled="mode === 'view'"
+              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
+              :class="{ 'text-gray-500': !form.category }"
+            >
+              <option value="">No category</option>
+              <option v-for="category in categoryOptions" :key="category" :value="category">
+                {{ category }}
+              </option>
+            </select>
+          </div>
+
           <!-- Address and project lead -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
@@ -469,6 +487,7 @@ import { projectApi, type Project, type ProjectTeamMember } from '@/core/utils/p
 import { isTaskForemanOverridden, resolveDefaultTaskForemanId } from '@/core/utils/project-foreman'
 import type { WorkerUser } from '@/core/utils/hr-api'
 import { useAuthStore } from '@/core/stores/auth'
+import { taskTemplatesApi } from '@/core/utils/task-templates-api'
 
 // Props
 interface Props {
@@ -538,6 +557,7 @@ const emit = defineEmits<{
 // Form data
 const form = ref({
   name: '',
+  category: '',
   address: '',
   start_planned: '',
   start_time: '08:00', // Default start time 08:00
@@ -553,6 +573,21 @@ const form = ref({
   project_lead: null as number | null,
   team_members: [] as number[],
 })
+
+const categoryOptions = ref<string[]>([])
+
+async function loadCategoryOptions(currentCategory?: string | null) {
+  try {
+    const fromTemplates = await taskTemplatesApi.getCategories()
+    const set = new Set(fromTemplates)
+    const trimmed = currentCategory?.trim()
+    if (trimmed) set.add(trimmed)
+    categoryOptions.value = Array.from(set).sort((a, b) => a.localeCompare(b))
+  } catch {
+    const trimmed = currentCategory?.trim()
+    categoryOptions.value = trimmed ? [trimmed] : []
+  }
+}
 
 // Validation state
 const validationResult = ref<ValidationResult>({ isValid: true, errors: [], warnings: [] })
@@ -591,6 +626,7 @@ watch(() => props.isOpen, async (isOpen) => {
 
     form.value = {
       name: '',
+      category: '',
       address: '',
       start_planned: startDate, // Use initialDate or current date
       start_time: '08:00', // Default start time 08:00
@@ -606,6 +642,7 @@ watch(() => props.isOpen, async (isOpen) => {
       project_lead: defaultForemanId,
       team_members: [] as number[],
     }
+    await loadCategoryOptions()
 
     // Force update after next tick to ensure DOM is updated
     await nextTick()
@@ -638,6 +675,7 @@ watch(() => props.isOpen, async (isOpen) => {
 
     form.value = {
       name: props.task.name || '',
+      category: props.task.category || '',
       address: props.task.address || '',
       start_planned: props.task.start_planned || '',
       start_time: formatTimeForInput(props.task.start_time),
@@ -678,6 +716,7 @@ watch(() => props.isOpen, async (isOpen) => {
       })(),
       team_members: props.task.team_members || [],
     }
+    await loadCategoryOptions(props.task.category)
     console.log('📅 Form initialized for edit/view mode:', form.value)
   }
 })
@@ -1127,6 +1166,7 @@ function resetForm() {
 
     form.value = {
       name: props.task.name,
+      category: props.task.category || '',
       address: props.task.address || '',
       start_planned: props.task.start_planned,
       start_time: formatTimeForInput(props.task.start_time),
@@ -1149,6 +1189,7 @@ function resetForm() {
     const defaultForemanId = resolveDefaultTaskForemanId(projectInfo.value)
     form.value = {
       name: '',
+      category: '',
       address: '',
       start_planned: props.initialDate || new Date().toISOString().split('T')[0],
       start_time: '08:00', // Default start time 08:00
@@ -1327,6 +1368,7 @@ function handleSubmit() {
     // Convert empty strings to null/undefined
     end_planned: form.value.end_planned || undefined,
     address: form.value.address || undefined,
+    category: form.value.category?.trim() || null,
     notes: form.value.notes || undefined,
     // Duration is calculated on frontend only, not stored in DB
     // Process dependencies - convert to full dependency objects

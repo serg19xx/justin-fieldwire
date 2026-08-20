@@ -32,6 +32,7 @@
         <TaskFilterPanel
           :filter-state="filterState"
           :available-workers="availableWorkers"
+          :available-categories="availableCategories"
           :clear-filters="clearFilters"
           :active-filters-count="activeFiltersCount"
           @update:filter-state="updateFilterState"
@@ -75,11 +76,14 @@ interface Props {
   isOpen: boolean
   filterState: TaskFilterState
   availableWorkers: Array<{ id: number; name: string; role: string }>
+  availableCategories?: string[]
   clearFilters: () => void
   activeFiltersCount: number
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  availableCategories: () => [],
+})
 
 const emit = defineEmits<{
   close: []

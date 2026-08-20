@@ -24,6 +24,7 @@ import TaskTemplateDialog from '@/components/task-templates/TaskTemplateDialog.v
 import TaskFilterDialog from '@/components/tasks/TaskFilterDialog.vue'
 import TaskListSidebar from '@/components/tasks/TaskListSidebar.vue'
 import { useTaskFilters } from '@/composables/useTaskFilters'
+import { taskTemplatesApi } from '@/core/utils/task-templates-api'
 import {
   DEFAULT_TASKS_VIEW_MODE,
   TASKS_CALENDAR_ENABLED,
@@ -207,6 +208,31 @@ const allProjectWorkers = ref<Array<{ id: number; name: string; role: string }>>
 
 // Enhanced task filtering using composable
 const { filterState, filteredTasks: enhancedFilteredTasks, clearFilters, activeFiltersCount } = useTaskFilters(tasks)
+
+/** Categories from templates (full list) + any categories present on loaded tasks. */
+const templateCategories = ref<string[]>([])
+
+async function loadTemplateCategories() {
+  try {
+    templateCategories.value = await taskTemplatesApi.getCategories()
+  } catch {
+    templateCategories.value = []
+  }
+}
+
+const availableTaskCategories = computed(() => {
+  const fromTasks = new Set<string>()
+  for (const task of tasks.value) {
+    const category = task.category?.trim()
+    if (category) fromTasks.add(category)
+  }
+  // Prefer categories present on loaded tasks (what the filter can match).
+  // Fall back to template categories only until task.category is available from API.
+  if (fromTasks.size > 0) {
+    return Array.from(fromTasks).sort((a, b) => a.localeCompare(b))
+  }
+  return [...templateCategories.value].sort((a, b) => a.localeCompare(b))
+})
 
 // Sync worker filter with new filter state (backward compatibility)
 watch(selectedWorkerId, (newValue) => {
@@ -3483,6 +3509,7 @@ onMounted(() => {
   loadProjectInfo()
   loadTasks()
   loadAvailablePeople()
+  loadTemplateCategories()
 })
 
 // Clear search function
@@ -4194,6 +4221,7 @@ defineExpose({
         :is-open="filterDialog.isOpen"
         :filter-state="filterState"
         :available-workers="allProjectWorkers"
+        :available-categories="availableTaskCategories"
         :clear-filters="clearFilters"
         :active-filters-count="activeFiltersCount"
         @close="filterDialog.isOpen = false"

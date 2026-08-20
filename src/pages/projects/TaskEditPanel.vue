@@ -58,6 +58,23 @@
                 />
               </div>
 
+              <!-- Category -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                  Category <span class="text-gray-400">(optional)</span>
+                </label>
+                <select
+                  v-model="form.category"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  :class="{ 'text-gray-500': !form.category }"
+                >
+                  <option value="">No category</option>
+                  <option v-for="category in categoryOptions" :key="category" :value="category">
+                    {{ category }}
+                  </option>
+                </select>
+              </div>
+
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <!-- Work site address -->
                 <div>
@@ -742,6 +759,7 @@ import {
   isTaskForemanOverridden,
   resolveDefaultTaskForemanId,
 } from '@/core/utils/project-foreman'
+import { taskTemplatesApi } from '@/core/utils/task-templates-api'
 
 // Props
 interface Props {
@@ -774,6 +792,7 @@ const emit = defineEmits<{
 // State
 const form = ref({
   name: '',
+  category: '',
   address: '',
   start_planned: '',
   start_time: '08:00', // Default start time 08:00
@@ -790,6 +809,21 @@ const form = ref({
   project_lead: null as number | null,
   team_members: [] as number[],
 })
+
+const categoryOptions = ref<string[]>([])
+
+async function loadCategoryOptions(currentCategory?: string | null) {
+  try {
+    const fromTemplates = await taskTemplatesApi.getCategories()
+    const set = new Set(fromTemplates)
+    const trimmed = currentCategory?.trim()
+    if (trimmed) set.add(trimmed)
+    categoryOptions.value = Array.from(set).sort((a, b) => a.localeCompare(b))
+  } catch {
+    const trimmed = currentCategory?.trim()
+    categoryOptions.value = trimmed ? [trimmed] : []
+  }
+}
 
 /** Address shown in the summary card at the top (stays in sync while editing). */
 const summaryAddressDisplay = computed(() => (form.value.address || '').trim())
@@ -1480,6 +1514,7 @@ watch(
 
       form.value = {
         name: '',
+        category: '',
         address: '',
         start_planned: new Date().toISOString().split('T')[0],
         start_time: '08:00', // Default start time 08:00
@@ -1497,6 +1532,7 @@ watch(
         team_members: [],
       }
       invitedPeople.value = []
+      await loadCategoryOptions()
       await ensureProjectLeadInList(defaultProjectLead)
     } else if (isOpen && props.task) {
       // Initialize form with task data for edit mode
@@ -1513,6 +1549,7 @@ watch(
 
       form.value = {
         name: props.task.name || '',
+        category: props.task.category || '',
         address: props.task.address || '',
         start_planned: props.task.start_planned || '',
         start_time: formatTimeForInput(props.task.start_time),
@@ -1577,6 +1614,8 @@ watch(
           return []
         })(),
       }
+
+      await loadCategoryOptions(props.task.category)
 
       // Load invited people from API
       if (props.task.id && isMilestone(props.task.milestone)) {
@@ -1804,6 +1843,7 @@ function handleBasicInfoSave() {
   // Transform dependencies to match Task type
   const taskData: TaskCreateUpdate & { id?: string } = {
     name: form.value.name,
+    category: form.value.category?.trim() || null,
     address: form.value.address || undefined,
     start_planned: form.value.start_planned || props.task?.start_planned || '',
     start_time: formatTimeForApi(form.value.start_time),

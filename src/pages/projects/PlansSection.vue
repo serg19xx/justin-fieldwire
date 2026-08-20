@@ -3,9 +3,9 @@
     <!-- Folder Manager -->
     <div
       class="bg-white rounded-lg shadow w-full"
-      style="margin-bottom: 0; height: calc(100vh - 8rem)"
+      style="margin-bottom: 0; height: calc(100vh - 7rem)"
     >
-      <div class="p-4" style="height: calc(100vh - 8rem)">
+      <div class="p-4" style="height: calc(100vh - 7rem)">
         <FileManager
           v-if="(project as any)?.id"
           :key="fileManagerKey"
@@ -13,7 +13,7 @@
           :project-id="(project as any).id"
           :initial-path="currentFolderPath"
           :view-mode="viewMode"
-          style="height: calc(100vh - 12rem)"
+          style="height: calc(100vh - 11rem)"
           @file-selected="(file: unknown) => handleFilesSelected([file])"
           @folder-created="handleFolderCreated"
           @file-uploaded="handleFileUploaded"
