@@ -7,7 +7,7 @@ import interactionPlugin from '@fullcalendar/interaction'
 import listPlugin from '@fullcalendar/list'
 import type { CalendarEvent, CalendarEventInput, CalendarSaveOptions, UserCalendarMode } from '@/core/types/calendar-event'
 import { calendarApi, CalendarConflictError } from '@/core/utils/calendar-api'
-import { calendarEventToFcEvent, toHm, toYmd } from '@/core/utils/calendar-event-utils'
+import { calendarEventToFcEvent, toHm, toYmd, fcDropToApiDates } from '@/core/utils/calendar-event-utils'
 import { downloadCalendarICal, openGoogleCalendarImportHint } from '@/core/utils/calendar-ical-export'
 import CalendarEventDialog from '@/components/calendar/CalendarEventDialog.vue'
 import { useAuthStore } from '@/core/stores/auth'
@@ -178,9 +178,14 @@ const calendarOptions = {
   displayEventTime: true,
   slotDuration: '00:30:00',
   slotLabelInterval: '01:00:00',
-  editable: false,
-  eventStartEditable: false,
-  eventDurationEditable: false,
+  // Calendar-level true; each event still sets editable via calendarEventToFcEvent
+  editable: true,
+  eventStartEditable: true,
+  eventDurationEditable: true,
+  eventAllow: (dropInfo: { start: Date; end?: Date }, draggedEvent: { extendedProps?: { calendarEvent?: CalendarEvent } } | null) => {
+    const ev = draggedEvent?.extendedProps?.calendarEvent
+    return !!ev?.editable
+  },
   events: (
     info: { start: Date; end: Date },
     successCallback: (items: Record<string, unknown>[]) => void,
@@ -207,6 +212,34 @@ const calendarOptions = {
       rangeTo.value = to
       void loadEvents(from, to).then(() => refreshCalendar())
     }
+  },
+  eventDrop: (info: {
+    event: {
+      id: string
+      start: Date | null
+      end: Date | null
+      allDay: boolean
+      startStr?: string
+      endStr?: string
+      extendedProps: { calendarEvent?: CalendarEvent }
+    }
+    revert: () => void
+  }) => {
+    void persistEventMoveOrResize(info)
+  },
+  eventResize: (info: {
+    event: {
+      id: string
+      start: Date | null
+      end: Date | null
+      allDay: boolean
+      startStr?: string
+      endStr?: string
+      extendedProps: { calendarEvent?: CalendarEvent }
+    }
+    revert: () => void
+  }) => {
+    void persistEventMoveOrResize(info)
   },
   select: (info: { start: Date; end: Date; allDay: boolean; view: { type: string } }) => {
     if (!info.view.type.startsWith('timeGrid')) {
@@ -279,6 +312,102 @@ function closeDialog() {
   dialog.value.initialStartTime = undefined
   dialog.value.initialEndTime = undefined
   dialog.value.initialAllDay = undefined
+}
+
+async function persistEventMoveOrResize(info: {
+  event: {
+    id: string
+    start: Date | null
+    end: Date | null
+    allDay: boolean
+    startStr?: string
+    endStr?: string
+    extendedProps: { calendarEvent?: CalendarEvent }
+  }
+  revert: () => void
+}) {
+  const existing = info.event.extendedProps.calendarEvent
+  if (!existing?.editable) {
+    info.revert()
+    return
+  }
+
+  const dates = fcDropToApiDates(info)
+  if (!dates) {
+    info.revert()
+    return
+  }
+
+  const body: CalendarEventInput = {
+    title: existing.title,
+    description: existing.description,
+    location: existing.location,
+    start_at: dates.start_at,
+    end_at: dates.end_at,
+    all_day: dates.all_day,
+    requires_presence: existing.requires_presence,
+    force: false,
+  }
+
+  try {
+    if (props.mode === 'global') {
+      // Global calendar: only personal events are editable
+      if (existing.project_id != null) {
+        info.revert()
+        return
+      }
+      await calendarApi.updateGlobal(existing.id, body)
+    } else if (props.projectId) {
+      await calendarApi.updateForProject(props.projectId, existing.id, body)
+    } else {
+      info.revert()
+      return
+    }
+
+    // Keep local list in sync so month navigation / reload of range keeps new dates
+    const idx = events.value.findIndex((e) => e.id === existing.id)
+    if (idx >= 0) {
+      events.value[idx] = {
+        ...events.value[idx],
+        start_at: dates.start_at,
+        end_at: dates.end_at,
+        all_day: dates.all_day,
+      }
+    }
+  } catch (e) {
+    if (e instanceof CalendarConflictError) {
+      const force = window.confirm(
+        `This overlaps another presence event.\n\nSave anyway?`,
+      )
+      if (force) {
+        try {
+          const forced = { ...body, force: true }
+          if (props.mode === 'global') {
+            await calendarApi.updateGlobal(existing.id, forced)
+          } else if (props.projectId) {
+            await calendarApi.updateForProject(props.projectId, existing.id, forced)
+          }
+          const idx = events.value.findIndex((ev) => ev.id === existing.id)
+          if (idx >= 0) {
+            events.value[idx] = {
+              ...events.value[idx],
+              start_at: dates.start_at,
+              end_at: dates.end_at,
+              all_day: dates.all_day,
+            }
+          }
+          return
+        } catch (err) {
+          console.error('Forced calendar move failed', err)
+        }
+      }
+      info.revert()
+      return
+    }
+    console.error('Calendar move/resize save failed', e)
+    alert('Failed to save event move')
+    info.revert()
+  }
 }
 
 async function handleSave(payload: CalendarEventInput, options?: CalendarSaveOptions) {

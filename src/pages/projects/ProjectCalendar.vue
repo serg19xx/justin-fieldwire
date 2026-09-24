@@ -1316,10 +1316,10 @@ function handleFullTaskDrop(
 // Handle event drop (task moved)
 async function handleEventDrop(info: unknown) {
   console.log('🚀 handleEventDrop called with:', info)
-  const eventInfo = info as { event: { id: string; start: Date; end?: Date } }
+  const eventInfo = info as {
+    event: { id: string; start: Date; end?: Date; startStr?: string; endStr?: string }
+  }
   const taskId = eventInfo.event.id
-  const newStart = eventInfo.event.start.toISOString()
-  const newEnd = eventInfo.event.end?.toISOString()
 
   try {
     // Find the existing task first
@@ -1329,21 +1329,28 @@ async function handleEventDrop(info: unknown) {
       return
     }
 
-    console.log('📅 Task moved:', taskId, 'to', newStart, '-', newEnd)
-    console.log('🔍 Task type:', existingTask.milestone ? 'MILESTONE' : 'TASK')
+    // Prefer FullCalendar date strings (YYYY-MM-DD) to avoid timezone off-by-one
+    const newStartDate =
+      eventInfo.event.startStr?.slice(0, 10) ||
+      eventInfo.event.start.toLocaleDateString('en-CA')
 
-    // Определяем тип drop и позицию
-    const newStartDate = eventInfo.event.start.toLocaleDateString('en-CA')
-    const newEndDate = existingTask.milestone
-      ? newStartDate
-      : eventInfo.event.end
-        ? (() => {
-            // Убираем день, который FullCalendar добавил для отображения
-            const endDateObj = new Date(eventInfo.event.end)
-            endDateObj.setDate(endDateObj.getDate() - 1)
-            return endDateObj.toLocaleDateString('en-CA')
-          })()
-        : newStartDate
+    let newEndDate = newStartDate
+    if (existingTask.milestone) {
+      newEndDate = newStartDate
+    } else if (eventInfo.event.endStr) {
+      // all-day exclusive end: subtract one calendar day from YYYY-MM-DD
+      const exclusiveEnd = eventInfo.event.endStr.slice(0, 10)
+      const endDateObj = new Date(exclusiveEnd + 'T00:00:00')
+      endDateObj.setDate(endDateObj.getDate() - 1)
+      newEndDate = endDateObj.toLocaleDateString('en-CA')
+    } else if (eventInfo.event.end) {
+      const endDateObj = new Date(eventInfo.event.end)
+      endDateObj.setDate(endDateObj.getDate() - 1)
+      newEndDate = endDateObj.toLocaleDateString('en-CA')
+    }
+
+    console.log('📅 Task moved:', taskId, 'to', newStartDate, '-', newEndDate)
+    console.log('🔍 Task type:', existingTask.milestone ? 'MILESTONE' : 'TASK')
 
     // Определяем позицию относительно границ проекта
     const projectStart = projectInfo.value?.date_start || ''
@@ -1701,74 +1708,73 @@ async function handleEventDrop(info: unknown) {
         }
         return
       }
-    } else {
-      // Обновляем задачу
-      console.log('📅 Updating task:', { startDate: result.startDate, endDate: result.endDate })
-
-      // Create task data with updated dates but keeping all other fields
-      const finalStartDate = result.startDate || newStartDate
-      const finalEndDate = existingTask.milestone ? finalStartDate : result.endDate || newEndDate
-
-      const taskData = {
-        ...existingTask,
-        startPlanned: finalStartDate,
-        endPlanned: finalEndDate,
-        start_planned: finalStartDate,
-        end_planned: finalEndDate,
-        project_id: props.projectId,
-      }
-
-      // Update task via API
-      const updatePayload: Record<string, unknown> = {
-        startPlanned: taskData.startPlanned,
-        endPlanned: taskData.endPlanned,
-      }
-
-      console.log('🖱️ Drag & Drop: Updating task via PUT /api/v1/projects/{project_id}/tasks/{task_id}', {
-        projectId: props.projectId,
-        taskId,
-        payload: updatePayload,
-        start_planned: taskData.startPlanned,
-        end_planned: taskData.endPlanned,
-      })
-
-      try {
-        const updatedTask = await tasksApi.update(props.projectId, taskId, updatePayload)
-        console.log('✅ Drag & Drop: Task dates updated successfully:', updatedTask)
-
-        // Update local task data without reloading from API
-        const taskIndex = tasks.value.findIndex((t) => t.id.toString() === taskId)
-        if (taskIndex !== -1) {
-          tasks.value[taskIndex] = { ...tasks.value[taskIndex], ...taskData }
-        }
-
-        // Update calendar events
-        const events = tasks.value.map((task) =>
-          taskToCalendarTask(task, shouldShowDependencyIndicators.value),
-        )
-        updateCalendarEvents(events)
-
-        // Reapply project bounds styling after task drag
-        setTimeout(() => {
-          applyProjectBoundsStyling()
-
-          // Restore selection if a task was previously selected
-          if (selectedTask.value) {
-            restoreTaskSelection(selectedTask.value.id)
-          }
-        }, 100)
-      } catch (apiError) {
-        console.error('❌ API update failed for drag, keeping local changes:', apiError)
-      }
-
-      emit('taskUpdate', {
-        id: taskId,
-        start_planned: taskData.startPlanned,
-        end_planned: taskData.endPlanned,
-      } as Task)
-      console.log('✅ Task moved successfully')
-      return
+      // Bounds/deps OK after possible project-bounds extension — fall through to save
+      console.log('📅 Drop outside previous bounds cleared checks — saving moved dates')
     }
+
+    // Persist move (inside bounds, or outside after adaptive extend + validation)
+    console.log('📅 Updating task:', { startDate: result.startDate, endDate: result.endDate })
+
+    const finalStartDate = result.startDate || newStartDate
+    const finalEndDate = existingTask.milestone ? finalStartDate : result.endDate || newEndDate
+
+    const taskData = {
+      ...existingTask,
+      startPlanned: finalStartDate,
+      endPlanned: finalEndDate,
+      start_planned: finalStartDate,
+      end_planned: finalEndDate,
+      project_id: props.projectId,
+    }
+
+    const updatePayload: Record<string, unknown> = {
+      startPlanned: taskData.startPlanned,
+      endPlanned: taskData.endPlanned,
+    }
+
+    console.log('🖱️ Drag & Drop: Updating task via PUT /api/v1/projects/{project_id}/tasks/{task_id}', {
+      projectId: props.projectId,
+      taskId,
+      payload: updatePayload,
+      start_planned: taskData.startPlanned,
+      end_planned: taskData.endPlanned,
+    })
+
+    try {
+      const updatedTask = await tasksApi.update(props.projectId, taskId, updatePayload)
+      console.log('✅ Drag & Drop: Task dates updated successfully:', updatedTask)
+
+      const taskIndex = tasks.value.findIndex((t) => t.id.toString() === taskId)
+      if (taskIndex !== -1) {
+        tasks.value[taskIndex] = { ...tasks.value[taskIndex], ...taskData }
+      }
+
+      const events = tasks.value.map((task) =>
+        taskToCalendarTask(task, shouldShowDependencyIndicators.value),
+      )
+      updateCalendarEvents(events)
+
+      setTimeout(() => {
+        applyProjectBoundsStyling()
+        if (selectedTask.value) {
+          restoreTaskSelection(selectedTask.value.id)
+        }
+      }, 100)
+    } catch (apiError) {
+      console.error('❌ API update failed for drag, reverting calendar event:', apiError)
+      const dropInfo = info as { revert?: () => void }
+      if (typeof dropInfo.revert === 'function') {
+        dropInfo.revert()
+      }
+      throw apiError
+    }
+
+    emit('taskUpdate', {
+      id: taskId,
+      start_planned: taskData.startPlanned,
+      end_planned: taskData.endPlanned,
+    } as Task)
+    console.log('✅ Task moved successfully')
   } catch (error: unknown) {
     console.error('❌ Error updating task:', error)
     // Revert the change
@@ -2583,7 +2589,8 @@ function selectTaskForDetails(task: Task) {
 function upsertTaskInList(task: Task) {
   const index = tasks.value.findIndex((item) => String(item.id) === String(task.id))
   if (index >= 0) {
-    tasks.value[index] = task
+    // Merge so a date-only update from Gantt does not wipe other loaded fields
+    tasks.value[index] = { ...tasks.value[index], ...task }
   } else {
     tasks.value.push(task)
   }
@@ -4335,12 +4342,10 @@ defineExpose({
   font-weight: 600 !important;
 }
 
-/* Project bounds styling - Enhanced visibility */
+/* Project bounds styling - visual only; allow drops so adaptive bounds / dialogs can run */
 :deep(.fc-daygrid-day.fc-day-outside-project-bounds) {
   background: linear-gradient(135deg, #f1f3f4 0%, #e8eaed 100%) !important;
   opacity: 0.7 !important;
-  pointer-events: none !important;
-  cursor: not-allowed !important;
   position: relative !important;
   border: 1px solid #dadce0 !important;
 }

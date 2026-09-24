@@ -647,6 +647,8 @@ const selectedTask = ref<GanttTask | null>(null)
 const dragOffset = ref(0)
 const originalTaskStart = ref<string>('')
 const originalTaskEnd = ref<string>('')
+/** Set when a bar drag finished so the following click event is ignored */
+const suppressNextBarClick = ref(false)
 
 // No need for task positions tracking
 
@@ -1249,9 +1251,16 @@ function toDateUTC(ymd: string): Date {
 }
 
 function addDays(date: Date, daysToAdd: number): Date {
-  const d = new Date(date)
-  d.setDate(d.getDate() + daysToAdd)
+  const d = new Date(date.getTime())
+  d.setUTCDate(d.getUTCDate() + daysToAdd)
   return d
+}
+
+/** Inclusive duration in days between YYYY-MM-DD dates (UTC-safe). */
+function durationDaysInclusive(startYmd: string, endYmd: string): number {
+  const start = toDateUTC(startYmd.slice(0, 10))
+  const end = toDateUTC(endYmd.slice(0, 10))
+  return Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1)
 }
 
 // Interactive handlers
@@ -1261,27 +1270,21 @@ function handleTaskDoubleClick(task: GanttTask) {
 
 function handleTaskClick(task: GanttTask) {
   console.log('🎯 handleTaskClick called (FROM GRID - NO SCROLL):', task.title)
-  console.log('🎯 Current scroll position before:', rightBodyRef.value?.scrollLeft)
 
-  // Force cleanup any lingering drag state
-  if (isDragging.value) {
-    isDragging.value = false
-    dragOffset.value = 0
-    document.removeEventListener('mousemove', handleMouseMove)
-    document.removeEventListener('mouseup', handleMouseUp)
+  // After a real drag, browser still fires click — do not tear down drag listeners
+  // or clear offset here (that used to cancel mouseup save). Ignore post-drag clicks.
+  if (suppressNextBarClick.value || isDragging.value || Math.abs(dragOffset.value) > 5) {
+    suppressNextBarClick.value = false
+    console.log('🎯 Ignoring click after drag')
+    return
   }
 
   selectedTask.value = task
   selectedTaskInList.value = task
 
-  // Highlight days for selected task
-  // Highlighted days are now computed automatically
-
-  // NO SCROLL when clicking on task bar - preserve current scroll position
-  console.log('🎯 Current scroll position after:', rightBodyRef.value?.scrollLeft)
-
-  // Emit selected task to parent component
-  const fullTask = props.tasks?.find(t => Number(t.id) === Number(task.id))
+  // Emit selected task to parent — prefer local (may have newer dates than props)
+  const localTask = localTasks.value.find((t) => Number(t.id) === Number(task.id))
+  const fullTask = localTask || props.tasks?.find((t) => Number(t.id) === Number(task.id))
   if (fullTask) {
     isInternalUpdate.value = true
     emit('task-selected', fullTask)
@@ -2467,6 +2470,8 @@ watch(
   () => props.tasks,
   (newTasks) => {
     if (!newTasks) return
+    // Do not wipe in-progress drag/resize preview with stale parent props
+    if (isDragging.value || isResizing.value) return
 
     captureGanttPanelScroll()
 
@@ -2744,74 +2749,68 @@ function handleMouseUp() {
 
   if (!isDragging.value || !dragStartTask.value) {
     console.log(`🖱️ Not dragging or no task - cleaning up`)
-    // Clean up if not dragging
     cleanupDrag()
     return
   }
 
   // Process drag if there was movement
   console.log(`🖱️ Checking movement: |${dragOffset.value}| > 5 = ${Math.abs(dragOffset.value) > 5}`)
-  if (Math.abs(dragOffset.value) > 5) { // Only process if moved more than 5px
+  if (Math.abs(dragOffset.value) > 5) {
     console.log(`🖱️ Processing drag for task: ${dragStartTask.value.title}`)
     const task = dragStartTask.value
-    const originalStart = new Date(originalTaskStart.value)
-    const originalEnd = new Date(originalTaskEnd.value)
+    const originalStartYmd = String(originalTaskStart.value).slice(0, 10)
+    const originalEndYmd = String(originalTaskEnd.value).slice(0, 10)
+    const originalStart = toDateUTC(originalStartYmd)
+    const originalEnd = toDateUTC(originalEndYmd)
 
-    // Calculate new position
-    const dayIndex = Math.floor(dragOffset.value / 33) // 33px per day
+    // Calculate new position (33px per day cell)
+    const dayIndex = Math.round(dragOffset.value / 33)
     console.log(`🖱️ Calculated dayIndex: ${dayIndex} from dragOffset: ${dragOffset.value}`)
 
-    const newStart = new Date(originalStart)
-    newStart.setDate(newStart.getDate() + dayIndex)
+    let newStart = addDays(originalStart, dayIndex)
+    let newEnd = addDays(originalEnd, dayIndex)
 
-    const newEnd = new Date(originalEnd)
-    newEnd.setDate(newEnd.getDate() + dayIndex)
-
-    console.log(`🖱️ Original dates: ${originalStart.toISOString().split('T')[0]} - ${originalEnd.toISOString().split('T')[0]}`)
-    console.log(`🖱️ New dates: ${newStart.toISOString().split('T')[0]} - ${newEnd.toISOString().split('T')[0]}`)
+    console.log(`🖱️ Original dates: ${formatDate(originalStart)} - ${formatDate(originalEnd)}`)
+    console.log(`🖱️ New dates: ${formatDate(newStart)} - ${formatDate(newEnd)}`)
 
     // Check project boundaries
     if (projectRange.value) {
-      const projectStart = new Date(projectRange.value.startDate)
-      const projectEnd = new Date(projectRange.value.endDate)
+      const projectStart = new Date(projectRange.value.startDate.getTime())
+      const projectEnd = new Date(projectRange.value.endDate.getTime())
+      const durationMs = newEnd.getTime() - newStart.getTime()
 
-      // If task start is before project start, adjust to project start
       if (newStart < projectStart) {
-        const daysDiff = Math.ceil((projectStart.getTime() - newStart.getTime()) / (1000 * 60 * 60 * 24))
-        newStart.setTime(projectStart.getTime())
-        newEnd.setDate(newEnd.getDate() + daysDiff)
+        newStart = new Date(projectStart.getTime())
+        newEnd = new Date(newStart.getTime() + durationMs)
       }
 
-      // If task end is after project end, adjust to project end
       if (newEnd > projectEnd) {
-        const daysDiff = Math.ceil((newEnd.getTime() - projectEnd.getTime()) / (1000 * 60 * 60 * 24))
-        newEnd.setTime(projectEnd.getTime())
-        newStart.setDate(newStart.getDate() - daysDiff)
+        newEnd = new Date(projectEnd.getTime())
+        newStart = new Date(newEnd.getTime() - durationMs)
       }
 
-      // Final check: ensure task start is not before project start
       if (newStart < projectStart) {
-        newStart.setTime(projectStart.getTime())
+        newStart = new Date(projectStart.getTime())
+      }
+      if (newEnd < newStart) {
+        newEnd = new Date(newStart.getTime())
       }
     }
 
-    console.log(`🖱️ After boundary checks: ${newStart.toISOString().split('T')[0]} - ${newEnd.toISOString().split('T')[0]}`)
+    const newStartYmd = formatDate(newStart)
+    const newEndYmd = formatDate(newEnd)
 
-    // Check constraints before allowing movement
+    console.log(`🖱️ After boundary checks: ${newStartYmd} - ${newEndYmd}`)
+
     console.log(`🔒 Checking constraints for task ${task.id} (${task.title})`)
-    console.log(`🔒 Proposed dates: ${newStart.toISOString().split('T')[0]} - ${newEnd.toISOString().split('T')[0]}`)
+    console.log(`🔒 Proposed dates: ${newStartYmd} - ${newEndYmd}`)
     console.log(`🔒 Active constraints: ${constraints.value.filter(c => c.active).length}`)
 
-    const constraintCheck = checkTaskConstraints(
-      task.id,
-      newStart.toISOString().split('T')[0],
-      newEnd.toISOString().split('T')[0]
-    )
+    const constraintCheck = checkTaskConstraints(task.id, newStartYmd, newEndYmd)
 
     if (!constraintCheck.canMove) {
       console.warn('🔒 Cannot move task - violates constraints:', constraintCheck.violations)
 
-      // Add constraint violations to notifications
       constraintCheck.violations.forEach(violation => {
         constraintViolations.value.push({
           id: `violation-${Date.now()}-${Math.random()}`,
@@ -2822,27 +2821,21 @@ function handleMouseUp() {
         })
       })
 
-      // Auto-clear violations after 5 seconds
       setTimeout(() => {
         constraintViolations.value = []
       }, 5000)
 
-      // Reset to original position
       cleanupDrag()
       return
     }
 
-    // Check if task has dependencies that restrict movement
     const currentTask = localTasks.value.find(t => Number(t.id) === Number(task.id))
     if (currentTask && currentTask.dependencies && currentTask.dependencies.length > 0) {
-      // Check if any predecessor is locked/started
       const hasLockedPredecessors = currentTask.dependencies.some(dep => {
-        // Check if dep is an object with predecessor_id or just a number
         const predecessorId = typeof dep === 'object' ? dep.predecessor_id : dep
         const predecessor = localTasks.value.find(t => Number(t.id) === Number(predecessorId))
         if (!predecessor) return false
 
-        // Check if predecessor has started (current date >= start date)
         const today = new Date()
         const predStart = new Date(predecessor.start_planned + 'T00:00:00.000Z')
         return today >= predStart
@@ -2850,62 +2843,62 @@ function handleMouseUp() {
 
       if (hasLockedPredecessors) {
         console.warn('⚠️ Cannot move task - predecessor has started and is locked')
-        // Reset to original position
         cleanupDrag()
         return
       }
 
-      // Validate dependency constraints
       const validation = validateDependencies(task, newStart, newEnd)
       if (!validation.valid) {
         console.warn('⚠️ Cannot move task - violates dependency constraints:', validation.conflicts)
-        // Reset to original position
         cleanupDrag()
         return
       }
     }
 
+    // No actual date change — skip API
+    if (newStartYmd === originalStartYmd && newEndYmd === originalEndYmd) {
+      console.log('🖱️ Drag resulted in same dates — skipping save')
+      cleanupDrag()
+      return
+    }
 
-    // Update the task in local state
-    const taskIndex = localTasks.value.findIndex((t) => Number(t.id) === task.id)
+    const taskIndex = localTasks.value.findIndex((t) => Number(t.id) === Number(task.id))
     if (taskIndex !== -1) {
       localTasks.value[taskIndex] = {
         ...localTasks.value[taskIndex],
-        start_planned: newStart.toISOString().split('T')[0],
-        end_planned: newEnd.toISOString().split('T')[0],
+        start_planned: newStartYmd,
+        end_planned: newEndYmd,
+        duration_days: durationDaysInclusive(newStartYmd, newEndYmd),
       }
 
-      // Update selectedTask if it's the same task
-      if (selectedTask.value && selectedTask.value.id === task.id) {
+      if (selectedTask.value && Number(selectedTask.value.id) === Number(task.id)) {
         selectedTask.value = {
           ...selectedTask.value,
-          start: newStart.toISOString().split('T')[0],
-          end: newEnd.toISOString().split('T')[0],
+          start: newStartYmd,
+          end: newEndYmd,
         }
         selectedTaskInList.value = selectedTask.value
-
-        // Update highlighted days
-        // Highlighted days now calculated in getDayHeaderClasses
       }
 
-      // Update dependency line if it's connected to this task (cascade update)
       if (testDependencyLine.value.visible &&
           (testDependencyLine.value.fromTaskId === task.id || testDependencyLine.value.toTaskId === task.id)) {
         console.log('🔄 Updating dependency line after task move')
         updateDependencyLinePositions()
       }
 
-      // Save changes to API
-      saveTaskChanges(String(task.id), newStart.toISOString().split('T')[0], newEnd.toISOString().split('T')[0])
+      // Persist to API (await so failure can revert before user navigates away)
+      suppressNextBarClick.value = true
+      void saveTaskChanges(String(task.id), newStartYmd, newEndYmd, {
+        previousStart: originalStartYmd,
+        previousEnd: originalEndYmd,
+      })
 
-      // Perform cascade updates for dependent tasks
-      performCascadeUpdates(task.id, newStart.toISOString().split('T')[0], newEnd.toISOString().split('T')[0])
+      performCascadeUpdates(task.id, newStartYmd, newEndYmd)
     } else {
-      console.log(`🔒 Constraint violated - not performing cascade updates`)
+      console.warn('🔒 Task not found in localTasks — move not saved', task.id)
     }
   }
 
-  // Always cleanup after processing
   cleanupDrag()
 }
 
@@ -2951,75 +2944,59 @@ function handleResizeMove(event: MouseEvent) {
   const daysMoved = Math.round(deltaX / cellWidth)
 
   if (daysMoved !== 0) {
-    const taskIndex = localTasks.value.findIndex((t) => Number(t.id) === resizeStartTask.value!.id)
+    const taskIndex = localTasks.value.findIndex((t) => Number(t.id) === Number(resizeStartTask.value!.id))
     if (taskIndex !== -1) {
-      // Use original dates from when resize started
-      const originalStart = new Date(originalResizeStart.value)
-      const originalEnd = new Date(originalResizeEnd.value)
+      const originalStart = toDateUTC(String(originalResizeStart.value).slice(0, 10))
+      const originalEnd = toDateUTC(String(originalResizeEnd.value).slice(0, 10))
 
-      let newStart = new Date(originalStart)
-      let newEnd = new Date(originalEnd)
+      let newStart = new Date(originalStart.getTime())
+      let newEnd = new Date(originalEnd.getTime())
 
       if (resizeType.value === 'start') {
-        // Resize start - move start date by the exact number of days moved
         newStart = addDays(originalStart, daysMoved)
+        newEnd = new Date(originalEnd.getTime())
 
-        // Keep end date fixed
-        newEnd = new Date(originalEnd)
-
-        // Check project boundaries
         if (projectRange.value) {
-          const projectStart = new Date(projectRange.value.startDate)
+          const projectStart = new Date(projectRange.value.startDate.getTime())
           if (newStart < projectStart) {
-            newStart = new Date(projectStart)
+            newStart = new Date(projectStart.getTime())
           }
         }
 
-        // Ensure start is not after end (minimum 1 day duration)
         if (newStart >= newEnd) {
           newStart = addDays(newEnd, -1)
         }
       } else if (resizeType.value === 'end') {
-        // Resize end - move end date by the exact number of days moved
         newEnd = addDays(originalEnd, daysMoved)
+        newStart = new Date(originalStart.getTime())
 
-        // Keep start date fixed
-        newStart = new Date(originalStart)
-
-        // Check project boundaries
         if (projectRange.value) {
-          const projectEnd = new Date(projectRange.value.endDate)
+          const projectEnd = new Date(projectRange.value.endDate.getTime())
           if (newEnd > projectEnd) {
-            newEnd = new Date(projectEnd)
+            newEnd = new Date(projectEnd.getTime())
           }
         }
 
-        // Ensure end is not before start (minimum 1 day duration)
         if (newEnd <= newStart) {
           newEnd = addDays(newStart, 1)
         }
       }
 
-      // Update the task in local state
+      const newStartYmd = formatDate(newStart)
+      const newEndYmd = formatDate(newEnd)
+
+      // Preview only during drag — persist on mouseup
       localTasks.value[taskIndex] = {
         ...localTasks.value[taskIndex],
-        start_planned: newStart.toISOString().split('T')[0],
-        end_planned: newEnd.toISOString().split('T')[0],
+        start_planned: newStartYmd,
+        end_planned: newEndYmd,
+        duration_days: durationDaysInclusive(newStartYmd, newEndYmd),
       }
 
-      // Highlighted days are now computed automatically
-      if (newStart && newEnd && !isNaN(newStart.getTime()) && !isNaN(newEnd.getTime())) {
-        // Highlighted days are now computed automatically
-
-        // Save changes to API
-        saveTaskChanges(String(resizeStartTask.value.id), newStart.toISOString().split('T')[0], newEnd.toISOString().split('T')[0])
-
-        // Update dependency line if it's connected to this task (cascade update)
-        if (testDependencyLine.value.visible &&
-            (testDependencyLine.value.fromTaskId === resizeStartTask.value.id || testDependencyLine.value.toTaskId === resizeStartTask.value.id)) {
-          console.log('🔄 Updating dependency line after task resize')
-          updateDependencyLinePositions()
-        }
+      if (testDependencyLine.value.visible &&
+          (testDependencyLine.value.fromTaskId === resizeStartTask.value.id ||
+            testDependencyLine.value.toTaskId === resizeStartTask.value.id)) {
+        updateDependencyLinePositions()
       }
     }
   }
@@ -3028,7 +3005,22 @@ function handleResizeMove(event: MouseEvent) {
 function handleResizeEnd() {
   if (!isResizing.value || !resizeStartTask.value) return
 
-  // Reset resize state
+  const taskId = String(resizeStartTask.value.id)
+  const taskIndex = localTasks.value.findIndex((t) => String(t.id) === taskId)
+  const previousStart = String(originalResizeStart.value).slice(0, 10)
+  const previousEnd = String(originalResizeEnd.value).slice(0, 10)
+
+  if (taskIndex !== -1) {
+    const newStart = String(localTasks.value[taskIndex].start_planned || '').slice(0, 10)
+    const newEnd = String(localTasks.value[taskIndex].end_planned || '').slice(0, 10)
+    if (newStart && newEnd && (newStart !== previousStart || newEnd !== previousEnd)) {
+      void saveTaskChanges(taskId, newStart, newEnd, {
+        previousStart,
+        previousEnd,
+      })
+    }
+  }
+
   isResizing.value = false
   resizeType.value = null
   resizeStartX.value = 0
@@ -3036,7 +3028,6 @@ function handleResizeEnd() {
   originalResizeStart.value = ''
   originalResizeEnd.value = ''
 
-  // Remove global event listeners
   document.removeEventListener('mousemove', handleResizeMove)
   document.removeEventListener('mouseup', handleResizeEnd)
 }
@@ -3155,18 +3146,27 @@ const handleTaskListDrop = (task: GanttTask, event: DragEvent) => {
 }
 
 // Save task changes to API
-const saveTaskChanges = async (taskId: string, newStart: string, newEnd: string) => {
+const saveTaskChanges = async (
+  taskId: string,
+  newStart: string,
+  newEnd: string,
+  revert?: { previousStart: string; previousEnd: string },
+) => {
   if (!props.projectId) {
     console.warn('No project ID available for saving task changes')
     return
   }
 
+  const startYmd = newStart.slice(0, 10)
+  const endYmd = newEnd.slice(0, 10)
+  const duration_days = durationDaysInclusive(startYmd, endYmd)
+
   try {
     if (props.projectStartDate && props.projectEndDate) {
       const { date_start, date_end } = computeExtendedProjectDates(
         { date_start: props.projectStartDate, date_end: props.projectEndDate },
-        newStart,
-        newEnd,
+        startYmd,
+        endYmd,
       )
       if (
         date_start !== props.projectStartDate.slice(0, 10) ||
@@ -3179,34 +3179,61 @@ const saveTaskChanges = async (taskId: string, newStart: string, newEnd: string)
     }
 
     const updatePayload = {
-      start_planned: newStart,
-      end_planned: newEnd,
+      start_planned: startYmd,
+      end_planned: endYmd,
+      duration_days,
     }
 
     console.log('🖱️ Drag & Drop: Saving task changes via PUT /api/v1/projects/{project_id}/tasks/{task_id}', {
       projectId: props.projectId,
       taskId,
       payload: updatePayload,
-      start_planned: newStart,
-      end_planned: newEnd,
     })
 
     const updatedTask = await tasksApi.update(props.projectId, taskId, updatePayload)
     console.log('✅ Drag & Drop: Task saved successfully:', updatedTask)
 
-    // Update local tasks with the response from API
-    const taskIndex = localTasks.value.findIndex(t => t.id === taskId)
+    const taskIndex = localTasks.value.findIndex((t) => String(t.id) === String(taskId))
     if (taskIndex !== -1) {
-      localTasks.value[taskIndex] = {
+      const merged: Task = {
         ...localTasks.value[taskIndex],
-        start_planned: newStart,
-        end_planned: newEnd,
+        ...(updatedTask && typeof updatedTask === 'object' ? updatedTask : {}),
+        start_planned: startYmd,
+        end_planned: endYmd,
+        duration_days,
       }
+      localTasks.value[taskIndex] = merged
+      emit('task-updated', merged)
+    } else if (updatedTask && typeof updatedTask === 'object' && 'id' in updatedTask) {
+      emit('task-updated', {
+        ...updatedTask,
+        start_planned: startYmd,
+        end_planned: endYmd,
+        duration_days,
+      } as Task)
     }
-
   } catch (error) {
     console.error('❌ Failed to save task changes:', error)
-    // TODO: Show user-friendly error message
+    let message = 'Save failed'
+    if (error instanceof Error && error.message) {
+      message = error.message
+    }
+    if (error && typeof error === 'object' && 'response' in error) {
+      const data = (error as { response?: { data?: { message?: string } } }).response?.data
+      if (data?.message) message = data.message
+    }
+    alert(`Task dates were not saved.\n${message}`)
+    if (revert) {
+      const taskIndex = localTasks.value.findIndex((t) => String(t.id) === String(taskId))
+      if (taskIndex !== -1) {
+        localTasks.value[taskIndex] = {
+          ...localTasks.value[taskIndex],
+          start_planned: revert.previousStart,
+          end_planned: revert.previousEnd,
+          duration_days: durationDaysInclusive(revert.previousStart, revert.previousEnd),
+        }
+      }
+    }
   }
 }
 

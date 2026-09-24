@@ -64,3 +64,45 @@ export function toYmd(d: Date): string {
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
+
+/**
+ * Map FullCalendar drop/resize dates back to API start_at / end_at.
+ * All-day FC end is exclusive (+1 day); API stores inclusive calendar dates.
+ */
+export function fcDropToApiDates(info: {
+  event: {
+    start: Date | null
+    end: Date | null
+    allDay: boolean
+    startStr?: string
+    endStr?: string
+  }
+}): { start_at: string; end_at: string | null; all_day: boolean } | null {
+  const ev = info.event
+  if (!ev.start) return null
+
+  if (ev.allDay) {
+    const startYmd = (ev.startStr || toYmd(ev.start)).slice(0, 10)
+    let endYmd = startYmd
+    if (ev.endStr) {
+      const exclusive = ev.endStr.slice(0, 10)
+      const d = new Date(exclusive + 'T00:00:00')
+      d.setDate(d.getDate() - 1)
+      endYmd = toYmd(d)
+    } else if (ev.end) {
+      const d = new Date(ev.end.getTime())
+      d.setDate(d.getDate() - 1)
+      endYmd = toYmd(d)
+    }
+    if (endYmd < startYmd) endYmd = startYmd
+    return { start_at: startYmd, end_at: endYmd, all_day: true }
+  }
+
+  const start = ev.start
+  const end = ev.end ?? new Date(start.getTime() + 60 * 60 * 1000)
+  return {
+    start_at: `${toYmd(start)}T${toHm(start)}:00`,
+    end_at: `${toYmd(end)}T${toHm(end)}:00`,
+    all_day: false,
+  }
+}

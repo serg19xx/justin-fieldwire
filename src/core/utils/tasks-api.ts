@@ -158,8 +158,12 @@ function readTaskAddressFromApi(task: Record<string, unknown>): string {
 
 function parseTaskFromApiEnvelope(responseData: unknown): Task {
   const body = responseData as Record<string, unknown> | undefined
-  if (body?.status === 'error' || body?.error_code) {
-    throw new Error(String(body.message ?? 'Task request failed'))
+  const errorCode = body?.error_code
+  const hasError =
+    body?.status === 'error' ||
+    (errorCode != null && errorCode !== 0 && errorCode !== '0')
+  if (hasError) {
+    throw new Error(String(body?.message ?? 'Task request failed'))
   }
   const envelope = body?.data
   const raw =
@@ -206,7 +210,8 @@ function transformTaskFromApiRow(task: Record<string, unknown>): Task {
   const projectNum = Number(task.project_id)
   const project_id = Number.isFinite(projectNum) ? projectNum : 0
   const name = task.name != null ? String(task.name) : ''
-  const start_planned = task.start_planned != null ? String(task.start_planned) : ''
+  const start_planned =
+    task.start_planned != null ? String(task.start_planned).slice(0, 10) : ''
   const progressRaw = task.progress_pct
   const progress_pct =
     typeof progressRaw === 'number' && Number.isFinite(progressRaw)
@@ -234,7 +239,7 @@ function transformTaskFromApiRow(task: Record<string, unknown>): Task {
     address: readTaskAddressFromApi(task),
     start_planned,
     start_time: task.start_time != null ? String(task.start_time) : undefined,
-    end_planned: task.end_planned != null ? String(task.end_planned) : undefined,
+    end_planned: task.end_planned != null ? String(task.end_planned).slice(0, 10) : undefined,
     end_time: task.end_time != null ? String(task.end_time) : undefined,
     duration_days: typeof task.duration_days === 'number' ? task.duration_days : undefined,
     milestone,
@@ -252,6 +257,26 @@ function transformTaskFromApiRow(task: Record<string, unknown>): Task {
         ? String(task.category).trim()
         : null,
     task_lead_id: task_lead_id ?? undefined,
+    executor_type:
+      task.executor_type === 'user' || task.executor_type === 'contractor'
+        ? task.executor_type
+        : null,
+    contractor_id:
+      task.contractor_id != null && Number(task.contractor_id) > 0
+        ? Number(task.contractor_id)
+        : null,
+    inspector_id:
+      task.inspector_id != null && Number(task.inspector_id) > 0
+        ? Number(task.inspector_id)
+        : null,
+    contractor:
+      task.contractor && typeof task.contractor === 'object'
+        ? (task.contractor as Task['contractor'])
+        : null,
+    inspector:
+      task.inspector && typeof task.inspector === 'object'
+        ? (task.inspector as Task['inspector'])
+        : null,
     team_members,
     assignees,
     created_at: task.created_at != null ? String(task.created_at) : '',
@@ -590,8 +615,26 @@ export const tasksApi = {
         apiData.category = raw === '' ? null : raw
       }
 
+      if (data.executor_type !== undefined) {
+        apiData.executor_type = data.executor_type
+      }
+      if (data.contractor_id !== undefined) {
+        apiData.contractor_id =
+          data.contractor_id !== null && Number(data.contractor_id) > 0
+            ? Number(data.contractor_id)
+            : null
+      }
+      if (data.inspector_id !== undefined) {
+        apiData.inspector_id =
+          data.inspector_id !== null && Number(data.inspector_id) > 0
+            ? Number(data.inspector_id)
+            : null
+      }
+
       // Use task_lead_id from data if provided and valid (not null, 0, or empty string)
-      if (data.task_lead_id !== undefined && data.task_lead_id !== null && data.task_lead_id !== 0) {
+      if (data.executor_type === 'contractor') {
+        apiData.task_lead_id = null
+      } else if (data.task_lead_id !== undefined && data.task_lead_id !== null && data.task_lead_id !== 0) {
         const leadId = Number(data.task_lead_id)
         if (!isNaN(leadId) && leadId > 0) {
           apiData.task_lead_id = leadId
@@ -722,21 +765,38 @@ export const tasksApi = {
       if (data.end_time !== undefined) apiData.end_time = data.end_time
       if (data.durationDays !== undefined) apiData.duration_days = data.durationDays
       if (data.duration_days !== undefined) apiData.duration_days = data.duration_days
-      // Handle milestone: store text code directly, or null/0 for regular tasks
-      if (data.milestone_type !== undefined && data.milestone_type !== null) {
-        apiData.milestone = data.milestone_type
-      } else if (data.milestone !== undefined && data.milestone !== null && data.milestone !== false && data.milestone !== 0) {
-        // If milestone is provided as string, use it; if boolean true, use 'other'; if false/null/0, use null
-        if (typeof data.milestone === 'string') {
-          apiData.milestone = data.milestone
-        } else if (data.milestone === true) {
-          apiData.milestone = 'other'
+      // When dates change without explicit duration, keep duration_days in sync for backends that use it
+      if (
+        apiData.duration_days === undefined &&
+        typeof apiData.start_planned === 'string' &&
+        typeof apiData.end_planned === 'string' &&
+        apiData.start_planned &&
+        apiData.end_planned
+      ) {
+        const start = new Date(String(apiData.start_planned).slice(0, 10) + 'T00:00:00Z')
+        const end = new Date(String(apiData.end_planned).slice(0, 10) + 'T00:00:00Z')
+        if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+          apiData.duration_days = Math.max(
+            1,
+            Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+          )
+        }
+      }
+      // Only touch milestone when the caller explicitly includes it (date-only drag must not clear milestones)
+      if (data.milestone_type !== undefined) {
+        apiData.milestone = data.milestone_type !== null ? data.milestone_type : null
+      } else if (data.milestone !== undefined) {
+        if (data.milestone !== null && data.milestone !== false && data.milestone !== 0) {
+          if (typeof data.milestone === 'string') {
+            apiData.milestone = data.milestone
+          } else if (data.milestone === true) {
+            apiData.milestone = 'other'
+          } else {
+            apiData.milestone = null
+          }
         } else {
           apiData.milestone = null
         }
-      } else {
-        // No milestone specified, set to null for regular task
-        apiData.milestone = null
       }
       if (data.status !== undefined) apiData.status = mapStatusToBackend(String(data.status))
       if (data.progress_pct !== undefined) apiData.progress_pct = data.progress_pct
@@ -745,8 +805,25 @@ export const tasksApi = {
         const raw = typeof data.category === 'string' ? data.category.trim() : ''
         apiData.category = raw === '' ? null : raw
       }
+      if (data.executor_type !== undefined) {
+        apiData.executor_type = data.executor_type
+      }
+      if (data.contractor_id !== undefined) {
+        apiData.contractor_id =
+          data.contractor_id !== null && Number(data.contractor_id) > 0
+            ? Number(data.contractor_id)
+            : null
+      }
+      if (data.inspector_id !== undefined) {
+        apiData.inspector_id =
+          data.inspector_id !== null && Number(data.inspector_id) > 0
+            ? Number(data.inspector_id)
+            : null
+      }
       // Use task_lead_id from data if provided and valid (not null, 0, or empty string)
-      if (data.task_lead_id !== undefined && data.task_lead_id !== null && data.task_lead_id !== 0) {
+      if (data.executor_type === 'contractor') {
+        apiData.task_lead_id = null
+      } else if (data.task_lead_id !== undefined && data.task_lead_id !== null && data.task_lead_id !== 0) {
         const leadId = Number(data.task_lead_id)
         if (!isNaN(leadId) && leadId > 0) {
           apiData.task_lead_id = leadId
@@ -762,21 +839,30 @@ export const tasksApi = {
         console.log('👤 task_lead_id is undefined/0/empty, not including in update payload')
       }
       if (data.team_members !== undefined) apiData.team_members = data.team_members
-      // Invited people only for milestones
-      if (data.milestone || data.milestone_type) {
-        // For milestones, always set invited_people (empty array if none, never null)
-        if (data.invited_people !== undefined && Array.isArray(data.invited_people) && data.invited_people.length > 0) {
-          apiData.invited_people = data.invited_people
-          console.log('👥 Invited people being sent for update:', data.invited_people)
+      // Only send invited_people when milestone or invited_people is part of this update
+      if (data.milestone !== undefined || data.milestone_type !== undefined || data.invited_people !== undefined) {
+        const isMilestoneUpdate =
+          data.milestone_type != null ||
+          (data.milestone !== undefined &&
+            data.milestone !== null &&
+            data.milestone !== false &&
+            data.milestone !== 0)
+        if (isMilestoneUpdate) {
+          if (
+            data.invited_people !== undefined &&
+            Array.isArray(data.invited_people) &&
+            data.invited_people.length > 0
+          ) {
+            apiData.invited_people = data.invited_people
+            console.log('👥 Invited people being sent for update:', data.invited_people)
+          } else {
+            apiData.invited_people = []
+            console.log('👥 No invited people, sending empty array for milestone update (never null)')
+          }
         } else {
-          // Empty array for milestone with no invited people (always set, never null)
-          apiData.invited_people = []
-          console.log('👥 No invited people, sending empty array for milestone update (never null)')
+          apiData.invited_people = null
+          console.log('👥 Regular task update, setting invited_people to null')
         }
-      } else {
-        // For regular tasks, set to null
-        apiData.invited_people = null
-        console.log('👥 Regular task update, setting invited_people to null')
       }
       if (data.resources !== undefined) apiData.resources = data.resources
       if (data.dependencies !== undefined) apiData.dependencies = data.dependencies
@@ -794,35 +880,8 @@ export const tasksApi = {
       }
       const response = await api.put(url, apiData)
       console.log('✅ Task updated successfully via PUT:', response.data)
-      
-      // Check if response contains error status
-      if (response.data.status === 'error' || response.data.error_code) {
-        const errorMessage = response.data.message || 'Failed to update task'
-        console.error('❌ Server returned error in response:', errorMessage)
-        const error = new Error(errorMessage) as Error & { response?: { data?: { message?: string; error_code?: number } } }
-        error.response = {
-          data: {
-            message: errorMessage,
-            error_code: response.data.error_code,
-          },
-        }
-        throw error
-      }
-      
-      // Validate response structure
-      if (!response.data.data || !response.data.data.task) {
-        const errorMessage = 'Invalid response format from server'
-        console.error('❌ Invalid response structure:', response.data)
-        const error = new Error(errorMessage) as Error & { response?: { data?: { message?: string } } }
-        error.response = {
-          data: {
-            message: errorMessage,
-          },
-        }
-        throw error
-      }
-      
-      return response.data.data.task
+
+      return parseTaskFromApiEnvelope(response.data)
     } catch (error) {
       console.error('Error updating task:', error)
 

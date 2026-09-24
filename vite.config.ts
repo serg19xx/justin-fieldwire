@@ -12,6 +12,7 @@ function hasWorkingLocalStorage(): boolean {
 
 // https://vite.dev/config/
 export default defineConfig(async ({ mode }) => {
+  const isDev = mode === 'development'
   const plugins = [
     vue(),
     VitePWA({
@@ -52,14 +53,15 @@ export default defineConfig(async ({ mode }) => {
         // precaching them after FTP deploys caused broken lazy-route imports.
         globPatterns: ['index.html', 'favicon.ico', 'icons/**/*.{png,svg,ico}'],
       },
+      // Never enable SW in Vite DEV — it caches modules and makes fixes look ineffective
       devOptions: {
-        enabled: true,
+        enabled: false,
         type: 'module',
       },
     }),
   ]
 
-  if (mode === 'development' && hasWorkingLocalStorage()) {
+  if (isDev && hasWorkingLocalStorage()) {
     const { default: vueDevTools } = await import('vite-plugin-vue-devtools')
     plugins.push(vueDevTools())
   }

@@ -7,8 +7,16 @@ import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './core/stores/auth'
 
-/** After deploy, new SW activates immediately (see skipWaiting in sw.ts). */
-registerSW({ immediate: true })
+if (import.meta.env.PROD) {
+  registerSW({ immediate: true })
+} else if ('serviceWorker' in navigator) {
+  // Drop stale DEV service workers so HMR always serves fresh modules
+  void navigator.serviceWorker.getRegistrations().then((regs) => {
+    for (const reg of regs) {
+      void reg.unregister()
+    }
+  })
+}
 
 async function bootstrap() {
   const app = createApp(App)
