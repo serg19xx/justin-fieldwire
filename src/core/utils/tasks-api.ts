@@ -2,23 +2,47 @@ import { api } from './api'
 import type { Task, TaskCreateUpdate, TaskFilter, TaskStats, TaskStatus } from '@/core/types/task'
 import { isMilestone, type MilestoneType } from '@/core/types/task'
 
-// Backend accepts only: planned, in_progress, done, blocked, delayed
-const BACKEND_STATUSES = ['planned', 'in_progress', 'done', 'blocked', 'delayed'] as const
-type BackendStatus = (typeof BACKEND_STATUSES)[number]
+/**
+ * Statuses accepted by the API (rich UI + legacy).
+ * UI values must round-trip unchanged so TaskEditPanel select stays in sync after save.
+ */
+const API_TASK_STATUSES = [
+  'planned',
+  'scheduled',
+  'scheduled_accepted',
+  'in_progress',
+  'partially_completed',
+  'delayed_due_to_issue',
+  'ready_for_inspection',
+  'completed',
+  'done',
+  'blocked',
+  'delayed',
+] as const
 
-function mapStatusToBackend(status: string | undefined): BackendStatus {
+type ApiTaskStatus = (typeof API_TASK_STATUSES)[number]
+
+const UI_TASK_STATUSES: readonly TaskStatus[] = [
+  'planned',
+  'scheduled',
+  'scheduled_accepted',
+  'in_progress',
+  'partially_completed',
+  'delayed_due_to_issue',
+  'ready_for_inspection',
+  'completed',
+]
+
+function mapStatusToBackend(status: string | undefined): ApiTaskStatus {
   if (!status) return 'planned'
   const normalized = status.toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_')
-  if (BACKEND_STATUSES.includes(normalized as BackendStatus)) {
-    return normalized as BackendStatus
+  if ((API_TASK_STATUSES as readonly string[]).includes(normalized)) {
+    return normalized as ApiTaskStatus
   }
-  const mapping: Record<string, BackendStatus> = {
-    scheduled: 'planned',
-    scheduled_accepted: 'planned',
-    partially_completed: 'done',
-    ready_for_inspection: 'done',
-    completed: 'done',
-    delayed_due_to_issue: 'delayed',
+  const mapping: Record<string, ApiTaskStatus> = {
+    inprogress: 'in_progress',
+    complete: 'completed',
+    finished: 'completed',
   }
   return mapping[normalized] ?? 'planned'
 }
@@ -147,7 +171,18 @@ function extractAllParticipantUserIds(task: Record<string, unknown>): number[] {
 
 function normalizeApiTaskStatus(raw: unknown): TaskStatus {
   if (typeof raw !== 'string' || raw.length === 0) return 'planned'
-  return raw as TaskStatus
+  const normalized = raw.toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_')
+  // Legacy API/DB values → UI select values
+  const legacyToUi: Record<string, TaskStatus> = {
+    done: 'completed',
+    delayed: 'delayed_due_to_issue',
+    blocked: 'delayed_due_to_issue',
+  }
+  if (legacyToUi[normalized]) return legacyToUi[normalized]
+  if ((UI_TASK_STATUSES as readonly string[]).includes(normalized)) {
+    return normalized as TaskStatus
+  }
+  return 'planned'
 }
 
 /** Prefer `address`; accept legacy `wbs_path` from API until all backends migrate. */

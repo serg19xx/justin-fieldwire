@@ -191,36 +191,50 @@ export const taskTemplatesApi = {
   },
 }
 
-// Valid API task statuses
-type ApiTaskStatus = 'planned' | 'in_progress' | 'done' | 'blocked' | 'delayed'
+// Valid API task statuses (rich UI + legacy)
+type ApiTaskStatus =
+  | 'planned'
+  | 'scheduled'
+  | 'scheduled_accepted'
+  | 'in_progress'
+  | 'partially_completed'
+  | 'delayed_due_to_issue'
+  | 'ready_for_inspection'
+  | 'completed'
+  | 'done'
+  | 'blocked'
+  | 'delayed'
 
 /**
- * Normalize task status to valid API status
- * API accepts: planned, in_progress, done, blocked, delayed
+ * Normalize task status to a value the tasks API accepts.
+ * Rich UI statuses must pass through so they persist after save.
  */
 function normalizeTaskStatus(status: string | undefined | null): ApiTaskStatus {
   if (!status) return 'planned'
 
-  const normalized = status.toLowerCase().trim()
+  const normalized = status.toLowerCase().trim().replace(/-/g, '_').replace(/\s+/g, '_')
 
-  // Direct matches
-  if (['planned', 'in_progress', 'done', 'blocked', 'delayed'].includes(normalized)) {
+  const allowed: ApiTaskStatus[] = [
+    'planned',
+    'scheduled',
+    'scheduled_accepted',
+    'in_progress',
+    'partially_completed',
+    'delayed_due_to_issue',
+    'ready_for_inspection',
+    'completed',
+    'done',
+    'blocked',
+    'delayed',
+  ]
+  if (allowed.includes(normalized as ApiTaskStatus)) {
     return normalized as ApiTaskStatus
   }
 
-  // Map old/alternative statuses to valid API statuses
   const statusMap: Record<string, ApiTaskStatus> = {
-    'scheduled': 'planned',
-    'scheduled_accepted': 'planned',
-    'in progress': 'in_progress',
-    'in-progress': 'in_progress',
-    'partially_completed': 'in_progress',
-    'partially completed': 'in_progress',
-    'ready_for_inspection': 'in_progress',
-    'ready for inspection': 'in_progress',
-    'completed': 'done',
-    'delayed_due_to_issue': 'delayed',
-    'delayed due to issue': 'delayed',
+    inprogress: 'in_progress',
+    complete: 'completed',
+    finished: 'completed',
   }
 
   return statusMap[normalized] || 'planned'
