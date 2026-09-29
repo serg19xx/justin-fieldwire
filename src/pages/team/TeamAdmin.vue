@@ -5,7 +5,11 @@ import { useAuthStore } from '@/core/stores/auth'
 import InviteBuilderDialog from '@/components/InviteBuilderDialog.vue'
 import { type WorkerUser } from '@/core/utils/hr-api'
 import { type UserType } from '@/core/utils/constants'
-import { useWorkerListLoader } from '@/composables/useWorkerListLoader'
+import { ACCOUNT_STATUS_OPTIONS, useWorkerListLoader } from '@/composables/useWorkerListLoader'
+import ArchivedUserBadge from '@/components/team/ArchivedUserBadge.vue'
+import InvitationInfo from '@/components/team/InvitationInfo.vue'
+import InvitationActions from '@/components/team/InvitationActions.vue'
+import { isPendingInvitation } from '@/core/utils/invitation-status'
 
 const authStore = useAuthStore()
 
@@ -159,50 +163,9 @@ function handleWorkerUsersInvited(workers: WorkerUser[]) {
   // Здесь можно добавить логику для отправки приглашений
 }
 
-function handleInviteSent(data: {
-  email: string
-  firstName: string
-  lastName: string
-  userType: string
-  specialization?: string
-  phone?: string
-}) {
-  console.log('Invitation sent to:', data.email)
-
-  // Добавляем нового работника в список без обращения к серверу
-  const newBuilder = {
-    id: Date.now(), // Временный ID
-    email: data.email,
-    first_name: data.firstName,
-    last_name: data.lastName,
-    phone: data.phone || '',
-    role_id: 0,
-    job_title: data.specialization || '',
-    status: 0,
-    two_factor_enabled: false,
-    last_login: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    invitation_status: 'invited',
-    invitation_sent_at: new Date().toISOString(),
-    invitation_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    invited_by: 0,
-    registration_completed_at: null,
-    invitation_attempts: 0,
-    last_reminder_sent_at: null,
-    archived_at: null,
-    role_code: 'contractor',
-    role_name: 'Contractor',
-    role_category: 'task',
-    role_description: null,
-    status_reason: null,
-    status_details: null,
-    additional_info: null,
-    avatar_url: null,
-    two_factor_secret: null,
-  } as unknown as WorkerUser
-
-  builders.value.unshift(newBuilder)
+function handleInviteSent() {
+  // Reload so the new invitee has a real id for Resend/Remove.
+  void loadBuilders()
 }
 
 // Функция для изменения статуса пользователя
@@ -336,8 +299,13 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
               class="w-full px-2 sm:px-3 py-1.5 sm:py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
             >
               <option value="">All User Statuses</option>
-              <option value="1">Active</option>
-              <option value="0">Inactive</option>
+              <option
+                v-for="option in ACCOUNT_STATUS_OPTIONS"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </option>
             </select>
           </div>
           <div>
@@ -447,7 +415,7 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
               <th
                 class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-40"
               >
-                {{ viewMode === 'pending' ? 'Invited' : 'Last Active' }}
+                {{ viewMode === 'pending' ? 'Actions' : 'Last Active' }}
               </th>
             </tr>
           </thead>
@@ -490,7 +458,7 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
                 </div>
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-32">
-                <div v-if="viewMode === 'registered'" class="flex flex-col">
+                <div class="flex flex-col items-start gap-1">
                   <span
                     class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
                     :class="{
@@ -500,42 +468,25 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
                   >
                     {{ builder.status === 1 ? 'Active' : 'Inactive' }}
                   </span>
-                </div>
-                <div v-else class="flex flex-col">
-                  <span
-                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                    :class="{
-                      'bg-green-100 text-green-800': builder.status === 1,
-                      'bg-red-100 text-red-800': builder.status === 0,
-                    }"
-                  >
-                    {{ builder.status === 1 ? 'Active' : 'Inactive' }}
-                  </span>
+                  <ArchivedUserBadge :archived-at="builder.archived_at" />
                 </div>
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-32">
+                <InvitationInfo v-if="isPendingInvitation(builder)" :worker="builder" />
                 <span
-                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                  :class="{
-                    'bg-green-100 text-green-800': builder.invitation_status === 'registered',
-                    'bg-yellow-100 text-yellow-800': builder.invitation_status === 'invited',
-                    'bg-red-100 text-red-800': builder.invitation_status === 'expired',
-                  }"
+                  v-else
+                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
                 >
-                  {{
-                    builder.invitation_status === 'registered'
-                      ? 'Registered'
-                      : builder.invitation_status === 'invited'
-                        ? 'Invited'
-                        : 'Expired'
-                  }}
+                  Registered
                 </span>
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-40">
-                <span v-if="viewMode === 'pending'" class="text-sm text-gray-500 truncate">
-                  {{ formatDate(builder.created_at) }}
-                </span>
-                <span class="text-sm text-gray-400">N/A</span>
+                <InvitationActions
+                  v-if="isPendingInvitation(builder)"
+                  :worker="builder"
+                  @changed="loadBuilders"
+                />
+                <span v-else class="text-sm text-gray-400">N/A</span>
               </td>
             </tr>
           </tbody>
@@ -587,6 +538,9 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
                   {{ builder.status === 1 ? 'Active' : 'Inactive' }}
                 </button>
               </div>
+              <div v-if="builder.archived_at" class="mb-2">
+                <ArchivedUserBadge :archived-at="builder.archived_at" />
+              </div>
 
               <!-- Contact Info -->
               <div class="mb-2">
@@ -606,12 +560,12 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
                 </div>
               </div>
 
-              <!-- Status and Date -->
-              <div class="flex items-center justify-between text-xs text-gray-500">
-                <span>
-                  {{ formatDate(builder.created_at) }}
-                </span>
-                <span> Status </span>
+              <div v-if="isPendingInvitation(builder)" class="flex flex-col gap-2">
+                <InvitationInfo :worker="builder" />
+                <InvitationActions :worker="builder" compact @changed="loadBuilders" />
+              </div>
+              <div v-else class="text-xs text-gray-500">
+                Added {{ formatDate(builder.created_at) }}
               </div>
             </div>
           </div>

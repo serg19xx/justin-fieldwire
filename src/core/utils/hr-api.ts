@@ -96,6 +96,8 @@ export interface WorkerUser {
   invitation_status: 'invited' | 'registered' | 'expired'
   invitation_sent_at: string | null
   invitation_expires_at: string | null
+  /** Server-computed; expiry is stored in the API clock, so the browser clock is only a fallback. */
+  invitation_is_expired?: boolean
   invited_by: number | null
   registration_completed_at: string | null
   invitation_attempts: number
@@ -122,6 +124,26 @@ export interface WorkerUser {
   role_name?: string
   role_category?: string
   role_description?: string | null
+}
+
+export interface WorkerUserListFilters {
+  id?: number
+  status?: string
+  user_status?: string
+  role_code?: string
+  role_id?: number
+  job_title?: string
+  search?: string
+  archived?: boolean
+  two_factor?: boolean
+  invitation_status?: string
+  view_mode?: string
+  project_id?: number
+  prj_mngr_id?: number
+  sort_by?: string
+  sort_order?: 'ASC' | 'DESC'
+  /** list = table row only (fast); full = profile + projects + professional data */
+  fields?: 'list' | 'full'
 }
 
 // HR Resources API - Get all available users for HR management
@@ -270,6 +292,32 @@ export const hrResourcesApi = {
     }
   },
 
+  async resendWorkerInvitation(userId: number): Promise<{ success: boolean; message?: string }> {
+    try {
+      await api.post(`/api/v1/workers/${userId}/invitation/resend`)
+      return { success: true, message: 'Invitation resent' }
+    } catch (error: unknown) {
+      const apiError = error as { response?: { data?: { message?: string } } }
+      return {
+        success: false,
+        message: apiError.response?.data?.message || 'Failed to resend invitation',
+      }
+    }
+  },
+
+  async revokeWorkerInvitation(userId: number): Promise<{ success: boolean; message?: string }> {
+    try {
+      await api.delete(`/api/v1/workers/${userId}/invitation`)
+      return { success: true, message: 'Invitation removed' }
+    } catch (error: unknown) {
+      const apiError = error as { response?: { data?: { message?: string } } }
+      return {
+        success: false,
+        message: apiError.response?.data?.message || 'Failed to remove invitation',
+      }
+    }
+  },
+
   // Get email providers
   async getEmailProviders(): Promise<string[]> {
     try {
@@ -287,25 +335,7 @@ export const hrResourcesApi = {
   async getAllWorkerUsers(
     page: number = 1,
     limit: number = 20,
-    filters: {
-      id?: number
-      status?: string
-      user_status?: string
-      role_code?: string
-      role_id?: number
-      job_title?: string
-      search?: string
-      archived?: boolean
-      two_factor?: boolean
-      invitation_status?: string
-      view_mode?: string
-      project_id?: number
-      prj_mngr_id?: number
-      sort_by?: string
-      sort_order?: 'ASC' | 'DESC'
-      /** list = table row only (fast); full = profile + projects + professional data */
-      fields?: 'list' | 'full'
-    } = {},
+    filters: WorkerUserListFilters = {},
   ): Promise<{
     workers: WorkerUser[]
     pagination: {
@@ -464,7 +494,7 @@ export const hrResourcesApi = {
 
   /** Fetch every worker page from the API (backend caps limit at 100 per request). */
   async fetchAllWorkerUsers(
-    filters: Parameters<typeof hrResourcesApi.getAllWorkerUsers>[2] = {},
+    filters: WorkerUserListFilters = {},
   ): Promise<WorkerUser[]> {
     const allWorkers: WorkerUser[] = []
     const pageLimit = 100

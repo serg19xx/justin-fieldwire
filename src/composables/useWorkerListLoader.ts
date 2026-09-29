@@ -1,6 +1,10 @@
 import { computed, ref, watch, type MaybeRefOrGetter, toValue } from 'vue'
 import { debounce } from '@/core/utils/debounce'
-import { hrResourcesApi, type WorkerUser } from '@/core/utils/hr-api'
+import {
+  hrResourcesApi,
+  type WorkerUser,
+  type WorkerUserListFilters,
+} from '@/core/utils/hr-api'
 
 export interface WorkerListPagination {
   current_page: number
@@ -12,6 +16,18 @@ export interface WorkerListPagination {
   has_next_page: boolean
   has_prev_page: boolean
 }
+
+export const ACCOUNT_STATUS_FILTERS = {
+  active: { label: 'Active', params: { status: '1', archived: false } },
+  inactive: { label: 'Inactive', params: { status: '0', archived: false } },
+  archived: { label: 'Archived', params: { archived: true } },
+} as const satisfies Record<string, { label: string; params: WorkerUserListFilters }>
+
+export type AccountStatusFilter = '' | keyof typeof ACCOUNT_STATUS_FILTERS
+
+export const ACCOUNT_STATUS_OPTIONS = (
+  Object.keys(ACCOUNT_STATUS_FILTERS) as Array<keyof typeof ACCOUNT_STATUS_FILTERS>
+).map((value) => ({ value, label: ACCOUNT_STATUS_FILTERS[value].label }))
 
 function emptyPagination(perPage: number): WorkerListPagination {
   return {
@@ -46,7 +62,7 @@ export function useWorkerListLoader(
   const error = ref<string | null>(null)
   const searchQuery = ref('')
   const userTypeFilter = ref('')
-  const statusFilter = ref('')
+  const statusFilter = ref<AccountStatusFilter>('')
   const invitationStatusFilter = ref('')
   const viewMode = ref<'registered' | 'pending'>(initialViewMode)
   const currentPage = ref(1)
@@ -56,13 +72,13 @@ export function useWorkerListLoader(
 
   let loadSeq = 0
 
-  function buildApiFilters(): Parameters<typeof hrResourcesApi.getAllWorkerUsers>[2] {
-    const filters: Parameters<typeof hrResourcesApi.getAllWorkerUsers>[2] = {
+  function buildApiFilters(): WorkerUserListFilters {
+    const filters: WorkerUserListFilters = {
       sort_by: 'created_at',
       sort_order: 'DESC',
       fields: 'list',
     }
-    if (statusFilter.value) filters.status = statusFilter.value
+    if (statusFilter.value) Object.assign(filters, ACCOUNT_STATUS_FILTERS[statusFilter.value].params)
     if (invitationStatusFilter.value) {
       filters.invitation_status = invitationStatusFilter.value
     } else {

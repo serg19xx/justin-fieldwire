@@ -6,7 +6,11 @@ import WorkerAssignmentsPanel from '@/components/team/WorkerAssignmentsPanel.vue
 import { hrResourcesApi, type WorkerUser } from '@/core/utils/hr-api'
 import { type UserType } from '@/core/utils/constants'
 import { useAuthStore } from '@/core/stores/auth'
-import { useWorkerListLoader } from '@/composables/useWorkerListLoader'
+import { ACCOUNT_STATUS_OPTIONS, useWorkerListLoader } from '@/composables/useWorkerListLoader'
+import ArchivedUserBadge from '@/components/team/ArchivedUserBadge.vue'
+import InvitationInfo from '@/components/team/InvitationInfo.vue'
+import InvitationActions from '@/components/team/InvitationActions.vue'
+import { isPendingInvitation } from '@/core/utils/invitation-status'
 import type { Task } from '@/core/types/task'
 import type { AssignmentProjectHint } from '@/core/utils/worker-assignments'
 
@@ -43,7 +47,6 @@ const scopedProjectId = computed(() =>
 )
 
 const {
-  builders,
   loading,
   error,
   searchQuery,
@@ -106,6 +109,8 @@ const isAdminUser = computed(() => {
 
 // Project Manager detection
 const isProjectManagerUser = computed(() => authStore.currentUser?.role_code === 'project_manager')
+
+const canManageInvitations = computed(() => isAdminUser.value || isProjectManagerUser.value)
 
 const showAddWorkerButton = computed(() => {
   if (props.canAddWorker != null) return props.canAddWorker
@@ -220,66 +225,9 @@ function handleWorkerUsersInvited(workers: WorkerUser[]) {
   // Здесь можно добавить логику для отправки приглашений
 }
 
-function handleInviteSent(data: {
-  email: string
-  firstName: string
-  lastName: string
-  userType: string
-  specialization?: string
-  phone?: string
-}) {
-  console.log('Invitation sent to:', data.email)
-
-  // Добавляем нового работника в список без обращения к серверу
-  const newBuilder: WorkerUser = {
-    id: Date.now(), // Временный ID
-    email: data.email,
-    first_name: data.firstName,
-    last_name: data.lastName,
-    dob: null,
-    gender: null,
-    nationality: null,
-    country_of_origin: null,
-    workforce_group: null,
-    phone: data.phone || null,
-    role_id: 0,
-    job_title: data.specialization || null,
-    city: null,
-    status: 0,
-    emergency: null,
-    status_changed_at: new Date().toISOString(),
-    status_end_at: null,
-    status_reason: null,
-    status_details: null,
-    additional_info: null,
-    full_img_url: null,
-    avatar_url: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    invitation_status: 'invited',
-    invitation_sent_at: new Date().toISOString(),
-    invitation_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    invited_by: 0,
-    registration_completed_at: null,
-    invitation_attempts: 0,
-    last_reminder_sent_at: null,
-    archived_at: null,
-    code: 'contractor',
-    name: 'Contractor',
-    category: 'task',
-    description: null,
-    role: {
-      id: 0,
-      code: 'contractor',
-      name: 'Contractor',
-      category: 'task'
-    },
-    professional_data: [],
-    projects: [],
-    languages: []
-  }
-
-  builders.value.unshift(newBuilder)
+function handleInviteSent() {
+  // Reload so the new invitee has a real id for Resend/Remove.
+  void loadBuilders()
 }
 
 </script>
@@ -300,7 +248,7 @@ function handleInviteSent(data: {
         </div>
 
         <!-- Right actions: Add button (admin), filters -->
-        <div class="flex gap-2 items-center">
+        <div class="flex flex-wrap gap-2 items-center">
           <!-- Add button visible for admin -->
           <button
             v-if="showAddWorkerButton"
@@ -323,6 +271,30 @@ function handleInviteSent(data: {
               <option value="project_manager" class="text-gray-700">Project Manager</option>
             </select>
             <!-- Dropdown Arrow -->
+            <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+              <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Account Status Filter -->
+          <div class="relative">
+            <select
+              v-model="statusFilter"
+              aria-label="Filter by status"
+              class="px-2 py-1 pr-6 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-700 appearance-none cursor-pointer"
+            >
+              <option value="" class="text-gray-500">All Statuses</option>
+              <option
+                v-for="option in ACCOUNT_STATUS_OPTIONS"
+                :key="option.value"
+                :value="option.value"
+                class="text-gray-700"
+              >
+                {{ option.label }}
+              </option>
+            </select>
             <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
               <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
@@ -563,15 +535,19 @@ function handleInviteSent(data: {
                 </div>
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-32">
-                <span
-                  class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                  :class="{
-                    'bg-green-100 text-green-800': builder.status === 1,
-                    'bg-red-100 text-red-800': builder.status === 0,
-                  }"
-                >
-                  {{ builder.status === 1 ? 'Active' : 'Inactive' }}
-                </span>
+                <InvitationInfo v-if="isPendingInvitation(builder)" :worker="builder" />
+                <div v-else class="flex flex-col items-start gap-1">
+                  <span
+                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                    :class="{
+                      'bg-green-100 text-green-800': builder.status === 1,
+                      'bg-red-100 text-red-800': builder.status === 0,
+                    }"
+                  >
+                    {{ builder.status === 1 ? 'Active' : 'Inactive' }}
+                  </span>
+                  <ArchivedUserBadge :archived-at="builder.archived_at" />
+                </div>
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-40">
                 <span class="text-sm text-gray-900">
@@ -591,6 +567,11 @@ function handleInviteSent(data: {
               </td>
               <td class="px-4 py-4 whitespace-nowrap w-44">
                 <div class="flex flex-col gap-1">
+                  <InvitationActions
+                    v-if="canManageInvitations && isPendingInvitation(builder)"
+                    :worker="builder"
+                    @changed="loadBuilders"
+                  />
                   <button
                     type="button"
                     class="inline-flex items-center px-2 py-1 rounded-md text-sm font-medium text-blue-600 hover:text-blue-500 hover:bg-blue-50 transition-colors"
@@ -602,6 +583,7 @@ function handleInviteSent(data: {
                     Details
                   </button>
                   <button
+                    v-if="!isPendingInvitation(builder)"
                     type="button"
                     class="inline-flex items-center px-2 py-1 rounded-md text-sm font-medium text-green-700 hover:text-green-600 hover:bg-green-50 transition-colors"
                     title="All tasks on all projects for this worker"
@@ -655,15 +637,19 @@ function handleInviteSent(data: {
                     </h4>
                     <p class="text-sm text-gray-500">ID: {{ builder.id }}</p>
                   </div>
-                  <span
-                    class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                    :class="{
-                      'bg-green-100 text-green-800': builder.status === 1,
-                      'bg-red-100 text-red-800': builder.status === 0,
-                    }"
-                  >
-                    {{ builder.status === 1 ? 'Active' : 'Inactive' }}
-                  </span>
+                  <InvitationInfo v-if="isPendingInvitation(builder)" :worker="builder" />
+                  <div v-else class="flex flex-col items-end gap-1">
+                    <span
+                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                      :class="{
+                        'bg-green-100 text-green-800': builder.status === 1,
+                        'bg-red-100 text-red-800': builder.status === 0,
+                      }"
+                    >
+                      {{ builder.status === 1 ? 'Active' : 'Inactive' }}
+                    </span>
+                    <ArchivedUserBadge :archived-at="builder.archived_at" />
+                  </div>
                 </div>
 
                 <!-- Contact Info -->
@@ -699,6 +685,12 @@ function handleInviteSent(data: {
                 </div>
 
                 <div class="flex flex-wrap gap-2">
+                  <InvitationActions
+                    v-if="canManageInvitations && isPendingInvitation(builder)"
+                    :worker="builder"
+                    compact
+                    @changed="loadBuilders"
+                  />
                   <button
                     type="button"
                     class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-blue-600 hover:text-blue-500 hover:bg-blue-50 transition-colors"
@@ -710,6 +702,7 @@ function handleInviteSent(data: {
                     Details
                   </button>
                   <button
+                    v-if="!isPendingInvitation(builder)"
                     type="button"
                     class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium text-green-700 hover:text-green-600 hover:bg-green-50 transition-colors"
                     title="All tasks on all projects for this worker"

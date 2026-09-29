@@ -191,7 +191,7 @@ async function sendInvitation() {
 
     const response = await api.post('/api/v1/workers/invite', inviteData)
 
-    if (response.data.success) {
+    if (response.data?.status === 'success' || response.data?.success) {
       emit('invite-sent', {
         email: email.value.trim(),
         firstName: firstName.value.trim(),
