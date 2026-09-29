@@ -14,8 +14,9 @@ const ROLE_CODE_MAP: Record<string, string> = {
   'architect': 'Architect',
   'foreman': 'Foreman',
   'worker': 'Worker',
-  'contractor': 'Contractor',
-  'inspector': 'Inspector',
+  'doctor': 'Doctor',
+  'pharmacist': 'Pharmacist',
+  'contractor_access': 'Contractor',
 }
 
 /**
@@ -27,6 +28,33 @@ const PROJECT_ASSIGNMENT_ROLE_LABELS: Record<string, string> = {
   task_lead: 'Task lead',
   member: 'Team member',
   invited: 'Invited',
+}
+
+/** Display group names for fw_glob_roles.category, in the order they should be listed. */
+export const ROLE_CATEGORY_LABELS: Record<string, string> = {
+  global: 'Administration',
+  project: 'Project office',
+  task: 'Field staff',
+  client: 'Client portal',
+}
+
+/** Assignment roles offered when adding people to a project team. */
+export const TEAM_ASSIGNMENT_ROLE_OPTIONS = [
+  { value: 'member', label: PROJECT_ASSIGNMENT_ROLE_LABELS.member },
+  { value: 'task_lead', label: PROJECT_ASSIGNMENT_ROLE_LABELS.task_lead },
+] as const
+
+export type TeamAssignmentRole = (typeof TEAM_ASSIGNMENT_ROLE_OPTIONS)[number]['value']
+
+/** Global roles (fw_glob_roles.code) that can be added to a project team. */
+export const TEAM_ELIGIBLE_ROLE_CODES: readonly string[] = ['foreman', 'worker', 'architect']
+
+export function isTeamEligibleRole(roleCode?: string | null): boolean {
+  return TEAM_ELIGIBLE_ROLE_CODES.includes((roleCode || '').toLowerCase())
+}
+
+export function getDefaultTeamAssignmentRole(roleCode?: string | null): TeamAssignmentRole {
+  return (roleCode || '').toLowerCase() === 'foreman' ? 'task_lead' : 'member'
 }
 
 /**
@@ -48,10 +76,13 @@ export function formatProjectAssignmentRole(role: string | undefined | null): st
  * Role id to display name (fw_glob_roles.id -> name) when API returns only role_id
  */
 const ROLE_ID_TO_NAME: Record<number, string> = {
-  1: 'Administrator',
-  2: 'Project Manager',
+  9: 'Administrator',
+  10: 'Project Manager',
+  11: 'Architect',
   12: 'Foreman',
   13: 'Worker',
+  16: 'Doctor',
+  17: 'Pharmacist',
 }
 
 /**

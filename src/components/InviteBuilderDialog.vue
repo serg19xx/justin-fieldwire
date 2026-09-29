@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import api from '@/core/utils/api'
 import { getRoles } from '@/core/utils/hr-api'
+import { ROLE_CATEGORY_LABELS } from '@/core/utils/role-utils'
 
 interface Props {
   isOpen: boolean
@@ -82,28 +83,21 @@ onMounted(async () => {
   }
 })
 
+const roleGroups = computed(() => {
+  const categories = Object.keys(ROLE_CATEGORY_LABELS)
+  const known = categories.map((category) => ({
+    category,
+    label: ROLE_CATEGORY_LABELS[category]!,
+    roles: availableRoles.value.filter((role) => role.category === category),
+  }))
+  const other = availableRoles.value.filter((role) => !categories.includes(role.category))
+  return [...known, { category: 'other', label: 'Other', roles: other }].filter(
+    (group) => group.roles.length > 0,
+  )
+})
+
 // Specializations for different user types
 const specializationsByType = {
-  'contractor': [
-    'HVAC',
-    'Electrician',
-    'Plumbing',
-    'Demolition',
-    'Framing',
-    'Drywall',
-    'Taping',
-    'Network & IT',
-    'Flooring',
-    'Stone Work',
-    'Concrete Work',
-    'Doors',
-    'Handyman & Labourer',
-    'Finish & Design',
-    'Commercial Cleaner',
-    'Painter',
-    'Ceiling & T-Bar',
-    'Millwork'
-  ],
   'foreman': [
     'Foreman',
     'General Labourer'
@@ -243,7 +237,7 @@ function closeDialog() {
       <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-auto">
         <!-- Header -->
         <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
-          <h3 class="text-base sm:text-lg font-medium text-gray-900">Invite Builder</h3>
+          <h3 class="text-base sm:text-lg font-medium text-gray-900">Invite User</h3>
           <p class="mt-1 text-xs sm:text-sm text-gray-500">
             Send an invitation email to join the system
           </p>
@@ -339,9 +333,15 @@ function closeDialog() {
                   required
                 >
                   <option value="">Select user type</option>
-                  <option v-for="role in availableRoles" :key="role.id" :value="role.code">
-                    {{ role.name }} ({{ role.category }})
-                  </option>
+                  <optgroup
+                    v-for="group in roleGroups"
+                    :key="group.category"
+                    :label="group.label"
+                  >
+                    <option v-for="role in group.roles" :key="role.id" :value="role.code">
+                      {{ role.name }}
+                    </option>
+                  </optgroup>
                 </select>
               </div>
 

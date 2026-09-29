@@ -3,6 +3,12 @@ import { ref, computed, watch } from 'vue'
 import { type ProjectTeamMember } from '@/core/utils/project-api'
 import { type WorkerUser, hrResourcesApi } from '@/core/utils/hr-api'
 import { getApiErrorMessage } from '@/core/utils/api'
+import {
+  TEAM_ASSIGNMENT_ROLE_OPTIONS,
+  getDefaultTeamAssignmentRole,
+  getDisplayRole,
+  isTeamEligibleRole,
+} from '@/core/utils/role-utils'
 
 // Extended worker type with role for team management
 interface WorkerUserWithRole extends WorkerUser {
@@ -42,47 +48,12 @@ const filteredWorkerUsers = computed(() => {
       worker.first_name?.toLowerCase().includes(query) ||
       worker.last_name?.toLowerCase().includes(query) ||
       worker.email?.toLowerCase().includes(query) ||
-      worker.job_title?.toLowerCase().includes(query),
+      worker.job_title?.toLowerCase().includes(query) ||
+      getUserTypeDisplay(worker).toLowerCase().includes(query),
   )
 })
 
-// Role options
-const roleOptions = [
-  { value: 'member', label: 'Team Member' },
-  { value: 'lead', label: 'Team Lead' },
-  { value: 'supervisor', label: 'Supervisor' },
-  { value: 'coordinator', label: 'Coordinator' },
-]
-
-// Function to get default role based on user type
-function getDefaultRoleForUserType(userType: string): string {
-  switch (userType) {
-    case 'Plumber':
-      return 'member' // Plumber
-    case 'Electrician':
-      return 'member' // Electrician
-    case 'Carpenter':
-      return 'member' // Carpenter
-    case 'Mason':
-      return 'member' // Mason
-    case 'Painter':
-      return 'member' // Painter
-    case 'Architect':
-      return 'lead' // Architect usually leads design
-    case 'Engineer':
-      return 'lead' // Engineer usually leads technical aspects
-    case 'Project Manager':
-      return 'lead' // Project Manager leads the project
-    case 'Foreman':
-      return 'supervisor' // Foreman supervises workers
-    case 'Safety Inspector':
-      return 'supervisor' // Safety Inspector supervises safety
-    case 'Quality Control':
-      return 'supervisor' // Quality Control supervises quality
-    default:
-      return 'member' // Default to team member
-  }
-}
+const roleOptions = TEAM_ASSIGNMENT_ROLE_OPTIONS
 
 
 // Load available workers
@@ -106,9 +77,8 @@ async function loadAvailableWorkerUsers() {
         (worker) =>
           !existingUserIds.includes(worker.id) &&
           worker.invitation_status === 'registered' &&
-          worker.status === 1 && // Only active workers
-          worker.role_code!== 'admin' && // Exclude administrators
-          worker.role_code !== 'project_manager' // Exclude project managers
+          worker.status === 1 &&
+          isTeamEligibleRole(worker.role_code)
       )
 
       console.log('✅ Available workers loaded:', availableWorkerUsers.value.length)
@@ -211,7 +181,17 @@ function getUserDisplayName(worker: WorkerUser): string {
 
 // Get user type display
 function getUserTypeDisplay(worker: WorkerUser): string {
-  return worker.role_id ? 'Worker' : 'Unknown Type'
+  return getDisplayRole({
+    role_id: worker.role_id,
+    role_name: worker.role_name,
+    role_code: worker.role_code,
+  })
+}
+
+function getJobTitleSuffix(worker: WorkerUser): string {
+  const jobTitle = worker.job_title?.trim()
+  if (!jobTitle) return ''
+  return jobTitle.toLowerCase() === getUserTypeDisplay(worker).toLowerCase() ? '' : jobTitle
 }
 
 // Toggle user selection
@@ -220,11 +200,9 @@ function toggleUserSelection(worker: WorkerUser) {
   if (index > -1) {
     selectedUsers.value.splice(index, 1)
   } else {
-    // Auto-set role based on user type
-    const defaultRole = getDefaultRoleForUserType('worker')
     selectedUsers.value.push({
       ...worker,
-      teamRole: defaultRole
+      teamRole: getDefaultTeamAssignmentRole(worker.role_code),
     } as WorkerUserWithRole)
   }
 }
@@ -248,7 +226,7 @@ function selectAllFiltered() {
     .filter((worker) => !selectedUsers.value.some((u) => u.id === worker.id))
     .map(worker => ({
       ...worker,
-      teamRole: getDefaultRoleForUserType('worker')
+      teamRole: getDefaultTeamAssignmentRole(worker.role_code),
     } as WorkerUserWithRole))
   selectedUsers.value.push(...newSelections)
 }
@@ -299,7 +277,7 @@ function clearAllSelections() {
               <h3 class="text-lg leading-6 font-medium text-gray-900">Add Team Member</h3>
               <div class="mt-2">
                 <p class="text-sm text-gray-500">
-                  Select one or more workers to add to this project team.
+                  Select foremen, workers or architects to add to this project team.
                 </p>
               </div>
             </div>
@@ -316,13 +294,13 @@ function clearAllSelections() {
           <!-- Search -->
           <div class="mb-4">
             <label for="search" class="block text-sm font-medium text-gray-700 mb-2">
-              Search WorkerUsers
+              Search people
             </label>
             <input
               id="search"
               v-model="searchQuery"
               type="text"
-              placeholder="Search by name, email, or user type..."
+              placeholder="Search by name, email, role or job title..."
             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400"
             />
           </div>
@@ -336,10 +314,10 @@ function clearAllSelections() {
             <div class="flex items-center justify-between mb-3">
               <div>
                 <h4 class="text-sm font-medium text-blue-900">
-                  Selected WorkerUsers ({{ selectedUsers.length }})
+                  Selected ({{ selectedUsers.length }})
                 </h4>
                 <p class="text-xs text-gray-500 mt-1">
-                  Roles are auto-assigned based on profession. You can change them if needed.
+                  Foremen start as Task lead, others as Team member. You can change it per person.
                 </p>
               </div>
               <button
@@ -394,7 +372,7 @@ function clearAllSelections() {
           <!-- WorkerUsers list -->
           <div class="mb-4">
             <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-medium text-gray-700"> Available WorkerUsers </label>
+              <label class="block text-sm font-medium text-gray-700"> Available people </label>
               <div class="flex space-x-2">
                 <button
                   v-if="filteredWorkerUsers.length > 0"
@@ -435,7 +413,7 @@ function clearAllSelections() {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   ></path>
                 </svg>
-                <span class="text-sm text-gray-600">Loading workers...</span>
+                <span class="text-sm text-gray-600">Loading people...</span>
               </div>
             </div>
 
@@ -463,7 +441,7 @@ function clearAllSelections() {
                     </p>
                     <p class="text-xs text-gray-400">
                       {{ getUserTypeDisplay(worker) }}
-                      <span v-if="worker.job_title"> • {{ worker.job_title }}</span>
+                      <span v-if="getJobTitleSuffix(worker)"> • {{ getJobTitleSuffix(worker) }}</span>
                     </p>
                   </div>
                   <div class="flex-shrink-0">
@@ -495,8 +473,8 @@ function clearAllSelections() {
 
             <!-- No workers found -->
             <div v-else class="text-center py-4 text-sm text-gray-500">
-              <p v-if="searchQuery.trim()">No workers found matching "{{ searchQuery }}"</p>
-              <p v-else>No available workers to add</p>
+              <p v-if="searchQuery.trim()">No people found matching "{{ searchQuery }}"</p>
+              <p v-else>No available people to add</p>
             </div>
           </div>
         </div>

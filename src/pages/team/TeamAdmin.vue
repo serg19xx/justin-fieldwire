@@ -272,7 +272,7 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
             @click="openInviteDialog"
             class="bg-blue-600 text-white px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 rounded-md hover:bg-blue-700 transition-colors text-xs sm:text-sm"
           >
-            + Add WorkerUser
+            + Invite User
           </button>
         </div>
       </div>
