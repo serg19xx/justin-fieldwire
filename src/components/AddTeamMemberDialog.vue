@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { type ProjectTeamMember } from '@/core/utils/project-api'
 import { type WorkerUser, hrResourcesApi } from '@/core/utils/hr-api'
+import { getApiErrorMessage } from '@/core/utils/api'
 
 // Extended worker type with role for team management
 interface WorkerUserWithRole extends WorkerUser {
@@ -165,7 +166,7 @@ async function addTeamMembers() {
     closeDialog()
   } catch (err: unknown) {
     console.error('❌ Error adding team members:', err)
-    error.value = err instanceof Error ? err.message : 'Failed to add team members'
+    error.value = getApiErrorMessage(err, 'Failed to add team members')
   } finally {
     saving.value = false
   }

@@ -546,6 +546,9 @@ export const hrResourcesApi = {
         project_id: projectId, // Pass in body for general projects
       })
       console.log('✅ Team member added:', response.data)
+      if (response.data?.status === 'error' || !response.data?.data) {
+        throw new Error(response.data?.message || 'Failed to add team member')
+      }
       return response.data.data
     } catch (error: unknown) {
       console.error('Error adding team member:', error)
