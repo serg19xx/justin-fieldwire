@@ -353,7 +353,7 @@
                       <div class="min-w-0 flex-1">
                         <select
                           v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
-                          class="w-full rounded border border-gray-300 text-sm bg-white"
+                          class="w-full rounded border border-gray-300 bg-white py-1.5 pl-2.5 pr-8 text-sm"
                           :value="String(slot.row.project_id)"
                           @change="onRowProjectChange(slot.row, $event)"
                         >
