@@ -128,7 +128,7 @@ async function loadFieldStaff(): Promise<ProjectTeamMember[]> {
 }
 
 /** Worker picker: project team members plus all active field staff, deduped by user. */
-async function loadWorkerPickerMembers(): Promise<void> {
+async function loadWorkerPickerMembers(): Promise<boolean> {
   const [teamResult, staffResult] = await Promise.allSettled([
     loadProjectTeamRosters(),
     loadFieldStaff(),
@@ -150,12 +150,23 @@ async function loadWorkerPickerMembers(): Promise<void> {
     if (!byUser.has(uid)) byUser.set(uid, m)
   }
   teamMembers.value = [...byUser.values()]
+  return teamResult.status === 'fulfilled' && staffResult.status === 'fulfilled'
+}
+
+const WORKER_PICKER_RETRY_DELAYS_MS = [2000, 5000, 10000]
+
+async function loadWorkerPickerMembersWithRetry(): Promise<void> {
+  if (await loadWorkerPickerMembers()) return
+  for (const delayMs of WORKER_PICKER_RETRY_DELAYS_MS) {
+    await new Promise((resolve) => setTimeout(resolve, delayMs))
+    if (await loadWorkerPickerMembers()) return
+  }
 }
 
 onMounted(async () => {
   await loadProjectsList()
   // Render the schedule right away; the worker picker fills in when rosters arrive.
-  void loadWorkerPickerMembers()
+  void loadWorkerPickerMembersWithRetry()
 })
 </script>
 

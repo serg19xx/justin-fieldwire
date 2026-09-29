@@ -9,7 +9,7 @@ import { ACCOUNT_STATUS_OPTIONS, useWorkerListLoader } from '@/composables/useWo
 import ArchivedUserBadge from '@/components/team/ArchivedUserBadge.vue'
 import InvitationInfo from '@/components/team/InvitationInfo.vue'
 import InvitationActions from '@/components/team/InvitationActions.vue'
-import { isPendingInvitation } from '@/core/utils/invitation-status'
+import { isPendingInvitation, parseApiDateTime } from '@/core/utils/invitation-status'
 
 const authStore = useAuthStore()
 
@@ -84,7 +84,9 @@ function getUserTypeColor(userType: UserType) {
 }
 
 function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString('en-US', {
+  const date = parseApiDateTime(dateString)
+  if (!date) return 'N/A'
+  return date.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
@@ -486,7 +488,10 @@ function toggleBuilderStatus(builderId: number, currentStatus: string) {
                   :worker="builder"
                   @changed="loadBuilders"
                 />
-                <span v-else class="text-sm text-gray-400">N/A</span>
+                <span v-else-if="builder.last_login" class="text-sm text-gray-900">
+                  {{ formatDate(builder.last_login) }}
+                </span>
+                <span v-else class="text-sm text-gray-400">Never</span>
               </td>
             </tr>
           </tbody>

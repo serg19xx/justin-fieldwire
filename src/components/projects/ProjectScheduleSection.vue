@@ -830,8 +830,20 @@ function syncPrimaryWeekMeta(): void {
     if (raw.length < 10) return false
     return weekStartMondayYmdFromIsoDate(raw.slice(0, 10)) === weekStartYmd.value
   })
-  const pool = synced.length > 0 ? synced : metas
+  const pool = pickActiveWeekMetas(synced.length > 0 ? synced : metas)
   weekMeta.value = pool.find((w) => w.status === 'draft') ?? pool[0] ?? null
+}
+
+/**
+ * Weeks of projects that have assignments. Empty auto-created drafts are ignored so they do not
+ * keep an otherwise published week in Draft; falls back to all weeks when nothing is assigned.
+ */
+function pickActiveWeekMetas(metas: ScheduleWeekMeta[]): ScheduleWeekMeta[] {
+  const projectIdsWithRows = new Set(
+    allDraftRows.value.filter((r) => r.user_id > 0 && r.project_id > 0).map((r) => r.project_id),
+  )
+  const active = metas.filter((w) => projectIdsWithRows.has(Number(w.project_id)))
+  return active.length > 0 ? active : metas
 }
 
 function weekMetaForProject(projectId: number): ScheduleWeekMeta | null {
@@ -1017,7 +1029,9 @@ const selectedPlannerWorkerLabel = computed(() => {
 })
 
 const isDraft = computed(() =>
-  Object.values(weekByProjectId.value).some((w) => w != null && w.status === 'draft'),
+  pickActiveWeekMetas(
+    Object.values(weekByProjectId.value).filter((w): w is ScheduleWeekMeta => w != null),
+  ).some((w) => w.status === 'draft'),
 )
 
 /** Any slot rows for this calendar week (all workers), from GET / PUT response */
@@ -1509,8 +1523,8 @@ async function loadWeek(): Promise<void> {
       if (week) merged.push(...mapEntries(r.entries, r.projectId))
     }
     weekByProjectId.value = nextMeta
-    syncPrimaryWeekMeta()
     allDraftRows.value = merged
+    syncPrimaryWeekMeta()
     clearDirtyProjects()
     reconcileAllRows()
     primePlannerWorkerFromRows()
@@ -1725,9 +1739,12 @@ async function ensureDraftMetaForProject(projectId: number): Promise<ScheduleWee
 function projectIdsNeedingPersist(): number[] {
   const ids = new Set<number>([...dirtyProjectIds.value])
   if (ids.size === 0) {
-    // Fallback: persist every project that currently has rows (e.g. note-only edits).
+    // Fallback: persist every draft project that currently has rows (e.g. note-only edits).
+    // Published weeks are skipped: saving them would silently reopen them as drafts.
     for (const r of allDraftRows.value) {
-      if (r.project_id > 0) ids.add(r.project_id)
+      if (r.project_id > 0 && weekMetaForProject(r.project_id)?.status !== 'published') {
+        ids.add(r.project_id)
+      }
     }
   }
   return [...ids].filter((id) => id > 0)
@@ -1887,8 +1904,10 @@ async function onPublish(): Promise<void> {
   isSaving.value = true
   bannerError.value = ''
   try {
-    // Ensure every project with saveable rows is dirty so we persist them before publish.
-    for (const r of valid) markProjectDirty(r.project_id)
+    // Persist every draft project with saveable rows before publish; already published ones stay as is.
+    for (const r of valid) {
+      if (weekMetaForProject(r.project_id)?.status !== 'published') markProjectDirty(r.project_id)
+    }
     await persistDirtyProjectEntries()
 
     const draftMetas = Object.entries(weekByProjectId.value).filter(
