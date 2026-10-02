@@ -807,8 +807,6 @@ const roles: RecipientRole[] = [
   'team_members',
   'foreman',
   'worker',
-  'contractor',
-  'inspector',
 ]
 
 const weekDays = [

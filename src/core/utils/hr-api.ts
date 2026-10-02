@@ -629,7 +629,5 @@ function getFallbackRoles(): Array<{
     { id: 11, code: 'architect', name: 'Architect', category: 'project', description: 'Designs and plans projects' },
     { id: 12, code: 'foreman', name: 'Foreman', category: 'task', description: 'Supervises workers on site' },
     { id: 13, code: 'worker', name: 'Worker', category: 'task', description: 'Performs construction tasks' },
-    { id: 14, code: 'contractor', name: 'Contractor', category: 'task', description: 'Independent contractor' },
-    { id: 15, code: 'inspector', name: 'Inspector', category: 'task', description: 'Quality and safety inspector' }
   ]
 }

@@ -28,6 +28,12 @@ export const SYSTEM_NAV_ITEMS: SystemNavItem[] = [
     roles: ['admin', 'project_manager'],
   },
   {
+    label: 'External contacts',
+    route: '/external-contacts',
+    matchPrefixes: ['/external-contacts'],
+    roles: ['admin', 'project_manager'],
+  },
+  {
     label: 'Admin settings',
     route: '/admin-settings',
     matchPrefixes: ['/admin-settings'],

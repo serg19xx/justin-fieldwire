@@ -99,6 +99,8 @@ export interface Project {
   cost_per_sq_ft?: string | null
   /** Mark-up multiplier (free text, e.g. 1.15) */
   mark_up?: string | null
+  /** Estimated total calculated or entered for project */
+  estimated_total?: string | number | null
   /** Selected Canadian FSA codes (first 3 chars of postal code) */
   locations_of_interest?: string[] | null
   client_id?: number | null

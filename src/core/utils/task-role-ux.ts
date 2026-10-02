@@ -208,14 +208,15 @@ export function orderTasksForTaskRolePanel(tasks: Task[], userId?: number | null
   return primary ? [primary, ...planned] : planned
 }
 
-const WORKER_ROLE_CODES = ['worker', 'contractor'] as const
+const WORKER_ROLE_CODES = ['worker'] as const
 
 export function isTaskRoleWorker(roleCode?: string | null): boolean {
   return WORKER_ROLE_CODES.includes((roleCode || '').toLowerCase() as (typeof WORKER_ROLE_CODES)[number])
 }
 
-export function isTaskRoleContractor(roleCode?: string | null): boolean {
-  return (roleCode || '').toLowerCase() === 'contractor'
+export function isTaskRoleContractor(_roleCode?: string | null): boolean {
+  // Contractors are external contacts without login; keep helper for call-site compatibility.
+  return false
 }
 
 export function isUserTaskLead(task: Task, userId: number | string | null | undefined): boolean {
@@ -225,7 +226,7 @@ export function isUserTaskLead(task: Task, userId: number | string | null | unde
 }
 
 /**
- * Assigned foreman, worker, or contractor (global role) may update field progress and work report on site.
+ * Assigned foreman or worker (global role) may update field progress and work report on site.
  */
 export function canActAsFieldCrewOnTask(
   task: Task,

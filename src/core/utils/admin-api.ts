@@ -14,8 +14,6 @@ export type RecipientRole =
   | 'team_members'
   | 'foreman'
   | 'worker'
-  | 'contractor'
-  | 'inspector'
 
 /** Content source for a notify channel (SendGrid/Twilio are transport only). */
 export type ChannelContentMode = 'system' | 'local' | 'manual'

@@ -70,7 +70,7 @@ const {
 // User type options for filter
 
 
-function getUserTypeColor(userType: UserType) {
+function getUserTypeColor(userType: string | undefined | null) {
   switch (userType) {
     case 'architect':
       return 'bg-purple-100 text-purple-800'
@@ -80,6 +80,12 @@ function getUserTypeColor(userType: UserType) {
       return 'bg-green-100 text-green-800'
     case 'contractor':
       return 'bg-yellow-100 text-yellow-800'
+    case 'foreman':
+      return 'bg-orange-100 text-orange-800'
+    case 'doctor':
+      return 'bg-teal-100 text-teal-800'
+    case 'pharmacist':
+      return 'bg-emerald-100 text-emerald-800'
     case 'client':
       return 'bg-gray-100 text-gray-800'
     default:
@@ -267,7 +273,8 @@ function handleInviteSent() {
             >
               <option value="" class="text-gray-500">All Types</option>
               <option value="architect" class="text-gray-700">Architect</option>
-              <option value="contractor" class="text-gray-700">Contractor</option>
+              <option value="foreman" class="text-gray-700">Foreman</option>
+              <option value="worker" class="text-gray-700">Worker</option>
               <option value="project_manager" class="text-gray-700">Project Manager</option>
             </select>
             <!-- Dropdown Arrow -->

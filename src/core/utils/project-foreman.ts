@@ -25,6 +25,12 @@ export function resolveDefaultTaskForemanId(
   return Number.isFinite(n) && n > 0 ? n : null
 }
 
+/** Label for a task without a lead: the project manager stays responsible until someone is picked. */
+export function formatUnassignedTaskLeadLabel(managerName: string | null | undefined): string {
+  const name = (managerName || '').trim()
+  return name ? `Unassigned — ${name} (Project Manager)` : 'Unassigned — Project Manager'
+}
+
 export function isTaskForemanOverridden(
   projectForemanId: number | null | undefined,
   taskLeadId: number | null | undefined,

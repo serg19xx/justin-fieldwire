@@ -184,3 +184,17 @@ export function getRoleCode(data: {
   return null
 }
 
+export function isDoctorRole(roleCode?: string | null): boolean {
+  return (roleCode || '').toLowerCase() === 'doctor'
+}
+
+export function isPharmacistRole(roleCode?: string | null): boolean {
+  return (roleCode || '').toLowerCase() === 'pharmacist'
+}
+
+export function isClientRole(roleCode?: string | null): boolean {
+  const code = (roleCode || '').toLowerCase()
+  return code === 'doctor' || code === 'pharmacist'
+}
+
+

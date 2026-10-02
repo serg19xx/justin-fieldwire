@@ -89,30 +89,161 @@
                   />
                 </div>
 
-                <!-- Foreman / Brigadier -->
-                <div>
+                <!-- Executor: own staff vs contractor (non-inspection) -->
+                <div v-if="!isInspectionMilestone" class="space-y-2">
                   <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Foreman / Brigadier <span class="text-gray-400">(optional)</span>
+                    Who does the work
+                  </label>
+                  <div class="flex gap-2 mb-2">
+                    <button
+                      type="button"
+                      class="flex-1 px-3 py-2 text-sm rounded-md border"
+                      :class="form.executor_type !== 'contractor'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300'"
+                      @click="setExecutorType('user')"
+                    >
+                      Own worker
+                    </button>
+                    <button
+                      type="button"
+                      class="flex-1 px-3 py-2 text-sm rounded-md border"
+                      :class="form.executor_type === 'contractor'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300'"
+                      @click="setExecutorType('contractor')"
+                    >
+                      Contractor
+                    </button>
+                  </div>
+
+                  <template v-if="form.executor_type === 'contractor'">
+                    <select
+                      v-model="form.contractor_id"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      :class="{ 'text-gray-500': !form.contractor_id }"
+                    >
+                      <option :value="null" class="text-gray-500">Select contractor</option>
+                      <option
+                        v-for="c in contractors"
+                        :key="c.id"
+                        :value="c.id"
+                        class="text-gray-900"
+                      >
+                        {{ c.name }}{{ c.trade ? ` (${c.trade})` : '' }}
+                      </option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">
+                      Primary assignee — external contact (no login). No internal crew on this task.
+                    </p>
+                    <div
+                      v-if="mode === 'edit' && props.task?.id && canManageAccessKey"
+                      class="mt-3 p-3 border border-dashed border-gray-300 rounded-md bg-gray-50 space-y-2"
+                    >
+                      <p class="text-xs font-medium text-gray-700">Temporary access key</p>
+                      <p class="text-xs text-gray-500">
+                        One key for this task. Give it to the contractor — they can share it with their crew.
+                      </p>
+                      <div v-if="accessKeyDisplay" class="flex flex-wrap items-center gap-2">
+                        <code class="px-2 py-1 bg-white border border-gray-200 rounded text-sm tracking-wider text-gray-900">
+                          {{ accessKeyDisplay }}
+                        </code>
+                        <button
+                          type="button"
+                          class="text-xs text-blue-600 hover:underline"
+                          @click="copyAccessKey"
+                        >
+                          Copy
+                        </button>
+                      </div>
+                      <p v-if="accessKeyExpires" class="text-xs text-amber-700">
+                        Expires: {{ accessKeyExpires }}
+                      </p>
+                      <div class="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          class="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                          :disabled="accessKeyBusy"
+                          @click="generateAccessKey"
+                        >
+                          {{ accessKeyDisplay ? 'Regenerate key' : 'Generate key' }}
+                        </button>
+                        <button
+                          v-if="accessKeyDisplay"
+                          type="button"
+                          class="px-2 py-1 text-xs bg-emerald-600 text-white rounded hover:bg-emerald-700"
+                          :disabled="accessKeyBusy"
+                          @click="sendAccessKey"
+                        >
+                          Send to contractor
+                        </button>
+                        <button
+                          v-if="accessKeyDisplay"
+                          type="button"
+                          class="px-2 py-1 text-xs border border-gray-300 rounded text-gray-700 hover:bg-white"
+                          :disabled="accessKeyBusy"
+                          @click="revokeAccessKey"
+                        >
+                          Revoke
+                        </button>
+                      </div>
+                      <p class="text-xs text-gray-500">
+                        Copy to send manually, or Send to deliver by email and/or SMS from the contractor card.
+                      </p>
+                      <p v-if="accessKeyMessage" class="text-xs text-gray-600">{{ accessKeyMessage }}</p>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <select
+                      v-model="form.project_lead"
+                      :disabled="(mode === 'create' || mode === 'edit') ? (isProjectManager && (typeof form.milestone === 'string' || form.milestone === true)) : true"
+                      class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
+                      :class="{ 'text-gray-500': !form.project_lead }"
+                    >
+                      <option :value="null" class="text-gray-500">{{ unassignedLeadLabel }}</option>
+                      <option :value="0" class="text-gray-500" style="display: none">Empty</option>
+                      <option v-for="person in availablePeople" :key="person.id" :value="person.id" class="text-gray-900">
+                        {{ person.name }} ({{ person.role }})
+                      </option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">
+                      <template v-if="form.project_lead">
+                        Task lead. Optional helpers go under Additional crew below.
+                      </template>
+                      <template v-else>
+                        The project manager is responsible until a foreman or worker is picked.
+                      </template>
+                    </p>
+                    <p
+                      v-if="isForemanOverriddenOnTask"
+                      class="mt-1 text-xs font-medium text-amber-700"
+                    >
+                      Overridden — project foreman differs from this task lead
+                    </p>
+                  </template>
+                </div>
+
+                <!-- Inspector for inspection milestones -->
+                <div v-else>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Inspector
                   </label>
                   <select
-                    v-model="form.project_lead"
-                    :disabled="(mode === 'create' || mode === 'edit') ? (isProjectManager && (typeof form.milestone === 'string' || form.milestone === true)) : true"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
-                    :class="{ 'text-gray-500': !form.project_lead }"
+                    v-model="form.inspector_id"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    :class="{ 'text-gray-500': !form.inspector_id }"
                   >
-                    <option :value="null" class="text-gray-500">Select foreman/brigadier</option>
-                    <option :value="0" class="text-gray-500" style="display: none">Empty</option>
-                    <option v-for="person in availablePeople" :key="person.id" :value="person.id" class="text-gray-900">
-                      {{ person.name }} ({{ person.role }})
+                    <option :value="null" class="text-gray-500">Select inspector</option>
+                    <option
+                      v-for="insp in inspectors"
+                      :key="insp.id"
+                      :value="insp.id"
+                      class="text-gray-900"
+                    >
+                      {{ insp.name }}{{ insp.specialty ? ` (${insp.specialty})` : '' }}
                     </option>
                   </select>
-                  <p class="mt-1 text-xs text-gray-500">Select a foreman or brigadier responsible for this task</p>
-                  <p
-                    v-if="isForemanOverriddenOnTask"
-                    class="mt-1 text-xs font-medium text-amber-700"
-                  >
-                    Overridden — project foreman differs from this task lead
-                  </p>
+                  <p class="mt-1 text-xs text-gray-500">External inspector contact (no login)</p>
                 </div>
               </div>
 
@@ -308,6 +439,7 @@
               </button>
 
               <button
+                v-if="showAdditionalCrewTab"
                 @click="activeTab = 'team'"
                 :class="[
                   'pb-4 px-1 border-b-2 font-medium text-sm transition-colors',
@@ -325,7 +457,7 @@
                       d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
                     ></path>
                   </svg>
-                  <span>Team Members</span>
+                  <span>Additional crew</span>
                   <span
                     v-if="form.team_members.length > 0"
                     class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800"
@@ -485,15 +617,20 @@
               </div>
             </div>
 
-            <!-- Team Members Tab -->
-            <div v-else-if="activeTab === 'team'" class="p-6">
+            <!-- Additional crew Tab -->
+            <div v-else-if="activeTab === 'team' && showAdditionalCrewTab" class="p-6">
               <div class="flex items-center justify-between mb-4">
-                <h3 class="text-base font-medium text-gray-900">Assigned Team Members</h3>
+                <div>
+                  <h3 class="text-base font-medium text-gray-900">Additional crew</h3>
+                  <p class="text-xs text-gray-500 mt-1">
+                    Optional helpers besides the task lead above. Not used when a contractor is assigned.
+                  </p>
+                </div>
                 <button
                   @click="openTeamMemberDialog"
                   class="px-3 py-2 text-sm bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
                 >
-                  + Add Team Member
+                  + Add crew member
                 </button>
               </div>
               <div v-if="form.team_members.length === 0" class="text-center py-12 text-gray-500">
@@ -756,10 +893,21 @@ import { useAuthStore } from '@/core/stores/auth'
 import { projectApi } from '@/core/utils/project-api'
 import { tasksApi } from '@/core/utils/tasks-api'
 import {
+  formatUnassignedTaskLeadLabel,
   isTaskForemanOverridden,
   resolveDefaultTaskForemanId,
 } from '@/core/utils/project-foreman'
 import { taskTemplatesApi } from '@/core/utils/task-templates-api'
+import {
+  listExternalContacts,
+  type ExternalContact,
+} from '@/core/utils/external-contacts-api'
+import {
+  getTaskAccessKey,
+  createTaskAccessKey,
+  revokeTaskAccessKey,
+  sendTaskAccessKey,
+} from '@/core/utils/task-access-key-api'
 
 // Props
 interface Props {
@@ -808,7 +956,195 @@ const form = ref({
   resources: [] as string[],
   project_lead: null as number | null,
   team_members: [] as number[],
+  executor_type: 'user' as 'user' | 'contractor',
+  contractor_id: null as number | null,
+  inspector_id: null as number | null,
 })
+
+const contractors = ref<ExternalContact[]>([])
+const inspectors = ref<ExternalContact[]>([])
+
+const isInspectionMilestone = computed(() => form.value.milestone === 'inspection')
+
+/** Extra own-staff helpers — only when an internal lead does the work. */
+const showAdditionalCrewTab = computed(
+  () => !isInspectionMilestone.value && form.value.executor_type !== 'contractor',
+)
+
+function setExecutorType(type: 'user' | 'contractor') {
+  form.value.executor_type = type
+  if (type === 'contractor') {
+    form.value.project_lead = null
+    form.value.team_members = []
+    if (activeTab.value === 'team') {
+      activeTab.value = 'dependencies'
+    }
+  } else {
+    form.value.contractor_id = null
+  }
+}
+
+const accessKeyDisplay = ref<string | null>(null)
+const accessKeyExpires = ref<string | null>(null)
+const accessKeyBusy = ref(false)
+const accessKeyMessage = ref('')
+
+const canManageAccessKey = computed(() => {
+  const role = authStore.currentUser?.role_code
+  return (
+    props.canManageProject ||
+    role === 'admin' ||
+    role === 'project_manager' ||
+    role === 'foreman'
+  )
+})
+
+function formatAccessKeyExpiry(iso: string | null | undefined): string | null {
+  if (!iso) return null
+  try {
+    return new Date(iso).toLocaleString()
+  } catch {
+    return iso
+  }
+}
+
+async function loadAccessKeyState() {
+  accessKeyDisplay.value = null
+  accessKeyExpires.value = null
+  accessKeyMessage.value = ''
+  if (props.mode !== 'edit' || !props.task?.id || form.value.executor_type !== 'contractor') {
+    return
+  }
+  try {
+    const key = await getTaskAccessKey(props.projectId, Number(props.task.id))
+    if (key?.is_active) {
+      accessKeyDisplay.value = key.key_code || '••••-••••-••••'
+      accessKeyExpires.value = formatAccessKeyExpiry(key.expires_at)
+    }
+  } catch {
+    // Key may not exist yet
+  }
+}
+
+/** Persist contractor assignee before key ops (Generate reads DB, not unsaved form). */
+async function ensureContractorSavedForAccessKey(): Promise<boolean> {
+  if (!props.task?.id) {
+    accessKeyMessage.value = 'Save the task first.'
+    return false
+  }
+  if (form.value.executor_type !== 'contractor') {
+    accessKeyMessage.value = 'Select Contractor as the assignee first.'
+    return false
+  }
+  if (!form.value.contractor_id || Number(form.value.contractor_id) <= 0) {
+    accessKeyMessage.value = 'Select a contractor before generating a key.'
+    return false
+  }
+  try {
+    await tasksApi.update(props.projectId, String(props.task.id), {
+      name: form.value.name || props.task.name,
+      start_planned: form.value.start_planned || props.task.start_planned || '',
+      end_planned: form.value.end_planned || props.task.end_planned || undefined,
+      category: form.value.category ?? props.task.category ?? null,
+      status: form.value.status || props.task.status,
+      milestone: props.task.milestone ?? form.value.milestone ?? false,
+      executor_type: 'contractor',
+      contractor_id: Number(form.value.contractor_id),
+      task_lead_id: undefined,
+    } as Partial<TaskCreateUpdate>)
+    return true
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } } }
+    accessKeyMessage.value =
+      err.response?.data?.message || 'Failed to save contractor assignment'
+    return false
+  }
+}
+
+async function generateAccessKey() {
+  if (!props.task?.id) return
+  accessKeyBusy.value = true
+  accessKeyMessage.value = ''
+  try {
+    if (!(await ensureContractorSavedForAccessKey())) {
+      return
+    }
+    const key = await createTaskAccessKey(props.projectId, Number(props.task.id), {
+      expires_days: 3,
+    })
+    accessKeyDisplay.value = key.key_code || null
+    accessKeyExpires.value = formatAccessKeyExpiry(key.expires_at)
+    accessKeyMessage.value = key.key_code
+      ? 'Key created. Copy it now — it is shown only once if regenerated.'
+      : 'Key updated.'
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } } }
+    accessKeyMessage.value = err.response?.data?.message || 'Failed to generate key'
+  } finally {
+    accessKeyBusy.value = false
+  }
+}
+
+async function revokeAccessKey() {
+  if (!props.task?.id) return
+  accessKeyBusy.value = true
+  accessKeyMessage.value = ''
+  try {
+    await revokeTaskAccessKey(props.projectId, Number(props.task.id))
+    accessKeyDisplay.value = null
+    accessKeyExpires.value = null
+    accessKeyMessage.value = 'Access key revoked.'
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } } }
+    accessKeyMessage.value = err.response?.data?.message || 'Failed to revoke key'
+  } finally {
+    accessKeyBusy.value = false
+  }
+}
+
+async function copyAccessKey() {
+  if (!accessKeyDisplay.value || accessKeyDisplay.value.includes('•')) return
+  try {
+    await navigator.clipboard.writeText(accessKeyDisplay.value)
+    accessKeyMessage.value = 'Copied to clipboard.'
+  } catch {
+    accessKeyMessage.value = 'Could not copy — select the key manually.'
+  }
+}
+
+async function sendAccessKey() {
+  if (!props.task?.id) return
+  accessKeyBusy.value = true
+  accessKeyMessage.value = ''
+  try {
+    if (!(await ensureContractorSavedForAccessKey())) {
+      return
+    }
+    const result = await sendTaskAccessKey(props.projectId, Number(props.task.id))
+    accessKeyMessage.value = result.message
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } }; message?: string }
+    accessKeyMessage.value =
+      err.response?.data?.message || err.message || 'Failed to send access key'
+  } finally {
+    accessKeyBusy.value = false
+  }
+}
+
+async function loadExternalContacts() {
+  try {
+    const [cRows, iRows] = await Promise.all([
+      listExternalContacts('contractors'),
+      listExternalContacts('inspectors'),
+    ])
+    contractors.value = cRows
+    inspectors.value = iRows
+  } catch (error) {
+    console.error('Failed to load external contacts', error)
+    contractors.value = []
+    inspectors.value = []
+  }
+}
 
 const categoryOptions = ref<string[]>([])
 
@@ -858,6 +1194,7 @@ const isProjectManager = computed(() => {
 
 const loadedProjectInfo = ref<Project | null>(null)
 const projectInfo = computed(() => props.projectInfo ?? loadedProjectInfo.value)
+const unassignedLeadLabel = computed(() => formatUnassignedTaskLeadLabel(projectInfo.value?.manager_name))
 
 const isForemanOverriddenOnTask = computed(() =>
   isTaskForemanOverridden(projectInfo.value?.project_foreman_id, form.value.project_lead),
@@ -1265,10 +1602,10 @@ async function loadAllSystemUsers() {
     })
 
     if ('workers' in response && Array.isArray(response.workers)) {
-      // Filter out admin and project_manager
-      const filteredWorkers = response.workers.filter((worker: WorkerUser) => {
-        return worker.role_code !== 'admin' && worker.role_code !== 'project_manager'
-      })
+      const { isTeamEligibleRole } = await import('@/core/utils/role-utils')
+      const filteredWorkers = response.workers.filter((worker: WorkerUser) =>
+        isTeamEligibleRole(worker.role_code),
+      )
 
       // Exclude already assigned team members
       const currentTeamMembers = form.value.team_members || []
@@ -1507,6 +1844,7 @@ watch(
       // Reset last load params to ensure fresh load
       lastLoadParams.value = null
       await loadAvailablePeople()
+      await loadExternalContacts()
     }
 
     if (isOpen && props.mode === 'create') {
@@ -1530,6 +1868,9 @@ watch(
         resources: [],
         project_lead: defaultProjectLead,
         team_members: [],
+        executor_type: 'user',
+        contractor_id: null,
+        inspector_id: null,
       }
       invitedPeople.value = []
       await loadCategoryOptions()
@@ -1566,6 +1907,9 @@ watch(
         // For tasks, use task_lead_id from task (PM can select foreman/brigadier)
         // For milestones, if PM and no project_lead, use current user
         project_lead: (() => {
+          if (props.task.executor_type === 'contractor') {
+            return null
+          }
           // Get task_lead_id from task, handle both number and string types
           let projectLead: number | null = null
           if (props.task.task_lead_id !== undefined && props.task.task_lead_id !== null) {
@@ -1613,6 +1957,15 @@ watch(
           }
           return []
         })(),
+        executor_type: props.task.executor_type === 'contractor' ? 'contractor' : 'user',
+        contractor_id:
+          props.task.contractor_id != null && Number(props.task.contractor_id) > 0
+            ? Number(props.task.contractor_id)
+            : null,
+        inspector_id:
+          props.task.inspector_id != null && Number(props.task.inspector_id) > 0
+            ? Number(props.task.inspector_id)
+            : null,
       }
 
       await loadCategoryOptions(props.task.category)
@@ -1700,6 +2053,8 @@ watch(
         availablePeopleIds: availablePeople.value.map(p => p.id),
         availablePeopleTypes: availablePeople.value.map(p => ({ id: p.id, idType: typeof p.id })),
       })
+
+      await loadAccessKeyState()
     }
   },
 )
@@ -1858,6 +2213,9 @@ function handleBasicInfoSave() {
     project_id: props.projectId,
     // Ensure task_lead_id is included only if it's a valid positive number
     task_lead_id: (() => {
+      if (form.value.executor_type === 'contractor' || isInspectionMilestone.value) {
+        return undefined
+      }
       const leadId = form.value.project_lead
       if (leadId !== null && leadId !== undefined && leadId !== 0 && typeof leadId === 'number') {
         if (leadId > 0) {
@@ -1866,6 +2224,14 @@ function handleBasicInfoSave() {
       }
       return undefined
     })(),
+    executor_type: isInspectionMilestone.value
+      ? 'user'
+      : form.value.executor_type,
+    contractor_id:
+      !isInspectionMilestone.value && form.value.executor_type === 'contractor'
+        ? form.value.contractor_id
+        : null,
+    inspector_id: isInspectionMilestone.value ? form.value.inspector_id : null,
     team_members: form.value.team_members || [],
     resources: form.value.resources || [],
     // Transform dependencies

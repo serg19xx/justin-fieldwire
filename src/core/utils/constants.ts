@@ -3,8 +3,10 @@ export const USER_TYPES = [
   'admin',
   'architect',
   'project_manager',
-  'general_contractor',
-  'contractor',
+  'foreman',
+  'worker',
+  'doctor',
+  'pharmacist',
   'client',
 ] as const
 

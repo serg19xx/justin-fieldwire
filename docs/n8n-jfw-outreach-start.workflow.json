@@ -1,0 +1,414 @@
+{
+  "name": "JFW FieldWire Outreach Start",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "outreach-start",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "wh-outreach-start",
+      "name": "Webhook Start",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "webhookId": "outreach-start"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://fwapi.medicalcontractor.ca/api/v1/outreach/campaigns/{{$json.body.campaign_id || $json.campaign_id}}/batch",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "={{$json.body.batch_size || $json.batch_size || 50}}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Outreach-Secret",
+              "value": "fw-outreach-7f3k9Qx2mNpL"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-claim-batch",
+      "name": "Claim Batch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "has-recipients",
+              "leftValue": "={{ ($json.data?.recipients || $json.recipients || []).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-has-recipients",
+      "name": "Has Recipients?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data.recipients",
+        "options": {}
+      },
+      "id": "split-recipients",
+      "name": "Split Recipients",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [720, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "rid",
+              "name": "recipient_id",
+              "value": "={{$json.id}}",
+              "type": "number"
+            },
+            {
+              "id": "rchannel",
+              "name": "channel",
+              "value": "={{$json.channel}}",
+              "type": "string"
+            },
+            {
+              "id": "rdest",
+              "name": "destination",
+              "value": "={{$json.destination}}",
+              "type": "string"
+            },
+            {
+              "id": "rname",
+              "name": "client_name",
+              "value": "={{$json.client_name}}",
+              "type": "string"
+            },
+            {
+              "id": "rtype",
+              "name": "client_type",
+              "value": "={{$json.client_type}}",
+              "type": "string"
+            },
+            {
+              "id": "rcampaign",
+              "name": "campaign_id",
+              "value": "={{$json.campaign_id}}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-fields",
+      "name": "Keep Recipient Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [960, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "is-email",
+              "leftValue": "={{$json.channel}}",
+              "rightValue": "email",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-email",
+      "name": "Channel Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1200, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "dbg",
+              "name": "debug_email_skipped",
+              "value": true,
+              "type": "boolean"
+            },
+            {
+              "id": "dbg_to",
+              "name": "would_send_to",
+              "value": "={{$json.destination}}",
+              "type": "string"
+            },
+            {
+              "id": "dbg_name",
+              "name": "client_name",
+              "value": "={{$json.client_name}}",
+              "type": "string"
+            },
+            {
+              "id": "dbg_rid",
+              "name": "recipient_id",
+              "value": "={{$json.recipient_id}}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {
+          "includeOtherFields": true
+        }
+      },
+      "id": "send-email",
+      "name": "DEBUG Skip Email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1460, 80],
+      "notesInFlow": true,
+      "notes": "TEMP DEBUG: does not send email. Pipeline continues to Mark Sent. Replace later with Brevo SMTP (emailSend) or SendGrid."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/REPLACE_TWILIO_ACCOUNT_SID/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "From",
+              "value": "+1REPLACE_TWILIO_FROM"
+            },
+            {
+              "name": "To",
+              "value": "={{$json.destination}}"
+            },
+            {
+              "name": "Body",
+              "value": "=Hi {{$json.client_name || ''}}: Medical Contractor invites you to collaborate via FieldWire. Reply YES if interested, STOP to opt out."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-sms",
+      "name": "Send SMS (Twilio)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1460, 320],
+      "notesInFlow": true,
+      "notes": "1) Replace REPLACE_TWILIO_ACCOUNT_SID in URL. 2) Replace From with your Twilio number E.164. 3) Credential: Basic Auth user=Account SID, password=Auth Token."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://fwapi.medicalcontractor.ca/api/v1/outreach/recipients/{{$('Keep Recipient Fields').item.json.recipient_id}}/status",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Outreach-Secret",
+              "value": "fw-outreach-7f3k9Qx2mNpL"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"status\": \"sent\"\n}",
+        "options": {}
+      },
+      "id": "http-mark-sent",
+      "name": "Mark Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1700, 200]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "aggregate-batch",
+      "name": "Aggregate Batch Done",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1940, 200]
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "seconds"
+      },
+      "id": "wait-between",
+      "name": "Wait 2s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2180, 200],
+      "webhookId": "wait-outreach-batch"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cid",
+              "name": "campaign_id",
+              "value": "={{$('Webhook Start').first().json.body.campaign_id || $('Webhook Start').first().json.campaign_id}}",
+              "type": "number"
+            },
+            {
+              "id": "bs",
+              "name": "batch_size",
+              "value": "={{$('Webhook Start').first().json.body.batch_size || $('Webhook Start').first().json.batch_size || 50}}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-next-claim",
+      "name": "Prep Next Claim",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [2420, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://fwapi.medicalcontractor.ca/api/v1/outreach/campaigns/{{$json.campaign_id}}/batch",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "={{$json.batch_size}}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Outreach-Secret",
+              "value": "fw-outreach-7f3k9Qx2mNpL"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-claim-next",
+      "name": "Claim Next Batch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2660, 200]
+    },
+    {
+      "parameters": {},
+      "id": "noop-done",
+      "name": "Done",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [720, 420]
+    }
+  ],
+  "connections": {
+    "Webhook Start": {
+      "main": [[{ "node": "Claim Batch", "type": "main", "index": 0 }]]
+    },
+    "Claim Batch": {
+      "main": [[{ "node": "Has Recipients?", "type": "main", "index": 0 }]]
+    },
+    "Has Recipients?": {
+      "main": [
+        [{ "node": "Split Recipients", "type": "main", "index": 0 }],
+        [{ "node": "Done", "type": "main", "index": 0 }]
+      ]
+    },
+    "Split Recipients": {
+      "main": [[{ "node": "Keep Recipient Fields", "type": "main", "index": 0 }]]
+    },
+    "Keep Recipient Fields": {
+      "main": [[{ "node": "Channel Email?", "type": "main", "index": 0 }]]
+    },
+    "Channel Email?": {
+      "main": [
+        [{ "node": "DEBUG Skip Email", "type": "main", "index": 0 }],
+        [{ "node": "Send SMS (Twilio)", "type": "main", "index": 0 }]
+      ]
+    },
+    "DEBUG Skip Email": {
+      "main": [[{ "node": "Mark Sent", "type": "main", "index": 0 }]]
+    },
+    "Send SMS (Twilio)": {
+      "main": [[{ "node": "Mark Sent", "type": "main", "index": 0 }]]
+    },
+    "Mark Sent": {
+      "main": [[{ "node": "Aggregate Batch Done", "type": "main", "index": 0 }]]
+    },
+    "Aggregate Batch Done": {
+      "main": [[{ "node": "Wait 2s", "type": "main", "index": 0 }]]
+    },
+    "Wait 2s": {
+      "main": [[{ "node": "Prep Next Claim", "type": "main", "index": 0 }]]
+    },
+    "Prep Next Claim": {
+      "main": [[{ "node": "Claim Next Batch", "type": "main", "index": 0 }]]
+    },
+    "Claim Next Batch": {
+      "main": [[{ "node": "Has Recipients?", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {}
+}

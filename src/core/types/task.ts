@@ -59,7 +59,27 @@ export interface Task {
   status: TaskStatus
   progress_pct: number
   notes?: string
-  task_lead_id?: number // single responsible person
+  task_lead_id?: number // single responsible person (own staff when executor_type=user)
+  /** Who performs the work: system user or external contractor contact */
+  executor_type?: 'user' | 'contractor' | null
+  contractor_id?: number | null
+  inspector_id?: number | null
+  contractor?: {
+    id: number
+    name: string
+    company?: string | null
+    phone?: string | null
+    email?: string | null
+    trade?: string | null
+  } | null
+  inspector?: {
+    id: number
+    name: string
+    company?: string | null
+    phone?: string | null
+    email?: string | null
+    specialty?: string | null
+  } | null
   team_members?: number[] // array of team member IDs
   assignees?: number[] // legacy field for backward compatibility
   created_at: string
@@ -137,6 +157,9 @@ export interface TaskCreateUpdate {
   progress_pct?: number
   notes?: string
   task_lead_id?: number
+  executor_type?: 'user' | 'contractor' | null
+  contractor_id?: number | null
+  inspector_id?: number | null
   team_members?: number[]
   assignees?: number[]
   invited_people?: Array<{ name: string; email?: string; company?: string; phone?: string; notes?: string; avatar?: string }> // For milestones - can be passed during creation

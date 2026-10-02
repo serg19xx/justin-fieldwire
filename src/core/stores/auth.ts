@@ -12,21 +12,32 @@ const AUTH_API_BASE_STORAGE_KEY = 'authApiBaseUrl'
 
 export interface User {
   id: number
-  email: string
+  email?: string
   name: string
   first_name?: string
   last_name?: string
   role_id?: number
-  role_category?: 'global' | 'project' | 'task'
+  role_category?: 'global' | 'project' | 'task' | 'contractor_access' | 'client'
   role_code?:
     | 'admin'
     | 'project_manager'
     | 'architect'
     | 'foreman'
     | 'worker'
-    | 'contractor'
-    | 'inspector'
+    | 'contractor_access'
+    | 'doctor'
+    | 'pharmacist'
   role_name?: string
+  auth_type?: 'user' | 'contractor_access'
+  task_id?: number
+  project_id?: number
+  contractor_id?: number | null
+  physician_id?: number | null
+  pharmacist_id?: number | null
+  pharmacy_id?: number | null
+  task_name?: string | null
+  project_name?: string | null
+  key_expires_at?: string | null
   two_factor_enabled: boolean
   twoFactorEnabled?: boolean // Added for backward compatibility
   status: boolean
@@ -73,6 +84,9 @@ export const useAuthStore = defineStore('auth', () => {
   // Computed properties
   const isAdmin = computed(() => currentUser.value?.role_code === 'admin')
   const isManager = computed(() => currentUser.value?.role_code === 'project_manager')
+  const isDoctor = computed(() => currentUser.value?.role_code === 'doctor')
+  const isPharmacist = computed(() => currentUser.value?.role_code === 'pharmacist')
+  const isClient = computed(() => ['doctor', 'pharmacist'].includes(currentUser.value?.role_code || ''))
   const canManageUsers = computed(() =>
     ['admin', 'project_manager'].includes(currentUser.value?.role_code || ''),
   )
@@ -95,6 +109,53 @@ export const useAuthStore = defineStore('auth', () => {
   )
 
   // Actions
+  async function loginWithAccessKey(key: string): Promise<{
+    success: boolean
+    user?: User
+    error?: string
+  }> {
+    try {
+      const { redeemContractorAccessKey } = await import('@/core/utils/task-access-key-api')
+      const data = await redeemContractorAccessKey(key)
+      const rawUser = data.user || {}
+      const frontendUser: User = {
+        id: 0,
+        email: undefined,
+        name: String(rawUser.name || 'Contractor'),
+        first_name: 'Contractor',
+        last_name: '',
+        role_category: 'contractor_access',
+        role_code: 'contractor_access',
+        role_name: 'Contractor',
+        auth_type: 'contractor_access',
+        task_id: Number(rawUser.task_id) || undefined,
+        project_id: Number(rawUser.project_id) || undefined,
+        task_name: (rawUser.task_name as string) || null,
+        project_name: (rawUser.project_name as string) || null,
+        key_expires_at: data.key_expires_at || null,
+        two_factor_enabled: false,
+        status: true,
+        permissions: ['contractor:view_task'],
+      }
+
+      localStorage.setItem('authToken', data.token)
+      api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
+      persistAuthApiBase()
+      currentUser.value = frontendUser
+      isAuthenticated.value = true
+      localStorage.setItem('user', JSON.stringify(frontendUser))
+
+      return { success: true, user: frontendUser }
+    } catch (error: unknown) {
+      console.error('Access key login error:', error)
+      const axiosErr = error as { response?: { data?: { message?: string } } }
+      return {
+        success: false,
+        error: axiosErr.response?.data?.message || 'Invalid or expired access key',
+      }
+    }
+  }
+
   async function login(
     email: string,
     password: string,
@@ -844,12 +905,20 @@ export const useAuthStore = defineStore('auth', () => {
     const c = roleCode.toLowerCase()
     if (c === 'admin') return 'global'
     if (c === 'project_manager' || c === 'architect') return 'project'
-    if (['worker', 'foreman', 'contractor', 'inspector'].includes(c)) return 'task'
+    if (['worker', 'foreman'].includes(c)) return 'task'
+    if (c === 'contractor_access') return 'contractor_access'
+    if (['doctor', 'pharmacist'].includes(c)) return 'client'
     return undefined
   }
 
   function ensureUserRoleCategory(user: User): User {
-    if (user.role_category === 'global' || user.role_category === 'project' || user.role_category === 'task') {
+    if (
+      user.role_category === 'global' ||
+      user.role_category === 'project' ||
+      user.role_category === 'task' ||
+      user.role_category === 'contractor_access' ||
+      user.role_category === 'client'
+    ) {
       return user
     }
     const inferred = inferRoleCategoryFromRoleCode(user.role_code)
@@ -916,6 +985,24 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       const user = JSON.parse(savedUser)
+
+      // Contractor temporary access: no email / profile — validate via workspace
+      if (user?.auth_type === 'contractor_access' || user?.role_category === 'contractor_access') {
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        try {
+          await api.get('/api/v1/contractor-portal/workspace')
+          currentUser.value = ensureUserRoleCategory(user as User)
+          isAuthenticated.value = true
+          persistAuthApiBase()
+          localStorage.setItem('user', JSON.stringify(currentUser.value))
+          console.log('✅ Contractor access session restored')
+          return
+        } catch {
+          console.warn('⚠️ Contractor access session invalid')
+          clearLocalAuth()
+          return
+        }
+      }
 
       if (!user?.id || !user?.email) {
         console.log('❌ User data corrupted, logging out')
@@ -1034,10 +1121,10 @@ export const useAuthStore = defineStore('auth', () => {
         return ['projects:read', 'manage_tasks', 'upload_files', 'view_reports']
       case 'worker':
         return ['projects:read', 'view_tasks', 'view_files', 'view_reports']
-      case 'contractor':
-        return ['projects:read', 'view_tasks', 'view_files', 'view_reports']
-      case 'inspector':
-        return ['projects:read', 'view_tasks', 'view_files', 'view_reports']
+      case 'doctor':
+        return ['projects:read', 'tasks:read', 'calendar:read', 'photos:read', 'reports:read', 'plans:read']
+      case 'pharmacist':
+        return ['projects:read', 'marketplace:read', 'calendar:read', 'photos:read', 'reports:read', 'plans:read']
       default:
         return ['projects:read', 'view_tasks']
     }
@@ -1054,11 +1141,15 @@ export const useAuthStore = defineStore('auth', () => {
     // Computed
     isAdmin,
     isManager,
+    isDoctor,
+    isPharmacist,
+    isClient,
     canManageUsers,
     canManageProjects,
 
     // Actions
     login,
+    loginWithAccessKey,
     sendTwoFactorCode,
     verifyTwoFactor,
     enableTwoFactor,

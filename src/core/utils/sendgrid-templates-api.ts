@@ -28,7 +28,10 @@ function unwrapTemplates(body: unknown): SendGridTemplatesResponse {
 
 export const sendgridTemplatesApi = {
   async listActive(): Promise<SendGridTemplatesResponse> {
-    const response = await api.get('/api/v1/sendgrid/dynamic-templates')
+    // Cache-bust with query only — do NOT send Cache-Control (not in CORS Allow-Headers → Network Error).
+    const response = await api.get('/api/v1/sendgrid/dynamic-templates', {
+      params: { _ts: Date.now() },
+    })
     return unwrapTemplates(response.data)
   },
 }

@@ -814,6 +814,8 @@ interface Props {
   taskId?: number
   initialPath?: string
   viewMode?: 'icons' | 'details'
+  allowedFolderNames?: string[]
+  readOnly?: boolean
 }
 
 interface Emits {
@@ -826,6 +828,7 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
   initialPath: '/',
   viewMode: 'icons',
+  readOnly: false,
 })
 
 const emit = defineEmits<Emits>()
@@ -996,12 +999,15 @@ const isPdfPreview = computed(
 )
 
 const currentFolders = computed(() => {
-  // For root level, show subfolders of Home (ID=1) instead of Home itself
-  if (currentPath.value === '/') {
-    return subfolders.value // Show Home's children, not Home itself
+  let list = currentPath.value === '/' ? subfolders.value : subfolders.value
+  if (currentPath.value === '/' && props.allowedFolderNames && props.allowedFolderNames.length > 0) {
+    const allowed = props.allowedFolderNames.map((n) => n.trim().toLowerCase())
+    list = list.filter((f) => {
+      const name = (f.name || '').toLowerCase()
+      return allowed.some((a) => name.includes(a) || a.includes(name))
+    })
   }
-  // For other paths, use subfolders from API
-  return subfolders.value
+  return list
 })
 
 const currentFiles = computed(() => {
@@ -1079,8 +1085,26 @@ const rootFolders = computed(() => {
   // This prevents showing "Home" as a separate item in the right panel
   const homeFolder = folders.value.find((f) => f.id === 1)
   if (homeFolder) {
+    if (props.allowedFolderNames && props.allowedFolderNames.length > 0) {
+      const allowed = props.allowedFolderNames.map((n) => n.trim().toLowerCase())
+      const filteredChildren = (homeFolder.children || []).filter((child) => {
+        const name = (child.name || '').toLowerCase()
+        return allowed.some((a) => name.includes(a) || a.includes(name))
+      })
+      return [{ ...homeFolder, children: filteredChildren }]
+    }
     return [homeFolder]
   }
+
+  if (props.allowedFolderNames && props.allowedFolderNames.length > 0) {
+    const allowed = props.allowedFolderNames.map((n) => n.trim().toLowerCase())
+    return folders.value.filter((f) => {
+      if (f.parent_id !== null) return false
+      const name = (f.name || '').toLowerCase()
+      return allowed.some((a) => name.includes(a) || a.includes(name))
+    })
+  }
+
   // Fallback: show all root level folders if Home not found
   return folders.value.filter((f) => f.parent_id === null)
 })

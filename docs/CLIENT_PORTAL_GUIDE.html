@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Portal User & Testing Guide</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com/"></script>
+    <style>
+        html { scroll-behavior: smooth; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans leading-relaxed">
+
+    <!-- Header -->
+    <header class="bg-teal-700 text-white py-12 shadow-md">
+        <div class="max-w-5xl mx-auto px-6">
+            <div class="flex items-center gap-3 mb-2">
+                <span class="bg-teal-600 text-xs uppercase font-bold px-2.5 py-1 rounded-full tracking-wider border border-teal-500">Documentation</span>
+                <span class="text-teal-200 text-sm">v1.0.0</span>
+            </div>
+            <h1 class="text-3xl md:text-4xl font-extrabold tracking-tight">Client Portal User & Testing Guide</h1>
+            <p class="text-teal-100 mt-2 text-lg">A comprehensive guide for Doctors, Pharmacists, and Project Administrators.</p>
+        </div>
+    </header>
+
+    <div class="max-w-5xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-4 gap-8">
+        
+        <!-- Sidebar Navigation -->
+        <aside class="lg:col-span-1">
+            <div class="sticky top-6 bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">On This Page</h2>
+                <nav class="space-y-3 text-sm">
+                    <a href="#registration" class="block text-teal-700 hover:text-teal-900 font-medium">1. Self-Serve Registration</a>
+                    <a href="#doctor-portal" class="block text-teal-700 hover:text-teal-900 font-medium">2. Doctor Portal</a>
+                    <a href="#pharmacist-portal" class="block text-teal-700 hover:text-teal-900 font-medium">3. Pharmacist Portal</a>
+                    <a href="#credentials" class="block text-teal-700 hover:text-teal-900 font-medium">4. Demo Credentials</a>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="lg:col-span-3 space-y-12">
+
+            <!-- Section 1 -->
+            <section id="registration" class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+                <h2 class="text-2xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">1. Self-Serve Account Registration</h2>
+                <p class="text-gray-600 mb-4">Clients (Doctors and Pharmacists) can register their own accounts without administrative intervention, provided their contact records already exist in the system's CRM database.</p>
+                
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">How It Works:</h3>
+                <ol class="list-decimal list-inside space-y-2 text-gray-600 pl-2">
+                    <li>Navigate to the Login page and click on the <strong class="text-gray-900">Client (MD / Rx)</strong> tab.</li>
+                    <li>Click on the <strong class="text-gray-900">Request Account Access</strong> sub-tab.</li>
+                    <li>Select your role: <strong class="text-teal-700">Doctor (Physician)</strong> or <strong class="text-teal-700">Pharmacist</strong>.</li>
+                    <li>Enter your registered Email, Cell Phone, and create a password.</li>
+                    <li><strong>Verification Logic:</strong> The system matches the last 10 digits of the phone and lowercase email against the CRM tables:
+                        <ul class="list-disc list-inside pl-6 mt-1 space-y-1 text-sm">
+                            <li>Doctors are matched against <code class="bg-gray-100 px-1 py-0.5 rounded text-red-600">fw_physician</code>.</li>
+                            <li>Pharmacists are matched against <code class="bg-gray-100 px-1 py-0.5 rounded text-red-600">fw_pharmacist</code>.</li>
+                        </ul>
+                    </li>
+                </ol>
+            </section>
+
+            <!-- Section 2 -->
+            <section id="doctor-portal" class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+                <h2 class="text-2xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">2. Doctor Portal (Primary Client Access)</h2>
+                <p class="text-gray-600 mb-4"><strong>Purpose:</strong> Designed for Doctors to track the step-by-step progress of their clinic construction, view completed milestones, and prepare for the grand opening.</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    <div class="bg-teal-50 p-4 rounded-xl border border-teal-100">
+                        <h4 class="font-bold text-teal-900 mb-1">Project Isolation</h4>
+                        <p class="text-sm text-teal-800">Doctors can only see projects where they are assigned as the Primary Client.</p>
+                    </div>
+                    <div class="bg-amber-50 p-4 rounded-xl border border-amber-100">
+                        <h4 class="font-bold text-amber-900 mb-1">View-Only Mode</h4>
+                        <p class="text-sm text-amber-800">All creation, editing, and deletion controls are hidden. Strictly read-only.</p>
+                    </div>
+                </div>
+
+                <h3 class="text-lg font-semibold text-gray-800 mb-2">Available Sections:</h3>
+                <ul class="space-y-2 text-gray-600 pl-2">
+                    <li>📁 <strong>Profile:</strong> High-level project details, start/end dates, and status.</li>
+                    <li>📁 <strong>Plans & Drawings:</strong> Access to project documents. <span class="text-xs text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded border border-red-100">Security Filtered</span> (Only folders containing "Documents", "Drawings", or "Resources MD" are visible).</li>
+                    <li>📁 <strong>Tasks:</strong> Outstanding and completed tasks, assignees, and dates.</li>
+                    <li>📁 <strong>Calendar:</strong> Interactive calendar showing milestones.</li>
+                    <li>📁 <strong>Photos:</strong> Visual updates and site photos.</li>
+                    <li>📁 <strong>Reports & Settings:</strong> Read-only reports and project settings.</li>
+                </ul>
+            </section>
+
+            <!-- Section 3 -->
+            <section id="pharmacist-portal" class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+                <h2 class="text-2xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">3. Pharmacist Portal (Marketplace & Secondary Access)</h2>
+                <p class="text-gray-600 mb-6">Pharmacists have two distinct access modes depending on their relationship with the project.</p>
+
+                <!-- Mode A -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-bold text-gray-800 mb-2">Mode A: Location Marketplace (Pharmacy Access 1)</h3>
+                    <p class="text-gray-600 text-sm mb-3">For pharmacists looking for a new clinic location to partner with.</p>
+                    <ul class="space-y-3 text-sm text-gray-600 pl-2">
+                        <li>🔍 <strong>Status Filtering:</strong> Only projects with status "Actively Looking For A Location" or "Securing Location" are visible.</li>
+                        <li>🔒 <strong>Data Masking (Pre-NDA):</strong> Exact Address, Client Name, and Financials are completely hidden until an NDA is signed.</li>
+                        <li>🤝 <strong>4-Step Pursuit Workflow:</strong>
+                            <div class="mt-2 pl-4 border-l-2 border-teal-500 space-y-2">
+                                <p><strong>Step 1:</strong> Type full legal name to sign the digital NDA.</p>
+                                <p><strong>Step 2:</strong> System automatically generates a signed PDF and uploads it to the project files.</p>
+                                <p><strong>Step 3:</strong> Address and Client Name are instantly revealed.</p>
+                                <p><strong>Step 4:</strong> Review, sign, or propose modifications to the Short Lease Agreement.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Mode B -->
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800 mb-2">Mode B: Project Partner (Pharmacy Access 2 / Secondary Client)</h3>
+                    <p class="text-gray-600 text-sm mb-3">For pharmacists officially attached to an active project as a partner.</p>
+                    <ul class="space-y-2 text-sm text-gray-600 pl-2">
+                        <li>📊 <strong>Live Analytics:</strong> Interactive charts showing project metrics.</li>
+                        <li>📁 <strong>Drawings & Resources:</strong> Access to project documents. <span class="text-xs text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded border border-red-100">Security Filtered</span> (Only folders containing "Drawings", "Pharmacy", or "Resources" are visible).</li>
+                        <li>📅 <strong>Calendar & Photos:</strong> View timeline, milestones, and site photos.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- Section 4 -->
+            <section id="credentials" class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100">
+                <h2 class="text-2xl font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">4. Demo & Testing Credentials</h2>
+                
+                <h3 class="text-lg font-bold text-gray-800 mb-3">Scenario 1: Direct Sign-In (Existing Accounts)</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                        <span class="bg-teal-100 text-teal-800 text-xs font-bold px-2 py-1 rounded">Doctor Account</span>
+                        <div class="mt-3 space-y-1 text-sm">
+                            <p><strong>Email:</strong> <code class="text-red-600">drlekeoyedotun@outlook.com</code></p>
+                            <p><strong>Password:</strong> <code class="text-red-600">password123</code></p>
+                            <p class="text-xs text-gray-500 mt-2">Linked Project: Ellesmere Medical Clinic & Pharmacy (Construction)</p>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                        <span class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-1 rounded">Pharmacist Account</span>
+                        <div class="mt-3 space-y-1 text-sm">
+                            <p><strong>Email:</strong> <code class="text-red-600">13monikaarora@gmail.com</code></p>
+                            <p><strong>Password:</strong> <code class="text-red-600">password123</code></p>
+                            <p class="text-xs text-gray-500 mt-2">Workflow: Opens Location Marketplace (NDA & Lease signing)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="text-lg font-bold text-gray-800 mb-3">Scenario 2: Self-Serve Registration (New Accounts)</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                        <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">Register a New Doctor</span>
+                        <div class="mt-3 space-y-1 text-sm">
+                            <p><strong>Email:</strong> <code class="text-red-600">ale@vidamd.ca</code></p>
+                            <p><strong>Phone:</strong> <code class="text-red-600">+16043797364</code></p>
+                            <p class="text-xs text-gray-500 mt-2">Matches CRM contact: Adrian Le</p>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                        <span class="bg-purple-100 text-purple-800 text-xs font-bold px-2 py-1 rounded">Register a New Pharmacist</span>
+                        <div class="mt-3 space-y-1 text-sm">
+                            <p><strong>Email:</strong> <code class="text-red-600">1fascinatingmind@gmail.com</code></p>
+                            <p><strong>Phone:</strong> <code class="text-red-600">+16134499775</code></p>
+                            <p class="text-xs text-gray-500 mt-2">Matches CRM contact: Hitesh Patel</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-400 py-8 mt-20 border-t border-gray-800">
+        <div class="max-w-5xl mx-auto px-6 text-center text-sm">
+            <p>&copy; 2026 FieldWire Construction Project Companion. All rights reserved.</p>
+        </div>
+    </footer>
+
+</body>
+</html>

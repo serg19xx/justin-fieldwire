@@ -55,8 +55,8 @@ onMounted(() => {
 const userTypeOptions = [
   'architect',
   'project_manager',
-  'general_contractor',
-  'contractor',
+  'foreman',
+  'worker',
   'client',
 ]
 
@@ -72,9 +72,9 @@ function getUserTypeColor(userType: UserType) {
       return 'bg-purple-100 text-purple-800'
     case 'project_manager':
       return 'bg-blue-100 text-blue-800'
-    case 'general_contractor':
+    case 'foreman':
       return 'bg-green-100 text-green-800'
-    case 'contractor':
+    case 'worker':
       return 'bg-yellow-100 text-yellow-800'
     case 'client':
       return 'bg-gray-100 text-gray-800'
@@ -95,7 +95,7 @@ function formatDate(dateString: string) {
 
 // Check if job title is required for user type
 function isJobTitleRequired(userType: UserType): boolean {
-  return userType === 'contractor'
+  return userType === 'worker' || userType === 'foreman'
 }
 
 // Get job title display with validation

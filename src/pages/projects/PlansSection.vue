@@ -13,6 +13,8 @@
           :project-id="(project as any).id"
           :initial-path="currentFolderPath"
           :view-mode="viewMode"
+          :allowed-folder-names="allowedFolderNames"
+          :read-only="readOnly"
           style="height: calc(100vh - 11rem)"
           @file-selected="(file: unknown) => handleFilesSelected([file])"
           @folder-created="handleFolderCreated"
@@ -41,6 +43,8 @@ interface Props {
   fileManagerKey?: string
   currentFolderPath?: string
   viewMode?: 'icons' | 'details'
+  allowedFolderNames?: string[]
+  readOnly?: boolean
 }
 
 defineProps<Props>()

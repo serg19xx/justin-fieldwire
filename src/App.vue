@@ -5,6 +5,11 @@
       <RouterView />
     </template>
 
+    <!-- Contractor temporary access (no staff layout) -->
+    <template v-else-if="authStore.currentUser?.role_category === 'contractor_access' && authStore.isAuthenticated">
+      <RouterView />
+    </template>
+
     <!-- Dynamic Layouts based on user role -->
     <template v-else-if="authStore.isAuthenticated">
       <!-- Global Layout for global users -->
@@ -21,6 +26,11 @@
       <TaskLayout v-else-if="authStore.currentUser?.role_category === 'task'">
         <RouterView />
       </TaskLayout>
+
+      <!-- Client Layout for Doctor and Pharmacist Users -->
+      <ClientLayout v-else-if="authStore.currentUser?.role_category === 'client'">
+        <RouterView />
+      </ClientLayout>
 
       <!-- Default fallback -->
       <ProjectLayout v-else>
@@ -47,6 +57,7 @@ import { useAuthStore } from '@/core/stores/auth'
 import GlobalLayout from '@/layouts/GlobalLayout.vue'
 import ProjectLayout from '@/layouts/ProjectLayout.vue'
 import TaskLayout from '@/layouts/TaskLayout.vue'
+import ClientLayout from '@/layouts/ClientLayout.vue'
 
 const route = useRoute()
 const router = useRouter()

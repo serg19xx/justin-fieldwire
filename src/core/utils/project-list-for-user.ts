@@ -42,10 +42,94 @@ export function parseProjectsFromListResponse(data: unknown): Project[] {
  * Query params for GET /api/v1/projects so non-admin users only see relevant projects.
  * Backend should honor:
  * - `prj_manager` — projects managed by that user (PM).
- * - `user_id` — projects where the user appears on the project team / assignments (workers, foremen, contractors).
+ * - `user_id` — projects where the user appears on the project team / assignments (workers, foremen).
  * If `user_id` is not implemented yet, backend should add filtering by fw_prj_team_members (and/or task assignees).
  */
-const TASK_EXECUTOR_ROLE_CODES = ['worker', 'foreman', 'contractor'] as const
+const TASK_EXECUTOR_ROLE_CODES = ['worker', 'foreman'] as const
+
+export function isMarketplaceStatus(status?: string | null): boolean {
+  if (!status) return false
+  const s = status.trim().toLowerCase()
+  return (
+    s === 'actively looking for a location' ||
+    s === 'securing location' ||
+    s === 'securing a location'
+  )
+}
+
+function getClientDataEmail(clientData: unknown): string {
+  if (!clientData || typeof clientData !== 'object') return ''
+  return String((clientData as Record<string, unknown>).email || '')
+    .trim()
+    .toLowerCase()
+}
+
+/** Doctors see projects where they are the primary or any additional physician client. */
+export function filterProjectsForDoctorUser(projects: Project[], user: User): Project[] {
+  if (!user) return []
+  const physicianId = user.physician_id != null ? Number(user.physician_id) : null
+  const userEmail = (user.email || '').trim().toLowerCase()
+
+  function matchesPhysician(
+    table: string | null | undefined,
+    clientId: number | string | null | undefined,
+    clientData: unknown,
+  ): boolean {
+    if ((table || '').toLowerCase() !== 'physician') return false
+    if (physicianId != null && clientId != null && Number(clientId) === physicianId) return true
+    return userEmail !== '' && getClientDataEmail(clientData) === userEmail
+  }
+
+  return projects.filter((p) => {
+    if (matchesPhysician(p.client_table, p.client_id, p.client_data)) return true
+    if (matchesPhysician(p.client2_table, p.client2_id, p.client2_data)) return true
+    return (p.additional_clients ?? []).some((c) =>
+      matchesPhysician(c.client_table, c.client_id, c.client_data),
+    )
+  })
+}
+
+export function filterProjectsForPharmacistSecondaryUser(
+  projects: Project[],
+  user: User,
+): Project[] {
+  if (!user) return []
+  const pharmacistId = user.pharmacist_id != null ? Number(user.pharmacist_id) : null
+  const pharmacyId = user.pharmacy_id != null ? Number(user.pharmacy_id) : null
+  const userEmail = (user.email || '').trim().toLowerCase()
+
+  return projects.filter((p) => {
+    // Check additional_clients
+    if (Array.isArray(p.additional_clients) && p.additional_clients.length > 0) {
+      const match = p.additional_clients.some((c) => {
+        const table = (c.client_table || '').toLowerCase()
+        const cid = Number(c.client_id)
+        if (table === 'pharmacist' && pharmacistId != null && cid === pharmacistId) return true
+        if (table === 'pharma' && pharmacyId != null && cid === pharmacyId) return true
+        if (userEmail && c.client_data && typeof c.client_data === 'object') {
+          const email = String((c.client_data as Record<string, unknown>).email || '')
+            .trim()
+            .toLowerCase()
+          if (email && email === userEmail) return true
+        }
+        return false
+      })
+      if (match) return true
+    }
+
+    // Check legacy client2
+    const c2Table = (p.client2_table || '').toLowerCase()
+    const c2Id = p.client2_id != null ? Number(p.client2_id) : null
+    if (c2Table === 'pharmacist' && pharmacistId != null && c2Id === pharmacistId) return true
+    if (c2Table === 'pharma' && pharmacyId != null && c2Id === pharmacyId) return true
+
+    return false
+  })
+}
+
+export function filterProjectsForMarketplace(projects: Project[]): Project[] {
+  return projects.filter((p) => isMarketplaceStatus(p.status))
+}
 
 export function isTaskExecutorUser(user: User | null): boolean {
   if (!user) return false

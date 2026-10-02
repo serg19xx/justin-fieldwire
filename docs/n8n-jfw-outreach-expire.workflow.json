@@ -1,0 +1,46 @@
+{
+  "name": "JFW FieldWire Outreach Expire Waiting",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 1 }]
+        }
+      },
+      "id": "sched-expire",
+      "name": "Every Hour",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://fwapi.medicalcontractor.ca/api/v1/outreach/expire-waiting-all",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Outreach-Secret",
+              "value": "fw-outreach-7f3k9Qx2mNpL"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-expire-all",
+      "name": "Expire Waiting All",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [280, 300]
+    }
+  ],
+  "connections": {
+    "Every Hour": {
+      "main": [[{ "node": "Expire Waiting All", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

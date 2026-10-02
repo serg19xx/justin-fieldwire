@@ -17,8 +17,6 @@ export type RecipientRole =
   | 'team_members'
   | 'foreman'
   | 'worker'
-  | 'contractor'
-  | 'inspector'
 
 export type ChannelContentMode = 'system' | 'local' | 'manual'
 

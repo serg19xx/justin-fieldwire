@@ -427,8 +427,6 @@ function shortRole(role: string): string {
     team_members: 'team',
     foreman: 'foreman',
     worker: 'worker',
-    contractor: 'contractor',
-    inspector: 'inspector',
   }
   return map[role] || role
 }

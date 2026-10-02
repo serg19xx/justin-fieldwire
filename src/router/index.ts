@@ -22,6 +22,12 @@ const router = createRouter({
       component: () => import('@/pages/auth/views/ResetPasswordView.vue'),
       meta: { requiresAuth: false, isAuthPage: true },
     },
+    {
+      path: '/contractor',
+      name: 'contractor-portal',
+      component: () => import('@/pages/contractor/ContractorPortal.vue'),
+      meta: { requiresAuth: true, isContractorPortal: true },
+    },
 
     // Main application routes
     {
@@ -35,6 +41,22 @@ const router = createRouter({
         const roleCategory = authStore.currentUser?.role_category
 
         console.log('🔍 Router dashboard debug:', { roleCategory })
+
+        // Contractor temporary access (no staff layout)
+        if (roleCategory === 'contractor_access') {
+          return import('../pages/contractor/ContractorPortal.vue')
+        }
+
+        // Client accounts (Doctor & Pharmacist)
+        if (roleCategory === 'client') {
+          const roleCode = authStore.currentUser?.role_code
+          if (roleCode === 'doctor') {
+            return import('../pages/doctor/DoctorProjectsList.vue')
+          }
+          if (roleCode === 'pharmacist') {
+            return import('../pages/pharmacist/PharmacistMarketplace.vue')
+          }
+        }
 
         // Global users get GlobalDashboard
         if (roleCategory === 'global') {
@@ -192,6 +214,20 @@ const router = createRouter({
       component: () => import('../pages/task-templates/TaskTemplatesManage.vue'),
     },
     {
+      path: '/external-contacts',
+      beforeEnter: (_to, _from, next) => {
+        const authStore = useAuthStore()
+        const roleCode = authStore.currentUser?.role_code
+        const allowed = roleCode === 'project_manager' || roleCode === 'admin'
+        if (!allowed) {
+          next('/dashboard')
+          return
+        }
+        next()
+      },
+      component: () => import('../pages/contacts/ExternalContacts.vue'),
+    },
+    {
       path: '/account',
       component: () => {
         const authStore = useAuthStore()
@@ -229,6 +265,14 @@ const router = createRouter({
 
         console.log('🔍 Router projects debug:', { roleCode })
 
+        if (roleCode === 'doctor') {
+          return import('../pages/doctor/DoctorProjectsList.vue')
+        }
+
+        if (roleCode === 'pharmacist') {
+          return import('../pages/pharmacist/PharmacistMarketplace.vue')
+        }
+
         // All users get ProjectsPrj for now
         return import('../pages/projects/ProjectsPrj.vue')
       },
@@ -254,6 +298,14 @@ const router = createRouter({
 
         const roleIdNum = typeof roleId === 'string' ? Number(roleId) : roleId
         const isAdmin = roleCode === 'admin' || roleIdNum === 9
+
+        if (roleCode === 'doctor') {
+          return { path: `/doctor/projects/${to.params.id}` }
+        }
+
+        if (roleCode === 'pharmacist') {
+          return { path: `/pharmacist/projects/${to.params.id}` }
+        }
 
         console.log('🔀 Redirecting project route based on role:', { roleCode, roleId: roleIdNum, isAdmin })
         return isAdmin
@@ -286,6 +338,26 @@ const router = createRouter({
     {
       path: '/projects/:id/detail/schedule-slot/:entryId',
       component: () => import('../pages/projects/ProjectScheduleSlotPlan.vue'),
+    },
+    {
+      path: '/doctor/projects',
+      component: () => import('../pages/doctor/DoctorProjectsList.vue'),
+    },
+    {
+      path: '/doctor/projects/:id',
+      component: () => import('../pages/doctor/DoctorProjectDetail.vue'),
+    },
+    {
+      path: '/pharmacist/marketplace',
+      component: () => import('../pages/pharmacist/PharmacistMarketplace.vue'),
+    },
+    {
+      path: '/pharmacist/projects',
+      component: () => import('../pages/pharmacist/PharmacistProjectsList.vue'),
+    },
+    {
+      path: '/pharmacist/projects/:id',
+      component: () => import('../pages/pharmacist/PharmacistProjectDetail.vue'),
     },
   ],
 })
@@ -344,6 +416,14 @@ router.beforeEach(async (to, from, next) => {
     console.log('🛡️ User not authenticated - redirecting to login')
     next('/login')
     return
+  }
+
+  // Contractor temporary access: only the contractor portal
+  if (authStore.currentUser?.role_category === 'contractor_access') {
+    if (to.path !== '/contractor' && to.name !== 'contractor-portal') {
+      next('/contractor')
+      return
+    }
   }
 
   // Session check disabled for development

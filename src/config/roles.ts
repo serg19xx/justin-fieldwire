@@ -6,7 +6,7 @@ export const FOREMAN_ROLE_DB_ID = 12
 export interface Role {
   code: string
   name: string
-  category: 'global' | 'project' | 'task'
+  category: 'global' | 'project' | 'task' | 'client'
   permissions: string[]
 }
 
@@ -47,17 +47,31 @@ export const ROLES: Record<string, Role> = {
     category: 'task',
     permissions: ['tasks.view'],
   },
-  contractor: {
-    code: 'contractor',
-    name: 'Contractor',
-    category: 'task',
-    permissions: ['tasks.view'],
+  doctor: {
+    code: 'doctor',
+    name: 'Doctor',
+    category: 'client',
+    permissions: [
+      'projects.view',
+      'tasks.view',
+      'calendar.view',
+      'photos.view',
+      'reports.view',
+      'plans.view',
+    ],
   },
-  inspector: {
-    code: 'inspector',
-    name: 'Inspector',
-    category: 'task',
-    permissions: ['tasks.view', 'tasks.approve'],
+  pharmacist: {
+    code: 'pharmacist',
+    name: 'Pharmacist',
+    category: 'client',
+    permissions: [
+      'projects.view',
+      'marketplace.view',
+      'calendar.view',
+      'photos.view',
+      'reports.view',
+      'plans.view',
+    ],
   },
 }
 

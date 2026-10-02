@@ -15,10 +15,13 @@ import MedicalClinicEditDialog from '@/components/clients/MedicalClinicEditDialo
 import ClientCommDialog from '@/components/clients/ClientCommDialog.vue'
 import ClientMeetingInviteDialog from '@/components/clients/ClientMeetingInviteDialog.vue'
 import ClientExportCsvDialog from '@/components/clients/ClientExportCsvDialog.vue'
+import ClientsOutreachPanel from '@/components/clients/ClientsOutreachPanel.vue'
 import type { ClientCommChannel } from '@/core/utils/clients-comms-api'
 
 const route = useRoute()
 const router = useRouter()
+
+const pageTab = ref<'contacts' | 'outreach'>('contacts')
 
 const registryKey = computed(() => String(route.params.type ?? ''))
 const entry = computed(() => getClientRegistryEntry(registryKey.value))
@@ -104,6 +107,12 @@ const entriesLabel = computed(() => entry.value?.entriesLabel ?? 'entries')
 const toolbarActions = computed<ClientToolbarActionId[]>(
   () => entry.value?.toolbarActions ?? ['add', 'exportCsv'],
 )
+const outreachCategoryOptions = computed(() => {
+  if (registryKey.value === 'pharma') return dataFilterOptions.value.sub_type ?? []
+  if (registryKey.value === 'medical_clinic') return dataFilterOptions.value.clinicType ?? []
+  return []
+})
+const outreachSpecialtyOptions = computed(() => dataFilterOptions.value.specialty ?? [])
 const hasCountryFilter = computed(() =>
   (entry.value?.filters ?? []).some((f) => f.key === 'country'),
 )
@@ -476,6 +485,7 @@ function handleAction(actionId: ClientRowActionId, row: ClientListRow) {
 
 watch(registryKey, () => {
   page.value = 1
+  pageTab.value = 'contacts'
   pageSize.value = entry.value?.defaultPageSize ?? 10
   search.value = ''
   selectedIds.value = []
@@ -592,7 +602,40 @@ onMounted(async () => {
       </div>
     </div>
 
-    <main class="p-4 sm:p-6 space-y-4 w-full min-w-0 max-w-full">
+    <div class="px-4 sm:px-6 pt-3 flex gap-2 border-b border-gray-200 bg-white">
+      <button
+        type="button"
+        class="px-3 py-2 text-sm border-b-2 -mb-px"
+        :class="pageTab === 'contacts'
+          ? 'border-blue-600 text-blue-700 font-medium'
+          : 'border-transparent text-gray-600 hover:text-gray-900'"
+        @click="pageTab = 'contacts'"
+      >
+        Contacts
+      </button>
+      <button
+        type="button"
+        class="px-3 py-2 text-sm border-b-2 -mb-px"
+        :class="pageTab === 'outreach'
+          ? 'border-blue-600 text-blue-700 font-medium'
+          : 'border-transparent text-gray-600 hover:text-gray-900'"
+        @click="pageTab = 'outreach'"
+      >
+        Outreach
+      </button>
+    </div>
+
+    <main v-if="pageTab === 'outreach' && entry" class="p-4 sm:p-6 w-full min-w-0 max-w-full">
+      <ClientsOutreachPanel
+        :client-type="entry.key"
+        :country-options="countryOptions"
+        :region-options="regionOptions"
+        :category-options="outreachCategoryOptions"
+        :specialty-options="outreachSpecialtyOptions"
+      />
+    </main>
+
+    <main v-else class="p-4 sm:p-6 space-y-4 w-full min-w-0 max-w-full">
       <div class="flex flex-col xl:flex-row xl:items-end gap-3 flex-wrap min-w-0 w-full">
         <div class="flex items-center gap-2">
           <label class="text-sm text-gray-600">Show</label>
