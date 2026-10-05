@@ -566,7 +566,12 @@ import {
 } from '@/core/utils/schedule-weeks-api'
 import { useAuthStore } from '@/core/stores/auth'
 import { tasksApi } from '@/core/utils/tasks-api'
-import { getTaskStatusLabel, MILESTONE_ICON } from '@/core/utils/task-utils'
+import {
+  getTaskStatusLabel,
+  isTaskStatus,
+  MILESTONE_ICON,
+  TASK_STATUS_VALUES,
+} from '@/core/utils/task-utils'
 import {
   canEditTaskProgress,
   isTaskRoleForeman,
@@ -748,7 +753,7 @@ function onFieldWorkUpdated(updated: Task): void {
 }
 /** Loaded from GET /me/schedule when opening task from weekly schedule (published rows). */
 const isLoading = ref(true)
-const selectedStatus = ref('')
+const selectedStatus = ref<TaskStatus>('planned')
 const isSavingStatus = ref(false)
 
 // Photos: local state until backend has task photos API
@@ -946,13 +951,7 @@ function persistWorkerNotes(): void {
   }
 }
 
-const statusOptions = [
-  { value: 'planned', label: 'Planned' },
-  { value: 'in_progress', label: 'In Progress' },
-  { value: 'done', label: 'Done' },
-  { value: 'blocked', label: 'Blocked' },
-  { value: 'delayed', label: 'Delayed' },
-]
+const statusOptions = TASK_STATUS_VALUES.map((value) => ({ value, label: getTaskStatusLabel(value) }))
 
 const photosGroupedByDate = computed(() => {
   const list = [...photos.value].sort(
@@ -1268,23 +1267,16 @@ async function loadTask() {
   }
 }
 
-function mapStatusFromBackend(s: string | undefined): string {
+function mapStatusFromBackend(s: string | undefined): TaskStatus {
   if (!s) return 'planned'
   const n = s.toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_')
-  const map: Record<string, string> = {
-    planned: 'planned',
-    in_progress: 'in_progress',
-    done: 'done',
-    blocked: 'blocked',
-    delayed: 'delayed',
-    completed: 'done',
-    partially_completed: 'in_progress',
-    ready_for_inspection: 'in_progress',
-    delayed_due_to_issue: 'delayed',
-    scheduled: 'planned',
-    scheduled_accepted: 'planned',
+  if (isTaskStatus(n)) return n
+  const legacy: Record<string, TaskStatus> = {
+    done: 'completed',
+    blocked: 'delayed_due_to_issue',
+    delayed: 'delayed_due_to_issue',
   }
-  return map[n] ?? 'planned'
+  return legacy[n] ?? 'planned'
 }
 
 async function saveStatus() {

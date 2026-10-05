@@ -2,6 +2,7 @@ import { FOREMAN_ROLE_DB_ID } from '@/config/roles'
 import type { Project } from '@/core/utils/project-api'
 import type { Task } from '@/core/types/task'
 import { isProjectActiveForTaskUi } from '@/core/utils/project-list-for-user'
+import { getTaskStatusLabel, isTaskStatus } from '@/core/utils/task-utils'
 
 export { resolveSessionUserId } from '@/core/utils/session-user-id'
 
@@ -285,23 +286,17 @@ export function fieldTaskReadOnlyHint(_roleCode?: string | null): string {
   return 'View only — field updates are done by your foreman or an assigned crew member.'
 }
 
+/** Same status names as the project manager views; legacy values map to their current equivalents. */
 export function formatBackendTaskStatus(status: string | undefined | null): string {
-  if (!status) return 'Planned'
-  const map: Record<string, string> = {
-    planned: 'Planned',
-    in_progress: 'In progress',
-    done: 'Closed',
+  if (!status) return getTaskStatusLabel('planned')
+  const key = status.toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_')
+  if (isTaskStatus(key)) return getTaskStatusLabel(key)
+  const legacy: Record<string, string> = {
+    done: getTaskStatusLabel('completed'),
     blocked: 'Blocked',
     delayed: 'Delayed',
-    completed: 'Closed',
-    scheduled: 'Planned',
-    scheduled_accepted: 'Planned',
-    partially_completed: 'In progress',
-    ready_for_inspection: 'In progress',
-    delayed_due_to_issue: 'Delayed',
   }
-  const key = status.toLowerCase().replace(/-/g, '_').replace(/\s+/g, '_')
-  return map[key] ?? status
+  return legacy[key] ?? status
 }
 
 /** Task list buckets for field-role project task tabs */

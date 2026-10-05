@@ -183,6 +183,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Task } from '@/core/types/task'
+import { formatTaskDate } from '@/core/utils/task-utils'
 
 interface TaskDependencyRow {
   predecessor_id: number
@@ -275,11 +276,7 @@ const hasStructuredDependencies = computed(() => structuredDependencies.value.le
 
 // Methods
 function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
+  return formatTaskDate(dateString)
 }
 
 function formatDateTime(dateString: string): string {

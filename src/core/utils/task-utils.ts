@@ -1,5 +1,6 @@
 import type { Task, CalendarTask, TaskStatus, MilestoneType } from '@/core/types/task'
 import { isMilestone } from '@/core/types/task'
+import { parseYmdLocal } from '@/core/utils/week-utils'
 
 // Universal helper for task end date display (calendar exclusive end)
 export function processEndDateForDisplay(endDate: string): string {
@@ -286,6 +287,36 @@ export function getMilestoneTypeLabel(milestoneType?: MilestoneType): string {
     default:
       return 'Milestone'
   }
+}
+
+/**
+ * Format a task plan date (YYYY-MM-DD) as a calendar day.
+ * Date-only values are read as local dates; `new Date('YYYY-MM-DD')` is UTC midnight
+ * and shows the previous day in timezones west of UTC.
+ */
+export function formatTaskDate(value: string | null | undefined): string {
+  if (!value?.trim()) return ''
+  const trimmed = value.trim()
+  const date = /^\d{4}-\d{2}-\d{2}/.test(trimmed)
+    ? parseYmdLocal(trimmed.slice(0, 10))
+    : new Date(trimmed)
+  if (Number.isNaN(date.getTime())) return trimmed
+  return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+export const TASK_STATUS_VALUES: readonly TaskStatus[] = [
+  'planned',
+  'scheduled',
+  'scheduled_accepted',
+  'in_progress',
+  'partially_completed',
+  'delayed_due_to_issue',
+  'ready_for_inspection',
+  'completed',
+]
+
+export function isTaskStatus(value: string): value is TaskStatus {
+  return (TASK_STATUS_VALUES as readonly string[]).includes(value)
 }
 
 // Get status label

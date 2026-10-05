@@ -6,7 +6,12 @@ import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import listPlugin from '@fullcalendar/list'
 import type { Task, TaskStatus, TaskCreateUpdate, TaskFilter } from '@/core/types/task'
-import { taskToCalendarTask, getTaskColor, processEndDateForDisplay } from '@/core/utils/task-utils'
+import {
+  taskToCalendarTask,
+  getTaskColor,
+  processEndDateForDisplay,
+  formatTaskDate,
+} from '@/core/utils/task-utils'
 import { useAuthStore } from '@/core/stores/auth'
 import { tasksApi } from '@/core/utils/tasks-api'
 import { projectApi, type Project, type ProjectTeamMember } from '@/core/utils/project-api'
@@ -2425,12 +2430,7 @@ watch(viewMode, (newMode, oldMode) => {
 
 // Task list functions
 function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  })
+  return formatTaskDate(dateStr)
 }
 
 function getStatusLabel(status: TaskStatus): string {
