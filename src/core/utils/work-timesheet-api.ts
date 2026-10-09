@@ -7,14 +7,25 @@ export interface WorkerTimesheetEntry {
   task_id: number
   task_name: string | null
   task_address: string | null
+  /** Planned time of day from the task ("08:00"); tasks have no clock in/out. */
+  scheduled_start: string | null
+  scheduled_end: string | null
+  scheduled_hours: number | null
+}
+
+/** Day-level Start day / End day (one pair per worker per calendar day). */
+export interface WorkerDayWork {
+  work_date: string
   work_start_at: string | null
   work_end_at: string | null
+  /** Paid hours: span between start and end minus the unpaid break. */
   hours: number | null
-  has_actual: boolean
+  break_hours: number
 }
 
 export interface WorkerTimesheetDay {
   work_date: string
+  day_work: WorkerDayWork | null
   entries: WorkerTimesheetEntry[]
   hours: number
 }
@@ -57,10 +68,21 @@ function mapEntry(raw: Record<string, unknown>): WorkerTimesheetEntry {
     task_id: Number(raw.task_id) || 0,
     task_name: pickNullableString(raw.task_name),
     task_address: pickNullableString(raw.task_address),
-    work_start_at: pickNullableString(raw.work_start_at),
-    work_end_at: pickNullableString(raw.work_end_at),
-    hours: pickNullableNumber(raw.hours),
-    has_actual: Boolean(raw.has_actual),
+    scheduled_start: pickNullableString(raw.scheduled_start),
+    scheduled_end: pickNullableString(raw.scheduled_end),
+    scheduled_hours: pickNullableNumber(raw.scheduled_hours),
+  }
+}
+
+function mapDayWork(raw: unknown): WorkerDayWork | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  return {
+    work_date: String(r.work_date ?? ''),
+    work_start_at: pickNullableString(r.work_start_at),
+    work_end_at: pickNullableString(r.work_end_at),
+    hours: pickNullableNumber(r.hours),
+    break_hours: pickNullableNumber(r.break_hours) ?? 0,
   }
 }
 
@@ -68,6 +90,7 @@ function mapDay(raw: Record<string, unknown>): WorkerTimesheetDay {
   const entriesRaw = Array.isArray(raw.entries) ? raw.entries : []
   return {
     work_date: String(raw.work_date ?? ''),
+    day_work: mapDayWork(raw.day_work),
     hours: pickNullableNumber(raw.hours) ?? 0,
     entries: entriesRaw
       .filter((e): e is Record<string, unknown> => e != null && typeof e === 'object')
@@ -100,4 +123,37 @@ export async function fetchMyWorkTimesheet(
       .filter((d): d is Record<string, unknown> => d != null && typeof d === 'object')
       .map(mapDay),
   }
+}
+
+export interface WorkerDayStatus {
+  today: string
+  day_work: WorkerDayWork | null
+}
+
+export async function fetchMyWorkDay(workDateYmd?: string): Promise<WorkerDayStatus> {
+  const response = await api.get('/api/v1/me/work-day', {
+    params: workDateYmd ? { work_date: workDateYmd } : {},
+  })
+  const data = readEnvelopeData<Record<string, unknown>>(response.data)
+  return {
+    today: String(data?.today ?? ''),
+    day_work: mapDayWork(data?.day_work),
+  }
+}
+
+/** Location is optional; the API records the punch without it. */
+export async function checkInMyWorkDay(
+  workDateYmd: string,
+  phase: 'start' | 'end',
+  position: { lat: number; lng: number } | null,
+): Promise<WorkerDayWork> {
+  const response = await api.post('/api/v1/me/work-day/check-in', {
+    work_date: workDateYmd,
+    phase,
+    ...(position ? { lat: position.lat, lng: position.lng } : {}),
+  })
+  const data = readEnvelopeData<Record<string, unknown>>(response.data)
+  const dayWork = mapDayWork(data?.day_work)
+  if (!dayWork) throw new Error('Invalid work day response')
+  return dayWork
 }

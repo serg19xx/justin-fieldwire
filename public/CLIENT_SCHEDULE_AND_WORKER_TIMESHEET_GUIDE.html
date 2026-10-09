@@ -42,13 +42,14 @@
   <h1>Schedule &amp; worker timesheet — testing guide</h1>
   <p class="subtitle">
     For the product owner / client. Plain language. Covers manager Schedule (payroll notebook,
-    Week / Month / Custom periods), worker Start/End on tasks, and worker Hours (read-only timesheet).
+    Week / Month / Custom periods), the worker Timesheet (Start day / End day, SMS reminders)
+    and marking tasks done (Ready For Inspection).
   </p>
 
   <div class="note">
     <strong>Plan length:</strong> test over <strong>2–3 real work days</strong>.
-    Start and End must be checked on different days in real time (same-day clock only).
-    A short interval (Start, then End an hour later) is enough — full 8-hour days are not required.
+    Start day and End day only work for <strong>today</strong> (real time, no backdating).
+    A short interval (Start day, then End day an hour later) is enough — full 8-hour days are not required.
   </div>
 
   <hr />
@@ -76,11 +77,14 @@
     Mobile-first app after login as <strong>worker / foreman / contractor</strong> (task role).
   </p>
   <ul>
-    <li><strong>Tasks</strong> — today’s work from the plan (Gantt).</li>
-    <li><strong>Start work / End work</strong> on a task for <strong>today</strong> — records actual time with phone GPS near the jobsite (~200 m).</li>
-    <li><strong>Schedule</strong> — days you published for them (destination, PM notes, expected / actual hours). Start / End clock-in is on <strong>Tasks</strong> only (also updates the timesheet when a row exists).</li>
-    <li><strong>Hours</strong> (bottom tab) — monthly <strong>read-only</strong> timesheet built from tasks + their Start/End.
-      No manual project pick. Different from your Schedule notebook on purpose.</li>
+    <li><strong>Tasks</strong> — projects with their tasks from the plan (Gantt), split into <strong>Open</strong> and <strong>Closed</strong>.
+      Each task shows only its <strong>scheduled time</strong> (for example 08:00 – 17:00, 9 h/day). There is no clock in/out on tasks.</li>
+    <li><strong>Mark as done</strong> — the circle next to a task. The app asks for a photo of the finished work
+      (can be skipped) and sets the task to <strong>Ready For Inspection</strong>. Only the PM completes it or re-opens it.</li>
+    <li><strong>Hours</strong> (bottom tab) — the <strong>Timesheet</strong>: <strong>Start day</strong> / <strong>End day</strong> once per day,
+      and the month view. Paid hours = End day − Start day − <strong>30 min unpaid break</strong> (automatic).</li>
+    <li><strong>SMS reminders</strong> — if the worker has not tapped Start day <strong>5 min after</strong> the scheduled start
+      of their tasks for today, or has not tapped End day <strong>5 min after</strong> the scheduled end, they get a text with a link to the Timesheet.</li>
   </ul>
 
   <div class="ok">
@@ -92,7 +96,7 @@
   <p>
     On the manager Schedule, <strong>Day notes</strong> are a short message from you for that
     worker/day/jobsite (materials, contacts, site context).
-    Workers see them on <strong>their Schedule for that day</strong> — not inside a Task screen —
+    Workers see today’s notes at the top of their <strong>Tasks</strong> home screen — not inside a Task screen —
     so the payroll notebook stays separate from Tasks.
   </p>
 
@@ -168,10 +172,9 @@
 
   <h2>3. What to prepare (once, ~15 minutes)</h2>
   <ol>
-    <li>Project with a real <strong>address</strong> saved (needed for GPS check).</li>
-    <li>Task on Gantt covering the next 2–3 days; worker assigned to the task.</li>
-    <li>In <strong>Schedule</strong>, for those days: assign that worker to that project; set Expected start/end if you use them.</li>
-    <li>Worker phone: allow <strong>location</strong>, open the worker app on site when testing Start/End.</li>
+    <li>Task on Gantt covering the next 2–3 days, with <strong>Start / End time</strong> set (e.g. 08:00 – 17:00); worker assigned to the task.</li>
+    <li>Worker profile has a <strong>mobile phone number</strong> (for SMS reminders).</li>
+    <li>Worker phone: logged in to the worker app.</li>
   </ol>
 
   <hr />
@@ -179,48 +182,38 @@
   <h2>4. Multi-day test plan</h2>
 
   <div class="day">
-    <h3>Day 1 — morning (on the jobsite)</h3>
+    <h3>Day 1 — morning</h3>
     <ol>
-      <li><strong>Worker:</strong> open the task for <strong>today</strong> → <strong>Start work</strong>.</li>
-      <li><strong>Expect:</strong> Start time is recorded (local time makes sense).</li>
-      <li><strong>You (PM):</strong> open Schedule for that person/day — if you had a row for that project+day, Actual start should appear.</li>
-      <li><strong>Worker:</strong> open <strong>Hours</strong> — today shows project, address, Start.</li>
+      <li><strong>Do nothing</strong> until 5 minutes after the scheduled start → <strong>Expect:</strong> SMS “Please clock in (Start day)”.</li>
+      <li><strong>Worker:</strong> Hours → <strong>Start day</strong>. <strong>Expect:</strong> “Working since …”.</li>
     </ol>
-    <p><strong>Why:</strong> proves real clock-in on site and that both your notebook and their Hours can see it.</p>
-    <p><strong>Negative test (optional, off site / at home):</strong> try Start → should be refused (“too far from the job site”).</p>
   </div>
 
   <div class="day">
-    <h3>Day 1 — evening (on the jobsite again)</h3>
+    <h3>Day 1 — during the day</h3>
     <ol>
-      <li><strong>Worker:</strong> same task, <strong>today</strong> → <strong>End work</strong>.</li>
-      <li><strong>Expect:</strong> End time recorded; day duration looks right.</li>
-      <li><strong>You:</strong> Schedule shows Actual end (when a row exists).</li>
-      <li><strong>Worker Hours:</strong> Start and End for the day.</li>
+      <li><strong>Worker:</strong> Tasks → project → tap the <strong>circle</strong> next to a task → take a photo (or “Mark done without photo”).</li>
+      <li><strong>Expect:</strong> the task is crossed out with “Ready For Inspection · waiting for PM”; it stays in Open until the PM acts.</li>
+      <li><strong>You (PM):</strong> open the task → set <strong>Completed</strong> (it moves to the worker’s Closed tab)
+        or set it back to a working status (the worker can mark it done again).</li>
     </ol>
-    <p><strong>Why:</strong> start and end belong to the <strong>same calendar day</strong> and near the <strong>same place</strong>.</p>
-    <p><strong>Negative:</strong> End off site → refused. End without Start → refused. Other day in the day picker → Start/End buttons not available.</p>
   </div>
 
   <div class="day">
-    <h3>Day 2 — repeat a normal day</h3>
-    <p>Again: Start on site in the morning, End on site later.</p>
+    <h3>Day 1 — evening</h3>
+    <ol>
+      <li><strong>Do nothing</strong> until 5 minutes after the scheduled end → <strong>Expect:</strong> SMS “Please clock out (End day)”.</li>
+      <li><strong>Worker:</strong> Hours → <strong>End day</strong>. <strong>Expect:</strong> day shows start – end and hours with the 30 min break deducted
+        (e.g. 08:00 – 16:30 → 8 h).</li>
+    </ol>
+  </div>
+
+  <div class="day">
+    <h3>Day 2–3 — normal days</h3>
     <ul>
-      <li><strong>Hours</strong> should show two days with different times.</li>
-      <li>Your <strong>Schedule</strong> still uses <strong>your</strong> project picks for payroll — even if that sometimes differs from Gantt (that is intentional in your model).</li>
+      <li>Start day / End day on time → <strong>no</strong> SMS reminders that day.</li>
+      <li><strong>Hours</strong> month view: each day shows the work day hours and the tasks with their scheduled time; Total sums paid hours.</li>
     </ul>
-    <p><strong>Why day 2:</strong> not a one-off demo — a daily habit.</p>
-  </div>
-
-  <div class="day">
-    <h3>Day 3 — short check / review</h3>
-    <ol>
-      <li>One more Start/End <em>or</em> only review.</li>
-      <li>Open worker <strong>Hours</strong> for the month: projects, addresses, total hours.</li>
-      <li>Open your <strong>Schedule</strong>: Expected vs Actual.</li>
-      <li>Try Start on <strong>yesterday</strong> → should not be allowed.</li>
-    </ol>
-    <p><strong>Why:</strong> no backdating past days with the clock buttons.</p>
   </div>
 
   <hr />
@@ -231,13 +224,13 @@
       <tr><th>Check</th><th>Expected result</th></tr>
     </thead>
     <tbody>
-      <tr><td>Start/End on site</td><td>Times saved; look like real local times</td></tr>
-      <tr><td>Start/End off site</td><td>Refused; nothing saved</td></tr>
-      <tr><td>Only today</td><td>Cannot clock another calendar day</td></tr>
-      <tr><td>Worker Hours</td><td>Read-only month view: project, address, actual hours</td></tr>
-      <tr><td>Manager Schedule</td><td>Manual destinations + Expected; Actual when row exists</td></tr>
+      <tr><td>Start day / End day</td><td>Only on the Hours page, once per day, today only</td></tr>
+      <tr><td>Paid hours</td><td>End − Start − 30 min</td></tr>
+      <tr><td>SMS reminders</td><td>At most one clock-in and one clock-out text per day, only when the punch is missing (weekdays)</td></tr>
+      <tr><td>Tasks</td><td>Scheduled time only; no clock in/out</td></tr>
+      <tr><td>Mark as done</td><td>Photo prompt (skippable) → Ready For Inspection; only the PM completes or re-opens</td></tr>
+      <tr><td>Manager Schedule</td><td>Manual destinations + Expected; unchanged</td></tr>
       <tr><td>Week vs Month/Custom</td><td>Edit / Reopen / Publish only in Week; Month &amp; Custom review + hours total</td></tr>
-      <tr><td>Two worlds</td><td>Schedule is not auto-copied from Gantt; Hours is not your editable notebook</td></tr>
     </tbody>
   </table>
 
@@ -245,12 +238,12 @@
 
   <h2>6. Short “why” (for conversation, not for programmers)</h2>
   <ul>
-    <li><strong>Your Schedule</strong> — notebook for pay: where they went that day by your decision, expected hours, phone Actuals.</li>
+    <li><strong>Your Schedule</strong> — notebook for pay: where they went that day by your decision, expected hours.</li>
     <li><strong>Week</strong> — the only place to change the notebook and publish it.</li>
     <li><strong>Month / Custom</strong> — look across days and sum Actual hours; not a second editor.</li>
     <li><strong>Tasks / Gantt</strong> — plan of the job.</li>
-    <li><strong>Worker Hours</strong> — automatic sheet from plan + their Start/End; they cannot edit it by hand.</li>
-    <li><strong>GPS</strong> — Start/End only near the project address (~200 m), so the punch is “on the site”, not from home.</li>
+    <li><strong>Worker Hours</strong> — their timesheet: Start day / End day, minus the 30 min break; they cannot edit past days.</li>
+    <li><strong>Ready For Inspection</strong> — the crew says “done”, the PM decides “completed”.</li>
   </ul>
 
   <hr />

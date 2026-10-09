@@ -9,10 +9,12 @@
         />
       </p>
       <p class="text-sm text-gray-500 mt-1">
-        Actual hours from your tasks (Gantt plan + day Start/End). Read-only — not the PM schedule
-        notebook.
+        Start and end your work day here. Paid hours are the time between Start day and End day
+        minus a 30 min unpaid break. Tasks show their scheduled time only.
       </p>
     </header>
+
+    <TaskDayClockCard class="mb-4" @updated="onDayClockUpdated" />
 
     <div class="mb-4 flex items-center justify-between gap-2">
       <button
@@ -75,6 +77,20 @@
             {{ day.hours > 0 ? `${formatHours(day.hours)} h` : '—' }}
           </p>
         </div>
+        <p
+          v-if="day.day_work?.work_start_at"
+          class="px-3 py-2 text-xs font-medium text-blue-900 bg-blue-50/60 border-b border-gray-100 tabular-nums"
+        >
+          Work day: {{ formatTime(day.day_work.work_start_at) }} –
+          <template v-if="day.day_work.work_end_at">
+            {{ formatTime(day.day_work.work_end_at) }}
+            <span v-if="day.day_work.hours != null">
+              ({{ formatHours(day.day_work.hours) }} h<template v-if="day.day_work.break_hours > 0">
+                after {{ formatHours(day.day_work.break_hours * 60) }} min break</template>)
+            </span>
+          </template>
+          <span v-else class="text-amber-700">no End day</span>
+        </p>
         <ul class="divide-y divide-gray-100">
           <li
             v-for="entry in day.entries"
@@ -94,38 +110,29 @@
               {{ siteAddress(entry) }}
             </p>
             <p class="mt-1.5 text-[11px] text-gray-600 tabular-nums">
-              <template v-if="entry.has_actual">
-                Actual:
-                {{ formatTime(entry.work_start_at) }}
+              <template v-if="entry.scheduled_start || entry.scheduled_end">
+                Scheduled:
+                {{ entry.scheduled_start || '—' }}
                 –
-                {{ formatTime(entry.work_end_at) }}
-                <span v-if="entry.hours != null" class="text-gray-500">
-                  ({{ formatHours(entry.hours) }} h)
+                {{ entry.scheduled_end || '—' }}
+                <span v-if="entry.scheduled_hours != null" class="text-gray-500">
+                  ({{ formatHours(entry.scheduled_hours) }} h)
                 </span>
               </template>
-              <template v-else>
-                <span class="text-gray-400">No Start/End recorded</span>
-              </template>
+              <span v-else class="text-gray-400">No scheduled time</span>
             </p>
           </li>
         </ul>
       </li>
     </ul>
-
-    <p class="mt-6 text-xs text-gray-500 text-center leading-relaxed">
-      PM payroll Schedule is separate —
-      <RouterLink to="/tasks/schedule" class="font-medium text-blue-700 hover:underline">
-        open Schedule
-      </RouterLink>
-      to clock in on days your PM assigned.
-    </p>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import PageUserGuideLink from '@/components/PageUserGuideLink.vue'
+import TaskDayClockCard from '@/components/task-role/TaskDayClockCard.vue'
 import {
   fetchMyWorkTimesheet,
   type WorkerTimesheetEntry,
@@ -210,6 +217,13 @@ async function load(): Promise<void> {
     loadError.value = err.response?.data?.message || err.message || 'Could not load timesheet.'
   } finally {
     isLoading.value = false
+  }
+}
+
+function onDayClockUpdated(): void {
+  const today = new Date()
+  if (year.value === today.getFullYear() && month.value === today.getMonth() + 1) {
+    void load()
   }
 }
 

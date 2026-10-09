@@ -31,61 +31,6 @@
         <TaskSiteLocation class="mt-3" :site-name="siteName" :site-address="siteAddress" />
       </header>
 
-      <TaskWorkDayPicker v-model="workYmd" class="mb-4" />
-
-      <!-- Day timesheet punch (schedule row for this project + day) -->
-      <section class="mb-5 rounded-xl border border-blue-200 bg-blue-50/50 p-4 shadow-sm">
-        <h2 class="text-sm font-semibold text-gray-900 mb-1">Work on {{ dayLabel }}</h2>
-        <p class="mb-2">
-          <PageUserGuideLink
-            href="/CLIENT_SCHEDULE_AND_WORKER_TIMESHEET_GUIDE.html"
-            label="Testing guide"
-          />
-        </p>
-        <p class="text-xs text-gray-600 mb-3">
-          Start / End record actual time for <strong class="font-medium text-gray-800">this task on this day</strong>
-          and also write to the PM timesheet for the project day when a row exists.
-        </p>
-        <p
-          v-if="scheduleExpectedStart || scheduleExpectedEnd"
-          class="text-xs text-gray-800 mb-2 font-medium"
-        >
-          Timesheet expected: {{ scheduleExpectedStart || '—' }} – {{ scheduleExpectedEnd || '—' }}
-        </p>
-        <p class="text-[11px] text-gray-600 mb-3">
-          Actual (task day): {{ formatScheduleCheckIn(dayWorkStartAt, null) }}
-          · {{ formatScheduleCheckIn(dayWorkEndAt, null) }}
-        </p>
-        <div v-if="canEditProgress && isWorkDayToday" class="flex flex-wrap gap-2">
-          <button
-            type="button"
-            class="px-3 py-2 text-xs font-semibold rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-45"
-            :disabled="dayCheckInBusy || !!dayWorkStartAt"
-            @click="onDayCheckIn('start')"
-          >
-            Start work
-          </button>
-          <button
-            type="button"
-            class="px-3 py-2 text-xs font-semibold rounded-lg text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-45"
-            :disabled="dayCheckInBusy || !dayWorkStartAt || !!dayWorkEndAt"
-            @click="onDayCheckIn('end')"
-          >
-            End work
-          </button>
-        </div>
-        <p v-else-if="!isWorkDayToday" class="text-xs text-gray-500">
-          Start / End only for today. Change the day picker to today to clock in.
-        </p>
-        <p
-          v-if="dayCheckInMessage"
-          class="mt-2 text-xs"
-          :class="dayCheckInError ? 'text-red-700' : 'text-emerald-700'"
-        >
-          {{ dayCheckInMessage }}
-        </p>
-      </section>
-
       <!-- Task details -->
       <section class="mb-5 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Task details</h2>
@@ -155,7 +100,8 @@
         </template>
       </section>
 
-      <!-- Foreman field work -->
+      <!-- Field photos and notes are kept per day -->
+      <TaskWorkDayPicker v-if="showFieldWorkPanel" v-model="workYmd" class="mb-4" />
       <TaskFieldWorkPanel
         v-if="showFieldWorkPanel"
         ref="fieldWorkRef"
@@ -195,10 +141,10 @@
       </section>
 
       <section
-        v-if="fieldSubmittedAt"
+        v-if="isAwaitingReview && fieldSubmittedAt"
         class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4"
       >
-        <p class="text-sm font-medium text-emerald-900">Submitted for PM review</p>
+        <p class="text-sm font-medium text-emerald-900">Ready For Inspection · waiting for PM</p>
         <p class="text-xs text-emerald-800 mt-1">{{ formatDateTime(fieldSubmittedAt) }}</p>
       </section>
 
@@ -206,7 +152,7 @@
         <button
           type="button"
           class="w-full rounded-xl bg-orange-600 px-4 py-3 text-sm font-semibold text-white hover:bg-orange-700 disabled:opacity-60"
-          :disabled="isSubmitting || Boolean(fieldSubmittedAt) || !canSubmitNow"
+          :disabled="isSubmitting || isWorkLocked || !canSubmitNow"
           @click="submitWork"
         >
           {{ submitButtonLabel }}
@@ -240,18 +186,11 @@ import {
   resolveTaskSiteName,
 } from '@/core/utils/task-role-ux'
 import { formatTaskDateTimeDisplay } from '@/core/utils/task-field-work-datetime'
-import { tasksApi, type TaskDayWorkRow } from '@/core/utils/tasks-api'
-import { fetchMySchedule, type MyScheduleEntry } from '@/core/utils/schedule-weeks-api'
-import { readDevicePosition } from '@/core/utils/device-geolocation'
+import { tasksApi } from '@/core/utils/tasks-api'
 import TaskSiteLocation from '@/components/task-role/TaskSiteLocation.vue'
 import TaskFieldWorkPanel from '@/components/task-role/TaskFieldWorkPanel.vue'
 import TaskWorkDayPicker from '@/components/task-role/TaskWorkDayPicker.vue'
-import PageUserGuideLink from '@/components/PageUserGuideLink.vue'
-import {
-  formatWorkYmdLabel,
-  parseWorkYmd,
-  todayWorkYmd,
-} from '@/core/utils/work-day'
+import { parseWorkYmd, todayWorkYmd } from '@/core/utils/work-day'
 
 const route = useRoute()
 const router = useRouter()
@@ -275,45 +214,7 @@ const isSubmitting = ref(false)
 const submitMessage = ref('')
 const submitError = ref(false)
 
-const scheduleEntry = ref<MyScheduleEntry | null>(null)
-const dayWork = ref<TaskDayWorkRow | null>(null)
-const dayCheckInBusy = ref(false)
-const dayCheckInMessage = ref('')
-const dayCheckInError = ref(false)
-
-const dayLabel = computed(() => formatWorkYmdLabel(workYmd.value))
-const tasksBackLink = computed(
-  () => `/tasks/projects/${projectId.value}?workDate=${encodeURIComponent(workYmd.value)}`,
-)
-const scheduleExpectedStart = computed(() => (scheduleEntry.value?.expected_start_time ?? '').trim())
-const scheduleExpectedEnd = computed(() => (scheduleEntry.value?.expected_end_time ?? '').trim())
-const dayWorkStartAt = computed(() => dayWork.value?.work_start_at ?? null)
-const dayWorkEndAt = computed(() => dayWork.value?.work_end_at ?? null)
-const isWorkDayToday = computed(() => workYmd.value === todayWorkYmd())
-
-function formatScheduleCheckIn(at: string | null, distanceKm: number | null): string {
-  if (!at) return '—'
-  const d = parsePunchDateTime(at)
-  if (!d) return '—'
-  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-  if (distanceKm != null && Number.isFinite(distanceKm)) {
-    return `${time} (${distanceKm} km)`
-  }
-  return time
-}
-
-/** Prefer ISO with offset from API; fall back to treating MySQL wall clock as local. */
-function parsePunchDateTime(at: string): Date | null {
-  const s = at.trim()
-  if (!s) return null
-  if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(s)) {
-    const d = new Date(s)
-    return Number.isNaN(d.getTime()) ? null : d
-  }
-  const normalized = s.includes('T') ? s : s.replace(' ', 'T')
-  const d = new Date(normalized)
-  return Number.isNaN(d.getTime()) ? null : d
-}
+const tasksBackLink = computed(() => `/tasks/projects/${projectId.value}`)
 
 const uid = computed(() => resolveSessionUserId(authStore.currentUser))
 
@@ -343,14 +244,19 @@ const showFieldWorkPanel = computed(() => canEditProgress.value)
 
 const canSubmitWork = computed(() => canEditProgress.value)
 
-const isWorkLocked = computed(() => Boolean(fieldSubmittedAt.value))
+/** The PM re-opens a task by moving it back to a working status; then the crew can mark it done again. */
+const isAwaitingReview = computed(() =>
+  ['ready_for_inspection', 'completed', 'done'].includes(String(task.value?.status ?? '')),
+)
+
+const isWorkLocked = computed(() => Boolean(fieldSubmittedAt.value) && isAwaitingReview.value)
 
 const canSubmitNow = computed(() => true)
 
 const submitButtonLabel = computed(() => {
-  if (fieldSubmittedAt.value) return 'Already submitted'
-  if (isSubmitting.value) return 'Submitting…'
-  return 'Submit work for review'
+  if (isWorkLocked.value) return 'Already marked done'
+  if (isSubmitting.value) return 'Saving…'
+  return 'Mark as done (Ready For Inspection)'
 })
 
 const progressValue = computed(() => {
@@ -418,9 +324,22 @@ const plannedTimeRange = computed(() => {
   const t = task.value
   if (!t?.start_time && !t?.end_time) return ''
   const fmt = (time: string) => time.slice(0, 5)
-  if (t.start_time && t.end_time) return `${fmt(t.start_time)} – ${fmt(t.end_time)}`
+  if (t.start_time && t.end_time) {
+    const hours = scheduledHoursPerDay(t.start_time, t.end_time)
+    const range = `${fmt(t.start_time)} – ${fmt(t.end_time)}`
+    return hours > 0 ? `${range} (${hours} h/day)` : range
+  }
   return t.start_time ? `From ${fmt(t.start_time)}` : t.end_time ? `Until ${fmt(t.end_time)}` : ''
 })
+
+function scheduledHoursPerDay(start: string, end: string): number {
+  const toMinutes = (time: string) => {
+    const [h, m] = time.split(':').map(Number)
+    return (h ?? 0) * 60 + (m ?? 0)
+  }
+  const minutes = toMinutes(end) - toMinutes(start)
+  return minutes > 0 ? Math.round((minutes / 60) * 100) / 100 : 0
+}
 
 function formatDateTime(iso: string): string {
   return formatTaskDateTimeDisplay(iso)
@@ -490,7 +409,7 @@ async function submitWork(): Promise<void> {
   try {
     const updated = await tasksApi.submitTask(pid, tid)
     task.value = updated
-    submitMessage.value = 'Work submitted. Waiting for PM review.'
+    submitMessage.value = 'Marked Ready For Inspection. Waiting for PM review.'
   } catch {
     submitError.value = true
     submitMessage.value = 'Could not submit work. Try again.'
@@ -499,68 +418,12 @@ async function submitWork(): Promise<void> {
   }
 }
 
-async function loadDayContext(): Promise<void> {
-  const pid = projectId.value
-  const tid = taskId.value
-  const day = parseWorkYmd(workYmd.value) ?? todayWorkYmd()
-  workYmd.value = day
-  scheduleEntry.value = null
-  dayWork.value = null
-  dayCheckInMessage.value = ''
-  if (!pid || !tid) return
-  try {
-    const [entries, dayRow] = await Promise.all([
-      fetchMySchedule(day, day).catch(() => [] as MyScheduleEntry[]),
-      tasksApi.getTaskDayWork(pid, tid, day).catch(() => null),
-    ])
-    scheduleEntry.value =
-      entries.find(
-        (e) => Number(e.project_id) === pid && String(e.work_date).slice(0, 10) === day,
-      ) ?? null
-    dayWork.value = dayRow
-  } catch {
-    scheduleEntry.value = null
-    dayWork.value = null
-  }
-}
-
-async function onDayCheckIn(phase: 'start' | 'end'): Promise<void> {
-  const pid = projectId.value
-  const tid = taskId.value
-  const day = workYmd.value
-  if (!pid || !tid) return
-  dayCheckInBusy.value = true
-  dayCheckInMessage.value = ''
-  dayCheckInError.value = false
-  try {
-    const { lat, lng } = await readDevicePosition()
-    const result = await tasksApi.checkInTaskDayWork(pid, tid, day, phase, lat, lng, true)
-    dayWork.value = result.day_work
-    if (result.schedule_entry) {
-      await loadDayContext()
-    }
-    dayCheckInMessage.value =
-      phase === 'start'
-        ? 'Start recorded for this task day (and timesheet if present).'
-        : 'End recorded for this task day (and timesheet if present).'
-  } catch (e: unknown) {
-    dayCheckInError.value = true
-    const err = e as { response?: { data?: { message?: string } }; message?: string }
-    dayCheckInMessage.value =
-      err.response?.data?.message || err.message || 'Check-in failed.'
-  } finally {
-    dayCheckInBusy.value = false
-  }
-}
-
 onMounted(() => {
   void loadTask()
-  void loadDayContext()
 })
 
 watch([projectId, taskId], () => {
   void loadTask()
-  void loadDayContext()
 })
 
 watch(workYmd, (day) => {
@@ -568,7 +431,6 @@ watch(workYmd, (day) => {
   if (String(route.query.workDate ?? '') !== parsed) {
     void router.replace({ query: { ...route.query, workDate: parsed } })
   }
-  void loadDayContext()
 })
 
 watch(

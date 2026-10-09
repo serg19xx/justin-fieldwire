@@ -3,17 +3,14 @@
     <header class="mb-4">
       <h1 class="text-xl font-semibold text-gray-900">My work</h1>
       <p class="text-sm text-gray-500 mt-1">
-        Projects and tasks from the plan (Gantt) for the selected day. Start / End on Tasks;
-        Schedule shows destination, PM notes, and hours.
+        Projects with your tasks from the plan (Gantt). Open a project to see its task list.
       </p>
     </header>
-
-    <TaskWorkDayPicker v-model="workYmd" class="mb-4" :disabled="isLoading" />
 
     <section
       v-if="!isLoading && dayPmNotes.length > 0"
       class="mb-4 space-y-2"
-      aria-label="Notes from PM for this day"
+      aria-label="Notes from PM for today"
     >
       <p class="text-xs font-semibold uppercase tracking-wide text-amber-900/80">Notes from PM</p>
       <div
@@ -23,12 +20,6 @@
       >
         <p class="text-xs font-medium text-amber-950 truncate">{{ note.projectName }}</p>
         <p class="mt-1 text-sm text-gray-900 whitespace-pre-wrap break-words">{{ note.text }}</p>
-        <RouterLink
-          :to="{ path: '/tasks/schedule', query: { workDate: workYmd } }"
-          class="mt-2 inline-block text-xs font-medium text-blue-700 hover:underline"
-        >
-          Open Schedule →
-        </RouterLink>
       </div>
     </section>
 
@@ -60,7 +51,7 @@
 
     <div v-if="isLoading" class="bg-white rounded-xl border border-gray-200 p-8 text-center">
       <div class="animate-spin w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full mx-auto" />
-      <p class="text-sm text-gray-500 mt-3">Loading day…</p>
+      <p class="text-sm text-gray-500 mt-3">Loading projects…</p>
     </div>
 
     <div v-else-if="loadError" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
@@ -104,7 +95,10 @@
             {{ pmNoteForProject(site.projectId) }}
           </p>
           <p class="text-xs text-orange-700 mt-2 font-medium">
-            {{ site.taskCount }} task{{ site.taskCount === 1 ? '' : 's' }} on {{ dayLabel }} →
+            <template v-if="site.openCount > 0">
+              {{ site.openCount }} open task{{ site.openCount === 1 ? '' : 's' }} →
+            </template>
+            <template v-else>All tasks closed →</template>
           </p>
         </RouterLink>
       </li>
@@ -115,22 +109,15 @@
         <RouterLink to="/tasks/timesheet" class="font-medium text-orange-700 hover:underline">
           Open Timesheet
         </RouterLink>
-        — actual hours from tasks (read-only).
-      </span>
-      <span class="block">
-        <RouterLink to="/tasks/schedule" class="font-medium text-blue-700 hover:underline">
-          Open Schedule
-        </RouterLink>
-        — destination, PM notes, and expected / actual hours for the day.
+        — start and end your work day.
       </span>
     </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRoute, useRouter, RouterLink } from 'vue-router'
-import TaskWorkDayPicker from '@/components/task-role/TaskWorkDayPicker.vue'
+import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
 import type { Project } from '@/core/utils/project-api'
 import { fetchProjectsForTaskScope } from '@/core/utils/project-list-for-user'
@@ -141,24 +128,24 @@ import {
   type TaskRoleProjectBucket,
 } from '@/core/utils/project-sys-status'
 import { resolveSessionUserId } from '@/core/utils/session-user-id'
-import { filterTasksForInvolvedUser } from '@/core/utils/task-role-ux'
+import { filterTasksForInvolvedUser, getTaskRoleStatusBucket } from '@/core/utils/task-role-ux'
 import { tasksApi } from '@/core/utils/tasks-api'
 import { fetchMySchedule } from '@/core/utils/schedule-weeks-api'
-import {
-  formatWorkYmdLabel,
-  parseWorkYmd,
-  taskCoversWorkYmd,
-  todayWorkYmd,
-} from '@/core/utils/work-day'
+import { todayWorkYmd } from '@/core/utils/work-day'
 
-interface DaySiteRow {
+interface SiteRow {
   projectId: number
   projectName: string
   address: string
-  taskCount: number
+  openCount: number
   badgeLabel: string
   badgeClass: string
   bucket: Exclude<TaskRoleProjectBucket, 'hidden'>
+}
+
+interface ProjectTaskCounts {
+  total: number
+  open: number
 }
 
 interface DayPmNote {
@@ -168,30 +155,25 @@ interface DayPmNote {
   text: string
 }
 
-const route = useRoute()
-const router = useRouter()
 const authStore = useAuthStore()
 
-const workYmd = ref(parseWorkYmd(route.query.workDate) ?? todayWorkYmd())
 const isLoading = ref(true)
 const loadError = ref('')
 const allProjects = ref<Project[]>([])
-const taskCountByProject = ref<Record<number, number>>({})
+const taskCountsByProject = ref<Record<number, ProjectTaskCounts>>({})
 const dayPmNotes = ref<DayPmNote[]>([])
 const projectBucket = ref<Exclude<TaskRoleProjectBucket, 'hidden'>>('in_work')
-
-const dayLabel = computed(() => formatWorkYmdLabel(workYmd.value))
 
 function pmNoteForProject(projectId: number): string {
   return dayPmNotes.value.find((n) => n.projectId === projectId)?.text ?? ''
 }
 
-const daySites = computed((): DaySiteRow[] => {
-  const counts = taskCountByProject.value
-  const out: DaySiteRow[] = []
+const sites = computed((): SiteRow[] => {
+  const counts = taskCountsByProject.value
+  const out: SiteRow[] = []
   for (const p of allProjects.value) {
-    const n = counts[p.id] ?? 0
-    if (n <= 0) continue
+    const c = counts[p.id]
+    if (!c || c.total <= 0) continue
     const bucket = getTaskRoleProjectListBucket(p)
     if (bucket === 'hidden') continue
     const sys = resolveProjectSysStatus(p)
@@ -203,7 +185,7 @@ const daySites = computed((): DaySiteRow[] => {
       projectId: p.id,
       projectName: (p.prj_name || '').trim() || `Project #${p.id}`,
       address: (p.address || '').trim(),
-      taskCount: n,
+      openCount: c.open,
       badgeLabel: PROJECT_SYS_STATUS_LABELS[sys],
       badgeClass,
       bucket: bucket === 'archived' ? 'archived' : 'in_work',
@@ -212,8 +194,8 @@ const daySites = computed((): DaySiteRow[] => {
   return out.sort((a, b) => a.projectName.localeCompare(b.projectName))
 })
 
-const inWorkSites = computed(() => daySites.value.filter((s) => s.bucket === 'in_work'))
-const archivedSites = computed(() => daySites.value.filter((s) => s.bucket === 'archived'))
+const inWorkSites = computed(() => sites.value.filter((s) => s.bucket === 'in_work'))
+const archivedSites = computed(() => sites.value.filter((s) => s.bucket === 'archived'))
 
 const projectTabs = computed(() => [
   { id: 'in_work' as const, label: 'In work', count: inWorkSites.value.length },
@@ -225,51 +207,53 @@ const visibleSites = computed(() =>
 )
 
 const emptyMessage = computed(() => {
-  if (daySites.value.length === 0) {
-    return `No planned tasks cover ${dayLabel.value}. Pick another day or check the Gantt plan.`
+  if (sites.value.length === 0) {
+    return 'You have no tasks in the plan yet. Check with your project manager.'
   }
   return projectBucket.value === 'in_work'
-    ? 'No in-work projects with tasks on this day.'
-    : 'No closed projects with tasks on this day.'
+    ? 'No in-work projects with your tasks.'
+    : 'No closed projects with your tasks.'
 })
 
 function projectLink(projectId: number): string {
-  return `/tasks/projects/${projectId}?workDate=${encodeURIComponent(workYmd.value)}`
+  return `/tasks/projects/${projectId}`
 }
 
-async function loadDay(): Promise<void> {
-  const day = parseWorkYmd(workYmd.value) ?? todayWorkYmd()
-  workYmd.value = day
+async function loadProjects(): Promise<void> {
+  const today = todayWorkYmd()
   isLoading.value = true
   loadError.value = ''
-  taskCountByProject.value = {}
+  taskCountsByProject.value = {}
   dayPmNotes.value = []
   try {
     const list = await fetchProjectsForTaskScope(authStore.currentUser, { page: 1, limit: 100 })
     allProjects.value = list.filter((p) => getTaskRoleProjectListBucket(p) !== 'hidden')
     const uid = resolveSessionUserId(authStore.currentUser)
-    const counts: Record<number, number> = {}
-    const schedulePromise = fetchMySchedule(day, day).catch(() => [])
+    const counts: Record<number, ProjectTaskCounts> = {}
+    const schedulePromise = fetchMySchedule(today, today).catch(() => [])
     await Promise.all(
       allProjects.value.map(async (p) => {
         try {
           const res = await tasksApi.getAll(p.id, 1, 500)
           let tasks = res.tasks ?? []
           if (uid != null) tasks = filterTasksForInvolvedUser(tasks, uid)
-          counts[p.id] = tasks.filter((t) => taskCoversWorkYmd(t, day)).length
+          counts[p.id] = {
+            total: tasks.length,
+            open: tasks.filter((t) => getTaskRoleStatusBucket(String(t.status)) !== 'finished').length,
+          }
         } catch {
-          counts[p.id] = 0
+          counts[p.id] = { total: 0, open: 0 }
         }
       }),
     )
-    taskCountByProject.value = counts
+    taskCountsByProject.value = counts
     const scheduleEntries = await schedulePromise
     const notes: DayPmNote[] = []
     for (const e of scheduleEntries) {
       const text = typeof e.assignment_note === 'string' ? e.assignment_note.trim() : ''
       if (!text) continue
       const ymd = String(e.work_date || '').slice(0, 10)
-      if (ymd !== day) continue
+      if (ymd !== today) continue
       notes.push({
         entryId: e.scheduleRowIdForMessages > 0 ? e.scheduleRowIdForMessages : e.id,
         projectId: e.project_id,
@@ -281,7 +265,7 @@ async function loadDay(): Promise<void> {
     if (inWorkSites.value.length > 0) projectBucket.value = 'in_work'
     else if (archivedSites.value.length > 0) projectBucket.value = 'archived'
   } catch {
-    loadError.value = 'Could not load projects for this day.'
+    loadError.value = 'Could not load projects.'
     allProjects.value = []
     dayPmNotes.value = []
   } finally {
@@ -289,23 +273,7 @@ async function loadDay(): Promise<void> {
   }
 }
 
-watch(
-  workYmd,
-  (day) => {
-    const parsed = parseWorkYmd(day) ?? todayWorkYmd()
-    if (String(route.query.workDate ?? '') !== parsed) {
-      void router.replace({ query: { ...route.query, workDate: parsed } })
-    }
-    void loadDay()
-  },
-  { immediate: true },
-)
-
-watch(
-  () => route.query.workDate,
-  (q) => {
-    const parsed = parseWorkYmd(q)
-    if (parsed && parsed !== workYmd.value) workYmd.value = parsed
-  },
-)
+onMounted(() => {
+  void loadProjects()
+})
 </script>

@@ -92,7 +92,7 @@
     <section class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <h2 class="text-sm font-semibold text-gray-900 mb-1">Your notes &amp; additions</h2>
       <p class="text-xs text-gray-500 mb-3">
-        General site report for the PM (materials, access issues, handoff). Day hours are recorded on Schedule.
+        General site report for the PM (materials, access issues, handoff).
       </p>
       <textarea
         v-model="fieldNotesDraft"

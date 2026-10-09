@@ -22,7 +22,7 @@ export const CATEGORIES: Record<string, Category> = {
   task: {
     name: 'Task',
     layout: 'TaskLayout',
-    defaultRoute: '/tasks/schedule',
+    defaultRoute: '/tasks/projects',
     description: 'Workers, foremen, and field staff',
   },
 }

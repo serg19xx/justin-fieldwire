@@ -116,8 +116,8 @@ export const MENU_CONFIG: Record<string, MenuItem[]> = {
       icon: 'dashboard',
     },
     {
-      label: 'Schedule',
-      route: '/tasks/schedule',
+      label: 'Tasks',
+      route: '/tasks/projects',
       icon: 'checklist',
     },
     {
