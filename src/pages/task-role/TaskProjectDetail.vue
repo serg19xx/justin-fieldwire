@@ -18,25 +18,6 @@
       <p v-if="projectAddress" class="text-xs text-gray-500 mt-1">{{ projectAddress }}</p>
     </header>
 
-    <div v-if="isForeman" class="mb-3 flex rounded-lg border border-gray-200 p-1 bg-gray-50">
-      <button
-        type="button"
-        class="flex-1 rounded-md py-2 text-sm font-medium transition-colors"
-        :class="scopeFilter === 'mine' ? 'bg-white text-orange-700 shadow-sm' : 'text-gray-600'"
-        @click="scopeFilter = 'mine'"
-      >
-        My tasks
-      </button>
-      <button
-        type="button"
-        class="flex-1 rounded-md py-2 text-sm font-medium transition-colors"
-        :class="scopeFilter === 'all' ? 'bg-white text-orange-700 shadow-sm' : 'text-gray-600'"
-        @click="scopeFilter = 'all'"
-      >
-        All tasks
-      </button>
-    </div>
-
     <div
       class="mb-4 flex rounded-lg border border-gray-200 p-1 bg-gray-50"
       role="tablist"
@@ -173,7 +154,6 @@ import {
   filterTasksForInvolvedUser,
   formatBackendTaskStatus,
   getTaskRoleStatusBucket,
-  isTaskRoleForeman,
   resolveTaskSiteAddress,
 } from '@/core/utils/task-role-ux'
 import { taskFieldPhotosApi } from '@/core/utils/task-field-photos-api'
@@ -193,7 +173,6 @@ const projectAddress = ref('')
 const tasks = ref<Task[]>([])
 const isLoading = ref(true)
 const loadError = ref('')
-const scopeFilter = ref<'mine' | 'all'>('mine')
 const listTab = ref<TaskListTab>('open')
 const markDoneTask = ref<Task | null>(null)
 const isMarkingDone = ref(false)
@@ -201,14 +180,7 @@ const markDoneError = ref('')
 const actionMessage = ref('')
 const isActionError = ref(false)
 
-const isForeman = computed(() =>
-  isTaskRoleForeman(authStore.currentUser?.role_code, authStore.currentUser?.role_id),
-)
-
 const scopedTasks = computed(() => {
-  if (isForeman.value && scopeFilter.value === 'all') {
-    return tasks.value
-  }
   const uid = resolveSessionUserId(authStore.currentUser)
   return uid != null ? filterTasksForInvolvedUser(tasks.value, uid) : []
 })

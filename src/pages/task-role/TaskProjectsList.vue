@@ -4,24 +4,10 @@
       <h1 class="text-xl font-semibold text-gray-900">My work</h1>
       <p class="text-sm text-gray-500 mt-1">
         Projects with your tasks from the plan (Gantt). Open a project to see its task list.
+        Daily notes from your PM are in
+        <RouterLink to="/calendar" class="font-medium text-orange-700 hover:underline">My Calendar</RouterLink>.
       </p>
     </header>
-
-    <section
-      v-if="!isLoading && dayPmNotes.length > 0"
-      class="mb-4 space-y-2"
-      aria-label="Notes from PM for today"
-    >
-      <p class="text-xs font-semibold uppercase tracking-wide text-amber-900/80">Notes from PM</p>
-      <div
-        v-for="note in dayPmNotes"
-        :key="`${note.projectId}-${note.entryId}`"
-        class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5"
-      >
-        <p class="text-xs font-medium text-amber-950 truncate">{{ note.projectName }}</p>
-        <p class="mt-1 text-sm text-gray-900 whitespace-pre-wrap break-words">{{ note.text }}</p>
-      </div>
-    </section>
 
     <div
       class="mb-4 flex rounded-lg border border-gray-200 p-1 bg-gray-50"
@@ -84,20 +70,11 @@
             </span>
           </div>
           <p v-if="site.address" class="text-xs text-gray-500 mt-1 truncate">{{ site.address }}</p>
-          <p
-            v-if="pmNoteForProject(site.projectId)"
-            class="mt-2 text-xs text-gray-800 whitespace-pre-wrap break-words rounded-md bg-amber-50 border border-amber-100 px-2 py-1.5"
-            @click.prevent
-          >
-            <span class="block text-[10px] font-semibold uppercase tracking-wide text-amber-900/80 mb-0.5"
-              >Note from PM</span
-            >
-            {{ pmNoteForProject(site.projectId) }}
-          </p>
           <p class="text-xs text-orange-700 mt-2 font-medium">
             <template v-if="site.openCount > 0">
               {{ site.openCount }} open task{{ site.openCount === 1 ? '' : 's' }} →
             </template>
+            <template v-else-if="site.totalCount === 0">No tasks assigned to you yet →</template>
             <template v-else>All tasks closed →</template>
           </p>
         </RouterLink>
@@ -130,14 +107,13 @@ import {
 import { resolveSessionUserId } from '@/core/utils/session-user-id'
 import { filterTasksForInvolvedUser, getTaskRoleStatusBucket } from '@/core/utils/task-role-ux'
 import { tasksApi } from '@/core/utils/tasks-api'
-import { fetchMySchedule } from '@/core/utils/schedule-weeks-api'
-import { todayWorkYmd } from '@/core/utils/work-day'
 
 interface SiteRow {
   projectId: number
   projectName: string
   address: string
   openCount: number
+  totalCount: number
   badgeLabel: string
   badgeClass: string
   bucket: Exclude<TaskRoleProjectBucket, 'hidden'>
@@ -148,32 +124,26 @@ interface ProjectTaskCounts {
   open: number
 }
 
-interface DayPmNote {
-  entryId: number
-  projectId: number
-  projectName: string
-  text: string
-}
-
 const authStore = useAuthStore()
 
 const isLoading = ref(true)
 const loadError = ref('')
 const allProjects = ref<Project[]>([])
 const taskCountsByProject = ref<Record<number, ProjectTaskCounts>>({})
-const dayPmNotes = ref<DayPmNote[]>([])
 const projectBucket = ref<Exclude<TaskRoleProjectBucket, 'hidden'>>('in_work')
 
-function pmNoteForProject(projectId: number): string {
-  return dayPmNotes.value.find((n) => n.projectId === projectId)?.text ?? ''
+/** The project foreman sees their projects even before any task is assigned to them. */
+function isForemanOfProject(p: Project): boolean {
+  const uid = resolveSessionUserId(authStore.currentUser)
+  return uid != null && p.project_foreman_id != null && Number(p.project_foreman_id) === uid
 }
 
 const sites = computed((): SiteRow[] => {
   const counts = taskCountsByProject.value
   const out: SiteRow[] = []
   for (const p of allProjects.value) {
-    const c = counts[p.id]
-    if (!c || c.total <= 0) continue
+    const c = counts[p.id] ?? { total: 0, open: 0 }
+    if (c.total <= 0 && !isForemanOfProject(p)) continue
     const bucket = getTaskRoleProjectListBucket(p)
     if (bucket === 'hidden') continue
     const sys = resolveProjectSysStatus(p)
@@ -186,6 +156,7 @@ const sites = computed((): SiteRow[] => {
       projectName: (p.prj_name || '').trim() || `Project #${p.id}`,
       address: (p.address || '').trim(),
       openCount: c.open,
+      totalCount: c.total,
       badgeLabel: PROJECT_SYS_STATUS_LABELS[sys],
       badgeClass,
       bucket: bucket === 'archived' ? 'archived' : 'in_work',
@@ -220,17 +191,14 @@ function projectLink(projectId: number): string {
 }
 
 async function loadProjects(): Promise<void> {
-  const today = todayWorkYmd()
   isLoading.value = true
   loadError.value = ''
   taskCountsByProject.value = {}
-  dayPmNotes.value = []
   try {
     const list = await fetchProjectsForTaskScope(authStore.currentUser, { page: 1, limit: 100 })
     allProjects.value = list.filter((p) => getTaskRoleProjectListBucket(p) !== 'hidden')
     const uid = resolveSessionUserId(authStore.currentUser)
     const counts: Record<number, ProjectTaskCounts> = {}
-    const schedulePromise = fetchMySchedule(today, today).catch(() => [])
     await Promise.all(
       allProjects.value.map(async (p) => {
         try {
@@ -247,27 +215,11 @@ async function loadProjects(): Promise<void> {
       }),
     )
     taskCountsByProject.value = counts
-    const scheduleEntries = await schedulePromise
-    const notes: DayPmNote[] = []
-    for (const e of scheduleEntries) {
-      const text = typeof e.assignment_note === 'string' ? e.assignment_note.trim() : ''
-      if (!text) continue
-      const ymd = String(e.work_date || '').slice(0, 10)
-      if (ymd !== today) continue
-      notes.push({
-        entryId: e.scheduleRowIdForMessages > 0 ? e.scheduleRowIdForMessages : e.id,
-        projectId: e.project_id,
-        projectName: (e.project_name ?? '').trim() || `Project #${e.project_id}`,
-        text,
-      })
-    }
-    dayPmNotes.value = notes
     if (inWorkSites.value.length > 0) projectBucket.value = 'in_work'
     else if (archivedSites.value.length > 0) projectBucket.value = 'archived'
   } catch {
     loadError.value = 'Could not load projects.'
     allProjects.value = []
-    dayPmNotes.value = []
   } finally {
     isLoading.value = false
   }

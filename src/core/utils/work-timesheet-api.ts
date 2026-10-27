@@ -21,6 +21,8 @@ export interface WorkerDayWork {
   /** Paid hours: span between start and end minus the unpaid break. */
   hours: number | null
   break_hours: number
+  has_start_photo: boolean
+  has_end_photo: boolean
 }
 
 export interface WorkerTimesheetDay {
@@ -83,6 +85,8 @@ function mapDayWork(raw: unknown): WorkerDayWork | null {
     work_end_at: pickNullableString(r.work_end_at),
     hours: pickNullableNumber(r.hours),
     break_hours: pickNullableNumber(r.break_hours) ?? 0,
+    has_start_photo: r.has_start_photo === true,
+    has_end_photo: r.has_end_photo === true,
   }
 }
 
@@ -141,19 +145,119 @@ export async function fetchMyWorkDay(workDateYmd?: string): Promise<WorkerDaySta
   }
 }
 
-/** Location is optional; the API records the punch without it. */
+/** The on-site photo is required; location is optional and the API records the punch without it. */
 export async function checkInMyWorkDay(
   workDateYmd: string,
   phase: 'start' | 'end',
   position: { lat: number; lng: number } | null,
+  photo: File,
 ): Promise<WorkerDayWork> {
-  const response = await api.post('/api/v1/me/work-day/check-in', {
-    work_date: workDateYmd,
-    phase,
-    ...(position ? { lat: position.lat, lng: position.lng } : {}),
+  const form = new FormData()
+  form.append('work_date', workDateYmd)
+  form.append('phase', phase)
+  form.append('photo', photo)
+  if (position) {
+    form.append('lat', String(position.lat))
+    form.append('lng', String(position.lng))
+  }
+  const response = await api.post('/api/v1/me/work-day/check-in', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
   })
   const data = readEnvelopeData<Record<string, unknown>>(response.data)
   const dayWork = mapDayWork(data?.day_work)
   if (!dayWork) throw new Error('Invalid work day response')
   return dayWork
+}
+
+/** Start day / End day photo of a worker (self, admin or PM). */
+export async function fetchWorkDayPhoto(
+  userId: number,
+  workDateYmd: string,
+  phase: 'start' | 'end',
+): Promise<Blob> {
+  const response = await api.get(`/api/v1/users/${userId}/work-day/${workDateYmd}/photo/${phase}`, {
+    responseType: 'blob',
+  })
+  return response.data as Blob
+}
+
+/** One destination from the published PM Schedule. */
+export interface WorkWeekSlot {
+  entry_id: number
+  project_id: number
+  project_name: string | null
+  project_address: string | null
+  work_date: string
+  day_part: 'am' | 'pm' | 'full'
+  assignment_note: string | null
+  distance_km: string | null
+  expected_start_time: string | null
+  expected_end_time: string | null
+}
+
+export interface WorkWeekDay {
+  work_date: string
+  slots: WorkWeekSlot[]
+  day_work: WorkerDayWork | null
+  scheduled_hours: number
+  worked_hours: number
+  km: number
+}
+
+export interface WorkWeek {
+  week_start: string
+  week_end: string
+  today: string
+  break_hours: number
+  days: WorkWeekDay[]
+  totals: { scheduled_hours: number; worked_hours: number; km: number }
+}
+
+function mapWeekSlot(raw: Record<string, unknown>): WorkWeekSlot {
+  const part = String(raw.day_part ?? 'full')
+  return {
+    entry_id: Number(raw.entry_id) || 0,
+    project_id: Number(raw.project_id) || 0,
+    project_name: pickNullableString(raw.project_name),
+    project_address: pickNullableString(raw.project_address),
+    work_date: String(raw.work_date ?? ''),
+    day_part: part === 'am' || part === 'pm' ? part : 'full',
+    assignment_note: pickNullableString(raw.assignment_note),
+    distance_km: pickNullableString(raw.distance_km),
+    expected_start_time: pickNullableString(raw.expected_start_time),
+    expected_end_time: pickNullableString(raw.expected_end_time),
+  }
+}
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return v != null && typeof v === 'object'
+}
+
+/** Published PM Schedule for one week (Monday..Sunday) with punches and weekly totals. */
+export async function fetchMyWorkWeek(weekStartYmd?: string): Promise<WorkWeek> {
+  const response = await api.get('/api/v1/me/work-week', {
+    params: weekStartYmd ? { week_start: weekStartYmd } : {},
+  })
+  const data = readEnvelopeData<Record<string, unknown>>(response.data) ?? {}
+  const totals = isRecord(data.totals) ? data.totals : {}
+  const days = Array.isArray(data.days) ? data.days.filter(isRecord) : []
+  return {
+    week_start: String(data.week_start ?? ''),
+    week_end: String(data.week_end ?? ''),
+    today: String(data.today ?? ''),
+    break_hours: pickNullableNumber(data.break_hours) ?? 0,
+    totals: {
+      scheduled_hours: pickNullableNumber(totals.scheduled_hours) ?? 0,
+      worked_hours: pickNullableNumber(totals.worked_hours) ?? 0,
+      km: pickNullableNumber(totals.km) ?? 0,
+    },
+    days: days.map((d) => ({
+      work_date: String(d.work_date ?? ''),
+      slots: (Array.isArray(d.slots) ? d.slots.filter(isRecord) : []).map(mapWeekSlot),
+      day_work: mapDayWork(d.day_work),
+      scheduled_hours: pickNullableNumber(d.scheduled_hours) ?? 0,
+      worked_hours: pickNullableNumber(d.worked_hours) ?? 0,
+      km: pickNullableNumber(d.km) ?? 0,
+    })),
+  }
 }

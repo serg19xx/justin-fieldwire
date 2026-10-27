@@ -28,18 +28,18 @@
         type="button"
         class="shrink-0 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
         :disabled="isBusy"
-        @click="punch('start')"
+        @click="openPhoto('start')"
       >
-        {{ isBusy ? 'Saving…' : 'Start day' }}
+        Start day
       </button>
       <button
         v-else-if="!isLoading && !dayWork?.work_end_at"
         type="button"
         class="shrink-0 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
         :disabled="isBusy"
-        @click="punch('end')"
+        @click="openPhoto('end')"
       >
-        {{ isBusy ? 'Saving…' : 'End day' }}
+        End day
       </button>
       <span
         v-else-if="!isLoading"
@@ -50,12 +50,22 @@
     </div>
 
     <p v-if="errorMessage" class="mt-2 text-xs text-red-700">{{ errorMessage }}</p>
+
+    <TaskDayPhotoDialog
+      :phase="photoPhase"
+      :is-busy="isBusy"
+      :error-message="photoError"
+      @confirm="punch"
+      @cancel="photoPhase = null"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import TaskDayPhotoDialog from '@/components/task-role/TaskDayPhotoDialog.vue'
 import { readDevicePosition } from '@/core/utils/device-geolocation'
+import { fileToCompressedUploadFile, isAcceptedImageFile } from '@/core/utils/task-field-photos-storage'
 import {
   checkInMyWorkDay,
   fetchMyWorkDay,
@@ -72,6 +82,8 @@ const dayWork = ref<WorkerDayWork | null>(null)
 const isLoading = ref(true)
 const isBusy = ref(false)
 const errorMessage = ref('')
+const photoPhase = ref<'start' | 'end' | null>(null)
+const photoError = ref('')
 
 const todayLabel = computed(() => (today.value ? formatWorkYmdLabel(today.value) : ''))
 
@@ -106,19 +118,30 @@ async function load(): Promise<void> {
   }
 }
 
-async function punch(phase: 'start' | 'end'): Promise<void> {
-  if (!today.value) return
-  if (phase === 'end' && !window.confirm('End your work day now? This cannot be undone.')) return
-  isBusy.value = true
+function openPhoto(phase: 'start' | 'end'): void {
   errorMessage.value = ''
+  photoError.value = ''
+  photoPhase.value = phase
+}
+
+async function punch(file: File): Promise<void> {
+  const phase = photoPhase.value
+  if (!today.value || !phase) return
+  if (!isAcceptedImageFile(file)) {
+    photoError.value = 'This file is not a supported image. Take the photo again.'
+    return
+  }
+  isBusy.value = true
+  photoError.value = ''
   try {
-    const position = await tryReadPosition()
-    const saved = await checkInMyWorkDay(today.value, phase, position)
+    const [photo, position] = await Promise.all([fileToCompressedUploadFile(file), tryReadPosition()])
+    const saved = await checkInMyWorkDay(today.value, phase, position, photo)
     dayWork.value = saved
+    photoPhase.value = null
     emit('updated', saved)
   } catch (e: unknown) {
     const err = e as { response?: { data?: { message?: string } }; message?: string }
-    errorMessage.value = err.response?.data?.message || err.message || 'Could not save. Try again.'
+    photoError.value = err.response?.data?.message || err.message || 'Could not save. Try again.'
   } finally {
     isBusy.value = false
   }

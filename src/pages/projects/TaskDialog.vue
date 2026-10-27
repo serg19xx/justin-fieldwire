@@ -223,8 +223,42 @@
           </div>
 
 
-          <!-- Dates and Times Row -->
+          <!-- Estimated time to complete -->
           <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Estimated Time to Complete <span class="text-gray-400">(optional)</span>
+            </label>
+            <div class="grid grid-cols-3 gap-3">
+              <label v-for="unit in estimateUnits" :key="unit.key" class="block">
+                <input
+                  v-model.number="estimate[unit.key]"
+                  :disabled="mode === 'view'"
+                  type="number"
+                  inputmode="numeric"
+                  min="0"
+                  :max="unit.max"
+                  step="1"
+                  placeholder="0"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900 tabular-nums"
+                />
+                <span class="mt-1 block text-xs text-gray-600">{{ unit.label }}</span>
+              </label>
+            </div>
+            <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+              <span v-if="!plannedDatesVisible" class="text-gray-500">{{ plannedDatesSummary }}</span>
+              <button
+                v-if="mode !== 'view'"
+                type="button"
+                class="font-medium text-blue-700 hover:text-blue-900"
+                @click="showPlannedDates = !showPlannedDates"
+              >
+                {{ plannedDatesVisible ? 'Hide planned dates' : mode === 'create' ? 'Set dates manually' : 'Edit planned dates' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Dates and Times Row -->
+          <div v-if="plannedDatesVisible" class="mb-4 rounded-lg border border-gray-200 bg-gray-50/60 p-3">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2"> Start Date * </label>
@@ -276,7 +310,7 @@
 
           <!-- Duration and Progress Row -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
+            <div v-if="plannedDatesVisible">
               <label class="block text-sm font-medium text-gray-700 mb-2">
                 Duration (Days) <span class="text-gray-400">(auto-calculated)</span>
               </label>
@@ -600,6 +634,14 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import type { Task, TaskStatus, MilestoneType } from '@/core/types/task'
+import {
+  emptyTaskEstimate,
+  estimateSpanDays,
+  joinEstimateParts,
+  splitEstimateMinutes,
+  type TaskEstimateParts,
+} from '@/core/utils/task-estimate'
+import { addDays, parseYmdLocal, toYmd } from '@/core/utils/week-utils'
 import { isMilestone } from '@/core/types/task'
 import { validateTask, suggestProjectBoundsExtension, type ValidationResult } from '@/core/utils/task-validation'
 import { projectApi, type Project, type ProjectTeamMember } from '@/core/utils/project-api'
@@ -916,6 +958,67 @@ const unassignedLeadLabel = computed(() => formatUnassignedTaskLeadLabel(project
 
 const isForemanOverriddenOnTask = computed(() =>
   isTaskForemanOverridden(projectInfo.value?.project_foreman_id, form.value.project_lead),
+)
+
+const estimateUnits: ReadonlyArray<{ key: keyof TaskEstimateParts; label: string; max: number }> = [
+  { key: 'days', label: 'Days', max: 365 },
+  { key: 'hours', label: 'Hours', max: 23 },
+  { key: 'minutes', label: 'Minutes', max: 59 },
+]
+const estimate = ref<TaskEstimateParts>(emptyTaskEstimate())
+const showPlannedDates = ref(false)
+
+/** Dates stay hidden behind the estimate unless asked for, shown read-only, or blocking the save. */
+const plannedDatesVisible = computed(
+  () =>
+    props.mode === 'view' ||
+    showPlannedDates.value ||
+    hasDateValidationError('start') ||
+    hasDateValidationError('end'),
+)
+
+function formatPlannedDay(ymd: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}/.test(ymd)) return ''
+  return parseYmdLocal(ymd.slice(0, 10)).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+/** End date derived from the estimate, used while the planned dates are hidden on create. */
+const estimatedEndYmd = computed(() => {
+  const start = form.value.start_planned
+  if (!/^\d{4}-\d{2}-\d{2}/.test(start)) return ''
+  const span = estimateSpanDays(joinEstimateParts(estimate.value))
+  return toYmd(addDays(parseYmdLocal(start.slice(0, 10)), span - 1))
+})
+
+const plannedDatesSummary = computed(() => {
+  const start = formatPlannedDay(form.value.start_planned)
+  if (!start) return ''
+  const endYmd = props.mode === 'create' ? estimatedEndYmd.value : form.value.end_planned
+  const end = formatPlannedDay(endYmd)
+  const range = end && end !== start ? `${start} – ${end}` : start
+  return props.mode === 'create' ? `Planned automatically: ${range}` : `Planned: ${range}`
+})
+
+function applyEstimateToPlannedDates(): void {
+  if (props.mode !== 'create' || plannedDatesVisible.value || !estimatedEndYmd.value) return
+  form.value.end_planned = estimatedEndYmd.value
+}
+
+function prefillAddressFromProject(): void {
+  if (props.mode !== 'create' || form.value.address.trim() !== '') return
+  const projectAddress = projectInfo.value?.address?.trim()
+  if (projectAddress) form.value.address = projectAddress
+}
+
+watch(
+  [() => props.isOpen, () => props.task, () => props.mode],
+  () => {
+    if (!props.isOpen) return
+    showPlannedDates.value = false
+    estimate.value =
+      props.mode === 'create' ? emptyTaskEstimate() : splitEstimateMinutes(props.task?.estimated_minutes)
+  },
+  { immediate: true },
 )
 
 // Initialize form when dialog opens
@@ -1346,6 +1449,7 @@ watch(
     if (props.isOpen) {
       resetForm()
       await loadProjectInfo()
+      prefillAddressFromProject()
       await loadAvailablePeople()
       await loadExternalContacts()
       const leadId = form.value.project_lead
@@ -1684,6 +1788,8 @@ function handleSubmit() {
   console.log('💾 Submitting task form:', form.value)
   console.log('🔍 Form validation state:', validationResult.value)
 
+  applyEstimateToPlannedDates()
+
   // Validate task data before submission
   if (!validateTaskData()) {
     console.log('❌ Task validation failed, not submitting')
@@ -1715,6 +1821,7 @@ function handleSubmit() {
     // Convert empty strings to null/undefined
     end_planned: form.value.end_planned || undefined,
     address: form.value.address || undefined,
+    estimated_minutes: joinEstimateParts(estimate.value),
     category: form.value.category?.trim() || null,
     notes: form.value.notes || undefined,
     // Duration is calculated on frontend only, not stored in DB

@@ -262,12 +262,12 @@
         </div>
 
         <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm w-full">
-          <table class="w-full table-fixed divide-y divide-gray-200 text-sm">
+          <table class="w-full min-w-[64rem] table-fixed divide-y divide-gray-200 text-sm">
             <colgroup>
-              <col class="w-[14%]" />
-              <col class="w-[28%]" />
-              <col class="w-[28%]" />
-              <col class="w-[30%]" />
+              <col class="w-[11%]" />
+              <col class="w-[22%]" />
+              <col class="w-[25%]" />
+              <col class="w-[42%]" />
             </colgroup>
             <thead class="bg-gray-50">
               <tr>
@@ -299,7 +299,7 @@
                   >
                 </th>
                 <th class="px-2 py-2 text-left font-medium text-gray-700">
-                  <div class="grid grid-cols-5 gap-1 w-full text-[9px] uppercase tracking-wide text-gray-500 font-medium">
+                  <div class="grid gap-1 w-full text-[10px] uppercase tracking-wide text-gray-500 font-medium" :class="TIME_GRID_COLS">
                     <span>Km</span>
                     <span title="Expected start">Exp start</span>
                     <span title="Expected finish">Exp end</span>
@@ -443,7 +443,7 @@
                 </td>
                 <td class="px-2 py-2 align-top">
                   <template v-if="slot.row">
-                    <div class="grid grid-cols-5 gap-1 items-center w-full">
+                    <div class="grid gap-1 items-center w-full" :class="TIME_GRID_COLS">
                       <div>
                         <input
                           v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
@@ -465,7 +465,7 @@
                         <input
                           v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
                           type="time"
-                          class="w-full min-w-0 rounded border border-gray-300 text-[11px] px-0.5 py-1 tabular-nums"
+                          class="w-full rounded border border-gray-300 text-sm px-1 py-1 tabular-nums"
                           :value="slot.row.expected_start_time || ''"
                           title="Expected start"
                           @input="onExpectedTimeInput(slot.row, 'expected_start_time', $event)"
@@ -478,7 +478,7 @@
                         <input
                           v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
                           type="time"
-                          class="w-full min-w-0 rounded border border-gray-300 text-[11px] px-0.5 py-1 tabular-nums"
+                          class="w-full rounded border border-gray-300 text-sm px-1 py-1 tabular-nums"
                           :value="slot.row.expected_end_time || ''"
                           title="Expected finish"
                           @input="onExpectedTimeInput(slot.row, 'expected_end_time', $event)"
@@ -493,6 +493,14 @@
                         title="Actual clock-in from phone"
                       >
                         {{ formatCheckInTime(slot.row.work_start_at) }}
+                        <button
+                          v-if="slot.row.has_work_start_photo"
+                          type="button"
+                          class="block text-[11px] font-medium text-blue-700 hover:underline"
+                          @click="openPunchPhoto(slot.row, 'start')"
+                        >
+                          Photo
+                        </button>
                       </span>
                       <span
                         class="text-sm tabular-nums"
@@ -500,6 +508,14 @@
                         title="Actual clock-out from phone"
                       >
                         {{ formatCheckInTime(slot.row.work_end_at) }}
+                        <button
+                          v-if="slot.row.has_work_end_photo"
+                          type="button"
+                          class="block text-[11px] font-medium text-blue-700 hover:underline"
+                          @click="openPunchPhoto(slot.row, 'end')"
+                        >
+                          Photo
+                        </button>
                       </span>
                     </div>
                   </template>
@@ -509,15 +525,31 @@
             </tbody>
             <tfoot v-if="selectedPlannerWorkerId > 0 && weekTemplateView.length > 0">
               <tr class="bg-gray-50 border-t border-gray-200">
-                <td colspan="3" class="px-3 py-3 text-sm text-gray-700">
-                  <span class="font-medium text-gray-900">Actual hours</span>
-                  <span class="text-gray-500"> (sum of Act end − Act start for days with both punches)</span>
-                </td>
-                <td class="px-3 py-3 text-right text-sm font-semibold text-gray-900 tabular-nums whitespace-nowrap">
-                  {{ formatHoursTotal(periodActualHoursTotal) }}
-                  <span class="font-normal text-gray-500 text-xs ml-1">
-                    · {{ periodActualDaysCounted }} day{{ periodActualDaysCounted === 1 ? '' : 's' }}
-                  </span>
+                <td colspan="4" class="px-3 py-3">
+                  <div class="flex flex-wrap items-stretch justify-end gap-3 text-sm">
+                    <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 min-w-[10rem]" title="Sum of Exp end − Exp start for days with both times">
+                      <div class="text-[11px] uppercase tracking-wide text-gray-500">Total hours scheduled</div>
+                      <div class="font-semibold text-gray-900 tabular-nums">
+                        {{ formatHoursTotal(periodScheduledHoursTotal) }}
+                        <span class="font-normal text-gray-500 text-xs ml-1">
+                          · {{ periodScheduledDaysCounted }} day{{ periodScheduledDaysCounted === 1 ? '' : 's' }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 min-w-[10rem]" title="Sum of Act end − Act start for days with both punches">
+                      <div class="text-[11px] uppercase tracking-wide text-gray-500">Total hours worked</div>
+                      <div class="font-semibold text-gray-900 tabular-nums">
+                        {{ formatHoursTotal(periodActualHoursTotal) }}
+                        <span class="font-normal text-gray-500 text-xs ml-1">
+                          · {{ periodActualDaysCounted }} day{{ periodActualDaysCounted === 1 ? '' : 's' }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="rounded-lg border border-gray-200 bg-white px-3 py-2 min-w-[8rem]" title="Sum of the Km column">
+                      <div class="text-[11px] uppercase tracking-wide text-gray-500">Total km</div>
+                      <div class="font-semibold text-gray-900 tabular-nums">{{ formatKmTotal(periodKmTotal) }}</div>
+                    </div>
+                  </div>
                 </td>
               </tr>
             </tfoot>
@@ -663,6 +695,7 @@ import {
   type MyScheduleEntry,
   ASSIGNMENT_NOTE_MAX_CHARS,
 } from '@/core/utils/schedule-weeks-api'
+import { fetchWorkDayPhoto } from '@/core/utils/work-timesheet-api'
 import { addDays, startOfWeekMonday, startOfMonth, endOfMonth, toYmd, weekStartMondayYmdFromIsoDate, eachYmdInRange, mondaysCoveringRange, parseYmdLocal, hoursBetweenTimestamps } from '@/core/utils/week-utils'
 
 /** Stable positive user id for schedule rows (avoids string/number mismatch vs worker select). */
@@ -938,6 +971,33 @@ function formatHoursTotal(n: number): string {
   return `${s} h`
 }
 
+function formatKmTotal(n: number): string {
+  if (!Number.isFinite(n) || n === 0) return '0 km'
+  return `${Number.isInteger(n) ? n : n.toFixed(1)} km`
+}
+
+/** Minutes since midnight for an "HH:MM" (or "HH:MM:SS") value; null when empty/invalid. */
+function minutesOfTime(value: string | null | undefined): number | null {
+  const m = /^(\d{1,2}):(\d{2})/.exec((value ?? '').trim())
+  if (!m) return null
+  const h = Number(m[1])
+  const min = Number(m[2])
+  if (h > 23 || min > 59) return null
+  return h * 60 + min
+}
+
+function expectedHoursOfRow(row: PlannerScheduleRow | null): number | null {
+  if (!row) return null
+  const start = minutesOfTime(row.expected_start_time)
+  const end = minutesOfTime(row.expected_end_time)
+  if (start == null || end == null || end <= start) return null
+  return (end - start) / 60
+}
+
+/** Fixed Km column plus time inputs wide enough to show "hh:mm a.m." without clipping. */
+const TIME_GRID_COLS =
+  'grid-cols-[3.25rem_minmax(7rem,1fr)_minmax(7rem,1fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)]'
+
 /** GET response matches the week the user navigated to (toolbar / template dates). */
 const scheduleViewSynced = computed(() => {
   if (weekMeta.value == null) return false
@@ -1178,6 +1238,25 @@ const periodActualDaysCounted = computed(() => {
     if (hoursBetweenTimestamps(slot.row?.work_start_at, slot.row?.work_end_at) != null) n += 1
   }
   return n
+})
+
+const periodScheduledHoursTotal = computed(() => {
+  let sum = 0
+  for (const slot of weekTemplateView.value) sum += expectedHoursOfRow(slot.row) ?? 0
+  return Math.round(sum * 100) / 100
+})
+
+const periodScheduledDaysCounted = computed(
+  () => weekTemplateView.value.filter((slot) => expectedHoursOfRow(slot.row) != null).length,
+)
+
+const periodKmTotal = computed(() => {
+  let sum = 0
+  for (const slot of weekTemplateView.value) {
+    const km = Number.parseFloat(String(slot.row?.distance_km ?? '').replace(',', '.'))
+    if (Number.isFinite(km)) sum += km
+  }
+  return Math.round(sum * 10) / 10
 })
 
 const hasAnySlotConflict = computed(() =>
@@ -1428,6 +1507,20 @@ function onExpectedTimeInput(
 }
 
 /** Check-in timestamp as HH:mm (24h). Empty → placeholder. */
+/** Opens the worker's Start day / End day site photo in a new tab. */
+async function openPunchPhoto(row: PlannerScheduleRow, phase: 'start' | 'end'): Promise<void> {
+  const tab = window.open('', '_blank')
+  try {
+    const blob = await fetchWorkDayPhoto(scheduleUserId(row.user_id), String(row.work_date).slice(0, 10), phase)
+    const url = URL.createObjectURL(blob)
+    if (tab) tab.location.href = url
+    else window.location.assign(url)
+  } catch {
+    tab?.close()
+    alert('Could not load the photo.')
+  }
+}
+
 function formatCheckInTime(at: string | null | undefined): string {
   if (!at) return 'hh:mm'
   const d = new Date(at)
@@ -1456,6 +1549,8 @@ function mapEntries(list: ScheduleWeekEntryRow[], projectId: number): PlannerSch
     work_end_at: e.work_end_at ?? null,
     work_start_distance_km: e.work_start_distance_km ?? null,
     work_end_distance_km: e.work_end_distance_km ?? null,
+    has_work_start_photo: e.has_work_start_photo === true,
+    has_work_end_photo: e.has_work_end_photo === true,
     project_id: projectId,
   }))
 }

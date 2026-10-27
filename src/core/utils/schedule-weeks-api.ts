@@ -54,6 +54,9 @@ export interface MyScheduleEntry {
   /** Haversine km from check-in to project site (API computed) */
   work_start_distance_km?: number | null
   work_end_distance_km?: number | null
+  /** Start day / End day punch has an on-site photo */
+  has_work_start_photo?: boolean
+  has_work_end_photo?: boolean
   task?: MyScheduleTaskSummary | null
   /** Project display name (e.g. prj_name); optional for /me/schedule compatibility */
   project_name?: string
@@ -87,6 +90,8 @@ function pickTripFieldsFromRow(r: Record<string, unknown>): Pick<
   | 'work_end_at'
   | 'work_start_distance_km'
   | 'work_end_distance_km'
+  | 'has_work_start_photo'
+  | 'has_work_end_photo'
 > {
   const dk = r.distance_km
   return {
@@ -101,6 +106,8 @@ function pickTripFieldsFromRow(r: Record<string, unknown>): Pick<
     work_end_at: pickNullableString(r.work_end_at),
     work_start_distance_km: pickNullableNumber(r.work_start_distance_km),
     work_end_distance_km: pickNullableNumber(r.work_end_distance_km),
+    has_work_start_photo: r.has_work_start_photo === true,
+    has_work_end_photo: r.has_work_end_photo === true,
   }
 }
 
@@ -252,6 +259,8 @@ export interface ScheduleWeekEntryRow {
   work_end_at?: string | null
   work_start_distance_km?: number | null
   work_end_distance_km?: number | null
+  has_work_start_photo?: boolean
+  has_work_end_photo?: boolean
 }
 
 function readEnvelopeData<T>(body: unknown): T | null {

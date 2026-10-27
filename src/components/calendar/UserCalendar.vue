@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted } from 'vue'
+import { RouterLink } from 'vue-router'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -14,8 +15,12 @@ import { useAuthStore } from '@/core/stores/auth'
 import { projectApi, type Project } from '@/core/utils/project-api'
 import {
   getProjectListQueryFiltersForUser,
+  isTaskExecutorUser,
   parseProjectsFromListResponse,
 } from '@/core/utils/project-list-for-user'
+import { fetchMySchedule, type MyScheduleEntry } from '@/core/utils/schedule-weeks-api'
+
+const SCHEDULE_COLOR = '#D97706'
 
 const props = defineProps<{
   mode: UserCalendarMode
@@ -27,6 +32,9 @@ const props = defineProps<{
 const authStore = useAuthStore()
 
 const events = ref<CalendarEvent[]>([])
+/** Published PM Schedule days of the current user (global calendar only), with the PM's day notes. */
+const scheduleEntries = ref<MyScheduleEntry[]>([])
+const openScheduleEntry = ref<MyScheduleEntry | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const calendarRef = ref<InstanceType<typeof FullCalendar> | null>(null)
@@ -73,6 +81,7 @@ const legendItems = computed(() => {
     return [
       { color: '#3B82F6', label: 'Personal (editable)' },
       { color: '#6B7280', label: 'Project events (read-only)' },
+      { color: SCHEDULE_COLOR, label: 'My schedule (click for PM notes)' },
       presence,
     ]
   }
@@ -106,13 +115,14 @@ const projectFilterOptions = computed(() => {
     label: p.prj_name || `Project #${p.id}`,
   }))
   const seen = new Set(fromList.map((p) => p.id))
-  for (const e of events.value) {
-    if (e.project_id != null && e.project_id > 0 && !seen.has(e.project_id)) {
-      seen.add(e.project_id)
-      fromList.push({
-        id: e.project_id,
-        label: e.project_name || `Project #${e.project_id}`,
-      })
+  const referenced = [
+    ...events.value.map((e) => ({ id: e.project_id, name: e.project_name })),
+    ...scheduleEntries.value.map((e) => ({ id: e.project_id, name: e.project_name })),
+  ]
+  for (const { id, name } of referenced) {
+    if (id != null && id > 0 && !seen.has(id)) {
+      seen.add(id)
+      fromList.push({ id, label: name || `Project #${id}` })
     }
   }
   return fromList.sort((a, b) => a.label.localeCompare(b.label))
@@ -127,6 +137,57 @@ function eventsMatchingFilter(list: CalendarEvent[]): CalendarEvent[] {
   if (!Number.isFinite(pid) || pid <= 0) return list
   return list.filter((e) => e.project_id === pid)
 }
+
+function scheduleMatchingFilter(list: MyScheduleEntry[]): MyScheduleEntry[] {
+  const f = filterSelect.value
+  if (f === 'all') return list
+  if (f === 'personal') return []
+  const pid = Number(f)
+  if (!Number.isFinite(pid) || pid <= 0) return list
+  return list.filter((e) => e.project_id === pid)
+}
+
+function scheduleEntryNote(e: MyScheduleEntry): string {
+  return typeof e.assignment_note === 'string' ? e.assignment_note.trim() : ''
+}
+
+function scheduleEntryToFcEvent(e: MyScheduleEntry): Record<string, unknown> {
+  const ymd = String(e.work_date || '').slice(0, 10)
+  const start = (e.expected_start_time ?? '').trim()
+  const end = (e.expected_end_time ?? '').trim()
+  const name = (e.project_name ?? '').trim() || `Project #${e.project_id}`
+  return {
+    id: `schedule-${e.id}-${ymd}-${e.day_part}`,
+    title: scheduleEntryNote(e) ? `${name} · notes` : name,
+    start: start ? `${ymd}T${start}` : ymd,
+    end: start && end ? `${ymd}T${end}` : undefined,
+    allDay: !start,
+    backgroundColor: SCHEDULE_COLOR,
+    borderColor: SCHEDULE_COLOR,
+    editable: false,
+    extendedProps: { scheduleEntry: e },
+  }
+}
+
+function fcEventsForView(): Record<string, unknown>[] {
+  return [
+    ...eventsMatchingFilter(events.value).map(calendarEventToFcEvent),
+    ...scheduleMatchingFilter(scheduleEntries.value).map(scheduleEntryToFcEvent),
+  ]
+}
+
+const openScheduleDateLabel = computed(() => {
+  const ymd = String(openScheduleEntry.value?.work_date || '').slice(0, 10)
+  if (!ymd) return ''
+  return new Date(`${ymd}T12:00:00`).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+})
+
+const canOpenScheduleProject = computed(() => isTaskExecutorUser(authStore.currentUser))
 
 async function loadProjectsForFilter(): Promise<void> {
   if (props.mode !== 'global') return
@@ -145,7 +206,12 @@ async function loadEvents(from?: string, to?: string) {
   error.value = null
   try {
     if (props.mode === 'global') {
-      events.value = await calendarApi.listGlobal(from, to)
+      const [list, schedule] = await Promise.all([
+        calendarApi.listGlobal(from, to),
+        from && to ? fetchMySchedule(from, to).catch(() => []) : Promise.resolve([]),
+      ])
+      events.value = list
+      scheduleEntries.value = schedule
     } else if (props.projectId) {
       events.value = await calendarApi.listForProject(props.projectId, from, to)
     } else {
@@ -195,7 +261,7 @@ const calendarOptions = {
     rangeFrom.value = from
     rangeTo.value = to
     void loadEvents(from, to).then(() => {
-      successCallback(eventsMatchingFilter(events.value).map(calendarEventToFcEvent))
+      successCallback(fcEventsForView())
     })
   },
   datesSet: (info: {
@@ -294,7 +360,14 @@ const calendarOptions = {
     const ymd = toYmd(arg.date)
     return selectedDate.value === ymd ? ['fc-day-selected-user'] : []
   },
-  eventClick: (info: { event: { extendedProps: { calendarEvent?: CalendarEvent } } }) => {
+  eventClick: (info: {
+    event: { extendedProps: { calendarEvent?: CalendarEvent; scheduleEntry?: MyScheduleEntry } }
+  }) => {
+    const scheduleEntry = info.event.extendedProps.scheduleEntry
+    if (scheduleEntry) {
+      openScheduleEntry.value = scheduleEntry
+      return
+    }
     const ev = info.event.extendedProps.calendarEvent
     if (!ev) return
     dialog.value = {
@@ -671,6 +744,63 @@ onMounted(() => {
       @save="handleSave"
       @delete="handleDelete"
     />
+
+    <div
+      v-if="openScheduleEntry"
+      class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="schedule-notes-title"
+      @click.self="openScheduleEntry = null"
+    >
+      <div class="w-full max-w-md rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl">
+        <p class="text-[11px] font-semibold uppercase tracking-wide text-amber-800">{{ openScheduleDateLabel }}</p>
+        <h2 id="schedule-notes-title" class="mt-0.5 text-base font-semibold text-gray-900">
+          {{ openScheduleEntry.project_name || `Project #${openScheduleEntry.project_id}` }}
+        </h2>
+        <p v-if="openScheduleEntry.project_address" class="mt-0.5 text-xs text-gray-500">
+          {{ openScheduleEntry.project_address }}
+        </p>
+        <p
+          v-if="openScheduleEntry.expected_start_time || openScheduleEntry.expected_end_time"
+          class="mt-2 text-sm text-gray-700 tabular-nums"
+        >
+          Expected: {{ openScheduleEntry.expected_start_time || '—' }} –
+          {{ openScheduleEntry.expected_end_time || '—' }}
+          <span v-if="openScheduleEntry.distance_km" class="text-gray-500">
+            · {{ openScheduleEntry.distance_km }} km
+          </span>
+        </p>
+
+        <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 max-h-[50vh] overflow-y-auto">
+          <p class="text-[10px] font-semibold uppercase tracking-wide text-amber-900/80">Notes from PM</p>
+          <p
+            v-if="scheduleEntryNote(openScheduleEntry)"
+            class="mt-1 text-sm text-gray-900 whitespace-pre-wrap break-words"
+          >
+            {{ scheduleEntryNote(openScheduleEntry) }}
+          </p>
+          <p v-else class="mt-1 text-sm text-gray-500">No notes for this day.</p>
+        </div>
+
+        <div class="mt-5 flex flex-col gap-2 sm:flex-row-reverse">
+          <RouterLink
+            v-if="canOpenScheduleProject"
+            :to="`/tasks/projects/${openScheduleEntry.project_id}`"
+            class="w-full rounded-lg bg-orange-600 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-orange-700 sm:w-auto"
+          >
+            Open project tasks
+          </RouterLink>
+          <button
+            type="button"
+            class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 sm:w-auto"
+            @click="openScheduleEntry = null"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 

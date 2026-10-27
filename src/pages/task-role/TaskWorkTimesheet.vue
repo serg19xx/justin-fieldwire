@@ -1,5 +1,5 @@
 <template>
-  <div class="px-4 py-4 max-w-lg mx-auto pb-8">
+  <div class="px-4 py-4 max-w-6xl mx-auto pb-8">
     <header class="mb-4">
       <h1 class="text-xl font-semibold text-gray-900">Timesheet</h1>
       <p class="mt-1">
@@ -9,40 +9,42 @@
         />
       </p>
       <p class="text-sm text-gray-500 mt-1">
-        Start and end your work day here. Paid hours are the time between Start day and End day
-        minus a 30 min unpaid break. Tasks show their scheduled time only.
+        Your week from the schedule published by your project manager. Start and end your day with a
+        photo on site. Paid hours are the time between Start day and End day minus a 30 min unpaid
+        break.
       </p>
     </header>
 
-    <TaskDayClockCard class="mb-4" @updated="onDayClockUpdated" />
+    <TaskDayClockCard class="mb-4 max-w-lg" @updated="onDayClockUpdated" />
 
-    <div class="mb-4 flex items-center justify-between gap-2">
+    <div class="mb-3 flex items-center justify-between gap-2">
       <button
         type="button"
         class="px-3 py-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40"
         :disabled="isLoading"
-        @click="shiftMonth(-1)"
+        @click="shiftWeek(-1)"
       >
-        ← Prev
+        ← Prev week
       </button>
-      <p class="text-sm font-semibold text-gray-900 tabular-nums">{{ monthLabel }}</p>
+      <div class="text-center">
+        <p class="text-sm font-semibold text-gray-900 tabular-nums">Week of {{ weekLabel }}</p>
+        <button
+          v-if="!isCurrentWeek"
+          type="button"
+          class="text-xs font-medium text-orange-700 hover:underline"
+          @click="goToThisWeek"
+        >
+          This week
+        </button>
+      </div>
       <button
         type="button"
         class="px-3 py-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-40"
         :disabled="isLoading"
-        @click="shiftMonth(1)"
+        @click="shiftWeek(1)"
       >
-        Next →
+        Next week →
       </button>
-    </div>
-
-    <div
-      class="mb-4 rounded-xl border border-orange-100 bg-orange-50 px-3 py-2.5 flex items-baseline justify-between gap-3"
-    >
-      <span class="text-xs font-medium text-orange-800 uppercase tracking-wide">Total</span>
-      <span class="text-lg font-semibold text-orange-900 tabular-nums">
-        {{ formatHours(sheet?.total_hours ?? 0) }} h
-      </span>
     </div>
 
     <div
@@ -56,75 +58,103 @@
       <div class="animate-spin w-10 h-10 border-2 border-orange-500 border-t-transparent rounded-full" />
     </div>
 
-    <div
-      v-else-if="!sheet || sheet.days.length === 0"
-      class="rounded-xl border border-dashed border-gray-200 bg-white p-8 text-center text-sm text-gray-500"
-    >
-      No planned or recorded work this month.
-    </div>
-
-    <ul v-else class="space-y-3">
-      <li
-        v-for="day in sheet.days"
-        :key="day.work_date"
-        class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden"
-      >
-        <div
-          class="flex items-center justify-between gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50/80"
-        >
-          <p class="text-sm font-semibold text-gray-900">{{ formatDayLabel(day.work_date) }}</p>
-          <p class="text-xs font-medium text-gray-600 tabular-nums">
-            {{ day.hours > 0 ? `${formatHours(day.hours)} h` : '—' }}
-          </p>
-        </div>
-        <p
-          v-if="day.day_work?.work_start_at"
-          class="px-3 py-2 text-xs font-medium text-blue-900 bg-blue-50/60 border-b border-gray-100 tabular-nums"
-        >
-          Work day: {{ formatTime(day.day_work.work_start_at) }} –
-          <template v-if="day.day_work.work_end_at">
-            {{ formatTime(day.day_work.work_end_at) }}
-            <span v-if="day.day_work.hours != null">
-              ({{ formatHours(day.day_work.hours) }} h<template v-if="day.day_work.break_hours > 0">
-                after {{ formatHours(day.day_work.break_hours * 60) }} min break</template>)
-            </span>
-          </template>
-          <span v-else class="text-amber-700">no End day</span>
-        </p>
-        <ul class="divide-y divide-gray-100">
+    <template v-else-if="week">
+      <div class="overflow-x-auto -mx-4 px-4 pb-2">
+        <ol class="grid grid-cols-7 gap-2 min-w-[56rem]">
           <li
-            v-for="entry in day.entries"
-            :key="`${day.work_date}-${entry.task_id}`"
-            class="px-3 py-2.5"
+            v-for="day in week.days"
+            :key="day.work_date"
+            class="flex flex-col rounded-xl border bg-white shadow-sm overflow-hidden"
+            :class="day.work_date === week.today ? 'border-orange-400 ring-1 ring-orange-300' : 'border-gray-200'"
           >
-            <p class="text-sm font-medium text-gray-900 truncate">
-              {{ entry.project_name || `Project #${entry.project_id}` }}
-            </p>
-            <p v-if="entry.task_name" class="text-xs text-gray-600 truncate mt-0.5">
-              {{ entry.task_name }}
-            </p>
-            <p
-              v-if="siteAddress(entry)"
-              class="text-xs text-gray-500 truncate mt-0.5"
+            <div
+              class="px-2 py-2 border-b text-center"
+              :class="day.work_date === week.today ? 'bg-orange-50 border-orange-100' : 'bg-gray-50 border-gray-100'"
             >
-              {{ siteAddress(entry) }}
-            </p>
-            <p class="mt-1.5 text-[11px] text-gray-600 tabular-nums">
-              <template v-if="entry.scheduled_start || entry.scheduled_end">
-                Scheduled:
-                {{ entry.scheduled_start || '—' }}
-                –
-                {{ entry.scheduled_end || '—' }}
-                <span v-if="entry.scheduled_hours != null" class="text-gray-500">
-                  ({{ formatHours(entry.scheduled_hours) }} h)
-                </span>
-              </template>
-              <span v-else class="text-gray-400">No scheduled time</span>
-            </p>
+              <p class="text-xs font-semibold uppercase tracking-wide text-gray-700">
+                {{ weekdayLabel(day.work_date) }}
+              </p>
+              <p class="text-[11px] text-gray-500 tabular-nums">{{ dateLabel(day.work_date) }}</p>
+            </div>
+
+            <div class="flex-1 px-2 py-2 space-y-2">
+              <p v-if="day.slots.length === 0" class="text-[11px] text-gray-400 text-center py-2">
+                Not scheduled
+              </p>
+              <div
+                v-for="slot in day.slots"
+                :key="slot.entry_id"
+                class="rounded-lg border border-gray-100 bg-gray-50/60 px-2 py-1.5"
+              >
+                <p class="text-xs font-medium text-gray-900 leading-snug break-words">
+                  {{ slot.project_name || `Project #${slot.project_id}` }}
+                </p>
+                <p v-if="slot.project_address" class="text-[10px] text-gray-500 leading-snug break-words mt-0.5">
+                  {{ slot.project_address }}
+                </p>
+                <p v-if="slot.day_part !== 'full'" class="text-[10px] text-gray-500 mt-0.5">
+                  {{ slot.day_part === 'am' ? 'Morning' : 'Afternoon' }}
+                </p>
+                <p
+                  v-if="slot.expected_start_time || slot.expected_end_time"
+                  class="text-[11px] text-gray-700 tabular-nums mt-1"
+                >
+                  {{ slot.expected_start_time || '—' }} – {{ slot.expected_end_time || '—' }}
+                </p>
+                <p v-if="slot.distance_km" class="text-[10px] text-gray-500 mt-0.5">
+                  {{ slot.distance_km }} km
+                </p>
+              </div>
+            </div>
+
+            <div class="border-t border-gray-100 px-2 py-2 text-[11px] tabular-nums space-y-0.5">
+              <p class="flex justify-between gap-1 text-gray-600">
+                <span>Scheduled</span>
+                <span class="font-medium text-gray-900">{{ hoursOrDash(day.scheduled_hours) }}</span>
+              </p>
+              <p class="flex justify-between gap-1 text-gray-600">
+                <span>Worked</span>
+                <span class="font-medium text-gray-900">{{ hoursOrDash(day.worked_hours) }}</span>
+              </p>
+              <p v-if="day.day_work?.work_start_at" class="text-[10px] text-blue-900">
+                {{ formatTime(day.day_work.work_start_at) }} –
+                <template v-if="day.day_work.work_end_at">{{ formatTime(day.day_work.work_end_at) }}</template>
+                <span v-else class="text-amber-700">no End day</span>
+              </p>
+              <p v-if="day.km > 0" class="flex justify-between gap-1 text-gray-600">
+                <span>KM</span>
+                <span class="font-medium text-gray-900">{{ formatNumber(day.km) }}</span>
+              </p>
+            </div>
           </li>
-        </ul>
-      </li>
-    </ul>
+        </ol>
+      </div>
+
+      <dl class="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div class="rounded-xl border border-orange-100 bg-orange-50 px-3 py-2.5 flex items-baseline justify-between gap-3">
+          <dt class="text-xs font-medium text-orange-800 uppercase tracking-wide">Total Hours Scheduled</dt>
+          <dd class="text-lg font-semibold text-orange-900 tabular-nums">
+            {{ formatNumber(week.totals.scheduled_hours) }} h
+          </dd>
+        </div>
+        <div class="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2.5 flex items-baseline justify-between gap-3">
+          <dt class="text-xs font-medium text-emerald-800 uppercase tracking-wide">Total Hours Worked</dt>
+          <dd class="text-lg font-semibold text-emerald-900 tabular-nums">
+            {{ formatNumber(week.totals.worked_hours) }} h
+          </dd>
+        </div>
+        <div class="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2.5 flex items-baseline justify-between gap-3">
+          <dt class="text-xs font-medium text-blue-800 uppercase tracking-wide">Total KM</dt>
+          <dd class="text-lg font-semibold text-blue-900 tabular-nums">
+            {{ formatNumber(week.totals.km) }} km
+          </dd>
+        </div>
+      </dl>
+      <p class="mt-2 text-[11px] text-gray-500">
+        Scheduled hours use the expected start and finish from the schedule minus the
+        {{ formatNumber(week.break_hours * 60) }} min break. KM is entered by your project manager.
+      </p>
+    </template>
   </div>
 </template>
 
@@ -133,86 +163,95 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageUserGuideLink from '@/components/PageUserGuideLink.vue'
 import TaskDayClockCard from '@/components/task-role/TaskDayClockCard.vue'
-import {
-  fetchMyWorkTimesheet,
-  type WorkerTimesheetEntry,
-  type WorkerTimesheetMonth,
-} from '@/core/utils/work-timesheet-api'
+import { fetchMyWorkWeek, type WorkWeek } from '@/core/utils/work-timesheet-api'
+import { parseWorkYmd, todayWorkYmd } from '@/core/utils/work-day'
 
 const route = useRoute()
 const router = useRouter()
 
-const now = new Date()
-const year = ref(now.getFullYear())
-const month = ref(now.getMonth() + 1)
-const sheet = ref<WorkerTimesheetMonth | null>(null)
+const weekStart = ref(mondayOf(parseWorkYmd(route.query.week) ?? todayWorkYmd()))
+const week = ref<WorkWeek | null>(null)
 const isLoading = ref(false)
 const loadError = ref('')
 
-const monthLabel = computed(() => {
-  const d = new Date(year.value, month.value - 1, 1)
-  return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
+const isCurrentWeek = computed(() => weekStart.value === mondayOf(todayWorkYmd()))
+
+const weekLabel = computed(() => {
+  const start = ymdToDate(weekStart.value)
+  const end = ymdToDate(addDays(weekStart.value, 6))
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
+  return `${start.toLocaleDateString(undefined, opts)} – ${end.toLocaleDateString(undefined, {
+    ...opts,
+    year: 'numeric',
+  })}`
 })
 
-function formatHours(n: number): string {
+function ymdToDate(ymd: string): Date {
+  const [y, m, d] = ymd.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+function dateToYmd(d: Date): string {
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${mm}-${dd}`
+}
+
+function addDays(ymd: string, days: number): string {
+  const d = ymdToDate(ymd)
+  d.setDate(d.getDate() + days)
+  return dateToYmd(d)
+}
+
+function mondayOf(ymd: string): string {
+  const dow = ymdToDate(ymd).getDay()
+  return addDays(ymd, dow === 0 ? -6 : 1 - dow)
+}
+
+function weekdayLabel(ymd: string): string {
+  return ymdToDate(ymd).toLocaleDateString(undefined, { weekday: 'long' })
+}
+
+function dateLabel(ymd: string): string {
+  return ymdToDate(ymd).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+function formatNumber(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/\.?0+$/, '')
 }
 
-function formatDayLabel(ymd: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd)
-  if (!m) return ymd
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
-  return d.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  })
+function hoursOrDash(n: number): string {
+  return n > 0 ? `${formatNumber(n)} h` : '—'
 }
 
 function formatTime(iso: string | null): string {
   if (!iso) return '—'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
 }
 
-function siteAddress(entry: WorkerTimesheetEntry): string | null {
-  return entry.project_address || entry.task_address || null
-}
-
-function shiftMonth(delta: number): void {
-  let y = year.value
-  let m = month.value + delta
-  while (m < 1) {
-    m += 12
-    y -= 1
-  }
-  while (m > 12) {
-    m -= 12
-    y += 1
-  }
-  year.value = y
-  month.value = m
-  void router.replace({
-    query: { ...route.query, year: String(y), month: String(m) },
-  })
+function setWeek(monday: string): void {
+  weekStart.value = monday
+  void router.replace({ query: { ...route.query, week: monday } })
   void load()
 }
 
-function applyQuery(): void {
-  const qy = Number(route.query.year)
-  const qm = Number(route.query.month)
-  if (Number.isFinite(qy) && qy >= 2000 && qy <= 2100) year.value = qy
-  if (Number.isFinite(qm) && qm >= 1 && qm <= 12) month.value = qm
+function shiftWeek(delta: number): void {
+  setWeek(addDays(weekStart.value, delta * 7))
+}
+
+function goToThisWeek(): void {
+  setWeek(mondayOf(todayWorkYmd()))
 }
 
 async function load(): Promise<void> {
   isLoading.value = true
   loadError.value = ''
   try {
-    sheet.value = await fetchMyWorkTimesheet(year.value, month.value)
+    week.value = await fetchMyWorkWeek(weekStart.value)
   } catch (e: unknown) {
-    sheet.value = null
+    week.value = null
     const err = e as { response?: { data?: { message?: string } }; message?: string }
     loadError.value = err.response?.data?.message || err.message || 'Could not load timesheet.'
   } finally {
@@ -221,24 +260,19 @@ async function load(): Promise<void> {
 }
 
 function onDayClockUpdated(): void {
-  const today = new Date()
-  if (year.value === today.getFullYear() && month.value === today.getMonth() + 1) {
-    void load()
-  }
+  if (isCurrentWeek.value) void load()
 }
 
 onMounted(() => {
-  applyQuery()
   void load()
 })
 
 watch(
-  () => [route.query.year, route.query.month] as const,
-  () => {
-    const prevY = year.value
-    const prevM = month.value
-    applyQuery()
-    if (year.value !== prevY || month.value !== prevM) {
+  () => route.query.week,
+  (q) => {
+    const parsed = parseWorkYmd(q)
+    if (parsed && mondayOf(parsed) !== weekStart.value) {
+      weekStart.value = mondayOf(parsed)
       void load()
     }
   },

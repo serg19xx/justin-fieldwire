@@ -27,7 +27,7 @@
           </div>
 
           <!-- Filters -->
-          <div class="flex gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <!-- Status Filter -->
             <div class="relative">
               <select
@@ -35,14 +35,7 @@
                 class="px-2 py-1 pr-6 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm bg-white text-gray-700 appearance-none cursor-pointer"
               >
                 <option value="" class="text-gray-500">All Statuses</option>
-                <option value="Initial Contact Lead" class="text-gray-700">Initial Contact Lead</option>
-                <option value="Dead Lead" class="text-gray-700">Dead Lead</option>
-                <option value="Waiting On Direction" class="text-gray-700">Waiting On Direction</option>
-                <option value="Actively Looking For A Location" class="text-gray-700">Actively Looking For A Location</option>
-                <option value="Securing Location" class="text-gray-700">Securing Location</option>
-                <option value="Project Secured" class="text-gray-700">Project Secured</option>
-                <option value="Construction" class="text-gray-700">Construction</option>
-                <option value="Completed Project" class="text-gray-700">Completed Project</option>
+                <option v-for="s in PROJECT_STATUS_PIPELINE" :key="s" :value="s" class="text-gray-700">{{ s }}</option>
               </select>
               <!-- Dropdown Arrow -->
               <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
@@ -63,8 +56,8 @@
                 <option value="name-desc" class="text-gray-700">↓ Project Name (Z-A)</option>
                 <option value="client-asc" class="text-gray-700">↑ Client (A-Z)</option>
                 <option value="client-desc" class="text-gray-700">↓ Client (Z-A)</option>
-                <option value="status-asc" class="text-gray-700">↑ Status (A-Z)</option>
-                <option value="status-desc" class="text-gray-700">↓ Status (Z-A)</option>
+                <option value="status-asc" class="text-gray-700">↑ Status (Lead → Completed)</option>
+                <option value="status-desc" class="text-gray-700">↓ Status (Completed → Lead)</option>
                 <option value="progress-asc" class="text-gray-700">↑ Progress (0-100%)</option>
                 <option value="progress-desc" class="text-gray-700">↓ Progress (100-0%)</option>
               </select>
@@ -75,6 +68,17 @@
                 </svg>
               </div>
             </div>
+
+            <label
+              v-if="!useServerPaging"
+              class="flex items-center gap-1.5 text-sm text-gray-700 whitespace-nowrap cursor-pointer select-none"
+            >
+              <input v-model="showCompleted" type="checkbox" class="rounded border-gray-300 text-blue-600" />
+              Show completed
+              <span v-if="!showCompleted && hiddenCompletedCount > 0" class="text-xs text-gray-500">
+                ({{ hiddenCompletedCount }} hidden)
+              </span>
+            </label>
           </div>
         </div>
       </div>
@@ -187,8 +191,21 @@
                 <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[14%] min-w-0">
                   Note
                 </th>
-                <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[9%] min-w-0">
-                  Status
+                <th
+                  class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[9%] min-w-0"
+                  :aria-sort="statusSortDirection === 'asc' ? 'ascending' : statusSortDirection === 'desc' ? 'descending' : 'none'"
+                >
+                  <button
+                    type="button"
+                    class="inline-flex items-center gap-1 uppercase tracking-wider hover:text-gray-800"
+                    title="Sort by status"
+                    @click="toggleStatusSort"
+                  >
+                    Status
+                    <span aria-hidden="true" :class="statusSortDirection ? 'text-blue-600' : 'text-gray-300'">
+                      {{ statusSortDirection === 'desc' ? '▼' : '▲' }}
+                    </span>
+                  </button>
                 </th>
                 <th class="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[9%] min-w-0">
                   Lifecycle
@@ -631,7 +648,22 @@ const loading = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref('')
 const sortBy = ref('')
+const showCompleted = ref(false)
 const showCreateDialog = ref(false)
+
+/** Business status values in pipeline order; status sorting follows this order, not the alphabet. */
+const PROJECT_STATUS_PIPELINE = [
+  'Initial Contact Lead',
+  'Dead Lead',
+  'Waiting On Direction',
+  'Actively Looking For A Location',
+  'Securing Location',
+  'Project Secured',
+  'Construction',
+  'Completed Project',
+] as const
+
+const COMPLETED_STATUS = 'Completed Project'
 
 const clientContactModal = ref({
   isOpen: false,
@@ -657,9 +689,62 @@ const pageSizeOptions = [10, 25, 50, 100]
 const serverTotalItems = ref<number | null>(null)
 const serverTotalPages = ref<number | null>(null)
 
+function isCompletedProject(project: ApiProject): boolean {
+  return (
+    (project.status ?? '').trim().toLowerCase() === COMPLETED_STATUS.toLowerCase() ||
+    resolvedSysStatus(project) === 'done'
+  )
+}
+
+function statusRank(status: string | null | undefined): number {
+  const s = (status ?? '').trim().toLowerCase()
+  const idx = PROJECT_STATUS_PIPELINE.findIndex((p) => p.toLowerCase() === s)
+  return idx === -1 ? PROJECT_STATUS_PIPELINE.length : idx
+}
+
+function clientNameOf(project: ApiProject): string {
+  const p = project as ApiProject & { client_name?: string | null }
+  const fromData = (p.client_data as Record<string, unknown> | null | undefined)?.name
+  return String(p.client_name || (typeof fromData === 'string' ? fromData : '') || p.client_type || '')
+}
+
+function compareProjects(a: ApiProject, b: ApiProject, field: string): number {
+  switch (field) {
+    case 'name':
+      return (a.prj_name ?? '').localeCompare(b.prj_name ?? '', undefined, { sensitivity: 'base' })
+    case 'client':
+      return clientNameOf(a).localeCompare(clientNameOf(b), undefined, { sensitivity: 'base' })
+    case 'status':
+      return statusRank(a.status) - statusRank(b.status)
+    default:
+      return 0
+  }
+}
+
+/** Completed projects stay visible when the user filters by that status explicitly. */
+const hidesCompleted = computed(() => !showCompleted.value && statusFilter.value !== COMPLETED_STATUS)
+
+const hiddenCompletedCount = computed(() =>
+  hidesCompleted.value ? projects.value.filter(isCompletedProject).length : 0,
+)
+
+const statusSortDirection = computed((): 'asc' | 'desc' | null => {
+  if (sortBy.value === 'status-asc') return 'asc'
+  if (sortBy.value === 'status-desc') return 'desc'
+  return null
+})
+
+function toggleStatusSort(): void {
+  sortBy.value = statusSortDirection.value === 'asc' ? 'status-desc' : 'status-asc'
+}
+
 // Computed properties
 const filteredProjects = computed(() => {
   let filtered = projects.value
+
+  if (hidesCompleted.value) {
+    filtered = filtered.filter((project) => !isCompletedProject(project))
+  }
 
   // Filter by search query
   if (searchQuery.value) {
@@ -676,9 +761,14 @@ const filteredProjects = computed(() => {
     filtered = filtered.filter((project) => project.status === statusFilter.value)
   }
 
-  // Apply sorting (placeholder - logic to be implemented later)
   if (sortBy.value) {
-    // TODO: Implement sorting logic when needed
+    const [field, order] = sortBy.value.split('-')
+    const dir = order === 'desc' ? -1 : 1
+    filtered = [...filtered].sort(
+      (a, b) =>
+        dir * compareProjects(a, b, field) ||
+        (a.prj_name ?? '').localeCompare(b.prj_name ?? '', undefined, { sensitivity: 'base' }),
+    )
   }
 
   return filtered
@@ -1071,13 +1161,15 @@ watch([currentPage, itemsPerPage], () => {
 
 // Debounce search
 let searchTimeout: number | undefined
-watch([searchQuery, statusFilter, sortBy], () => {
+watch([searchQuery, statusFilter, sortBy, showCompleted], () => {
   if (useServerPaging.value) {
     window.clearTimeout(searchTimeout)
     searchTimeout = window.setTimeout(() => {
       currentPage.value = 1
       loadProjects()
     }, 300)
+  } else {
+    currentPage.value = 1
   }
 })
 

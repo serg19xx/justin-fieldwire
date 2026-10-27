@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Foreman &amp; PM Fixes — What Changed and What We Need From You</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f3f4f6; color: #1f2937;
+         font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  main { max-width: 52rem; margin: 0 auto; padding: 1.25rem; }
+  article { background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 1.5rem 1.25rem; }
+  @media (min-width: 640px) { main { padding: 2.5rem 1.5rem; } article { padding: 2.5rem 3rem; } }
+  h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 1rem; color: #111827; }
+  h2 { font-size: 1.3rem; margin: 2.25rem 0 .75rem; padding-bottom: .35rem; border-bottom: 2px solid #16a34a; color: #111827; }
+  h3 { font-size: 1.08rem; margin: 1.75rem 0 .5rem; color: #111827; }
+  p, ul, ol { margin: .6rem 0; }
+  li { margin: .3rem 0; }
+  hr { border: 0; border-top: 1px solid #e5e7eb; margin: 2rem 0; }
+  code { background: #f3f4f6; padding: .1rem .35rem; border-radius: 4px; font-size: .92em; }
+  pre { background: #111827; color: #f9fafb; padding: .9rem 1rem; border-radius: 8px; overflow-x: auto; }
+  pre code { background: none; padding: 0; color: inherit; }
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: .95rem; display: block; overflow-x: auto; }
+  th, td { border: 1px solid #e5e7eb; padding: .5rem .7rem; text-align: left; vertical-align: top; }
+  th { background: #f9fafb; }
+  del { color: #9ca3af; }
+  footer { text-align: center; color: #6b7280; font-size: .85rem; margin-top: 1.25rem; }
+</style>
+</head>
+<body>
+<main>
+<article>
+<h1>Foreman &amp; PM Fixes — What Changed and What We Need From You</h1>
+<p>This note covers the six items from <em>Foreman Fixes</em> (tested with Dale's account, dale@CareSpaces.Pro), the four items from <em>PM Fixes</em> (Justin's account), plus a security fix to logins. The first part explains what is different in the app. The second part lists the things only you can do. Without them, some features (SMS reminders, KM totals) will appear to "not work" even though the software is ready.</p>
+<hr />
+<h2>Part 1 — What changed</h2>
+<h3>1. Foreman now sees the PM Schedule</h3>
+<p>A foreman's <strong>Timesheet</strong> and <strong>Calendar</strong> now show the schedule the Project Manager publishes, the same one the PM sees. Only <strong>published</strong> weeks are shown. A week the PM is still editing (draft) stays hidden from workers until it is published.</p>
+<h3>2. Weekly Timesheet (horizontal, Mon–Sun)</h3>
+<p>The Timesheet is now one week at a time, with a column for each day Monday to Sunday. Use the arrows to move between weeks and <strong>This week</strong> to jump back.
+Each day shows the project, its address, the expected start and end times, the hours scheduled, the hours actually worked, and the KM.
+At the bottom are three totals for the week:
+- <strong>Total Hours Scheduled</strong>: the PM's expected start to expected end for each day, minus a 30-minute break.
+- <strong>Total Hours Worked</strong>: from the worker's Start day to End day, minus the same break.
+- <strong>Total KM</strong>: the sum of the <strong>KM</strong> values the PM enters in the Schedule (see Part 2, item 3).</p>
+<p>On phones the week scrolls sideways, so each day stays readable on a small screen.</p>
+<h3>3. Clock in / clock out with a photo, plus SMS reminders</h3>
+<ul>
+<li><strong>Start day</strong> and <strong>End day</strong> now require a photo taken on site. On a phone the camera opens directly. The punch is not saved without a photo.</li>
+<li>The PM sees the actual start and end times in the project <strong>Schedule</strong> (columns <em>Act start</em> and <em>Act end</em>). A <strong>Photo</strong> button there opens the picture taken at that punch.</li>
+<li><strong>SMS reminders</strong> are now based on the published PM Schedule:<ul>
+<li>If a worker has not pressed <strong>Start day</strong> within 5 minutes of their expected start, they get a text.</li>
+<li>If they have started but not pressed <strong>End day</strong> within 5 minutes of their expected end, they get a text.</li>
+<li>Each reminder is sent at most once per worker per day.</li>
+<li>Saturdays and Sundays are covered as well, if the PM schedules work on those days.</li>
+</ul>
+</li>
+</ul>
+<h3>4. Foreman sees all of their projects</h3>
+<p>Projects where the person is set as <strong>Foreman</strong> now appear in <strong>Tasks</strong> and <strong>Calendar</strong>, even if no tasks are assigned to them yet. Before this fix, Dale only saw Ellesmere. CareSpace.Pro now shows up as well.</p>
+<h3>5. Daily notes moved from Tasks to the Calendar</h3>
+<p>The PM's daily notes ("Notes from PM") no longer appear on the Tasks page. They are in the <strong>Calendar</strong>: each scheduled day appears as an orange entry, and tapping it opens a pop-up with the project, times, KM and the PM's note.</p>
+<h3>6. Foreman sees only their own tasks</h3>
+<p>The <strong>My tasks / All tasks</strong> switch is removed for foremen. They see only tasks assigned to them.</p>
+<h3>PM fixes (from <em>PM Fixes</em>, account justin.Kearney@me.com)</h3>
+<ol>
+<li><strong>My Projects hides completed projects.</strong> Projects with status <em>Completed Project</em> (or lifecycle <em>Done</em>) are hidden by default, so only active work shows. Tick <strong>Show completed</strong> to bring them back. The checkbox shows how many are hidden. Choosing <em>Completed Project</em> in the status filter also shows them.</li>
+<li><strong>Schedule time fields are wider.</strong> <em>Exp start</em> and <em>Exp end</em> now show the full time, for example "08:00 a.m.". On a phone the Schedule table scrolls sideways, like the Timesheet.</li>
+<li><strong>Schedule totals at the bottom.</strong> Below the days you now see <strong>Total hours scheduled</strong> (Exp end − Exp start), <strong>Total hours worked</strong> (Act end − Act start) and <strong>Total km</strong> (sum of the Km column) for the selected worker and period.</li>
+<li><strong>Sort projects by status.</strong> Click the <strong>Status</strong> column header, or pick <em>Status</em> in <strong>Sort by…</strong>. Projects are ordered by stage (Initial Contact Lead → … → Construction → Completed Project), or the reverse. Sorting by project name and by client also works now.</li>
+<li><strong>New task: address and estimated time.</strong> When you create a task, the <strong>Address</strong> is filled in from the project automatically (you can still change it). The Start/End date and time fields are replaced by <strong>Estimated Time to Complete</strong> (Days / Hours / Minutes). Planned dates are set for you: the task starts on the selected day (or today) and lasts as many days as the estimate, so the Gantt chart and calendar keep working. Use <strong>Set dates manually</strong> if you need specific dates. When editing a task, the dates are under <strong>Edit planned dates</strong>. The estimate is shown in the task details.</li>
+</ol>
+<h3>Security fix: logins</h3>
+<p>We found that the server was not fully checking login sessions. This is now fixed. What users will notice:
+- <strong>After this update is deployed, everyone has to log in once more.</strong> This is expected and happens only once.
+- After that, people stay logged in as long as they use the app at least once a week. If someone does not open the app for more than 7 days, they are asked to log in again.
+- The existing rule still applies: after 30 minutes with no activity in an open browser tab, the user is logged out.</p>
+<hr />
+<h2>Part 2 — Action items for you</h2>
+<h3>1. Fix Dale's mobile number (required for SMS reminders)</h3>
+<p>Dale's profile has the phone number <strong>+1 876 543 4567</strong>. It looks like a placeholder. The last three texts sent to it all <strong>failed</strong>.
+- Open Dale's user profile and enter his real mobile number in the format <strong>+1XXXXXXXXXX</strong>.</p>
+<h3>2. Check every field worker's mobile number</h3>
+<p>Reminders only reach people whose profiles have a real mobile number. Please check the number for every foreman and worker who gets scheduled. A wrong or empty number means no reminder, and no error is shown to the worker.</p>
+<h3>3. PM must fill in <strong>KM</strong> in the Schedule</h3>
+<p><strong>Total KM</strong> on the Timesheet adds up the <strong>KM</strong> field the PM enters for each scheduled slot. Right now that field is empty everywhere, so every worker's KM total is <strong>0</strong>.
+- When building the weekly Schedule, enter the distance in kilometres for each slot. Whole kilometres, such as <code>42</code>.</p>
+<h3>4. PM must fill in expected start and end times</h3>
+<p>Scheduled hours and SMS reminder times come from the <strong>expected start</strong> and <strong>expected end</strong> on each Schedule slot. A slot without times does not trigger reminders and adds nothing to scheduled hours.</p>
+<h3>5. Clean up the "208 Vic" week</h3>
+<p>A week for the <strong>208 Vic</strong> project was published on Oct 23, then moved back to draft and edited. Workers still see the <strong>old published version</strong>, including a slot on <strong>Thursday, Oct 29</strong> that no longer exists in the draft.
+- Open that week in the project Schedule and either <strong>publish</strong> it again (workers then see the current version) or remove the slot and publish.
+- In general: changes to a published week only reach workers after you press <strong>Publish</strong> again.</p>
+<h3>6. Reminder job on the server — already in place, no action needed</h3>
+<p>We checked the production server on Oct 26. The reminder job is scheduled to run <strong>every 5 minutes</strong> in live (send) mode, and its log shows it has run on time with no errors. Nothing to do here.</p>
+<h3>7. Keep the Twilio account active</h3>
+<p>Texts go out through the Twilio account configured on the server. Make sure it has credit and that the sending number is still active.</p>
+<h3>8. Tell your crew about the photo requirement</h3>
+<p>Workers must allow the app to use the <strong>camera</strong> (and location, if asked) on their phones. If they denied camera access earlier, they need to enable it in the phone's browser settings, otherwise they cannot start or end the day.</p>
+<hr />
+<h2>Quick checklist</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Action</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Correct Dale's mobile number</td>
+<td>Admin</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Check mobile numbers of all field staff</td>
+<td>Admin</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Enter KM for each Schedule slot</td>
+<td>PM</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Enter expected start/end for each Schedule slot</td>
+<td>PM</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Re-publish (or fix and publish) the 208 Vic week</td>
+<td>PM</td>
+</tr>
+<tr>
+<td>6</td>
+<td>~~Confirm the 5-minute reminder cron on the server~~ (verified, done)</td>
+<td>—</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Check Twilio credit and sending number</td>
+<td>Admin</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Tell workers to allow camera access</td>
+<td>Foremen / PM</td>
+</tr>
+</tbody>
+</table>
+</article>
+<footer>FieldWire · updated Oct 27, 2026</footer>
+</main>
+</body>
+</html>

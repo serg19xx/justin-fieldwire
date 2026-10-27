@@ -1,6 +1,5 @@
 import axios from 'axios'
 import { apiConfig } from '@/config/api'
-import { isTokenExpired } from './jwt-utils'
 
 // Создаем основной экземпляр axios для всего приложения
 export const api = axios.create(apiConfig)
@@ -13,28 +12,54 @@ let onSessionExpired: (() => void) | null = null
  */
 export function setSessionExpiredCallback(callback: () => void): void {
   onSessionExpired = callback
+  sessionExpiryHandled = false
+}
+
+const RENEWED_TOKEN_HEADER = 'x-renewed-token'
+
+let sessionExpiryHandled = false
+
+function storeRenewedToken(headers: unknown): void {
+  const renewed = (headers as Record<string, unknown> | undefined)?.[RENEWED_TOKEN_HEADER]
+  if (typeof renewed !== 'string' || renewed.split('.').length !== 3) return
+  if (!localStorage.getItem('authToken')) return
+  localStorage.setItem('authToken', renewed)
+  api.defaults.headers.common['Authorization'] = `Bearer ${renewed}`
+}
+
+function handleSessionExpired(): void {
+  if (sessionExpiryHandled) return
+  sessionExpiryHandled = true
+
+  if (onSessionExpired) {
+    onSessionExpired()
+  } else {
+    localStorage.removeItem('authToken')
+    localStorage.removeItem('user')
+  }
+
+  const path = window.location.pathname
+  if (!path.startsWith('/login')) {
+    window.location.assign('/login')
+  }
 }
 
 // Добавляем интерцепторы для обработки ошибок
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    storeRenewedToken(response.headers)
+    return response
+  },
   async (error) => {
     console.error('API Error:', error)
 
-    // Handle 401 Unauthorized errors - auto logout disabled
+    // Token rejected (bad signature or expired): end the session instead of leaving a broken UI.
     if (error.response?.status === 401) {
-      console.log('🔒 401 Unauthorized - auto logout disabled')
-
-      // Auto logout disabled - user stays logged in
-      console.log('⚠️ 401 error - auto logout disabled, user stays logged in')
-
-      // DISABLED: Token expiration checks disabled for development
-      console.log('🚫 Token expiration checks DISABLED - treating as server issue')
-      console.log('🔍 Request details:', {
-        url: error.config?.url,
-        method: error.config?.method,
-        headers: error.config?.headers,
-      })
+      const url = String(error.config?.url ?? '')
+      const sentToken = Boolean(error.config?.headers?.Authorization)
+      if (sentToken && !url.includes('/api/v1/auth/')) {
+        handleSessionExpired()
+      }
     }
 
     // Handle 500 Internal Server Error
@@ -62,40 +87,6 @@ function getAuthToken(): string | null {
   return token
 }
 
-// DISABLED: Token expiration checks disabled for development
-async function isTokenExpiringSoon(): Promise<boolean> {
-  console.log('🚫 Token expiration soon check DISABLED')
-  return false
-
-  // const token = getAuthToken()
-  // if (!token) return true
-
-  // try {
-  //   // Use the new JWT utility function
-  //   const { isTokenExpiringSoon: checkExpiringSoon } = await import('./jwt-utils')
-  //   return checkExpiringSoon(token, 5)
-  // } catch (error) {
-  //   console.warn('⚠️ Error checking token expiration:', error)
-  //   // Don't treat parsing errors as expiration - just skip the check
-  //   return false
-  // }
-}
-
-// Refresh token function (currently unused)
-// async function _refreshToken(): Promise<boolean> {
-//   try {
-//     console.log('🔄 Attempting to refresh token...')
-//
-//     // For now, we'll just return false to trigger re-login
-//     // In the future, this could call a refresh endpoint
-//     console.log('⚠️ Token refresh not implemented - user needs to re-login')
-//     return false
-//   } catch (error) {
-//     console.error('❌ Token refresh failed:', error)
-//     return false
-//   }
-// }
-
 // Добавляем интерцептор для автоматического добавления токена
 api.interceptors.request.use(
   async (config) => {
@@ -105,9 +96,6 @@ api.interceptors.request.use(
       console.log('🔑 Login request - skipping token checks')
       return config
     }
-
-    // DISABLED: Token expiration checks disabled for development
-    console.log('🚫 Token expiration checks DISABLED - skipping all checks')
 
     // Get real token from storage
     const token = getAuthToken()
@@ -133,15 +121,6 @@ api.interceptors.request.use(
     return Promise.reject(error)
   },
 )
-
-// Response interceptor disabled - refresh tokens not working
-// api.interceptors.response.use(
-//   (response) => response,
-//   async (error) => {
-//     // Refresh token logic disabled
-//     return Promise.reject(error)
-//   }
-// )
 
 // Auth API for invitation token validation
 export const authApi = {

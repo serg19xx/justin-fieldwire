@@ -291,6 +291,10 @@ function transformTaskFromApiRow(task: Record<string, unknown>): Task {
       task.category != null && String(task.category).trim() !== ''
         ? String(task.category).trim()
         : null,
+    estimated_minutes:
+      task.estimated_minutes != null && Number(task.estimated_minutes) > 0
+        ? Number(task.estimated_minutes)
+        : null,
     task_lead_id: task_lead_id ?? undefined,
     executor_type:
       task.executor_type === 'user' || task.executor_type === 'contractor'
@@ -649,6 +653,9 @@ export const tasksApi = {
         const raw = typeof data.category === 'string' ? data.category.trim() : ''
         apiData.category = raw === '' ? null : raw
       }
+      if (data.estimated_minutes !== undefined) {
+        apiData.estimated_minutes = data.estimated_minutes
+      }
 
       if (data.executor_type !== undefined) {
         apiData.executor_type = data.executor_type
@@ -839,6 +846,9 @@ export const tasksApi = {
       if (data.category !== undefined) {
         const raw = typeof data.category === 'string' ? data.category.trim() : ''
         apiData.category = raw === '' ? null : raw
+      }
+      if (data.estimated_minutes !== undefined) {
+        apiData.estimated_minutes = data.estimated_minutes
       }
       if (data.executor_type !== undefined) {
         apiData.executor_type = data.executor_type

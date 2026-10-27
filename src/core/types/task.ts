@@ -49,6 +49,8 @@ export interface Task {
   name: string
   /** Same meaning as fw_task_templates.category — used for filtering */
   category?: string | null
+  /** PM estimate of time to complete, in minutes (Days / Hours / Minutes in the task form) */
+  estimated_minutes?: number | null
   start_planned: string // DATE from database
   start_time?: string // TIME from database (HH:mm:ss format, e.g., "08:00:00")
   end_planned?: string // DATE from database
@@ -146,6 +148,7 @@ export interface TaskCreateUpdate {
   address?: string
   name: string
   category?: string | null
+  estimated_minutes?: number | null
   start_planned: string
   start_time?: string // TIME format (HH:mm:ss, e.g., "08:00:00")
   end_planned?: string

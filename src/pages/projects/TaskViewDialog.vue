@@ -59,6 +59,11 @@
             <p class="text-gray-900">{{ task.address }}</p>
           </div>
 
+          <div v-if="task?.estimated_minutes">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Estimated time</label>
+            <p class="text-gray-900">{{ formatTaskEstimate(task.estimated_minutes) }}</p>
+          </div>
+
           <!-- Duration -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Duration</label>
@@ -278,6 +283,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { Task } from '@/core/types/task'
+import { formatTaskEstimate } from '@/core/utils/task-estimate'
 import { projectApi, type ProjectTeamMember } from '@/core/utils/project-api'
 import { mapApiProjectTeamRowsToRoster } from '@/core/utils/map-api-project-team-response'
 import { getDisplayRole } from '@/core/utils/role-utils'

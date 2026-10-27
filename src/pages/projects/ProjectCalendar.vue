@@ -30,6 +30,7 @@ import TaskFilterDialog from '@/components/tasks/TaskFilterDialog.vue'
 import TaskListSidebar from '@/components/tasks/TaskListSidebar.vue'
 import { useTaskFilters } from '@/composables/useTaskFilters'
 import { taskTemplatesApi } from '@/core/utils/task-templates-api'
+import { formatTaskEstimate } from '@/core/utils/task-estimate'
 import {
   DEFAULT_TASKS_VIEW_MODE,
   TASKS_CALENDAR_ENABLED,
@@ -3148,6 +3149,7 @@ async function handleTaskSave(taskData: (Partial<TaskCreateUpdate> | Partial<Tas
 
       // Optional fields
       if (taskData.address) createPayload.address = taskData.address
+      if (taskData.estimated_minutes !== undefined) createPayload.estimated_minutes = taskData.estimated_minutes
       if (taskData.duration_days) createPayload.durationDays = taskData.duration_days
       if (taskData.notes) createPayload.notes = taskData.notes
 
@@ -3268,6 +3270,7 @@ async function handleTaskSave(taskData: (Partial<TaskCreateUpdate> | Partial<Tas
 
       // Optional fields - only include if they exist
       if (taskData.address !== undefined) updatePayload.address = taskData.address
+      if (taskData.estimated_minutes !== undefined) updatePayload.estimated_minutes = taskData.estimated_minutes
       if (taskData.duration_days !== undefined) updatePayload.duration_days = taskData.duration_days
       if (taskData.notes !== undefined) updatePayload.notes = taskData.notes
 
@@ -4009,6 +4012,10 @@ defineExpose({
                 <div v-if="selectedTask.end_planned">
                   <span class="font-medium text-gray-700">End Date:</span>
                   <div class="text-gray-600">{{ formatDate(selectedTask.end_planned) }}</div>
+                </div>
+                <div v-if="selectedTask.estimated_minutes">
+                  <span class="font-medium text-gray-700">Estimated time:</span>
+                  <div class="text-gray-600">{{ formatTaskEstimate(selectedTask.estimated_minutes) }}</div>
                 </div>
                 <div>
                   <span class="font-medium text-gray-700">Duration:</span>
