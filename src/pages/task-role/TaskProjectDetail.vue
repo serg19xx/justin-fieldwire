@@ -18,6 +18,17 @@
       <p v-if="projectAddress" class="text-xs text-gray-500 mt-1">{{ projectAddress }}</p>
     </header>
 
+    <nav v-if="isForeman" class="mb-4 grid grid-cols-3 gap-2" aria-label="Project information">
+      <RouterLink
+        v-for="link in projectInfoLinks"
+        :key="link.section"
+        :to="`/tasks/projects/${projectId}/info/${link.section}`"
+        class="rounded-lg border border-gray-200 bg-white py-2 text-center text-sm font-medium text-gray-700 hover:border-orange-300 hover:text-orange-700"
+      >
+        {{ link.label }}
+      </RouterLink>
+    </nav>
+
     <div
       class="mb-4 flex rounded-lg border border-gray-200 p-1 bg-gray-50"
       role="tablist"
@@ -114,6 +125,24 @@
             </span>
             <span class="text-xs font-medium text-gray-500 shrink-0">{{ task.progress_pct ?? 0 }}%</span>
           </div>
+          <div
+            v-if="task.priority || task.category || isContractorTask(task)"
+            class="mt-1.5 flex flex-wrap items-center gap-1.5"
+          >
+            <TaskPriorityBadge :priority="task.priority" size="sm" />
+            <span
+              v-if="task.category"
+              class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-700"
+            >
+              {{ task.category }}
+            </span>
+            <span
+              v-if="isContractorTask(task)"
+              class="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs text-indigo-700"
+            >
+              Contractor{{ task.contractor?.name ? ` · ${task.contractor.name}` : '' }}
+            </span>
+          </div>
           <p
             v-if="taskSiteAddress(task)"
             class="text-xs text-gray-500 mt-1.5 whitespace-pre-wrap break-words leading-snug"
@@ -148,14 +177,20 @@ import TaskMarkDoneDialog from '@/components/task-role/TaskMarkDoneDialog.vue'
 import { useAuthStore } from '@/core/stores/auth'
 import type { Task } from '@/core/types/task'
 import { projectApi } from '@/core/utils/project-api'
+import { resolveDefaultTaskForemanId } from '@/core/utils/project-foreman'
 import { resolveSessionUserId } from '@/core/utils/session-user-id'
 import {
   canEditTaskProgress,
-  filterTasksForInvolvedUser,
+  compareFieldTaskPriority,
+  filterTasksForFieldUser,
   formatBackendTaskStatus,
   getTaskRoleStatusBucket,
+  isContractorTask,
+  isTaskRoleForeman,
   resolveTaskSiteAddress,
 } from '@/core/utils/task-role-ux'
+import { PROJECT_INFO_SECTIONS } from '@/core/utils/task-project-info'
+import TaskPriorityBadge from '@/components/tasks/TaskPriorityBadge.vue'
 import { taskFieldPhotosApi } from '@/core/utils/task-field-photos-api'
 import { fileToCompressedUploadFile, isAcceptedImageFile } from '@/core/utils/task-field-photos-storage'
 import { formatTaskDate } from '@/core/utils/task-utils'
@@ -170,10 +205,15 @@ const authStore = useAuthStore()
 const projectId = computed(() => Number(route.params.projectId))
 const projectName = ref('Project')
 const projectAddress = ref('')
+const projectForemanId = ref<number | null>(null)
 const tasks = ref<Task[]>([])
 const isLoading = ref(true)
 const loadError = ref('')
 const listTab = ref<TaskListTab>('open')
+const isForeman = computed(() =>
+  isTaskRoleForeman(authStore.currentUser?.role_code, authStore.currentUser?.role_id),
+)
+const projectInfoLinks = PROJECT_INFO_SECTIONS
 const markDoneTask = ref<Task | null>(null)
 const isMarkingDone = ref(false)
 const markDoneError = ref('')
@@ -182,7 +222,7 @@ const isActionError = ref(false)
 
 const scopedTasks = computed(() => {
   const uid = resolveSessionUserId(authStore.currentUser)
-  return uid != null ? filterTasksForInvolvedUser(tasks.value, uid) : []
+  return uid != null ? filterTasksForFieldUser(tasks.value, uid, projectForemanId.value) : []
 })
 
 function isClosedTask(task: Task): boolean {
@@ -204,10 +244,15 @@ function canMarkDone(task: Task): boolean {
   return canEditTaskProgress(task, uid, authStore.currentUser?.role_code, authStore.currentUser?.role_id)
 }
 
-/** Not yet submitted first, then earliest planned start; tasks without dates go last. */
+/**
+ * Not yet submitted first; then priority, category, own crew before contractors;
+ * then earliest planned start (tasks without dates go last).
+ */
 function compareOpenTasks(a: Task, b: Task): number {
   const submittedDiff = Number(isSubmitted(a)) - Number(isSubmitted(b))
   if (submittedDiff !== 0) return submittedDiff
+  const priorityDiff = compareFieldTaskPriority(a, b)
+  if (priorityDiff !== 0) return priorityDiff
   const as = a.start_planned || '9999-12-31'
   const bs = b.start_planned || '9999-12-31'
   if (as !== bs) return as < bs ? -1 : 1
@@ -308,6 +353,7 @@ async function load(): Promise<void> {
     ])
     projectName.value = project?.prj_name ?? `Project #${pid}`
     projectAddress.value = project?.address ?? ''
+    projectForemanId.value = resolveDefaultTaskForemanId(project)
     tasks.value = taskResult.tasks ?? []
     listTab.value = 'open'
   } catch {

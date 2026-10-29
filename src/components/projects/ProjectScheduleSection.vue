@@ -105,12 +105,12 @@
 
         <p class="text-xs text-gray-500 max-w-xl">
           <template v-if="periodMode === 'week'">
-            You can open past weeks to review published history. Planning and drafts are only for this week
-            and the future; days before today cannot be chosen in an editable draft.
+            Every day stays editable, including past days, until a project manager locks it.
+            Lock a day once its hours and notes are accurate for payroll.
           </template>
           <template v-else>
-            Use Month / Custom to review days and the actual-hours total. To change destinations or reopen a
-            published plan, open <strong class="font-medium text-gray-700">Week</strong>.
+            Use Month / Custom to review days, correct actual hours, add payroll notes and lock days. To change
+            destinations or reopen a published plan, open <strong class="font-medium text-gray-700">Week</strong>.
           </template>
         </p>
       </div>
@@ -160,7 +160,7 @@
             </template>
           </p>
           <button
-            v-if="canEdit && periodMode === 'week' && !isViewingPastWeek"
+            v-if="canEdit && periodMode === 'week'"
             type="button"
             class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700"
             :disabled="isSaving || isFetchingWeek"
@@ -168,13 +168,10 @@
           >
             Create draft week
           </button>
-          <p v-else-if="canEdit && periodMode === 'week' && isViewingPastWeek" class="text-xs text-gray-500">
-            Past weeks cannot be created or edited here.
-          </p>
           <p v-else-if="canEdit && periodMode !== 'week'" class="text-xs text-gray-500">
             Switch to Week to create or edit a draft.
           </p>
-          <p v-else-if="!canEdit && periodMode === 'week' && !isViewingPastWeek" class="text-xs text-gray-500">
+          <p v-else-if="!canEdit && periodMode === 'week'" class="text-xs text-gray-500">
             Only project managers can create the schedule.
           </p>
         </template>
@@ -262,7 +259,7 @@
         </div>
 
         <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm w-full">
-          <table class="w-full min-w-[64rem] table-fixed divide-y divide-gray-200 text-sm">
+          <table class="w-full min-w-[72rem] table-fixed divide-y divide-gray-200 text-sm">
             <colgroup>
               <col class="w-[11%]" />
               <col class="w-[22%]" />
@@ -303,8 +300,8 @@
                     <span>Km</span>
                     <span title="Expected start">Exp start</span>
                     <span title="Expected finish">Exp end</span>
-                    <span title="Actual clock-in from phone">Act start</span>
-                    <span title="Actual clock-out from phone">Act end</span>
+                    <span title="Actual start: phone punch, or the PM correction (highlighted)">Act start</span>
+                    <span title="Actual end: phone punch, or the PM correction (highlighted)">Act end</span>
                   </div>
                 </th>
               </tr>
@@ -319,21 +316,41 @@
                   assignmentNoteLength(slot.row) > assignmentNoteMaxChars
                     ? 'bg-red-50/80'
                     : '',
-                  isScheduleEditable && isPastPlanDayYmd(slot.ymd) ? 'bg-gray-50/90' : '',
+                  isDayLocked(slot.ymd) ? 'bg-gray-50/90' : '',
                 ]"
               >
                 <td class="px-3 py-2 align-top">
                   <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                     <span class="text-gray-900 font-medium">{{ slot.dayLabel }}</span>
                     <span
-                      v-if="isScheduleEditable && isPastPlanDayYmd(slot.ymd)"
-                      class="text-xs font-normal text-gray-400"
+                      v-if="isDayLocked(slot.ymd)"
+                      class="inline-flex items-center gap-0.5 rounded-full bg-gray-200 px-1.5 py-px text-[10px] font-medium text-gray-700"
+                      :title="lockedTitle(slot.ymd)"
                     >
-                      Past — read only
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                        />
+                      </svg>
+                      Locked
                     </span>
                   </div>
                   <button
-                    v-if="!slot.row && isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
+                    v-if="canLockDay(slot.ymd)"
+                    type="button"
+                    class="mt-1 block text-[11px] font-medium disabled:opacity-45"
+                    :class="isDayLocked(slot.ymd) ? 'text-gray-600 hover:text-gray-900' : 'text-emerald-700 hover:text-emerald-900'"
+                    :disabled="payrollBusyYmd === slot.ymd"
+                    :title="isDayLocked(slot.ymd) ? 'Allow changes to this day again' : 'Confirm this day is accurate for payroll; nothing can change until unlocked'"
+                    @click="onToggleDayLock(slot.ymd)"
+                  >
+                    {{ isDayLocked(slot.ymd) ? 'Unlock day' : 'Lock day' }}
+                  </button>
+                  <button
+                    v-if="!slot.row && isDayPlanEditable(slot.ymd)"
                     type="button"
                     class="mt-1 text-sm font-medium text-blue-700 hover:text-blue-900"
                     @click="assignWeekDay(slot.ymd)"
@@ -352,7 +369,7 @@
                     <div class="flex items-start gap-1">
                       <div class="min-w-0 flex-1">
                         <select
-                          v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
+                          v-if="isDayPlanEditable(slot.ymd)"
                           class="w-full rounded border border-gray-300 bg-white py-1.5 pl-2.5 pr-8 text-sm"
                           :value="String(slot.row.project_id)"
                           @change="onRowProjectChange(slot.row, $event)"
@@ -375,7 +392,7 @@
                         </p>
                       </div>
                       <button
-                        v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
+                        v-if="isDayPlanEditable(slot.ymd)"
                         type="button"
                         class="inline-flex shrink-0 items-center justify-center p-1.5 rounded-md transition-colors text-gray-600 hover:text-amber-700 hover:bg-amber-50"
                         title="Clear this day"
@@ -398,7 +415,7 @@
                 <td class="px-3 py-2 align-top">
                   <template v-if="slot.row">
                     <textarea
-                      v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
+                      v-if="isDayPlanEditable(slot.ymd)"
                       v-model="slot.row.assignment_note"
                       rows="3"
                       class="w-full rounded border border-gray-300 text-sm px-2 py-1"
@@ -431,7 +448,7 @@
                         Full day notes
                       </RouterLink>
                       <span
-                        v-else-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
+                        v-else-if="isDayPlanEditable(slot.ymd)"
                         class="text-[11px] text-gray-400"
                         title="Save the draft first so this day has a server id"
                       >
@@ -442,11 +459,11 @@
                   <span v-else class="text-gray-400">—</span>
                 </td>
                 <td class="px-2 py-2 align-top">
-                  <template v-if="slot.row">
-                    <div class="grid gap-1 items-center w-full" :class="TIME_GRID_COLS">
+                  <div class="grid gap-1 items-start w-full" :class="TIME_GRID_COLS">
+                    <template v-if="slot.row">
                       <div>
                         <input
-                          v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
+                          v-if="isDayPlanEditable(slot.ymd)"
                           :value="slot.row.distance_km"
                           type="text"
                           inputmode="numeric"
@@ -463,7 +480,7 @@
                       </div>
                       <div>
                         <input
-                          v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
+                          v-if="isDayPlanEditable(slot.ymd)"
                           type="time"
                           class="w-full rounded border border-gray-300 text-sm px-1 py-1 tabular-nums"
                           :value="slot.row.expected_start_time || ''"
@@ -476,7 +493,7 @@
                       </div>
                       <div>
                         <input
-                          v-if="isScheduleEditable && !isPastPlanDayYmd(slot.ymd)"
+                          v-if="isDayPlanEditable(slot.ymd)"
                           type="time"
                           class="w-full rounded border border-gray-300 text-sm px-1 py-1 tabular-nums"
                           :value="slot.row.expected_end_time || ''"
@@ -487,39 +504,62 @@
                           {{ slot.row.expected_end_time || '—' }}
                         </span>
                       </div>
+                    </template>
+                    <template v-else>
+                      <span class="text-gray-400">—</span>
+                      <span class="text-gray-400">—</span>
+                      <span class="text-gray-400">—</span>
+                    </template>
+                    <div v-for="phase in PUNCH_PHASES" :key="phase">
+                      <input
+                        v-if="canEditPayrollTimes(slot.ymd)"
+                        type="time"
+                        class="w-full rounded border text-sm px-1 py-1 tabular-nums disabled:opacity-50"
+                        :class="isActualAdjusted(slot.ymd, phase) ? 'border-amber-400 bg-amber-50' : 'border-gray-300'"
+                        :value="effectiveActualTime(slot, phase)"
+                        :title="actualTimeTitle(slot, phase)"
+                        :disabled="payrollBusyYmd === slot.ymd"
+                        @change="onActualTimeChange(slot, phase, $event)"
+                      />
                       <span
-                        class="text-sm tabular-nums"
-                        :class="slot.row.work_start_at ? 'text-gray-800' : 'text-gray-400'"
-                        title="Actual clock-in from phone"
+                        v-else
+                        class="block text-sm tabular-nums"
+                        :class="effectiveActualTime(slot, phase) ? 'text-gray-800' : 'text-gray-400'"
+                        :title="actualTimeTitle(slot, phase)"
                       >
-                        {{ formatCheckInTime(slot.row.work_start_at) }}
-                        <button
-                          v-if="slot.row.has_work_start_photo"
-                          type="button"
-                          class="block text-[11px] font-medium text-blue-700 hover:underline"
-                          @click="openPunchPhoto(slot.row, 'start')"
-                        >
-                          Photo
-                        </button>
+                        {{ effectiveActualTime(slot, phase) || 'hh:mm' }}
                       </span>
                       <span
-                        class="text-sm tabular-nums"
-                        :class="slot.row.work_end_at ? 'text-gray-800' : 'text-gray-400'"
-                        title="Actual clock-out from phone"
+                        v-if="isActualAdjusted(slot.ymd, phase)"
+                        class="block text-[10px] leading-tight text-amber-800"
                       >
-                        {{ formatCheckInTime(slot.row.work_end_at) }}
-                        <button
-                          v-if="slot.row.has_work_end_photo"
-                          type="button"
-                          class="block text-[11px] font-medium text-blue-700 hover:underline"
-                          @click="openPunchPhoto(slot.row, 'end')"
-                        >
-                          Photo
-                        </button>
+                        Edited · phone {{ punchAt(slot, phase) ? formatCheckInTime(punchAt(slot, phase)) : 'none' }}
                       </span>
+                      <button
+                        v-if="hasPunchPhoto(slot, phase)"
+                        type="button"
+                        class="block text-[11px] font-medium text-blue-700 hover:underline"
+                        @click="openPunchPhoto(slot.ymd, phase)"
+                      >
+                        Photo
+                      </button>
                     </div>
-                  </template>
-                  <span v-else class="text-gray-400">—</span>
+                  </div>
+                  <div v-if="canEditPayrollNote(slot.ymd) || payrollNoteOf(slot.ymd)" class="mt-2">
+                    <textarea
+                      v-if="canEditPayrollNote(slot.ymd)"
+                      rows="2"
+                      class="w-full rounded border border-amber-200 bg-amber-50/40 text-xs px-2 py-1 disabled:opacity-50"
+                      :value="payrollNoteOf(slot.ymd)"
+                      :maxlength="payrollNoteMaxChars"
+                      :disabled="payrollBusyYmd === slot.ymd"
+                      placeholder="Payroll note: what happened this day (absent, left early, overtime…)"
+                      @change="onPayrollNoteChange(slot, $event)"
+                    />
+                    <p v-else class="text-xs text-amber-900 whitespace-pre-wrap break-words">
+                      <span class="font-medium">Payroll note:</span> {{ payrollNoteOf(slot.ymd) }}
+                    </p>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -573,44 +613,6 @@
           Overlapping slots for this worker — adjust day/slot before save.
         </div>
         <div
-          v-if="isScheduleEditable && hasRowsOnPastDays"
-          class="mt-2 text-sm text-amber-800 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
-        >
-          There is still a <strong class="font-medium text-amber-950">slot or note on a calendar day before today</strong>
-          — planning is forward-only.
-          <strong class="font-medium text-amber-950">Save and Publish stay off</strong> until this is cleared
-          (use the button below, then <strong class="font-medium text-amber-950">Save draft</strong> so the server matches).
-        </div>
-        <div
-          v-if="isScheduleEditable && hasRowsOnPastDays"
-          class="mt-2 flex flex-col gap-2"
-        >
-          <div class="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              class="px-3 py-2 text-sm font-medium text-amber-900 bg-white border border-amber-300 rounded-lg hover:bg-amber-50 disabled:opacity-45"
-              :disabled="isSaving || isFetchingWeek || pastDayRowCount === 0"
-              @click="onRemovePastDayRows"
-            >
-              Clear {{ pastDayRowCount }} past-day assignment(s)
-            </button>
-            <button
-              type="button"
-              class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-45"
-              :disabled="isSaving || isFetchingWeek"
-              @click="onReloadWeekFromServer"
-            >
-              Reload from server
-            </button>
-          </div>
-          <p class="text-xs text-amber-900/85 max-w-3xl leading-snug">
-            <strong class="font-medium text-amber-950">Clear</strong> only updates this page. To remove past assignments on the
-            server, click <strong class="font-medium text-amber-950">Save draft</strong> after clearing.
-            <strong class="font-medium text-amber-950">Reload</strong> loads the last <em>saved</em> week from the server and
-            drops changes you have not saved yet (including a Clear you did not save).
-          </p>
-        </div>
-        <div
           v-if="isScheduleEditable && hasAnyAssignmentNoteTooLong"
           class="mt-2 text-sm text-amber-800 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"
         >
@@ -636,7 +638,6 @@
             Publish week
           </button>
           <button
-            v-if="!hasRowsOnPastDays"
             type="button"
             class="px-3 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-45"
             :disabled="isSaving || isFetchingWeek"
@@ -652,21 +653,19 @@
           <strong class="text-gray-800">Publish week</strong>.
           <strong class="text-gray-800">Save draft</strong> writes the whole draft week (you can save with all slots cleared — that removes assignments on the server).
           <strong class="text-gray-800">Publish week</strong> still needs at least one real assignment on this week.
-          If past days still have a task or note, clear them first — planning is forward-only.
+          Locked days are never changed by Save or Publish.
           <strong class="text-gray-800">Reload from server</strong> replaces this view with the last saved data and
           discards unsaved edits in this tab.
         </p>
+        <p v-if="payrollAvailable" class="mt-2 text-xs text-gray-600 max-w-3xl leading-relaxed">
+          <strong class="text-gray-800">Payroll:</strong>
+          Act start / Act end corrections and payroll notes save right away (no Save draft needed) and work on
+          published weeks too. The phone punch is kept and shown next to an edited time.
+          <strong class="text-gray-800">Lock day</strong> when a day is accurate — the worker cannot punch and the
+          day's plan, times and note cannot change until it is unlocked.
+        </p>
 
-        <p
-          v-if="isViewingPastWeek && !isDraft && canEdit"
-          class="text-xs text-gray-500 mt-3"
-        >
-          Published history for a past week — read only. Open the current or a future week to plan or reopen a draft.
-        </p>
-        <p v-else-if="isViewingPastWeek" class="text-xs text-gray-500 mt-3">
-          Past week — read only. Move to this week or later to edit drafts or create new ones.
-        </p>
-        <p v-else-if="!isDraft && !canEdit" class="text-xs text-gray-500 mt-3">
+        <p v-if="!isDraft && !canEdit" class="text-xs text-gray-500 mt-3">
           This week is published. Pick a worker above to review their lines.
         </p>
         </div>
@@ -696,7 +695,14 @@ import {
   ASSIGNMENT_NOTE_MAX_CHARS,
 } from '@/core/utils/schedule-weeks-api'
 import { fetchWorkDayPhoto } from '@/core/utils/work-timesheet-api'
-import { addDays, startOfWeekMonday, startOfMonth, endOfMonth, toYmd, weekStartMondayYmdFromIsoDate, eachYmdInRange, mondaysCoveringRange, parseYmdLocal, hoursBetweenTimestamps } from '@/core/utils/week-utils'
+import {
+  fetchPayrollDays,
+  savePayrollDay,
+  setPayrollDayLocked,
+  type PayrollDay,
+  type PayrollDayInput,
+} from '@/core/utils/payroll-days-api'
+import { addDays, startOfWeekMonday, startOfMonth, endOfMonth, toYmd, weekStartMondayYmdFromIsoDate, eachYmdInRange, mondaysCoveringRange, parseYmdLocal } from '@/core/utils/week-utils'
 
 /** Stable positive user id for schedule rows (avoids string/number mismatch vs worker select). */
 function scheduleUserId(raw: unknown): number {
@@ -996,7 +1002,7 @@ function expectedHoursOfRow(row: PlannerScheduleRow | null): number | null {
 
 /** Fixed Km column plus time inputs wide enough to show "hh:mm a.m." without clipping. */
 const TIME_GRID_COLS =
-  'grid-cols-[3.25rem_minmax(7rem,1fr)_minmax(7rem,1fr)_minmax(3.5rem,1fr)_minmax(3.5rem,1fr)]'
+  'grid-cols-[3.25rem_minmax(7rem,1fr)_minmax(7rem,1fr)_minmax(7rem,1fr)_minmax(7rem,1fr)]'
 
 /** GET response matches the week the user navigated to (toolbar / template dates). */
 const scheduleViewSynced = computed(() => {
@@ -1023,23 +1029,180 @@ const scheduleLoadingLabel = computed(() => {
   return 'Loading week…'
 })
 
-/** Local calendar today YYYY-MM-DD — no draft planning on earlier dates */
+/** Local calendar today YYYY-MM-DD */
 const todayYmd = computed(() => toYmd(new Date()))
 
-/** Draft planning is forward-only: days before local today cannot be edited (matches day badges). */
-function isPastPlanDayYmd(ymd: string): boolean {
-  return sliceWorkYmd(ymd) < todayYmd.value
+type PunchPhase = 'start' | 'end'
+const PUNCH_PHASES: readonly PunchPhase[] = ['start', 'end']
+const payrollNoteMaxChars = 2000
+
+/** Payroll review of the selected worker, keyed by YYYY-MM-DD (PM / admin only). */
+const payrollByYmd = ref<Record<string, PayrollDay>>({})
+const payrollAvailable = ref(false)
+/** Day whose payroll save / lock request is in flight. */
+const payrollBusyYmd = ref('')
+let payrollLoadGen = 0
+
+function isDayLocked(ymd: string): boolean {
+  return payrollByYmd.value[sliceWorkYmd(ymd)]?.locked === true
 }
 
-/**
- * Empty template rows for Mon–Tue in the current week are still "past" dates but must NOT block save.
- * Only rows with an assignment (task or note) on a past calendar day block publish/save.
- */
-function isPastDayRowBlockingSave(r: ScheduleWeekEntryRow): boolean {
-  if (!r.work_date) return false
-  if (sliceWorkYmd(r.work_date) >= todayYmd.value) return false
-  // Any saved/active presence row on a past day blocks forward-only planning
-  return scheduleUserId(r.user_id) > 0
+/** Plan fields (destination, notes, km, expected times) — draft week and the day is not locked. */
+function isDayPlanEditable(ymd: string): boolean {
+  return isScheduleEditable.value && !isDayLocked(ymd)
+}
+
+function canEditPayrollNote(ymd: string): boolean {
+  return payrollAvailable.value && props.canEdit && scheduleUserId(selectedPlannerWorkerId.value) > 0 && !isDayLocked(ymd)
+}
+
+/** Actual times can be corrected for today and earlier days only. */
+function canEditPayrollTimes(ymd: string): boolean {
+  return canEditPayrollNote(ymd) && sliceWorkYmd(ymd) <= todayYmd.value
+}
+
+function canLockDay(ymd: string): boolean {
+  return (
+    payrollAvailable.value &&
+    props.canEdit &&
+    scheduleUserId(selectedPlannerWorkerId.value) > 0 &&
+    sliceWorkYmd(ymd) <= todayYmd.value
+  )
+}
+
+function lockedTitle(ymd: string): string {
+  const at = payrollByYmd.value[sliceWorkYmd(ymd)]?.locked_at
+  const when = at ? new Date(at).toLocaleString() : ''
+  return when ? `Locked by PM on ${when}` : 'Locked by PM'
+}
+
+function payrollNoteOf(ymd: string): string {
+  return payrollByYmd.value[sliceWorkYmd(ymd)]?.payroll_note ?? ''
+}
+
+function punchAt(slot: WeekDaySlotVm, phase: PunchPhase): string | null {
+  const day = payrollByYmd.value[slot.ymd]
+  if (day) return phase === 'start' ? day.work_start_at : day.work_end_at
+  if (!slot.row) return null
+  return (phase === 'start' ? slot.row.work_start_at : slot.row.work_end_at) ?? null
+}
+
+function hasPunchPhoto(slot: WeekDaySlotVm, phase: PunchPhase): boolean {
+  const day = payrollByYmd.value[slot.ymd]
+  if (day) return phase === 'start' ? day.has_start_photo : day.has_end_photo
+  if (!slot.row) return false
+  return (phase === 'start' ? slot.row.has_work_start_photo : slot.row.has_work_end_photo) === true
+}
+
+function adjustedTimeOf(ymd: string, phase: PunchPhase): string | null {
+  const day = payrollByYmd.value[sliceWorkYmd(ymd)]
+  if (!day) return null
+  return phase === 'start' ? day.adjusted_start_time : day.adjusted_end_time
+}
+
+function isActualAdjusted(ymd: string, phase: PunchPhase): boolean {
+  return adjustedTimeOf(ymd, phase) != null
+}
+
+/** "HH:MM" used for paid hours: the PM correction when set, otherwise the phone punch. */
+function effectiveActualTime(slot: WeekDaySlotVm, phase: PunchPhase): string {
+  const adjusted = adjustedTimeOf(slot.ymd, phase)
+  if (adjusted) return adjusted
+  const at = punchAt(slot, phase)
+  return at ? formatCheckInTime(at) : ''
+}
+
+function actualTimeTitle(slot: WeekDaySlotVm, phase: PunchPhase): string {
+  const label = phase === 'start' ? 'start' : 'end'
+  const at = punchAt(slot, phase)
+  const phone = at ? `Phone ${label}: ${formatCheckInTime(at)}` : `No phone ${label} punch`
+  return isActualAdjusted(slot.ymd, phase) ? `${phone}. Corrected by PM.` : phone
+}
+
+async function loadPayrollDays(): Promise<void> {
+  const gen = ++payrollLoadGen
+  const uid = scheduleUserId(selectedPlannerWorkerId.value)
+  if (uid <= 0 || !props.canEdit || customRangeError.value) {
+    payrollByYmd.value = {}
+    payrollAvailable.value = false
+    return
+  }
+  try {
+    const days = await fetchPayrollDays(uid, viewFromYmd.value, viewToYmd.value)
+    if (gen !== payrollLoadGen) return
+    payrollByYmd.value = Object.fromEntries(days.map((d) => [d.work_date, d]))
+    payrollAvailable.value = true
+  } catch {
+    if (gen !== payrollLoadGen) return
+    payrollByYmd.value = {}
+    payrollAvailable.value = false
+  }
+}
+
+function storePayrollDay(day: PayrollDay): void {
+  if (day.user_id !== scheduleUserId(selectedPlannerWorkerId.value)) return
+  payrollByYmd.value = { ...payrollByYmd.value, [day.work_date]: day }
+}
+
+async function persistPayrollDay(ymd: string, patch: Partial<PayrollDayInput>): Promise<boolean> {
+  const uid = scheduleUserId(selectedPlannerWorkerId.value)
+  if (uid <= 0) return false
+  const current = payrollByYmd.value[ymd]
+  const input: PayrollDayInput = {
+    adjusted_start_time: current?.adjusted_start_time ?? null,
+    adjusted_end_time: current?.adjusted_end_time ?? null,
+    payroll_note: current?.payroll_note ?? null,
+    ...patch,
+  }
+  payrollBusyYmd.value = ymd
+  bannerError.value = ''
+  try {
+    storePayrollDay(await savePayrollDay(uid, ymd, input))
+    return true
+  } catch (err) {
+    bannerError.value = getApiErrorMessage(err, 'Could not save the day for payroll.')
+    return false
+  } finally {
+    payrollBusyYmd.value = ''
+  }
+}
+
+async function onActualTimeChange(slot: WeekDaySlotVm, phase: PunchPhase, event: Event): Promise<void> {
+  const el = event.target as HTMLInputElement
+  const value = String(el.value ?? '').trim()
+  const punch = punchAt(slot, phase)
+  // Typing the phone time back (or clearing the field) removes the correction.
+  const adjusted = value === '' || (punch != null && formatCheckInTime(punch) === value) ? null : value
+  const field = phase === 'start' ? 'adjusted_start_time' : 'adjusted_end_time'
+  const ok = await persistPayrollDay(slot.ymd, { [field]: adjusted })
+  if (!ok) el.value = effectiveActualTime(slot, phase)
+}
+
+async function onPayrollNoteChange(slot: WeekDaySlotVm, event: Event): Promise<void> {
+  const el = event.target as HTMLTextAreaElement
+  const note = String(el.value ?? '').trim()
+  if (note === payrollNoteOf(slot.ymd)) return
+  const ok = await persistPayrollDay(slot.ymd, { payroll_note: note === '' ? null : note })
+  if (!ok) el.value = payrollNoteOf(slot.ymd)
+}
+
+async function onToggleDayLock(ymd: string): Promise<void> {
+  const uid = scheduleUserId(selectedPlannerWorkerId.value)
+  if (uid <= 0) return
+  const lock = !isDayLocked(ymd)
+  if (lock && isScheduleEditable.value && dirtyProjectIds.value.size > 0) {
+    bannerError.value = 'Save draft first: unsaved schedule changes on a locked day would not be kept.'
+    return
+  }
+  payrollBusyYmd.value = ymd
+  bannerError.value = ''
+  try {
+    storePayrollDay(await setPayrollDayLocked(uid, ymd, lock))
+  } catch (err) {
+    bannerError.value = getApiErrorMessage(err, lock ? 'Could not lock the day.' : 'Could not unlock the day.')
+  } finally {
+    payrollBusyYmd.value = ''
+  }
 }
 
 const weekRangeLabel = computed(() => {
@@ -1133,31 +1296,20 @@ const workerSelectDisabled = computed(() => isDraft.value && !props.canEdit)
 /** Navigated before the current ISO week — browse historical schedules read-only */
 const isViewingPastWeek = computed(() => weekOffset.value < 0)
 
-/** Editable draft rows: PM role, draft status, week mode only, and not a past calendar week */
+/** Editable draft rows: PM role, draft status, week mode only. Past days stay editable until locked. */
 const isScheduleEditable = computed(
   () =>
     periodMode.value === 'week' &&
     props.canEdit &&
-    isDraft.value &&
-    !isViewingPastWeek.value,
+    isDraft.value,
 )
-
-const hasRowsOnPastDays = computed(
-  () => isScheduleEditable.value && allDraftRows.value.some(isPastDayRowBlockingSave),
-)
-
-/** True when the viewed ISO week still includes today or a future calendar day (Mon..Sun range). */
-const weekStillHasPlanableDays = computed(() => weekEndYmd.value >= todayYmd.value)
-
-const pastDayRowCount = computed(() => allDraftRows.value.filter(isPastDayRowBlockingSave).length)
 
 /** Rows that pass validation and can be persisted (at least one task/day/slot assignment). */
 const saveableRowCount = computed(() => allDraftRows.value.filter((r) => isRowSaveable(r)).length)
 
-/** Blocks Save draft (past-day violations, conflicts, note length). Empty week is allowed — PUT can clear all slots. */
+/** Blocks Save draft (conflicts, note length). Empty week is allowed — PUT can clear all slots. */
 const scheduleSaveDraftBlocked = computed(
   () =>
-    hasRowsOnPastDays.value ||
     hasAnySlotConflict.value ||
     hasAnyAssignmentNoteTooLong.value,
 )
@@ -1171,9 +1323,6 @@ const saveDraftDisabledTitle = computed(() => {
   if (!isScheduleEditable.value || !weekMeta.value) return ''
   if (isFetchingWeek.value) return 'Loading this week from the server…'
   if (isSaving.value) return 'Saving…'
-  if (hasRowsOnPastDays.value) {
-    return 'Clear past-day slots or notes (button above), then save.'
-  }
   if (hasAnySlotConflict.value) return 'Resolve overlapping slots first.'
   if (hasAnyAssignmentNoteTooLong.value) return `Shorten assignment text to ${assignmentNoteMaxChars} characters or less.`
   return ''
@@ -1183,9 +1332,6 @@ const publishWeekDisabledTitle = computed(() => {
   if (!isScheduleEditable.value || !weekMeta.value) return ''
   if (isFetchingWeek.value) return 'Loading this week from the server…'
   if (isSaving.value) return 'Saving…'
-  if (hasRowsOnPastDays.value) {
-    return 'Clear past-day slots or notes before publishing — planning is forward-only.'
-  }
   if (hasAnySlotConflict.value) return 'Resolve overlapping slots first.'
   if (hasAnyAssignmentNoteTooLong.value) return `Shorten assignment text to ${assignmentNoteMaxChars} characters or less.`
   if (saveableRowCount.value === 0) {
@@ -1223,22 +1369,23 @@ const weekTemplateView = computed((): WeekDaySlotVm[] => {
   return out
 })
 
+/** Act end − Act start using PM corrections when present; null without both times. */
+function actualHoursOfSlot(slot: WeekDaySlotVm): number | null {
+  const start = minutesOfTime(effectiveActualTime(slot, 'start'))
+  const end = minutesOfTime(effectiveActualTime(slot, 'end'))
+  if (start == null || end == null || end <= start) return null
+  return (end - start) / 60
+}
+
 const periodActualHoursTotal = computed(() => {
   let sum = 0
-  for (const slot of weekTemplateView.value) {
-    const h = hoursBetweenTimestamps(slot.row?.work_start_at, slot.row?.work_end_at)
-    if (h != null) sum += h
-  }
+  for (const slot of weekTemplateView.value) sum += actualHoursOfSlot(slot) ?? 0
   return Math.round(sum * 100) / 100
 })
 
-const periodActualDaysCounted = computed(() => {
-  let n = 0
-  for (const slot of weekTemplateView.value) {
-    if (hoursBetweenTimestamps(slot.row?.work_start_at, slot.row?.work_end_at) != null) n += 1
-  }
-  return n
-})
+const periodActualDaysCounted = computed(
+  () => weekTemplateView.value.filter((slot) => actualHoursOfSlot(slot) != null).length,
+)
 
 const periodScheduledHoursTotal = computed(() => {
   let sum = 0
@@ -1295,9 +1442,7 @@ const canReopenPublishedWeek = computed(
     props.canEdit &&
     !isDraft.value &&
     weekMeta.value != null &&
-    !isViewingPastWeek.value &&
     scheduleViewSynced.value &&
-    weekStillHasPlanableDays.value &&
     hasAnyWeekEntries.value,
 )
 
@@ -1368,7 +1513,6 @@ function makeTemplateRowForDay(uid: number, ymd: string): PlannerScheduleRow {
 function isRowSaveable(row: PlannerScheduleRow): boolean {
   if (row.user_id <= 0) return false
   if (row.project_id <= 0) return false
-  if (row.work_date && row.work_date < todayYmd.value) return false
   if (hasWorkerSlotConflict(row)) return false
   return true
 }
@@ -1447,8 +1591,7 @@ function dayHasAssignableSlot(uid: number, ymd: string): boolean {
 }
 
 function assignWeekDay(ymd: string): void {
-  if (!isScheduleEditable.value) return
-  if (isPastPlanDayYmd(ymd)) return
+  if (!isDayPlanEditable(ymd)) return
   const uid = scheduleUserId(selectedPlannerWorkerId.value)
   if (uid <= 0) return
   if (!dayHasAssignableSlot(uid, ymd)) return
@@ -1459,8 +1602,17 @@ function assignWeekDay(ymd: string): void {
 }
 
 function clearWeekDayRow(row: PlannerScheduleRow): void {
-  if (!isScheduleEditable.value) return
-  if (row.work_date && sliceWorkYmd(row.work_date) < todayYmd.value) return
+  const ymd = sliceWorkYmd(row.work_date)
+  if (!isDayPlanEditable(ymd)) return
+  if (
+    row.id != null &&
+    ymd < todayYmd.value &&
+    !window.confirm(
+      'Remove the plan for this past day (destination, day notes and their documents/messages)? Actual times and payroll notes are kept.',
+    )
+  ) {
+    return
+  }
   markProjectDirty(row.project_id)
   allDraftRows.value = allDraftRows.value.filter((r) => r !== row)
 }
@@ -1508,10 +1660,10 @@ function onExpectedTimeInput(
 
 /** Check-in timestamp as HH:mm (24h). Empty → placeholder. */
 /** Opens the worker's Start day / End day site photo in a new tab. */
-async function openPunchPhoto(row: PlannerScheduleRow, phase: 'start' | 'end'): Promise<void> {
+async function openPunchPhoto(ymd: string, phase: PunchPhase): Promise<void> {
   const tab = window.open('', '_blank')
   try {
-    const blob = await fetchWorkDayPhoto(scheduleUserId(row.user_id), String(row.work_date).slice(0, 10), phase)
+    const blob = await fetchWorkDayPhoto(scheduleUserId(selectedPlannerWorkerId.value), sliceWorkYmd(ymd), phase)
     const url = URL.createObjectURL(blob)
     if (tab) tab.location.href = url
     else window.location.assign(url)
@@ -1757,25 +1909,9 @@ async function loadScheduleForCurrentPeriod(): Promise<void> {
   await loadMultiWeekPeriod()
 }
 
-function onRemovePastDayRows(): void {
-  if (!isScheduleEditable.value) return
-  const n = pastDayRowCount.value
-  if (n <= 0) return
-  const ok = window.confirm(
-    `Clear ${n} assignment(s) on calendar days before today?\n\nThis only updates your draft in the browser. To update the server, click Save draft afterward.`,
-  )
-  if (!ok) return
-  for (const r of allDraftRows.value) {
-    if (isPastDayRowBlockingSave(r)) markProjectDirty(r.project_id)
-  }
-  allDraftRows.value = allDraftRows.value.filter((r) => !isPastDayRowBlockingSave(r))
-  bannerError.value = ''
-  void nextTick(() => ensureWeekTemplateRowsForSelectedWorker())
-}
-
 async function onReloadWeekFromServer(): Promise<void> {
   bannerError.value = ''
-  await loadScheduleForCurrentPeriod()
+  await Promise.all([loadScheduleForCurrentPeriod(), loadPayrollDays()])
 }
 
 async function ensureDraftMetaForProject(projectId: number): Promise<ScheduleWeekMeta> {
@@ -1902,10 +2038,6 @@ async function onReopenPublishedWeekAsDraft(): Promise<void> {
 }
 
 async function onCreateDraft(): Promise<void> {
-  if (isViewingPastWeek.value) {
-    bannerError.value = 'Drafts cannot be created for past weeks.'
-    return
-  }
   const options = projectOptions.value
   if (options.length === 0) {
     bannerError.value = 'No projects available.'
@@ -1950,11 +2082,6 @@ async function onSaveEntries(): Promise<void> {
     bannerError.value = 'Resolve overlapping slots before saving.'
     return
   }
-  if (hasRowsOnPastDays.value) {
-    bannerError.value =
-      'Clear slots/notes on days before today (use “Clear past-day assignments” below) — planning is forward-only.'
-    return
-  }
   if (hasAnyAssignmentNoteTooLong.value) {
     bannerError.value = `Shorten assignment text to ${assignmentNoteMaxChars} characters or less.`
     return
@@ -1979,11 +2106,6 @@ async function onPublish(): Promise<void> {
   if (!isScheduleEditable.value) return
   if (hasAnySlotConflict.value) {
     bannerError.value = 'Resolve overlapping slots before publishing.'
-    return
-  }
-  if (hasRowsOnPastDays.value) {
-    bannerError.value =
-      'Clear slots/notes on days before today before publishing — planning is forward-only.'
     return
   }
   if (hasAnyAssignmentNoteTooLong.value) {
@@ -2062,6 +2184,7 @@ watch(
 
 watch([selectedPlannerWorkerId, viewFromYmd, viewToYmd], () => {
   void loadExternalScheduleForPlanner()
+  void loadPayrollDays()
 })
 
 watch(

@@ -449,6 +449,10 @@ function resolveRowFax(row: ClientListRow): string | null {
   return String(fax)
 }
 
+function notifyCsvImportComingSoon(): void {
+  window.alert('Load from CSV — coming soon')
+}
+
 function handleAction(actionId: ClientRowActionId, row: ClientListRow) {
   if (isBulkSelection.value || actionBusy.value) return
   const name = entry.value ? String(row[entry.value.nameField] ?? row.id) : row.id
@@ -584,7 +588,7 @@ onMounted(async () => {
             v-if="toolbarActions.includes('loadCsv')"
             type="button"
             class="inline-flex items-center gap-1.5 text-blue-600 hover:underline"
-            @click="alert('Load from CSV — coming soon')"
+            @click="notifyCsvImportComingSoon"
           >
             <AppIcon icon="mdi:upload" :size="16" />
             Load from CSV

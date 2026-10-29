@@ -58,21 +58,38 @@
                 />
               </div>
 
-              <!-- Category -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                  Category <span class="text-gray-400">(optional)</span>
-                </label>
-                <select
-                  v-model="form.category"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                  :class="{ 'text-gray-500': !form.category }"
-                >
-                  <option value="">No category</option>
-                  <option v-for="category in categoryOptions" :key="category" :value="category">
-                    {{ category }}
-                  </option>
-                </select>
+              <!-- Category and priority -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Category <span class="text-gray-400">(optional)</span>
+                  </label>
+                  <select
+                    v-model="form.category"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    :class="{ 'text-gray-500': !form.category }"
+                  >
+                    <option value="">No category</option>
+                    <option v-for="category in categoryOptions" :key="category" :value="category">
+                      {{ category }}
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Priority <span class="text-gray-400">(optional)</span>
+                  </label>
+                  <select
+                    v-model="form.priority"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    :class="{ 'text-gray-500': !form.priority }"
+                  >
+                    <option value="">No priority</option>
+                    <option v-for="option in TASK_PRIORITY_OPTIONS" :key="option.value" :value="option.value">
+                      {{ option.label }}
+                    </option>
+                  </select>
+                </div>
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -363,6 +380,12 @@
                   placeholder="Add any additional notes or description..."
                 ></textarea>
               </div>
+
+              <TaskPhotosPanel
+                :project-id="projectId"
+                :task-id="mode === 'edit' ? task?.id : null"
+                :can-add-reference="canAddTaskPictures"
+              />
 
               <!-- Save Button for Basic Info -->
               <div class="flex justify-end pt-4 border-t border-gray-200">
@@ -892,6 +915,8 @@ import { createDependency, getTaskDependencies } from '@/core/utils/dependencies
 import { useAuthStore } from '@/core/stores/auth'
 import { projectApi } from '@/core/utils/project-api'
 import { tasksApi } from '@/core/utils/tasks-api'
+import { TASK_PRIORITY_OPTIONS, type TaskPriority } from '@/core/utils/task-priority'
+import TaskPhotosPanel from '@/components/tasks/TaskPhotosPanel.vue'
 import {
   formatUnassignedTaskLeadLabel,
   isTaskForemanOverridden,
@@ -941,6 +966,7 @@ const emit = defineEmits<{
 const form = ref({
   name: '',
   category: '',
+  priority: '' as TaskPriority | '',
   address: '',
   start_planned: '',
   start_time: '08:00', // Default start time 08:00
@@ -988,6 +1014,11 @@ const accessKeyDisplay = ref<string | null>(null)
 const accessKeyExpires = ref<string | null>(null)
 const accessKeyBusy = ref(false)
 const accessKeyMessage = ref('')
+
+const canAddTaskPictures = computed(() => {
+  const role = authStore.currentUser?.role_code
+  return role === 'admin' || role === 'project_manager'
+})
 
 const canManageAccessKey = computed(() => {
   const role = authStore.currentUser?.role_code
@@ -1853,6 +1884,7 @@ watch(
       form.value = {
         name: '',
         category: '',
+        priority: '' as TaskPriority | '',
         address: '',
         start_planned: new Date().toISOString().split('T')[0],
         start_time: '08:00', // Default start time 08:00
@@ -1891,6 +1923,7 @@ watch(
       form.value = {
         name: props.task.name || '',
         category: props.task.category || '',
+        priority: props.task.priority ?? '',
         address: props.task.address || '',
         start_planned: props.task.start_planned || '',
         start_time: formatTimeForInput(props.task.start_time),
@@ -2199,6 +2232,7 @@ function handleBasicInfoSave() {
   const taskData: TaskCreateUpdate & { id?: string } = {
     name: form.value.name,
     category: form.value.category?.trim() || null,
+    priority: form.value.priority || null,
     address: form.value.address || undefined,
     start_planned: form.value.start_planned || props.task?.start_planned || '',
     start_time: formatTimeForApi(form.value.start_time),

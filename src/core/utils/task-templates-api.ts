@@ -18,7 +18,7 @@ export const taskTemplatesApi = {
         if (response.data?.data?.templates) {
           return response.data.data.templates
         }
-      } catch (apiError) {
+      } catch {
         // API endpoint doesn't exist yet, fall back to local storage
         console.log('📦 Task Templates API: Using local storage (API endpoint not available)')
       }
@@ -61,7 +61,7 @@ export const taskTemplatesApi = {
         if (response.data?.data?.template) {
           return response.data.data.template
         }
-      } catch (apiError) {
+      } catch {
         // Fall back to local storage
       }
 
@@ -86,7 +86,7 @@ export const taskTemplatesApi = {
           localStorage.setItem(LOCAL_TEMPLATES_KEY, JSON.stringify(templates))
           return response.data.data.template
         }
-      } catch (apiError) {
+      } catch {
         // Fall back to local storage
       }
 
@@ -123,7 +123,7 @@ export const taskTemplatesApi = {
           }
           return response.data.data.template
         }
-      } catch (apiError) {
+      } catch {
         // Fall back to local storage
       }
 
@@ -158,7 +158,7 @@ export const taskTemplatesApi = {
         const filtered = templates.filter((t) => t.id !== templateId)
         localStorage.setItem(LOCAL_TEMPLATES_KEY, JSON.stringify(filtered))
         return
-      } catch (apiError) {
+      } catch {
         // Fall back to local storage
       }
 

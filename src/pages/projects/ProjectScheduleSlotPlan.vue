@@ -335,7 +335,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '@/core/stores/auth'
 import {

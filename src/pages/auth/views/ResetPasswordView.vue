@@ -149,12 +149,10 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '@/core/stores/auth'
 import { api } from '@/core/utils/api'
 
 const router = useRouter()
 const route = useRoute()
-const authStore = useAuthStore()
 
 const resetForm = reactive({
   newPassword: '',

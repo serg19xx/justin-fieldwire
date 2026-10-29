@@ -22,17 +22,8 @@ const {
   statusFilter,
   invitationStatusFilter,
   viewMode,
-  currentPage,
-  itemsPerPage,
-  pageSizeOptions,
-  totalItems,
-  totalPages,
-  startIndex,
-  endIndex,
   paginatedBuilders,
   loadBuilders,
-  goToPage,
-  changePageSize,
 } = useWorkerListLoader('registered', 50)
 
 const isFiltersOpen = ref(false)

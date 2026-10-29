@@ -1,6 +1,6 @@
 import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig } from 'vite'
+import { defineConfig, type PluginOption } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { VitePWA } from 'vite-plugin-pwa'
 import tailwindcss from 'tailwindcss'
@@ -13,7 +13,7 @@ function hasWorkingLocalStorage(): boolean {
 // https://vite.dev/config/
 export default defineConfig(async ({ mode }) => {
   const isDev = mode === 'development'
-  const plugins = [
+  const plugins: PluginOption[] = [
     vue(),
     VitePWA({
       strategies: 'injectManifest',
@@ -86,7 +86,7 @@ export default defineConfig(async ({ mode }) => {
     chunkSizeWarningLimit: 1500,
     rollupOptions: {
       output: {
-        manualChunks(id) {
+        manualChunks(id: string) {
           if (id.includes('node_modules')) {
             if (id.includes('@fullcalendar')) return 'vendor-fullcalendar'
             if (id.includes('vue-advanced-cropper')) return 'vendor-cropper'

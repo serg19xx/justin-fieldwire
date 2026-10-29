@@ -14,6 +14,8 @@ export interface SessionCheckResult {
     name: string
   }
   needsRefresh?: boolean
+  /** True only when the session is definitely over (token expired or rejected with 401). */
+  expired?: boolean
 }
 
 /**
@@ -28,7 +30,7 @@ export async function checkSessionWithAPI(token: string): Promise<SessionCheckRe
     // First check if token is expired locally
     if (isTokenExpired(token)) {
       console.log('❌ Token is expired locally')
-      return { isValid: false, error: 'Token expired' }
+      return { isValid: false, error: 'Token expired', expired: true }
     }
 
     // Make API call to check session
@@ -81,8 +83,8 @@ export async function checkSessionWithAPI(token: string): Promise<SessionCheckRe
     })
 
     if (apiError.response?.status === 401) {
-      console.log('🔒 Session check returned 401 - refresh tokens disabled')
-      return { isValid: false, error: 'Unauthorized' }
+      console.log('🔒 Session check returned 401')
+      return { isValid: false, error: 'Unauthorized', expired: true }
     }
 
     if (apiError.response?.status === 500) {
@@ -107,16 +109,6 @@ export async function checkSessionWithAPI(token: string): Promise<SessionCheckRe
 }
 
 /**
- * Refresh access token using refresh token
- * @returns New access token or null if refresh failed
- */
-export async function refreshAccessToken(): Promise<string | null> {
-  // Refresh tokens disabled - always return null
-  console.log('⚠️ Refresh tokens disabled - returning null')
-  return null
-}
-
-/**
  * Check session validity locally (without API call)
  * @param token JWT token
  * @returns Session check result
@@ -132,21 +124,23 @@ export function checkSessionLocally(token: string): SessionCheckResult {
     // Parse token to get user info
     const payload = parseJWT(token)
     if (!payload) {
-      return { isValid: false, error: 'Invalid token format' }
+      return { isValid: false, error: 'Invalid token format', expired: true }
     }
 
-    // Check if token is expired
     if (isTokenExpired(token)) {
-      return { isValid: false, error: 'Token expired' }
+      return { isValid: false, error: 'Token expired', expired: true }
     }
 
     return {
       isValid: true,
-      user: {
-        id: payload.user_id,
-        email: payload.email,
-        name: (payload.name as string) || payload.email,
-      },
+      user:
+        payload.user_id != null
+          ? {
+              id: payload.user_id,
+              email: payload.email ?? '',
+              name: (payload.name as string) || payload.email || '',
+            }
+          : undefined,
     }
   } catch (error) {
     console.error('❌ Local session check error:', error)
@@ -188,41 +182,4 @@ export function getCurrentUserFromToken(): { id: number; email: string; name: st
 
   const result = checkSessionLocally(token)
   return result.user || null
-}
-
-/**
- * Check if token needs refresh (expires within specified minutes)
- * @param minutes Minutes before expiry to trigger refresh (default: 5)
- * @returns true if token needs refresh
- */
-export function shouldRefreshToken(minutes: number = 5): boolean {
-  // DISABLED: Token expiration checks disabled for development
-  console.log('🚫 Token refresh check DISABLED in session-utils')
-  return false
-
-  // const token = getStoredToken()
-  // if (!token) {
-  //   console.log('🔍 No token found for refresh check')
-  //   return false
-  // }
-
-  // const payload = parseJWT(token)
-  // if (!payload) {
-  //   console.log('🔍 Invalid token payload for refresh check')
-  //   return false
-  // }
-
-  // const currentTime = Math.floor(Date.now() / 1000)
-  // const timeUntilExpiry = payload.exp - currentTime
-  // const minutesUntilExpiry = timeUntilExpiry / 60
-
-  // console.log('🔍 Token expiry check:', {
-  //   currentTime: new Date(currentTime * 1000).toISOString(),
-  //   expiryTime: new Date(payload.exp * 1000).toISOString(),
-  //   minutesUntilExpiry: Math.floor(minutesUntilExpiry),
-  //   threshold: minutes,
-  //   shouldRefresh: minutesUntilExpiry <= minutes,
-  // })
-
-  // return minutesUntilExpiry <= minutes
 }

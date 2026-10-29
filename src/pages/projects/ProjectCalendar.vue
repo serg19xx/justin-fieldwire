@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import FullCalendar from '@fullcalendar/vue3' // cspell:ignore fullcalendar
 import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
@@ -67,6 +68,8 @@ const emit = defineEmits<{
 
 // Auth store for user role checking
 const authStore = useAuthStore()
+const route = useRoute()
+const router = useRouter()
 
 // State for dependency indicators toggle
 const showDependencyIndicators = ref(true)
@@ -329,7 +332,7 @@ function focusCalendarOnTask(task: Task): void {
     return
   }
 
-  let event = calendar.getEventById(String(task.id))
+  const event = calendar.getEventById(String(task.id))
   if (event) {
     calendar.gotoDate(event.start)
     nextTick(() => {
@@ -1148,6 +1151,18 @@ async function loadTasks() {
   } finally {
     loading.value = false
   }
+  openTaskFromRouteQuery()
+}
+
+/** Deep link from notifications: ?task=<id> opens that task once, then the query param is dropped. */
+function openTaskFromRouteQuery() {
+  const raw = route.query.task
+  if (typeof raw !== 'string' || raw === '') return
+  const task = tasks.value.find((t) => String(t.id) === raw)
+  const query = { ...route.query }
+  delete query.task
+  void router.replace({ query })
+  if (task) editTask(task)
 }
 
 // Load project information
@@ -3150,6 +3165,7 @@ async function handleTaskSave(taskData: (Partial<TaskCreateUpdate> | Partial<Tas
       // Optional fields
       if (taskData.address) createPayload.address = taskData.address
       if (taskData.estimated_minutes !== undefined) createPayload.estimated_minutes = taskData.estimated_minutes
+      if (taskData.priority !== undefined) createPayload.priority = taskData.priority
       if (taskData.duration_days) createPayload.durationDays = taskData.duration_days
       if (taskData.notes) createPayload.notes = taskData.notes
 
@@ -3271,6 +3287,7 @@ async function handleTaskSave(taskData: (Partial<TaskCreateUpdate> | Partial<Tas
       // Optional fields - only include if they exist
       if (taskData.address !== undefined) updatePayload.address = taskData.address
       if (taskData.estimated_minutes !== undefined) updatePayload.estimated_minutes = taskData.estimated_minutes
+      if (taskData.priority !== undefined) updatePayload.priority = taskData.priority
       if (taskData.duration_days !== undefined) updatePayload.duration_days = taskData.duration_days
       if (taskData.notes !== undefined) updatePayload.notes = taskData.notes
 

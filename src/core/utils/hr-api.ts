@@ -68,6 +68,15 @@ export interface Project {
 }
 
 // WorkerUser interface for global system
+export interface WorkerEmergencyInfo {
+  primary_contact_name?: string
+  primary_contact_phone?: string
+  blood_type?: string
+  allergies?: string
+  medical_conditions?: string
+  medications?: string
+}
+
 export interface WorkerUser {
   id: number
   email: string
@@ -83,7 +92,7 @@ export interface WorkerUser {
   job_title: string | null
   city: string | null
   status: number
-  emergency: any | null
+  emergency: WorkerEmergencyInfo | null
   status_changed_at: string
   status_end_at: string | null
   status_reason: string | null

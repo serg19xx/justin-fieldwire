@@ -371,7 +371,7 @@ async function reconcilePmSlotIdWithWeek(): Promise<void> {
   const qid = selectedEntryId.value
   if (qid <= 0) return
   const row = entries.value.find((r) => r.id === qid)
-  if (row == null) return
+  if (row == null || row.user_id == null || row.task_id == null) return
   const ymd = row.work_date.length >= 10 ? row.work_date.slice(0, 10) : row.work_date
   const part = normalizeEntryDayPart(row.day_part)
   isReconcilingPmSlot.value = true
@@ -452,10 +452,7 @@ const taskGroups = computed((): TaskGroup[] => {
   const byTask = new Map<number, ContactRow[]>()
   for (const row of entries.value) {
     const eid = row.id
-    if (eid == null || eid <= 0 || row.user_id <= 0) continue
-    const name =
-      tasksById.value.get(row.task_id)?.name?.trim() ||
-      `Task #${row.task_id}`
+    if (eid == null || eid <= 0 || row.user_id == null || row.user_id <= 0 || row.task_id == null) continue
     const worker =
       workerNameByUserId.value.get(row.user_id) ||
       `User #${row.user_id}`

@@ -67,7 +67,9 @@ export const clientsRegistryApi = {
     if (query.sortDir) params.sortDir = query.sortDir
 
     const response = await api.get(`/api/v1${entry.listApiPath}`, { params })
-    let { rows, pagination } = extractListPayload(response.data, entry.listResponseKey)
+    const listPayload = extractListPayload(response.data, entry.listResponseKey)
+    let rows = listPayload.rows
+    const pagination = listPayload.pagination
 
     const search = query.search?.trim().toLowerCase()
     const serverSearch =

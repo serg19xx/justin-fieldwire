@@ -6,6 +6,7 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import listPlugin from '@fullcalendar/list'
+import type { DatesSetArg } from '@fullcalendar/core'
 import type { CalendarEvent, CalendarEventInput, CalendarSaveOptions, UserCalendarMode } from '@/core/types/calendar-event'
 import { calendarApi, CalendarConflictError } from '@/core/utils/calendar-api'
 import { calendarEventToFcEvent, toHm, toYmd, fcDropToApiDates } from '@/core/utils/calendar-event-utils'
@@ -75,8 +76,14 @@ interface CreateDialogOptions {
   allDay?: boolean
 }
 
-const legendItems = computed(() => {
-  const presence = { color: '#F59E0B', label: 'Requires presence (amber border)', border: true }
+interface LegendItem {
+  color: string
+  label: string
+  border?: boolean
+}
+
+const legendItems = computed<LegendItem[]>(() => {
+  const presence: LegendItem = { color: '#F59E0B', label: 'Requires presence (amber border)', border: true }
   if (props.mode === 'global') {
     return [
       { color: '#3B82F6', label: 'Personal (editable)' },
@@ -264,11 +271,7 @@ const calendarOptions = {
       successCallback(fcEventsForView())
     })
   },
-  datesSet: (info: {
-    start: Date
-    end: Date
-    view: { type: string; calendar: { setOption: (k: string, v: boolean) => void } }
-  }) => {
+  datesSet: (info: DatesSetArg) => {
     const from = toYmd(info.start)
     const to = toYmd(new Date(info.end.getTime() - 86400000))
     const isTimeView = info.view.type.startsWith('timeGrid')
@@ -375,6 +378,9 @@ const calendarOptions = {
       mode: ev.editable ? 'edit' : 'view',
       event: ev,
       initialDate: undefined,
+      initialStartTime: undefined,
+      initialEndTime: undefined,
+      initialAllDay: undefined,
     }
   },
 }

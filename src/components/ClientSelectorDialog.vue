@@ -406,7 +406,7 @@ function removeSelected(table: ClientTableType, id: number) {
 
 function handleSearch() {
   if (selectedClientType.value) {
-    debouncedSearch(searchQuery.value)
+    debouncedSearch()
   }
 }
 

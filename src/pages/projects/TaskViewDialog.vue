@@ -49,6 +49,7 @@
           >
             Milestone
           </span>
+          <TaskPriorityBadge :priority="task?.priority" class="ml-2" />
         </div>
 
         <!-- Basic Information -->
@@ -110,6 +111,9 @@
             {{ task.notes }}
           </div>
         </div>
+
+        <TaskPhotosPanel v-if="task" class="mb-6" :project-id="task.project_id" :task-id="task.id" />
+
 
         <!-- Statistics Section -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -284,6 +288,8 @@
 import { computed, ref, watch } from 'vue'
 import type { Task } from '@/core/types/task'
 import { formatTaskEstimate } from '@/core/utils/task-estimate'
+import TaskPriorityBadge from '@/components/tasks/TaskPriorityBadge.vue'
+import TaskPhotosPanel from '@/components/tasks/TaskPhotosPanel.vue'
 import { projectApi, type ProjectTeamMember } from '@/core/utils/project-api'
 import { mapApiProjectTeamRowsToRoster } from '@/core/utils/map-api-project-team-response'
 import { getDisplayRole } from '@/core/utils/role-utils'

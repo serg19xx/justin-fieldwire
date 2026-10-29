@@ -16,7 +16,7 @@ export function processEndDateForDisplay(endDate: string): string {
 export function taskToCalendarTask(
   task: Task,
   showDependencyIndicators: boolean = true,
-  viewType: 'month' | 'week' | 'day' = 'month',
+  _viewType: 'month' | 'week' | 'day' = 'month',
 ): CalendarTask {
   // Validate that task has required start date
   if (!task.start_planned) {
@@ -37,11 +37,6 @@ export function taskToCalendarTask(
 
   // Add task/milestone type icon at the beginning
   const taskIsMilestone = isMilestone(task.milestone)
-  const milestoneType = taskIsMilestone
-    ? typeof task.milestone === 'string'
-      ? task.milestone
-      : task.milestone_type
-    : undefined
   const typeIcon = taskIsMilestone ? MILESTONE_ICON : '📝'
 
   // Validate date format - ensure start date is in YYYY-MM-DD format
@@ -74,8 +69,8 @@ export function taskToCalendarTask(
   
   // For all-day events, use dates only (no time)
   // FullCalendar requires exclusive end date for all-day events (add one day)
-  let startDateTime: string = startDate
-  let endDateTime: string | undefined = endPlannedDate ? processEndDateForDisplay(endPlannedDate) : undefined
+  const startDateTime: string = startDate
+  const endDateTime: string | undefined = endPlannedDate ? processEndDateForDisplay(endPlannedDate) : undefined
 
   const calendarTask = {
     id: String(task.id),

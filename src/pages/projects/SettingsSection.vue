@@ -988,7 +988,7 @@ function initializeForm() {
     settingsForm.client_type = project.client_type || null
     settingsForm.client_table = (project.client_table as ClientTableType | null) || null
     settingsForm.client_data = project.client_data || null
-    settingsForm.client_name = (project as any).client_name || null
+    settingsForm.client_name = (project as { client_name?: string | null }).client_name || null
     settingsForm.additional_clients = resolveAdditionalClientsFromProject(project)
     settingsForm.project_foreman_id =
       (project as { project_foreman_id?: number | null }).project_foreman_id ?? null
@@ -1072,7 +1072,7 @@ function handleClientSelect(client: Client, clientTable: ClientTableType, client
     settingsForm.client_data = client.data
   } else {
     // Fallback: create data object from client fields (excluding id and name)
-    const { id, name, data, ...rest } = client
+    const { id: _id, name: _name, data: _data, ...rest } = client
     settingsForm.client_data = Object.keys(rest).length > 0 ? rest : {}
   }
 

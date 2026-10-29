@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api, setSessionExpiredCallback } from '@/core/utils/api'
-import { apiConfig, getApiBaseUrl, resolveApiMediaUrl } from '@/config/api'
+import { getApiBaseUrl, resolveApiMediaUrl } from '@/config/api'
+import { isTokenExpired } from '@/core/utils/jwt-utils'
 import {
   initializeSessionManager,
   startSessionManager,
@@ -629,64 +630,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Helper function to check if token needs refresh (5 minutes before expiry)
-  // Simple validation without complex JWT parsing
-  function shouldRefreshToken(token: string): boolean {
-    // For now, always return false to avoid complex validation
-    // TODO: Implement proper token refresh logic when backend is ready
-    console.log('🔍 Token refresh check - always false for now')
-    console.log('🔑 Token length:', token.length)
-    return false
-  }
-
-  // Function to refresh token
-  async function refreshToken(): Promise<boolean> {
-    try {
-      console.log('🔄 Attempting to refresh token...')
-
-      // Try to get new token using current user data
-      if (currentUser.value) {
-        const response = await api.post('/api/v1/auth/refresh', {
-          user_id: currentUser.value.id,
-          email: currentUser.value.email,
-        })
-
-        if (response.data.status === 'success') {
-          const newToken = response.data.data.token
-          localStorage.setItem('authToken', newToken)
-          api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
-          console.log('✅ Token refreshed successfully')
-          return true
-        }
-      }
-
-      console.log('❌ Token refresh failed')
-      return false
-    } catch (error) {
-      console.error('❌ Token refresh error:', error)
-      return false
-    }
-  }
-
   // Profile management functions
   async function getProfile(): Promise<{ success: boolean; user?: User; error?: string }> {
     try {
       console.log('👤 Fetching user profile')
       console.log('🔑 Current token in headers:', api.defaults.headers.common['Authorization'])
       console.log('🔑 Current user:', currentUser.value?.email)
-
-      // Temporarily disabled token refresh to fix login
-      // const authHeader = api.defaults.headers.common['Authorization']
-      // const token = typeof authHeader === 'string' ? authHeader.replace('Bearer ', '') : ''
-      // if (token && shouldRefreshToken(token)) {
-      //   console.log('⚠️ Token needs refresh before API call, attempting to refresh...')
-      //   const refreshSuccess = await refreshToken()
-      //   if (!refreshSuccess) {
-      //     console.log('❌ Token refresh failed, logging out')
-      //     logout()
-      //     return { success: false, error: 'Token expired' }
-      //   }
-      // }
 
       const response = await api.get('/api/v1/profile')
 
@@ -1161,8 +1110,6 @@ export const useAuthStore = defineStore('auth', () => {
     getProfile,
     enableTwoFactorFromProfile,
     disableTwoFactorFromProfile,
-    refreshToken,
-    shouldRefreshToken,
     requestPasswordRecovery,
     resetPassword,
     changePassword,
@@ -1304,10 +1251,9 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Check if user session is valid
+  /** Cheap local check (no API call): a token is stored and has not expired. */
   async function checkSession(): Promise<boolean> {
-    // Session check completely disabled for development
-    console.log('🔍 Session check disabled for development - always returning true')
-    return true
+    const token = localStorage.getItem('authToken')
+    return token != null && !isTokenExpired(token)
   }
 })

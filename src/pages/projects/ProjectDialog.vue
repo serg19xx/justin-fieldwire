@@ -978,7 +978,7 @@ async function loadManagers() {
               {
                 id: authStore.currentUser.id,
                 name: authStore.currentUser.name,
-                email: authStore.currentUser.email,
+                email: authStore.currentUser.email ?? '',
               },
             ]
           }
@@ -991,7 +991,7 @@ async function loadManagers() {
             {
               id: authStore.currentUser.id,
               name: authStore.currentUser.name,
-              email: authStore.currentUser.email,
+              email: authStore.currentUser.email ?? '',
             },
           ]
         }
@@ -1031,7 +1031,7 @@ function handleClientSelect(client: Client, clientTable: ClientTableType, client
     form.value.client_data = client.data
   } else {
     // Fallback: create data object from client fields (excluding id and name)
-    const { id, name, data, ...rest } = client
+    const { id: _id, name: _name, data: _data, ...rest } = client
     form.value.client_data = Object.keys(rest).length > 0 ? rest : {}
     console.warn('⚠️ client.data is missing, using fallback:', form.value.client_data)
   }

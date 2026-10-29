@@ -776,28 +776,6 @@ function resolveGanttSourceTasks(): Task[] {
 // Note: Worker filtering is handled by parent component (ProjectCalendar)
 // Tasks are already filtered when passed via props.tasks
 
-function patchLocalTask(updatedTask: Task) {
-  captureGanttPanelScroll()
-
-  const taskId = String(updatedTask.id)
-  const index = localTasks.value.findIndex((task) => String(task.id) === taskId)
-  if (index >= 0) {
-    localTasks.value[index] = updatedTask
-  } else {
-    localTasks.value = [...localTasks.value, updatedTask]
-  }
-
-  if (selectedTask.value && String(selectedTask.value.id) === taskId) {
-    const ganttTask = mappedTasks.value.find((task) => String(task.id) === taskId)
-    if (ganttTask) {
-      selectedTask.value = ganttTask
-      selectedTaskInList.value = ganttTask
-    }
-  }
-
-  restoreGanttPanelScroll()
-}
-
 // Map tasks to gantt format
 const mappedTasks = computed<GanttTask[]>(() => {
   const tasksToUse = resolveGanttSourceTasks()
@@ -3030,12 +3008,6 @@ function handleResizeEnd() {
 
   document.removeEventListener('mousemove', handleResizeMove)
   document.removeEventListener('mouseup', handleResizeEnd)
-}
-
-// Scroll synchronization between left and right panels (refs declared above)
-
-const syncScroll = (source: HTMLElement, target: HTMLElement) => {
-  target.scrollTop = source.scrollTop
 }
 
 // Toggle sort by start date

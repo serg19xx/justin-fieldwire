@@ -117,16 +117,18 @@ async function addTeamMembers() {
 
     // Enrich returned members with selected user display data to avoid placeholder rows
     newMembers.forEach((member) => {
-      const matched = selectedUsers.value.find((u) => u.id === (member as any).user_id || u.id === (member as any).id)
+      const memberFields = member as unknown as Record<string, unknown>
+      const matched = selectedUsers.value.find((u) => u.id === memberFields.user_id || u.id === memberFields.id)
       if (matched) {
+        const userFields = matched as unknown as Record<string, unknown>
         const enriched = {
           ...member,
           name: getUserDisplayName(matched),
-          email: (matched as any).email || (member as any).email,
-          job_title: (matched as any).job_title || (member as any).job_title,
-          avatar_url: (matched as any).avatar_url || (member as any).avatar_url,
-          full_img_url: (matched as any).full_img_url || (member as any).full_img_url,
-          status: (matched as any).status ?? (member as any).status ?? 1,
+          email: userFields.email || memberFields.email,
+          job_title: userFields.job_title || memberFields.job_title,
+          avatar_url: userFields.avatar_url || memberFields.avatar_url,
+          full_img_url: userFields.full_img_url || memberFields.full_img_url,
+          status: userFields.status ?? memberFields.status ?? 1,
         }
         emit('memberAdded', enriched as unknown as ProjectTeamMember)
       } else {

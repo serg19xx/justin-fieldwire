@@ -52,7 +52,6 @@ const {
   searchQuery,
   userTypeFilter,
   statusFilter,
-  invitationStatusFilter,
   viewMode,
   currentPage,
   itemsPerPage,
@@ -109,7 +108,7 @@ const savedScrollY = ref(0)
 const isAdminUser = computed(() => {
   const u = authStore.currentUser
   if (!u) return false
-  const roleId: number | undefined = typeof (u as any).role_id === 'string' ? Number((u as any).role_id) : (u as any).role_id
+  const roleId = Number(u.role_id)
   return roleId === 9 || u.role_code === 'admin' || u.job_title === 'System Administrator'
 })
 

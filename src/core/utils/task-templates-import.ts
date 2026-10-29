@@ -1,6 +1,6 @@
 // Utility to import tasks from TSV file into task templates
 import { taskTemplatesApi } from './task-templates-api'
-import type { TaskTemplate, MilestoneType } from '@/core/types/task'
+import type { TaskTemplate, MilestoneType, TaskStatus } from '@/core/types/task'
 
 interface ParsedTask {
   name: string
@@ -325,7 +325,7 @@ export async function importTasksFromTSV(tsvContent: string): Promise<number> {
         // Otherwise use calculated offset
         start_offset_days: task.duration ? currentOffset : null,
         milestone: milestoneType,
-        status: (task.status as any) || 'planned',
+        status: (task.status as TaskStatus | undefined) || 'planned',
         task_order: i + 1,
       }
 

@@ -208,7 +208,6 @@ import { useRoute, useRouter } from 'vue-router'
 import type { RouteLocationRaw } from 'vue-router'
 import {
   resolveScheduleSlotIdForMessages,
-  type ScheduleDayPart,
   type ScheduleEntryMessageChannel,
 } from '@/core/utils/schedule-weeks-api'
 import { useScheduleEntryChat } from '@/composables/useScheduleEntryChat'

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
 import {
@@ -34,7 +34,7 @@ interface ApiTeamMember {
   full_img_url: string
 }
 import { tasksApi } from '@/core/utils/tasks-api'
-import type { Task, TaskCreateUpdate } from '@/core/types/task'
+import type { Task } from '@/core/types/task'
 import AddTeamMemberDialog from '@/components/AddTeamMemberDialog.vue'
 import FileUploadDialog from '@/components/FileUploadDialog.vue'
 import PlansSection from './PlansSection.vue'
@@ -563,11 +563,6 @@ async function loadProjectTasks() {
   } finally {
     loadingTasks.value = false
   }
-}
-
-// Switch to different project
-function switchProject(projectId: number) {
-  router.push(`/projects/${projectId}`)
 }
 
 // Project action functions (now handled through navigation)
@@ -2111,61 +2106,6 @@ function addTeamMember() {
   showAddTeamMemberDialog.value = true
 }
 
-// Handle remove worker from task
-async function handleRemoveWorkerFromTask(workerId: number, taskId: string) {
-  try {
-    console.log('👥 Removing worker', workerId, 'from task', taskId)
-
-    // Find task
-    const task = projectTasks.value.find(t => t.id === taskId)
-    if (!task) {
-      console.error('❌ Task not found:', taskId)
-      return
-    }
-
-    // Remove worker from task_lead_id or team_members
-    const updateData: Partial<Task> = {
-      id: task.id,
-      name: task.name,
-      start_planned: task.start_planned,
-      end_planned: task.end_planned,
-      status: task.status,
-      progress_pct: task.progress_pct || 0,
-      project_id: project.value!.id,
-      task_lead_id: task.task_lead_id === workerId ? undefined : task.task_lead_id,
-      team_members: (task.team_members || []).filter(id => id !== workerId),
-      resources: task.resources || [],
-      address: task.address,
-      notes: task.notes,
-      milestone: task.milestone,
-      milestone_type: typeof task.milestone === 'string' ? task.milestone : task.milestone_type,
-    }
-
-    // Update task via API
-    await tasksApi.update(project.value!.id, taskId, updateData as Partial<TaskCreateUpdate>)
-    console.log('✅ Worker removed from task')
-
-    // Reload tasks
-    await loadProjectTasks()
-  } catch (error) {
-    console.error('❌ Error removing worker from task:', error)
-    alert('Failed to remove worker from task. Please try again.')
-  }
-}
-
-// Handle add worker to task
-function handleAddWorkerToTask(taskId: string) {
-  // Open task edit panel with this task
-  const task = projectTasks.value.find(t => t.id === taskId)
-  if (task) {
-    editingTask.value = task
-    editingMode.value = 'edit'
-    isTaskEditPanelOpen.value = true
-    // Switch to Team Members tab in edit panel
-    // This will be handled by TaskEditPanel itself
-  }
-}
-
 // Handle team member added
 function handleTeamMemberAdded(newMember: ProjectTeamMember) {
   console.log('👥 Team member added:', newMember)
@@ -2189,13 +2129,6 @@ const roleOptions = [
 ]
 
 
-
-// Open member details dialog
-function openMemberDetails(member: ProjectTeamMember) {
-  console.log('👤 Opening member details for:', member.name)
-  selectedMember.value = member
-  showMemberDetailsDialog.value = true
-}
 
 // Close member details dialog
 function closeMemberDetails() {
@@ -2257,33 +2190,6 @@ async function saveRoleChanges() {
   } catch (error) {
     console.error('❌ Error updating role:', error)
     alert('Failed to update role. Please try again.')
-  }
-}
-
-// Remove team member
-async function removeTeamMember(member: ProjectTeamMember) {
-  if (!project.value) return
-
-  if (!confirm(`Are you sure you want to remove ${member.name} from the project team?`)) {
-    return
-  }
-
-  try {
-    console.log('🗑️ Removing team member:', member.id)
-
-    // Remove member via API
-    await projectApi.removeTeamMember(project.value.id, member.id)
-
-    console.log('✅ Team member removed successfully')
-
-    // Update local data without full reload
-    const index = teamMembers.value.findIndex((m: ProjectTeamMember) => m.id === member.id)
-    if (index > -1) {
-      teamMembers.value.splice(index, 1)
-    }
-  } catch (error) {
-    console.error('❌ Error removing team member:', error)
-    alert('Failed to remove team member. Please try again.')
   }
 }
 
@@ -2992,7 +2898,7 @@ watch(
           />
 
           <!-- Photos Section -->
-          <PhotosSection v-else-if="activeSection === 'photos'" />
+          <PhotosSection v-else-if="activeSection === 'photos'" :project-id="project?.id" />
 
           <!-- Team Section -->
           <TeamSection

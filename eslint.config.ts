@@ -18,5 +18,24 @@ export default defineConfigWithVueTs(
 
   pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,
+
+  {
+    name: 'app/unused-vars',
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+      ],
+    },
+  },
+
+  {
+    name: 'app/commonjs-scripts',
+    files: ['**/*.cjs'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+
   skipFormatting,
 )

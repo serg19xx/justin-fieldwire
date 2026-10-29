@@ -68,7 +68,6 @@
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue'
 import TaskFilterPanel from './TaskFilterPanel.vue'
 import type { TaskFilterState } from '@/composables/useTaskFilters'
 
@@ -81,7 +80,7 @@ interface Props {
   activeFiltersCount: number
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   availableCategories: () => [],
 })
 

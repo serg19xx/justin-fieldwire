@@ -865,7 +865,7 @@ async function downloadScheduleSlotDocumentBlob(file: FileUpload): Promise<Blob>
     throw new Error('Missing schedule_entry_id for slot document')
   }
 
-  let docId = initialScheduleSlotDocumentIdCandidate(file)
+  const docId = initialScheduleSlotDocumentIdCandidate(file)
   if (!Number.isFinite(docId) || docId <= 0) {
     throw new Error('Missing schedule_document_id for slot document')
   }

@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
+import { isTaskRoleForeman } from '@/core/utils/task-role-ux'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
@@ -110,6 +111,15 @@ const router = createRouter({
     {
       path: '/tasks/projects/:projectId/tasks/:taskId',
       component: () => import('../pages/task-role/TaskProjectTaskDetail.vue'),
+    },
+    {
+      path: '/tasks/projects/:projectId/info/:section(plans|reports|team)',
+      beforeEnter: (to) => {
+        const user = useAuthStore().currentUser
+        if (isTaskRoleForeman(user?.role_code, user?.role_id)) return true
+        return { path: `/tasks/projects/${String(to.params.projectId)}`, replace: true }
+      },
+      component: () => import('../pages/task-role/TaskProjectInfo.vue'),
     },
     {
       path: '/tasks/my-week',
@@ -426,19 +436,12 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // Session check disabled for development
-  // try {
-  //   const isValid = await authStore.checkSession()
-  //   if (!isValid) {
-  //     console.log('🛡️ Session invalid - redirecting to login')
-  //     next('/login')
-  //     return
-  //   }
-  // } catch {
-  //   console.log('🛡️ Session check failed - redirecting to login')
-  //   next('/login')
-  //   return
-  // }
+  if (!(await authStore.checkSession())) {
+    console.log('🛡️ Session expired - redirecting to login')
+    await authStore.logout()
+    next('/login')
+    return
+  }
 
   console.log('🛡️ Access granted')
   next()

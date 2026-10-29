@@ -1,6 +1,7 @@
 import { api } from './api'
 import type { Task, TaskCreateUpdate, TaskFilter, TaskStats, TaskStatus } from '@/core/types/task'
-import { isMilestone, type MilestoneType } from '@/core/types/task'
+import type { MilestoneType } from '@/core/types/task'
+import { normalizeTaskPriority } from './task-priority'
 
 /**
  * Statuses accepted by the API (rich UI + legacy).
@@ -295,6 +296,7 @@ function transformTaskFromApiRow(task: Record<string, unknown>): Task {
       task.estimated_minutes != null && Number(task.estimated_minutes) > 0
         ? Number(task.estimated_minutes)
         : null,
+    priority: normalizeTaskPriority(task.priority),
     task_lead_id: task_lead_id ?? undefined,
     executor_type:
       task.executor_type === 'user' || task.executor_type === 'contractor'
@@ -395,9 +397,20 @@ interface TasksResponse {
 //   task: Task
 // }
 
-// Tasks API object
-const PROJECT_TASKS_PAGE_SIZE = 500
+interface ApiAvailableWorker {
+  id?: number
+  user_id?: number
+  full_name?: string
+  first_name?: string
+  last_name?: string
+  name?: string
+  role_name?: string
+  role?: string
+  email?: string
+  avatar_url?: string
+}
 
+// Tasks API object
 export const tasksApi = {
   async fetchProjectTasksPage(
     projectId: number,
@@ -656,6 +669,9 @@ export const tasksApi = {
       if (data.estimated_minutes !== undefined) {
         apiData.estimated_minutes = data.estimated_minutes
       }
+      if (data.priority !== undefined) {
+        apiData.priority = normalizeTaskPriority(data.priority)
+      }
 
       if (data.executor_type !== undefined) {
         apiData.executor_type = data.executor_type
@@ -850,6 +866,9 @@ export const tasksApi = {
       if (data.estimated_minutes !== undefined) {
         apiData.estimated_minutes = data.estimated_minutes
       }
+      if (data.priority !== undefined) {
+        apiData.priority = normalizeTaskPriority(data.priority)
+      }
       if (data.executor_type !== undefined) {
         apiData.executor_type = data.executor_type
       }
@@ -978,6 +997,7 @@ export const tasksApi = {
     }
   },
 
+  /** Foreman status change (the API rejects Completed for field roles). */
   async updateFieldWork(
     projectId: number,
     taskId: string,
@@ -1150,8 +1170,8 @@ export const tasksApi = {
       console.log('✅ Available workers response:', response.data)
       
       if (response.data?.data?.workers) {
-        return response.data.data.workers.map((worker: any) => ({
-          id: worker.id || worker.user_id,
+        return response.data.data.workers.map((worker: ApiAvailableWorker) => ({
+          id: Number(worker.id || worker.user_id),
           name: worker.full_name || `${worker.first_name || ''} ${worker.last_name || ''}`.trim() || worker.name || 'Unknown',
           role: worker.role_name || worker.role || 'Worker',
           email: worker.email,

@@ -1,3 +1,5 @@
+import type { TaskPriority } from '@/core/utils/task-priority'
+
 // Task dependency types
 export type DependencyType = 'FS' | 'SS' | 'FF' | 'SF'
 
@@ -51,6 +53,8 @@ export interface Task {
   category?: string | null
   /** PM estimate of time to complete, in minutes (Days / Hours / Minutes in the task form) */
   estimated_minutes?: number | null
+  /** PM-set priority; null when not set */
+  priority?: TaskPriority | null
   start_planned: string // DATE from database
   start_time?: string // TIME from database (HH:mm:ss format, e.g., "08:00:00")
   end_planned?: string // DATE from database
@@ -149,6 +153,7 @@ export interface TaskCreateUpdate {
   name: string
   category?: string | null
   estimated_minutes?: number | null
+  priority?: TaskPriority | null
   start_planned: string
   start_time?: string // TIME format (HH:mm:ss, e.g., "08:00:00")
   end_planned?: string

@@ -42,8 +42,6 @@ const conflicts = ref<CalendarAvailabilityConflict[]>([])
 const checkingAvailability = ref(false)
 const saveAnywayArmed = ref(false)
 
-const isReadOnly = computed(() => props.mode === 'view')
-
 const dialogTitle = computed(() => {
   if (props.mode === 'create') return 'New event'
   if (props.mode === 'edit') return 'Edit event'

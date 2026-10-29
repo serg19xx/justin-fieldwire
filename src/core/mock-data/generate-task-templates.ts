@@ -5,7 +5,7 @@
 
 import * as fs from 'fs'
 import * as path from 'path'
-import type { TaskTemplate, MilestoneType } from '../types/task'
+import type { TaskTemplate, MilestoneType, TaskStatus } from '../types/task'
 
 function determineCategory(taskName: string): string {
   const name = taskName.toLowerCase()
@@ -230,7 +230,7 @@ function parseTSV(tsvContent: string): Omit<TaskTemplate, 'id' | 'created_at' | 
       duration_days: duration,
       start_offset_days: duration ? currentOffset : null,
       milestone: milestoneType,
-      status: status as any,
+      status: status as TaskStatus,
       task_order: tasks.length + 1,
     }
 

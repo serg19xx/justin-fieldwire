@@ -196,7 +196,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { Task, TaskCreateUpdate, MilestoneType, TaskStatus } from '@/core/types/task'
+import type { Task, TaskCreateUpdate } from '@/core/types/task'
 import { tasksApi } from '@/core/utils/tasks-api'
 
 interface Props {

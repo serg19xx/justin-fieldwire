@@ -6,8 +6,6 @@ import {
   checkSessionWithAPI,
   checkSessionLocally,
   getStoredToken,
-  shouldRefreshToken,
-  refreshAccessToken,
 } from './session-utils'
 
 export interface SessionManagerConfig {
@@ -17,6 +15,9 @@ export interface SessionManagerConfig {
   onSessionExpired: () => void // Callback when session expires
   onSessionValid?: () => void // Callback when session is valid
 }
+
+/** Sign out after this long without user interaction (field crews leave the app open between tasks). */
+const MAX_INACTIVITY_MS = 12 * 60 * 60 * 1000
 
 export class SessionManager {
   private config: SessionManagerConfig
@@ -116,66 +117,34 @@ export class SessionManager {
         console.log('✅ Session is valid')
         this.config.onSessionValid?.()
         return true
-      } else {
-        console.log('❌ Session is invalid:', result.error)
-        console.log('⚠️ Auto-logout disabled - user stays logged in')
-        // this.config.onSessionExpired() // Disabled - no auto logout
-        return false
       }
+
+      console.log('❌ Session is invalid:', result.error)
+      // Network or server trouble must not sign people out in the field; only a dead token does.
+      if (result.expired) {
+        this.config.onSessionExpired()
+      }
+      return false
     } catch (error) {
       console.error('❌ Session check error:', error)
-      console.log('⚠️ Auto-logout disabled - user stays logged in despite error')
-      // this.config.onSessionExpired() // Disabled - no auto logout
       return false
     }
   }
 
   /**
-   * Update last activity time (with throttling and token refresh)
+   * Update last activity time (throttled). The API renews the access token itself
+   * (X-Renewed-Token response header), so there is nothing to refresh here.
    */
   updateActivity(): void {
     const now = Date.now()
 
     // Throttle activity updates to prevent spam
     if (now - this.lastActivityUpdate < this.activityThrottleMs) {
-      return // Skip this update
+      return
     }
 
-    const oldTime = this.lastActivityTime
     this.lastActivityTime = now
     this.lastActivityUpdate = now
-
-    // Activity logging disabled
-    // console.log('🖱️ Activity detected...')
-
-    // Check if token needs refresh due to activity
-    this.checkAndRefreshToken()
-  }
-
-  /**
-   * Check if token needs refresh and refresh it if necessary
-   */
-  private async checkAndRefreshToken(): Promise<void> {
-    try {
-      // Token refresh check disabled
-      // console.log('🔍 Checking if token needs refresh...')
-
-      // DISABLED: Token refresh check disabled for development
-      console.log('🚫 Token refresh check DISABLED in session-manager')
-      const needsRefresh = false
-      // const needsRefresh = shouldRefreshToken(5)
-      // console.log('🔍 Should refresh token (expires within 5 min):', needsRefresh)
-
-      if (needsRefresh) {
-        // Refresh tokens disabled - user will be logged out when token expires
-        console.log('⚠️ Token expires soon - user will be logged out')
-      }
-      // else {
-      //   console.log('⏰ Token is still valid, no refresh needed')
-      // }
-    } catch (error) {
-      console.error('❌ Error during token refresh check:', error)
-    }
   }
 
   /**
@@ -183,9 +152,7 @@ export class SessionManager {
    */
   private isUserActive(): boolean {
     const timeSinceLastActivity = Date.now() - this.lastActivityTime
-    const maxInactivityTime = 30 * 60 * 1000 // 30 minutes
-
-    return timeSinceLastActivity < maxInactivityTime
+    return timeSinceLastActivity < MAX_INACTIVITY_MS
   }
 
   /**
@@ -207,7 +174,7 @@ export class SessionManager {
 
       // Check if user has been inactive for too long
       if (!this.isUserActive()) {
-        console.log('😴 User inactive for 30+ minutes - forcing logout')
+        console.log(`😴 User inactive for ${MAX_INACTIVITY_MS / 3600000}+ hours - forcing logout`)
         console.log('🔍 isUserActive() returned false')
         this.config.onSessionExpired()
         return

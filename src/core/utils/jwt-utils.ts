@@ -2,12 +2,24 @@
  * JWT Token utilities for session management
  */
 
+/**
+ * Only `exp` is guaranteed: user tokens may carry `email: null`, and contractor
+ * access tokens have no `user_id` at all.
+ */
 export interface JWTPayload {
-  user_id: number
-  email: string
   exp: number
+  user_id?: number
+  email?: string | null
   iat?: number
   [key: string]: unknown
+}
+
+/** JWT segments are base64url without padding; payload text is UTF-8 (names). */
+function decodeBase64Url(segment: string): string {
+  const base64 = segment.replace(/-/g, '+').replace(/_/g, '/')
+  const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4)
+  const bytes = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0))
+  return new TextDecoder().decode(bytes)
 }
 
 /**
@@ -16,81 +28,31 @@ export interface JWTPayload {
  * @returns Parsed payload or null if invalid
  */
 export function parseJWT(token: string): JWTPayload | null {
+  if (!token || typeof token !== 'string') return null
+
+  const parts = token.split('.')
+  // Standard JWT (header.payload.signature) or legacy single-segment base64 JSON
+  const payloadSegment = parts.length === 3 ? parts[1] : parts.length === 1 ? parts[0] : null
+  if (payloadSegment == null) return null
+
   try {
-    if (!token || typeof token !== 'string') {
-      console.warn('⚠️ Invalid token format')
-      return null
-    }
-
-    // Check if token has correct JWT format (header.payload.signature)
-    const parts = token.split('.')
-
-    if (parts.length === 3) {
-      // Standard JWT format - decode payload (second part)
-      console.log('🔍 Parsing JWT token (standard format)')
-      const payload = parts[1]
-      const decodedPayload = atob(payload)
-      const parsedPayload = JSON.parse(decodedPayload) as JWTPayload
-
-      // Validate required fields
-      if (!parsedPayload.exp || !parsedPayload.user_id || !parsedPayload.email) {
-        console.warn('⚠️ JWT payload missing required fields')
-        return null
-      }
-
-      return parsedPayload
-    } else if (parts.length === 1) {
-      // Base64-encoded JSON format (your backend format)
-      console.log('🔍 Parsing token (base64-encoded JSON format)')
-      const decodedPayload = atob(token)
-      const parsedPayload = JSON.parse(decodedPayload) as JWTPayload
-
-      // Validate required fields
-      if (!parsedPayload.exp || !parsedPayload.user_id || !parsedPayload.email) {
-        console.warn('⚠️ Token payload missing required fields')
-        return null
-      }
-
-      return parsedPayload
-    } else {
-      console.warn('⚠️ Invalid token format - should be JWT (3 parts) or base64 JSON (1 part)')
-      return null
-    }
-  } catch (error) {
-    console.warn('⚠️ Error parsing token:', error)
+    const payload = JSON.parse(decodeBase64Url(payloadSegment)) as JWTPayload
+    if (typeof payload?.exp !== 'number' || !Number.isFinite(payload.exp)) return null
+    return payload
+  } catch {
     return null
   }
 }
 
 /**
- * Check if JWT token is expired
+ * Check if JWT token is expired. A token that cannot be read counts as expired.
  * @param token JWT token string
  * @returns true if token is expired, false otherwise
  */
 export function isTokenExpired(token: string): boolean {
-  // DISABLED: Token expiration checks disabled for development
-  console.log('🚫 Token expiration check DISABLED')
-  return false
-
-  // const payload = parseJWT(token)
-  // if (!payload) {
-  //   return true
-  // }
-
-  // const currentTime = Math.floor(Date.now() / 1000) // Current time in Unix timestamp
-  // const isExpired = payload.exp < currentTime
-
-  // if (isExpired) {
-  //   console.log('❌ Token is expired')
-  //   console.log('⏰ Token expires at:', new Date(payload.exp * 1000).toISOString())
-  //   console.log('⏰ Current time:', new Date(currentTime * 1000).toISOString())
-  // } else {
-  //   const timeUntilExpiry = payload.exp - currentTime
-  //   console.log('✅ Token is valid')
-  //   console.log('⏰ Token expires in:', Math.floor(timeUntilExpiry / 60), 'minutes')
-  // }
-
-  // return isExpired
+  const payload = parseJWT(token)
+  if (!payload) return true
+  return payload.exp <= Math.floor(Date.now() / 1000)
 }
 
 /**
@@ -100,27 +62,9 @@ export function isTokenExpired(token: string): boolean {
  * @returns true if token expires within specified time
  */
 export function isTokenExpiringSoon(token: string, minutes: number = 5): boolean {
-  // DISABLED: Token expiration checks disabled for development
-  console.log('🚫 Token expiration soon check DISABLED')
-  return false
-
-  // const payload = parseJWT(token)
-  // if (!payload) {
-  //   return true
-  // }
-
-  // const currentTime = Math.floor(Date.now() / 1000)
-  // const timeUntilExpiry = payload.exp - currentTime
-  // const minutesUntilExpiry = timeUntilExpiry / 60
-
-  // const isExpiringSoon = minutesUntilExpiry <= minutes
-
-  // if (isExpiringSoon) {
-  //   console.log(`⚠️ Token expires soon (within ${minutes} minutes)`)
-  //   console.log('⏰ Minutes until expiry:', Math.floor(minutesUntilExpiry))
-  // }
-
-  // return isExpiringSoon
+  const payload = parseJWT(token)
+  if (!payload) return true
+  return payload.exp - Math.floor(Date.now() / 1000) <= minutes * 60
 }
 
 /**

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>FieldWire — Update of October 29, 2026</title>
+  <style>
+    :root { --text:#1a1a1a; --muted:#555; --border:#d4d4d8; --bg-alt:#f7f7f7; --accent:#2563eb; --ok:#166534; --warn:#92400e; }
+    * { box-sizing:border-box; }
+    body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.55; color:var(--text); max-width:52rem; margin:0 auto; padding:1.5rem 1rem 3rem; font-size:15px; }
+    h1 { font-size:1.6rem; margin:0 0 0.35rem; line-height:1.25; }
+    .subtitle { color:var(--muted); margin:0 0 1.25rem; font-size:14px; }
+    h2 { font-size:1.2rem; margin:2rem 0 0.75rem; padding-bottom:0.3rem; border-bottom:2px solid var(--border); }
+    h3 { font-size:1rem; margin:1.25rem 0 0.4rem; }
+    p { margin:0.5rem 0; }
+    ul,ol { margin:0.5rem 0; padding-left:1.35rem; }
+    li { margin:0.35rem 0; }
+    table { width:100%; border-collapse:collapse; margin:0.75rem 0 1rem; font-size:14px; }
+    th, td { border:1px solid var(--border); padding:0.5rem 0.6rem; text-align:left; vertical-align:top; }
+    th { background:var(--bg-alt); }
+    .summary { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:0.85rem 1rem; margin:1rem 0 1.5rem; }
+    .note { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:0.75rem 1rem; margin:1rem 0; }
+    .ok { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:0.75rem 1rem; margin:1rem 0; }
+    .tag { display:inline-block; font-size:12px; font-weight:600; padding:0.05rem 0.45rem; border-radius:999px; background:#e0e7ff; color:#3730a3; margin-right:0.35rem; }
+    .step { background:var(--bg-alt); border-radius:8px; padding:0.8rem 1rem; margin:0.75rem 0; }
+    .step h3 { margin-top:0; }
+    footer { margin-top:2.5rem; color:var(--muted); font-size:13px; border-top:1px solid var(--border); padding-top:0.75rem; }
+  </style>
+</head>
+<body>
+  <h1>FieldWire — what changed on October 29, 2026</h1>
+  <p class="subtitle">Summary of today's updates for the project manager and the foreman. All changes are live.</p>
+
+  <div class="summary">
+    <strong>In short:</strong>
+    <ul>
+      <li><strong>Schedule:</strong> days no longer disappear when you edit. Past days stay editable until <em>you</em> lock them, and you can correct the actual hours and add a payroll note for each day.</li>
+      <li><strong>All 9 items from your change list</strong> are done: task priority, pictures on tasks, a real Photos section, an SMS when a task is delayed, and the foreman's sorting, status changes and read-only Plans / Reports / Team.</li>
+      <li><strong>Security and sign-in:</strong> project data is now visible only to people on the project, and the automatic sign-out after inactivity is now <strong>12 hours</strong> instead of 30 minutes.</li>
+    </ul>
+  </div>
+
+  <h2>1. Schedule — days going missing, and manual day lock for payroll</h2>
+
+  <h3>What was wrong</h3>
+  <p>
+    The Schedule only allowed planning forward. After you reopened a published week, every day before today
+    blocked <strong>Save</strong> and <strong>Publish</strong>, and the page asked you to
+    <strong>"Clear past-day assignments"</strong>. That button, and any save afterwards, deleted those days.
+    This is why Monday and Tuesday were empty for Dale.
+  </p>
+  <div class="ok">
+    <strong>Already fixed for you:</strong> Dale's planned days for <strong>Monday Oct 26</strong> (Optimal) and
+    <strong>Tuesday Oct 27</strong> (Kingsmead) are restored with their day notes. Kilometres and expected times for those
+    two days were not saved in the backup copy, so please re-enter them if you need them.
+    His phone clock-in / clock-out records were never lost and show again on those days.
+  </div>
+
+  <h3>How it works now</h3>
+  <ul>
+    <li><strong>Days never lock by themselves.</strong> Yesterday, last week, any past day stays editable until a project manager locks it.</li>
+    <li><strong>Lock day / Unlock day.</strong> Each day (today and earlier) of the selected worker has a <em>Lock day</em> link. Lock it when the day is accurate for payroll. A locked day shows a grey <em>Locked</em> badge. Nothing about it can change, and the worker cannot clock in or out on it. You can unlock it at any time.</li>
+    <li><strong>Correct the actual hours.</strong> <em>Act start</em> and <em>Act end</em> are now editable for you. Type the real time and it saves immediately. The time from the worker's phone is kept and shown under your correction (for example "Edited · phone 19:02"). <em>Total hours worked</em> uses your corrected times.</li>
+    <li><strong>Payroll note for every day.</strong> Under each day there is a yellow box for a payroll note, for example "Dale did not come in" or "Left at 2 pm, approved". It saves as soon as you click outside the box. You can add it even on a day with nothing planned.</li>
+    <li><strong>No Save draft needed for payroll.</strong> Corrected times, notes and locks save right away. They also work on published weeks and in the <em>Month</em> and <em>Custom</em> views, which is handy for a payroll period.</li>
+    <li><strong>Past weeks</strong> can be reopened and edited like the current week.</li>
+  </ul>
+
+  <div class="step">
+    <h3>Example: "Today, Dale is not coming in"</h3>
+    <ol>
+      <li>Open <strong>Planning → Schedule</strong> and select <strong>Dale</strong> in the Worker list.</li>
+      <li>In today's row, type <em>"Not coming in today"</em> in the yellow payroll note box.</li>
+      <li>Tomorrow and later, the day is still open: you can adjust times or the note if anything changes.</li>
+      <li>When the week is checked for payroll, click <strong>Lock day</strong> on each day that is correct.</li>
+    </ol>
+  </div>
+
+  <div class="note">
+    <strong>Good to know:</strong> the <strong>X</strong> on a past day still removes that day's <em>plan</em>
+    (destination and day notes). It now asks for confirmation first, and the actual times and payroll note are kept.
+    Thursday Oct 29 for Dale currently shows <em>Shed Completion</em>. If it should be <em>208 Vic</em>, just change it.
+  </div>
+
+  <h2>2. Project manager — your change list</h2>
+  <table>
+    <thead>
+      <tr><th style="width:28%">Request</th><th>What you get</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="tag">PM</span>Task priority</td>
+        <td>A <strong>Priority</strong> list in the task form: <em>Urgent / High / Medium / Low</em>. A coloured priority badge shows on the task and on the foreman's task list.</td>
+      </tr>
+      <tr>
+        <td><span class="tag">PM</span>Pictures on a task</td>
+        <td>A <strong>Pictures</strong> block in the task form. Add several pictures to explain the work, remove them, and open them full screen. Save a new task once before adding pictures.</td>
+      </tr>
+      <tr>
+        <td><span class="tag">PM</span>Where to see photos</td>
+        <td>The project's <strong>Photos</strong> section now shows the real photos instead of sample cards: before / after photos from the site and your task pictures. It has search, filters by task and photo type, and sorting. Photos also show inside each task.</td>
+      </tr>
+      <tr>
+        <td><span class="tag">PM</span>SMS when a task is delayed</td>
+        <td>When the foreman sets a task to <strong>Delayed Due To Issue</strong>, the project manager gets an SMS ("check the task notes") with a link that opens the task. An email with the foreman's notes is also sent. <em>Your phone number must be filled in on your profile.</em></td>
+      </tr>
+      <tr>
+        <td><span class="tag">PM</span>Debug text in the task form</td>
+        <td>The line "Debug: Available tasks: 248…" is removed.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. Foreman (Dale)</h2>
+  <table>
+    <thead>
+      <tr><th style="width:28%">Request</th><th>What you get</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="tag">Foreman</span>Task order</td>
+        <td>Tasks are sorted by <strong>priority</strong> first (Urgent → Low), then by <strong>category</strong>, then the crew's own tasks before <strong>contractor</strong> tasks. Tasks already sent for inspection stay at the end.</td>
+      </tr>
+      <tr>
+        <td><span class="tag">Foreman</span>Change task status</td>
+        <td>The foreman can pick any status on the task screen <strong>except Completed</strong>, and cannot reopen a completed task. Only the PM completes tasks.</td>
+      </tr>
+      <tr>
+        <td><span class="tag">Foreman</span>Plans, Reports, Team</td>
+        <td>Three new buttons on the foreman's project page, all <strong>read-only</strong>. In <em>Team</em>, tapping a phone number or email calls or writes to that person. Regular workers do not see these buttons.</td>
+      </tr>
+      <tr>
+        <td><span class="tag">Foreman</span>Pictures from the PM</td>
+        <td>The foreman sees your task pictures on the task screen.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>4. Security, sign-in and other fixes</h2>
+  <ul>
+    <li><strong>Project data is private to the project.</strong> Plans and the project team are now visible only to admins, project managers, people working on that project and the clients linked to it. Only admins and project managers can upload, move or delete plan files or change the team. Before, any signed-in user could reach this data.</li>
+    <li><strong>Personal details protected.</strong> Date of birth, nationality and emergency contacts in the team list are visible only to admins and project managers. Others see the name, role, phone and email.</li>
+    <li><strong>Contractor portal photos fixed.</strong> The photo list and photo download in the contractor portal work again, and deleted photos no longer appear there.</li>
+    <li><strong>Sign-in.</strong> If someone has not opened the app for more than 7 days, they now see the sign-in screen straight away instead of a half-working page. Everyone else will not notice any change.</li>
+    <li><strong>Automatic sign-out after inactivity</strong> is now <strong>12 hours</strong> (was 30 minutes), so the crew does not have to sign in again during the day.</li>
+    <li>General clean-up and stability fixes across the app.</li>
+  </ul>
+
+  <h2>5. What to check</h2>
+  <ol>
+    <li><strong>Schedule:</strong> open this week, select Dale, add a payroll note to a past day, correct an Act start time, then lock and unlock the day.</li>
+    <li><strong>Priority and pictures:</strong> open a task, set a priority and add a picture. Then check it on the foreman's phone.</li>
+    <li><strong>Delayed SMS:</strong> make sure your phone number is on your profile, then ask Dale to set a test task to <em>Delayed Due To Issue</em>.</li>
+    <li><strong>Foreman:</strong> on Dale's phone, check the task order and the Plans / Reports / Team buttons.</li>
+  </ol>
+  <p>If something looks wrong, a screenshot with the worker's name and the date is all we need.</p>
+
+  <footer>FieldWire update — October 29, 2026</footer>
+</body>
+</html>

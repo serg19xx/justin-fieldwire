@@ -94,7 +94,7 @@ const taskRows = computed(() => {
   const out: Array<{
     projectId: number
     projectName: string
-    taskId: number
+    taskId: string
     name: string
     status: string
     progress: number

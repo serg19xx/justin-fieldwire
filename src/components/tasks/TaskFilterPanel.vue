@@ -149,7 +149,7 @@ const availableStatuses: Array<{ value: TaskStatus; label: string }> = [
   { value: 'completed', label: 'Completed' },
 ]
 
-function updateFilter(key: keyof TaskFilterState, value: any) {
+function updateFilter<K extends keyof TaskFilterState>(key: K, value: TaskFilterState[K]) {
   emit('update:filterState', {
     ...props.filterState,
     [key]: value,

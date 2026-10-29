@@ -39,6 +39,18 @@
             <dt class="text-gray-500 shrink-0">Status</dt>
             <dd class="font-medium text-gray-900 text-right">{{ statusLabel }}</dd>
           </div>
+          <div v-if="task.priority" class="flex justify-between gap-4">
+            <dt class="text-gray-500 shrink-0">Priority</dt>
+            <dd class="text-right"><TaskPriorityBadge :priority="task.priority" size="sm" /></dd>
+          </div>
+          <div v-if="task.category" class="flex justify-between gap-4">
+            <dt class="text-gray-500 shrink-0">Category</dt>
+            <dd class="text-gray-900 text-right">{{ task.category }}</dd>
+          </div>
+          <div v-if="task.executor_type === 'contractor'" class="flex justify-between gap-4">
+            <dt class="text-gray-500 shrink-0">Done by</dt>
+            <dd class="text-gray-900 text-right">Contractor{{ task.contractor?.name ? ` · ${task.contractor.name}` : '' }}</dd>
+          </div>
           <div class="flex justify-between gap-4">
             <dt class="text-gray-500 shrink-0">Planned dates</dt>
             <dd class="text-gray-900 text-right">{{ dateRange || '—' }}</dd>
@@ -64,7 +76,38 @@
         <p class="text-xs text-gray-500 mt-2">Set by project manager — read only.</p>
       </section>
 
-      <section class="mb-5 rounded-xl border border-gray-200 bg-gray-50/90 p-4">
+      <TaskPhotosPanel
+        class="mb-5"
+        title="Task pictures"
+        :project-id="projectId"
+        :task-id="taskId"
+        :show-field-photos="false"
+      />
+
+      <section v-if="canChangeStatus" class="mb-5 rounded-xl border border-gray-200 bg-white p-4">
+        <label for="task-status" class="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+          Status
+        </label>
+        <select
+          id="task-status"
+          v-model="statusDraft"
+          class="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500"
+          :disabled="isSavingStatus"
+          @change="saveStatus"
+        >
+          <option v-for="option in fieldStatusOptions" :key="option.value" :value="option.value">
+            {{ option.label }}
+          </option>
+        </select>
+        <p v-if="statusDraft === 'delayed_due_to_issue'" class="text-xs text-amber-700 mt-2">
+          The project manager gets a text message. Add the reason in the task notes below.
+        </p>
+        <p v-if="statusMessage" class="text-xs mt-2" :class="statusError ? 'text-red-700' : 'text-green-700'">
+          {{ statusMessage }}
+        </p>
+        <p class="text-xs text-gray-500 mt-2">Only the project manager can mark a task Completed.</p>
+      </section>
+      <section v-else class="mb-5 rounded-xl border border-gray-200 bg-gray-50/90 p-4">
         <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Official status</h2>
         <p class="text-sm text-gray-900 font-medium">{{ statusLabel }}</p>
         <p class="text-xs text-gray-500 mt-2">Only the project manager can change task status.</p>
@@ -169,9 +212,13 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/core/stores/auth'
-import type { Task } from '@/core/types/task'
+import type { Task, TaskStatus } from '@/core/types/task'
 import { projectApi } from '@/core/utils/project-api'
+import { resolveDefaultTaskForemanId } from '@/core/utils/project-foreman'
 import { resolveSessionUserId } from '@/core/utils/session-user-id'
+import { TASK_STATUS_VALUES, getTaskStatusLabel, isTaskStatus } from '@/core/utils/task-utils'
+import TaskPriorityBadge from '@/components/tasks/TaskPriorityBadge.vue'
+import TaskPhotosPanel from '@/components/tasks/TaskPhotosPanel.vue'
 import {
   canEditTaskProgress,
   fieldTaskReadOnlyHint,
@@ -205,6 +252,7 @@ const task = ref<Task | null>(null)
 const projectName = ref('')
 const siteName = ref('')
 const siteAddress = ref('')
+const projectForemanId = ref<number | null>(null)
 const isLoading = ref(true)
 const progressDraft = ref(0)
 const isSavingProgress = ref(false)
@@ -265,6 +313,56 @@ const progressValue = computed(() => {
 })
 
 const statusLabel = computed(() => formatBackendTaskStatus(String(task.value?.status ?? '')))
+
+const isForemanUser = computed(() =>
+  isTaskRoleForeman(authStore.currentUser?.role_code, authStore.currentUser?.role_id),
+)
+
+/** Foreman on the task (or the project foreman) changes status; Completed stays with the PM. */
+const canChangeStatus = computed(() => {
+  const t = task.value
+  if (!t || uid.value == null || !isForemanUser.value) return false
+  if (['completed', 'done'].includes(String(t.status))) return false
+  return isUserInvolvedInTask(t, uid.value) || projectForemanId.value === uid.value
+})
+
+const fieldStatusOptions = TASK_STATUS_VALUES.filter((s) => s !== 'completed').map((value) => ({
+  value,
+  label: getTaskStatusLabel(value),
+}))
+
+const statusDraft = ref<TaskStatus>('planned')
+const isSavingStatus = ref(false)
+const statusMessage = ref('')
+const statusError = ref(false)
+
+function syncStatusDraft(): void {
+  const status = String(task.value?.status ?? '')
+  statusDraft.value = isTaskStatus(status) ? status : 'planned'
+}
+
+async function saveStatus(): Promise<void> {
+  const t = task.value
+  const next = statusDraft.value
+  if (!t || !canChangeStatus.value || next === t.status) return
+  isSavingStatus.value = true
+  statusMessage.value = ''
+  statusError.value = false
+  try {
+    task.value =
+      next === 'ready_for_inspection'
+        ? await tasksApi.submitTask(projectId.value, taskId.value)
+        : await tasksApi.updateStatus(projectId.value, taskId.value, next)
+    statusMessage.value = `Status changed to ${getTaskStatusLabel(next)}.`
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { message?: string } } }
+    statusError.value = true
+    statusMessage.value = err.response?.data?.message || 'Could not change the status. Try again.'
+  } finally {
+    syncStatusDraft()
+    isSavingStatus.value = false
+  }
+}
 
 const fieldSubmittedAt = computed(() => task.value?.field_submitted_at ?? null)
 
@@ -347,6 +445,7 @@ function formatDateTime(iso: string): string {
 
 function onFieldWorkUpdated(updated: Task): void {
   task.value = updated
+  syncStatusDraft()
 }
 
 async function loadTask(): Promise<void> {
@@ -364,6 +463,7 @@ async function loadTask(): Promise<void> {
     projectName.value = project?.prj_name ?? 'Project'
     siteName.value = resolveTaskSiteName(project)
     siteAddress.value = resolveTaskSiteAddress(loaded, project)
+    projectForemanId.value = resolveDefaultTaskForemanId(project)
     const foreman = isTaskRoleForeman(authStore.currentUser?.role_code, authStore.currentUser?.role_id)
     const userId = uid.value
     if (!foreman && userId != null && !isUserInvolvedInTask(loaded, userId)) {
@@ -371,6 +471,7 @@ async function loadTask(): Promise<void> {
     } else {
       task.value = loaded
       progressDraft.value = progressValue.value
+      syncStatusDraft()
     }
   } catch {
     task.value = null
@@ -409,6 +510,7 @@ async function submitWork(): Promise<void> {
   try {
     const updated = await tasksApi.submitTask(pid, tid)
     task.value = updated
+    syncStatusDraft()
     submitMessage.value = 'Marked Ready For Inspection. Waiting for PM review.'
   } catch {
     submitError.value = true

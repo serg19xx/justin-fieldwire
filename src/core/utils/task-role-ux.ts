@@ -3,6 +3,7 @@ import type { Project } from '@/core/utils/project-api'
 import type { Task } from '@/core/types/task'
 import { isProjectActiveForTaskUi } from '@/core/utils/project-list-for-user'
 import { getTaskStatusLabel, isTaskStatus } from '@/core/utils/task-utils'
+import { taskPriorityRank } from '@/core/utils/task-priority'
 
 export { resolveSessionUserId } from '@/core/utils/session-user-id'
 
@@ -139,6 +140,41 @@ export function filterTasksForInvolvedUser(
   const uid = Number(userId)
   if (!Number.isFinite(uid) || uid <= 0) return []
   return tasks.filter((t) => isUserInvolvedInTask(t, uid))
+}
+
+export function isContractorTask(task: Pick<Task, 'executor_type'>): boolean {
+  return task.executor_type === 'contractor'
+}
+
+/**
+ * Field list for one project: the user's own tasks, plus contractor tasks when the user is the
+ * project foreman (contractor tasks have no task lead, the project foreman coordinates them).
+ */
+export function filterTasksForFieldUser(
+  tasks: Task[],
+  userId: number | string | null | undefined,
+  projectForemanId: number | null | undefined,
+): Task[] {
+  const uid = Number(userId)
+  if (!Number.isFinite(uid) || uid <= 0) return []
+  const isProjectForeman = projectForemanId != null && Number(projectForemanId) === uid
+  return tasks.filter((t) => isUserInvolvedInTask(t, uid) || (isProjectForeman && isContractorTask(t)))
+}
+
+/** Priority (Urgent first, unset last), then category (uncategorized last), then own crew before contractors. */
+export function compareFieldTaskPriority(a: Task, b: Task): number {
+  const priorityDiff = taskPriorityRank(a.priority) - taskPriorityRank(b.priority)
+  if (priorityDiff !== 0) return priorityDiff
+
+  const ac = (a.category ?? '').trim()
+  const bc = (b.category ?? '').trim()
+  if (ac !== bc) {
+    if (!ac) return 1
+    if (!bc) return -1
+    return ac.localeCompare(bc, undefined, { sensitivity: 'base' })
+  }
+
+  return Number(isContractorTask(a)) - Number(isContractorTask(b))
 }
 
 /**
