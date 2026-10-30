@@ -873,15 +873,23 @@ function syncPrimaryWeekMeta(): void {
   weekMeta.value = pool.find((w) => w.status === 'draft') ?? pool[0] ?? null
 }
 
+/** Draft week whose old published version is still shown to workers (e.g. all its days were moved away). */
+function hasUnpublishedSnapshot(w: ScheduleWeekMeta | null | undefined): boolean {
+  return w != null && w.status === 'draft' && w.has_published_snapshot === true
+}
+
 /**
- * Weeks of projects that have assignments. Empty auto-created drafts are ignored so they do not
- * keep an otherwise published week in Draft; falls back to all weeks when nothing is assigned.
+ * Weeks of projects that have assignments, plus drafts that still hold a published snapshot.
+ * Empty auto-created drafts are ignored so they do not keep an otherwise published week in Draft;
+ * falls back to all weeks when nothing is assigned.
  */
 function pickActiveWeekMetas(metas: ScheduleWeekMeta[]): ScheduleWeekMeta[] {
   const projectIdsWithRows = new Set(
     allDraftRows.value.filter((r) => r.user_id > 0 && r.project_id > 0).map((r) => r.project_id),
   )
-  const active = metas.filter((w) => projectIdsWithRows.has(Number(w.project_id)))
+  const active = metas.filter(
+    (w) => projectIdsWithRows.has(Number(w.project_id)) || hasUnpublishedSnapshot(w),
+  )
   return active.length > 0 ? active : metas
 }
 
@@ -1314,9 +1322,16 @@ const scheduleSaveDraftBlocked = computed(
     hasAnyAssignmentNoteTooLong.value,
 )
 
-/** Publish still requires at least one persisted assignment (product rule). */
+/** Some project week of this draft still shows workers an outdated published version. */
+const hasStalePublishedSnapshot = computed(() =>
+  Object.values(weekByProjectId.value).some((w) => hasUnpublishedSnapshot(w)),
+)
+
+/** Publish requires at least one assignment, unless it only needs to clear an outdated published copy. */
 const schedulePublishBlocked = computed(
-  () => scheduleSaveDraftBlocked.value || saveableRowCount.value === 0,
+  () =>
+    scheduleSaveDraftBlocked.value ||
+    (saveableRowCount.value === 0 && !hasStalePublishedSnapshot.value),
 )
 
 const saveDraftDisabledTitle = computed(() => {
@@ -1334,7 +1349,7 @@ const publishWeekDisabledTitle = computed(() => {
   if (isSaving.value) return 'Saving…'
   if (hasAnySlotConflict.value) return 'Resolve overlapping slots first.'
   if (hasAnyAssignmentNoteTooLong.value) return `Shorten assignment text to ${assignmentNoteMaxChars} characters or less.`
-  if (saveableRowCount.value === 0) {
+  if (saveableRowCount.value === 0 && !hasStalePublishedSnapshot.value) {
     return 'Assign at least one day on this week before publishing.'
   }
   return ''
@@ -2113,7 +2128,7 @@ async function onPublish(): Promise<void> {
     return
   }
   const valid = allDraftRows.value.filter((r) => isRowSaveable(r))
-  if (valid.length === 0) {
+  if (valid.length === 0 && !hasStalePublishedSnapshot.value) {
     bannerError.value =
       'Cannot publish an empty week — assign at least one day (any worker) in this draft.'
     return
@@ -2134,7 +2149,8 @@ async function onPublish(): Promise<void> {
       if (!meta) continue
       const projectId = Number(pidStr)
       const hasRows = allDraftRows.value.some((r) => r.project_id === projectId && isRowSaveable(r))
-      if (!hasRows) continue
+      // An emptied week is still published so workers stop seeing its old days.
+      if (!hasRows && !meta.has_published_snapshot) continue
       const published = await publishProjectScheduleWeek(projectId, meta.id, meta.week_start)
       if (published) {
         weekByProjectId.value = {

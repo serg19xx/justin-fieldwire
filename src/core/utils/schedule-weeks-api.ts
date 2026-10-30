@@ -234,6 +234,8 @@ export interface ScheduleWeekMeta {
   status: 'draft' | 'published'
   published_at: string | null
   published_by: number | null
+  /** Workers still see this week's last published snapshot (it may differ from a draft). */
+  has_published_snapshot?: boolean
 }
 
 export interface ScheduleWeekEntryRow {
@@ -496,6 +498,7 @@ function normalizeWeekResponse(raw: Record<string, unknown>): ProjectScheduleWee
       status: w.status === 'published' ? 'published' : 'draft',
       published_at: w.published_at != null ? String(w.published_at) : null,
       published_by: w.published_by != null ? Number(w.published_by) : null,
+      has_published_snapshot: w.has_published_snapshot === true,
     }
   }
   const entriesRaw = raw.entries
