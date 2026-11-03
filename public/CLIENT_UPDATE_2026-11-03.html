@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>FieldWire — Update of November 3, 2026</title>
+  <style>
+    :root { --text:#1a1a1a; --muted:#555; --border:#d4d4d8; --bg-alt:#f7f7f7; --accent:#2563eb; --ok:#166534; --warn:#92400e; }
+    * { box-sizing:border-box; }
+    body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.55; color:var(--text); max-width:52rem; margin:0 auto; padding:1.5rem 1rem 3rem; font-size:15px; }
+    h1 { font-size:1.6rem; margin:0 0 0.35rem; line-height:1.25; }
+    .subtitle { color:var(--muted); margin:0 0 1.25rem; font-size:14px; }
+    h2 { font-size:1.2rem; margin:2rem 0 0.75rem; padding-bottom:0.3rem; border-bottom:2px solid var(--border); }
+    h3 { font-size:1rem; margin:1.25rem 0 0.4rem; }
+    p { margin:0.5rem 0; }
+    ul,ol { margin:0.5rem 0; padding-left:1.35rem; }
+    li { margin:0.35rem 0; }
+    code { background:var(--bg-alt); border:1px solid var(--border); border-radius:4px; padding:0 0.3rem; font-size:13px; }
+    .summary { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:0.85rem 1rem; margin:1rem 0 1.5rem; }
+    .note { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:0.75rem 1rem; margin:1rem 0; }
+    .ok { background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:0.75rem 1rem; margin:1rem 0; }
+    .step { background:var(--bg-alt); border-radius:8px; padding:0.8rem 1rem; margin:0.75rem 0; }
+    .step h3 { margin-top:0; }
+    .example { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px; background:#fff; border:1px solid var(--border); border-radius:6px; padding:0.45rem 0.6rem; display:inline-block; margin:0.25rem 0; }
+    footer { margin-top:2.5rem; color:var(--muted); font-size:13px; border-top:1px solid var(--border); padding-top:0.75rem; }
+  </style>
+</head>
+<body>
+  <h1>FieldWire — what changed on November 3, 2026</h1>
+  <p class="subtitle">Task assignment fix: changing who is responsible for a task. All changes are live.</p>
+
+  <div class="summary">
+    <strong>In short:</strong>
+    <ul>
+      <li>You can now take a worker off a task and set it back to <strong>"Unassigned — Justin Kearney (Project Manager)"</strong>. Before, the change did not save.</li>
+      <li>The list of people in a task now also shows people who are <strong>already busy on another task</strong> that day, with a <em>"busy"</em> label, so you can still pick them.</li>
+      <li>Only field roles (<strong>Foreman, Worker, Architect</strong>) appear in that list. Other roles, such as Doctor, no longer appear.</li>
+    </ul>
+  </div>
+
+  <h2>1. Setting a task back to "Unassigned"</h2>
+
+  <h3>What was wrong</h3>
+  <p>
+    On the task <strong>"Order 20 sheets 1/2 8' and 2 5/8 drywall"</strong> you tried to change the responsible person from
+    <strong>Dale Bowerbank</strong> to <strong>Unassigned — Justin Kearney (Project Manager)</strong>.
+    After <strong>Save</strong>, Dale was still shown as responsible.
+  </p>
+  <p>
+    The task form did not tell the server that the responsible person had been removed. The server received no change
+    for that field and kept Dale. In some cases the form could also switch your selection back to Dale on its own while
+    the page was still loading the list of people.
+  </p>
+
+  <h3>How it works now</h3>
+  <ul>
+    <li>Choosing <strong>Unassigned</strong> and pressing <strong>Save</strong> removes the worker from the task. The project manager is responsible until someone is picked again.</li>
+    <li>The worker is also removed from the task's <strong>Team</strong> section.</li>
+    <li>Once you pick a person (or Unassigned) in the form, the form no longer changes your choice by itself.</li>
+  </ul>
+
+  <div class="ok">
+    <strong>Already fixed for you:</strong> the drywall order task is now <strong>Unassigned</strong>, as you wanted.
+  </div>
+
+  <h2>2. Busy people now stay in the list</h2>
+
+  <h3>What was wrong</h3>
+  <p>
+    After the task became Unassigned, <strong>Dale disappeared from the list</strong> of people you could pick.
+    The system hid everyone who was already on another task with overlapping dates, in any project. On November 4
+    Dale is already responsible for <strong>"Drywall Removal &amp; Replace"</strong>, so he was treated as unavailable.
+    In practice a foreman often runs several tasks on the same day, so hiding him was wrong.
+  </p>
+
+  <h3>How it works now</h3>
+  <ul>
+    <li>Busy people are shown in the list and can be selected. Next to their name you see the task that keeps them busy, for example:
+      <br /><span class="example">Dale Bowerbank (Foreman) — busy: Drywall Removal &amp; Replace</span>
+    </li>
+    <li>If a person is on several tasks those days, the first one is shown with <strong>+N</strong> for the rest, for example <span class="example">— busy: Drywall Removal &amp; Replace +2</span>.</li>
+    <li>The label is only a reminder. It does not block you from assigning the person.</li>
+  </ul>
+
+  <h2>3. Only field roles in the list</h2>
+  <p>
+    The list also showed <strong>Oyeleke Olafeye Oyedotun (Doctor)</strong>. It now shows only people who can work on site:
+    <strong>Foreman</strong>, <strong>Worker</strong> and <strong>Architect</strong>. This matches the rule that was already
+    used when creating a new task.
+  </p>
+
+  <h2>What to check</h2>
+  <div class="step">
+    <ol>
+      <li>Refresh the page once (<strong>Cmd + Shift + R</strong> on Mac, <strong>Ctrl + F5</strong> on Windows) so the browser loads the new version.</li>
+      <li>Open <strong>My Projects → Ellesmere Medical Clinic &amp; Pharmacy → Jobsite</strong> and click <strong>Edit</strong> on any task.</li>
+      <li>In <strong>Who does the work → Own worker</strong>, open the list: Dale is there, with a <em>"busy"</em> label if he is on another task that day.</li>
+      <li>Select <strong>Unassigned</strong> or another person and press <strong>Save</strong>. The task card shows the new choice.</li>
+    </ol>
+  </div>
+
+  <div class="note">
+    <strong>Good to know:</strong> when you switch a task from <strong>Contractor</strong> to <strong>Own worker</strong>,
+    you still need to pick a specific person; it cannot be saved as Unassigned in that one case.
+    This has not changed.
+  </div>
+
+  <footer>
+    FieldWire update — November 3, 2026. If anything does not look right, send a screenshot and we will check it the same day.
+  </footer>
+</body>
+</html>
