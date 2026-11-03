@@ -214,6 +214,7 @@
                     <select
                       v-model="form.project_lead"
                       :disabled="(mode === 'create' || mode === 'edit') ? (isProjectManager && (typeof form.milestone === 'string' || form.milestone === true)) : true"
+                      @change="isLeadPickedByUser = true"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-500 text-gray-900"
                       :class="{ 'text-gray-500': !form.project_lead }"
                     >
@@ -990,6 +991,9 @@ const form = ref({
 const contractors = ref<ExternalContact[]>([])
 const inspectors = ref<ExternalContact[]>([])
 
+/** Once the PM picks a lead (including Unassigned), async list reloads must not restore the saved one. */
+const isLeadPickedByUser = ref(false)
+
 const isInspectionMilestone = computed(() => form.value.milestone === 'inspection')
 
 /** Extra own-staff helpers — only when an internal lead does the work. */
@@ -1578,7 +1582,7 @@ async function loadAvailablePeople() {
       await nextTick()
       form.value.project_lead = currentProjectLead
       console.log('🔄 Restored project_lead after loading available workers:', currentProjectLead)
-    } else if (props.task?.task_lead_id) {
+    } else if (props.task?.task_lead_id && !isLeadPickedByUser.value) {
       // If project_lead was null but task has task_lead_id, set it
       const leadId = Number(props.task.task_lead_id)
       if (!isNaN(leadId) && leadId > 0) {
@@ -1684,7 +1688,7 @@ async function loadAllSystemUsers() {
         await nextTick()
         form.value.project_lead = savedProjectLead
         console.log('🔄 Restored project_lead after loading all system users:', savedProjectLead)
-      } else if (props.task?.task_lead_id) {
+      } else if (props.task?.task_lead_id && !isLeadPickedByUser.value) {
         const leadId = Number(props.task.task_lead_id)
         if (!isNaN(leadId) && leadId > 0) {
           await ensureProjectLeadInList(leadId)
@@ -1766,7 +1770,7 @@ async function loadProjectTeamMembers() {
       await nextTick()
       form.value.project_lead = savedProjectLead
       console.log('🔄 Restored project_lead after loading project team members:', savedProjectLead)
-    } else if (props.task?.task_lead_id) {
+    } else if (props.task?.task_lead_id && !isLeadPickedByUser.value) {
       const leadId = Number(props.task.task_lead_id)
       if (!isNaN(leadId) && leadId > 0) {
         await ensureProjectLeadInList(leadId)
@@ -1870,6 +1874,7 @@ watch(
   () => [props.isOpen, props.task, props.projectId],
   async ([isOpen]) => {
     if (isOpen) {
+      isLeadPickedByUser.value = false
       await loadProjectInfoIfNeeded()
       // Load available people when panel opens
       // Reset last load params to ensure fresh load
@@ -2096,6 +2101,7 @@ watch(
 watch(
   () => availablePeople.value,
   async (newPeople) => {
+    if (isLeadPickedByUser.value) return
     if (props.isOpen && props.mode === 'edit' && props.task && newPeople.length > 0) {
       // If project_lead is set but not in list, or if task has task_lead_id but project_lead is null
       const taskLeadId = props.task.task_lead_id
@@ -2245,7 +2251,7 @@ function handleBasicInfoSave() {
     progress_pct: form.value.progress_pct,
     notes: form.value.notes || undefined,
     project_id: props.projectId,
-    // Ensure task_lead_id is included only if it's a valid positive number
+    // null = "Unassigned": the update must send it explicitly, otherwise the previous lead is kept
     task_lead_id: (() => {
       if (form.value.executor_type === 'contractor' || isInspectionMilestone.value) {
         return undefined
@@ -2256,7 +2262,7 @@ function handleBasicInfoSave() {
           return leadId
         }
       }
-      return undefined
+      return null
     })(),
     executor_type: isInspectionMilestone.value
       ? 'user'

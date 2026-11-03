@@ -65,7 +65,7 @@ export interface Task {
   status: TaskStatus
   progress_pct: number
   notes?: string
-  task_lead_id?: number // single responsible person (own staff when executor_type=user)
+  task_lead_id?: number | null // single responsible person (own staff when executor_type=user)
   /** Who performs the work: system user or external contractor contact */
   executor_type?: 'user' | 'contractor' | null
   contractor_id?: number | null
@@ -164,7 +164,7 @@ export interface TaskCreateUpdate {
   status?: TaskStatus
   progress_pct?: number
   notes?: string
-  task_lead_id?: number
+  task_lead_id?: number | null // null on update clears the lead (PM stays responsible)
   executor_type?: 'user' | 'contractor' | null
   contractor_id?: number | null
   inspector_id?: number | null

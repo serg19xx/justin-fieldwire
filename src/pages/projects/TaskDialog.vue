@@ -1868,7 +1868,7 @@ function handleSubmit() {
     // Clean up resources - remove empty strings
     resources: form.value.resources.filter((r) => r.trim()),
     // Send task lead and team members separately
-    // Only include task_lead_id if it's a valid positive number
+    // null = "Unassigned": the update must send it explicitly, otherwise the previous lead is kept
     task_lead_id: (() => {
       if (form.value.executor_type === 'contractor' || isInspectionMilestone.value) {
         return undefined
@@ -1879,7 +1879,7 @@ function handleSubmit() {
           return leadId
         }
       }
-      return undefined
+      return null
     })(),
     executor_type: isInspectionMilestone.value ? 'user' : form.value.executor_type,
     contractor_id:
