@@ -408,6 +408,7 @@ interface ApiAvailableWorker {
   role?: string
   email?: string
   avatar_url?: string
+  busy_tasks?: Array<{ id: number; name: string; project_id: number }>
 }
 
 // Tasks API object
@@ -1156,7 +1157,9 @@ export const tasksApi = {
     taskId: string,
     startDate: string,
     endDate: string,
-  ): Promise<Array<{ id: number; name: string; role: string; email?: string; avatar_url?: string }>> {
+  ): Promise<
+    Array<{ id: number; name: string; role: string; email?: string; avatar_url?: string; busy_with: string[] }>
+  > {
     try {
       console.log('👥 Getting available workers for task:', taskId, 'dates:', startDate, 'to', endDate)
       
@@ -1176,6 +1179,7 @@ export const tasksApi = {
           role: worker.role_name || worker.role || 'Worker',
           email: worker.email,
           avatar_url: worker.avatar_url,
+          busy_with: Array.isArray(worker.busy_tasks) ? worker.busy_tasks.map((t) => t.name) : [],
         }))
       }
       

@@ -204,7 +204,7 @@
                 >
                   <option :value="null" class="text-gray-500">{{ unassignedLeadLabel }}</option>
                   <option v-for="person in availablePeople" :key="person.id" :value="person.id" class="text-gray-900">
-                    {{ person.name }} ({{ person.role }})
+                    {{ formatPersonOption(person) }}
                   </option>
                 </select>
                 <p class="mt-1 text-xs text-gray-500">
@@ -504,7 +504,7 @@
                 >
                   <option value="">Select team member</option>
                   <option v-for="person in availablePeople" :key="person.id" :value="person.id">
-                    {{ person.name }} ({{ person.role }})
+                    {{ formatPersonOption(person) }}
                   </option>
                 </select>
                 <button
@@ -667,6 +667,7 @@ import { isMilestone } from '@/core/types/task'
 import { validateTask, suggestProjectBoundsExtension, type ValidationResult } from '@/core/utils/task-validation'
 import { projectApi, type Project, type ProjectTeamMember } from '@/core/utils/project-api'
 import {
+  formatPersonOption,
   formatUnassignedTaskLeadLabel,
   isTaskForemanOverridden,
   resolveDefaultTaskForemanId,
@@ -1197,7 +1198,7 @@ watch(() => props.initialDate, (newInitialDate) => {
 })
 
 // Available data for dropdowns - loaded from API
-const availablePeople = ref<Array<{ id: number; name: string; role: string }>>([])
+const availablePeople = ref<Array<{ id: number; name: string; role: string; busyWith?: string[] }>>([])
 
 // Load available people - for new tasks load all system users, for existing tasks use availability check
 async function loadAvailablePeople() {
@@ -1332,6 +1333,7 @@ async function loadAvailableWorkersForTask() {
       id: worker.id,
       name: worker.name,
       role: worker.role,
+      busyWith: worker.busy_with,
     }))
 
     console.log('👥 Excluded already assigned:', assignedIds.size, 'workers')

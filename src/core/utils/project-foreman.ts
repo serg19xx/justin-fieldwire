@@ -31,6 +31,15 @@ export function formatUnassignedTaskLeadLabel(managerName: string | null | undef
   return name ? `Unassigned — ${name} (Project Manager)` : 'Unassigned — Project Manager'
 }
 
+/** Dropdown label for a selectable person; people already on overlapping tasks stay selectable but marked. */
+export function formatPersonOption(person: { name: string; role: string; busyWith?: string[] }): string {
+  const base = `${person.name} (${person.role})`
+  const busy = person.busyWith ?? []
+  if (busy.length === 0) return base
+  const extra = busy.length > 1 ? ` +${busy.length - 1}` : ''
+  return `${base} — busy: ${busy[0]}${extra}`
+}
+
 export function isTaskForemanOverridden(
   projectForemanId: number | null | undefined,
   taskLeadId: number | null | undefined,

@@ -221,7 +221,7 @@
                       <option :value="null" class="text-gray-500">{{ unassignedLeadLabel }}</option>
                       <option :value="0" class="text-gray-500" style="display: none">Empty</option>
                       <option v-for="person in availablePeople" :key="person.id" :value="person.id" class="text-gray-900">
-                        {{ person.name }} ({{ person.role }})
+                        {{ formatPersonOption(person) }}
                       </option>
                     </select>
                     <p class="mt-1 text-xs text-gray-500">
@@ -919,6 +919,7 @@ import { tasksApi } from '@/core/utils/tasks-api'
 import { TASK_PRIORITY_OPTIONS, type TaskPriority } from '@/core/utils/task-priority'
 import TaskPhotosPanel from '@/components/tasks/TaskPhotosPanel.vue'
 import {
+  formatPersonOption,
   formatUnassignedTaskLeadLabel,
   isTaskForemanOverridden,
   resolveDefaultTaskForemanId,
@@ -1246,7 +1247,7 @@ async function loadProjectInfoIfNeeded() {
 
 // Available data
 // Available data for dropdowns - loaded from API
-const availablePeople = ref<Array<{ id: number; name: string; role: string }>>([])
+const availablePeople = ref<Array<{ id: number; name: string; role: string; busyWith?: string[] }>>([])
 
 // Cache for team members that might not be in availablePeople (e.g., removed from project)
 // This ensures we can still display their information even if they're not in the project team
@@ -1556,6 +1557,7 @@ async function loadAvailablePeople() {
       name: worker.name,
       // worker.role already comes formatted from getAvailableWorkers API, but use formatter for consistency
       role: worker.role || 'Worker',
+      busyWith: worker.busy_with,
     }))
 
     // Store in cache (including already assigned ones for display)
