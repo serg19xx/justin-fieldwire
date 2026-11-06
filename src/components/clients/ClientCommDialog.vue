@@ -32,6 +32,7 @@ const templates = ref<SendGridDynamicTemplate[]>([])
 const loadingTemplates = ref(false)
 const templatesError = ref<string | null>(null)
 const sending = ref(false)
+const bulkProgress = ref<{ processed: number; total: number } | null>(null)
 const error = ref<string | null>(null)
 const faxAttachment = ref<File | null>(null)
 const faxFileInput = ref<HTMLInputElement | null>(null)
@@ -191,13 +192,27 @@ async function handleSend() {
 
     const result =
       isBulk.value && props.bulkIds
-        ? await clientsCommsApi.sendBulk(props.clientType, props.channel as 'sms' | 'email', props.bulkIds, payload)
+        ? await clientsCommsApi.sendBulk(
+            props.clientType,
+            props.channel as 'sms' | 'email',
+            props.bulkIds,
+            payload,
+            (processed, total) => {
+              bulkProgress.value = { processed, total }
+            },
+          )
         : props.clientId !== null
           ? await clientsCommsApi.send(props.clientType, props.clientId, props.channel, payload)
           : { success: false, message: 'Missing client id' }
 
     if (!result.success) {
-      error.value = result.message ?? 'Send failed'
+      let failure = result.message ?? 'Send failed'
+      if (isBulk.value && isSmsChannel.value) {
+        failure += ' Press Send SMS again to continue: clients who already got this text are skipped.'
+      } else if (isBulk.value) {
+        failure += ' Sending again will email the first clients again.'
+      }
+      error.value = failure
       return
     }
 
@@ -209,6 +224,7 @@ async function handleSend() {
     }
     if (result.sent !== undefined) {
       notice = `${channelLabel.value}: ${result.sent} sent, ${result.failed ?? 0} failed`
+      if (result.skipped) notice += `, ${result.skipped} skipped (already received this text)`
     }
 
     emit('sent', notice)
@@ -217,6 +233,7 @@ async function handleSend() {
     error.value = getApiErrorMessage(e, 'Send failed')
   } finally {
     sending.value = false
+    bulkProgress.value = null
   }
 }
 </script>
@@ -352,6 +369,10 @@ async function handleSend() {
 
         <p v-if="sending && isFaxChannel" class="text-sm text-gray-600">
           Uploading and processing your document on the fax service. Large files may take up to a minute.
+        </p>
+
+        <p v-if="sending && bulkProgress" class="text-sm text-gray-600">
+          Sending {{ bulkProgress.processed }} / {{ bulkProgress.total }}… Keep this window open until it finishes.
         </p>
 
         <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
