@@ -17,7 +17,7 @@ export interface ClientCommResult {
   testMode?: boolean
   sent?: number
   failed?: number
-  /** SMS already delivered with the same text (retry / duplicate phone), not sent again. */
+  /** Recipients who already got the same SMS text / email campaign recently, not sent again. */
   skipped?: number
 }
 

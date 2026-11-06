@@ -207,10 +207,8 @@ async function handleSend() {
 
     if (!result.success) {
       let failure = result.message ?? 'Send failed'
-      if (isBulk.value && isSmsChannel.value) {
-        failure += ' Press Send SMS again to continue: clients who already got this text are skipped.'
-      } else if (isBulk.value) {
-        failure += ' Sending again will email the first clients again.'
+      if (isBulk.value) {
+        failure += ` Press Send ${channelLabel.value} again to continue: clients who already got it are skipped.`
       }
       error.value = failure
       return
@@ -224,7 +222,7 @@ async function handleSend() {
     }
     if (result.sent !== undefined) {
       notice = `${channelLabel.value}: ${result.sent} sent, ${result.failed ?? 0} failed`
-      if (result.skipped) notice += `, ${result.skipped} skipped (already received this text)`
+      if (result.skipped) notice += `, ${result.skipped} skipped (already received it)`
     }
 
     emit('sent', notice)
