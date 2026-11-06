@@ -11,7 +11,9 @@
       <p class="text-sm text-gray-500 mt-1">
         Your week from the schedule published by your project manager. Start and end your day with a
         photo on site. Paid hours are the time between Start day and End day minus a 30 min unpaid
-        break.
+        break. Start day within 15 min of your shift start is paid from the scheduled start. If you
+        forget End day, the day closes at the scheduled end; working late needs your project
+        manager's approval.
       </p>
     </header>
 

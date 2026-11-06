@@ -173,6 +173,16 @@
           >
             Work plan (from tasks)
           </RouterLink>
+          <RouterLink
+            to="/schedule/attendance"
+            @click="closeMobileMenu"
+            class="block px-4 py-2.5 text-gray-700 hover:bg-gray-100 border-l-4 border-transparent hover:border-green-500"
+            :class="{
+              'border-green-500 bg-green-50 font-medium': $route.path.startsWith('/schedule/attendance'),
+            }"
+          >
+            Attendance
+          </RouterLink>
           <template v-if="systemNavItems.length > 0">
             <p class="px-4 pt-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide">
               Settings

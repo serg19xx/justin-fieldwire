@@ -19,6 +19,7 @@ const items = [
   { label: 'My Calendar', route: '/calendar' },
   { label: 'Schedule', route: '/schedule' },
   { label: 'Work plan (from tasks)', route: '/schedule/work-plan' },
+  { label: 'Attendance', route: '/schedule/attendance' },
 ] as const
 
 function itemIsActive(itemRoute: string): boolean {

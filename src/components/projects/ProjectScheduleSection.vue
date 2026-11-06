@@ -515,7 +515,13 @@
                         v-if="canEditPayrollTimes(slot.ymd)"
                         type="time"
                         class="w-full rounded border text-sm px-1 py-1 tabular-nums disabled:opacity-50"
-                        :class="isActualAdjusted(slot.ymd, phase) ? 'border-amber-400 bg-amber-50' : 'border-gray-300'"
+                        :class="
+                          !isActualAdjusted(slot.ymd, phase)
+                            ? 'border-gray-300'
+                            : isAutoAdjusted(slot.ymd, phase)
+                              ? 'border-blue-300 bg-blue-50'
+                              : 'border-amber-400 bg-amber-50'
+                        "
                         :value="effectiveActualTime(slot, phase)"
                         :title="actualTimeTitle(slot, phase)"
                         :disabled="payrollBusyYmd === slot.ymd"
@@ -531,9 +537,11 @@
                       </span>
                       <span
                         v-if="isActualAdjusted(slot.ymd, phase)"
-                        class="block text-[10px] leading-tight text-amber-800"
+                        class="block text-[10px] leading-tight"
+                        :class="isAutoAdjusted(slot.ymd, phase) ? 'text-blue-800' : 'text-amber-800'"
                       >
-                        Edited · phone {{ punchAt(slot, phase) ? formatCheckInTime(punchAt(slot, phase)) : 'none' }}
+                        {{ isAutoAdjusted(slot.ymd, phase) ? 'Auto' : 'Edited' }} · phone
+                        {{ punchAt(slot, phase) ? formatCheckInTime(punchAt(slot, phase)) : 'none' }}
                       </span>
                       <button
                         v-if="hasPunchPhoto(slot, phase)"
@@ -1112,6 +1120,13 @@ function isActualAdjusted(ymd: string, phase: PunchPhase): boolean {
   return adjustedTimeOf(ymd, phase) != null
 }
 
+/** Paid time set by the attendance rules (on-time start, scheduled end, auto-close), not by the PM. */
+function isAutoAdjusted(ymd: string, phase: PunchPhase): boolean {
+  const day = payrollByYmd.value[sliceWorkYmd(ymd)]
+  if (!day || !isActualAdjusted(ymd, phase)) return false
+  return (phase === 'start' ? day.start_source : day.end_source) === 'auto'
+}
+
 /** "HH:MM" used for paid hours: the PM correction when set, otherwise the phone punch. */
 function effectiveActualTime(slot: WeekDaySlotVm, phase: PunchPhase): string {
   const adjusted = adjustedTimeOf(slot.ymd, phase)
@@ -1124,7 +1139,8 @@ function actualTimeTitle(slot: WeekDaySlotVm, phase: PunchPhase): string {
   const label = phase === 'start' ? 'start' : 'end'
   const at = punchAt(slot, phase)
   const phone = at ? `Phone ${label}: ${formatCheckInTime(at)}` : `No phone ${label} punch`
-  return isActualAdjusted(slot.ymd, phase) ? `${phone}. Corrected by PM.` : phone
+  if (!isActualAdjusted(slot.ymd, phase)) return phone
+  return isAutoAdjusted(slot.ymd, phase) ? `${phone}. Set by attendance rules.` : `${phone}. Corrected by PM.`
 }
 
 async function loadPayrollDays(): Promise<void> {

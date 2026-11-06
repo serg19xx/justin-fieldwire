@@ -23,6 +23,13 @@ export interface WorkerDayWork {
   break_hours: number
   has_start_photo: boolean
   has_end_photo: boolean
+  /** Paid wall-clock times "HH:MM" set by attendance rules or the PM; override the punches. */
+  adjusted_start_time: string | null
+  adjusted_end_time: string | null
+  /** "Working late": paused reminders until this time "HH:MM", or until End day when open. */
+  extended_until: string | null
+  extended_open: boolean
+  auto_closed_at: string | null
 }
 
 export interface WorkerTimesheetDay {
@@ -87,6 +94,11 @@ function mapDayWork(raw: unknown): WorkerDayWork | null {
     break_hours: pickNullableNumber(r.break_hours) ?? 0,
     has_start_photo: r.has_start_photo === true,
     has_end_photo: r.has_end_photo === true,
+    adjusted_start_time: pickNullableString(r.adjusted_start_time),
+    adjusted_end_time: pickNullableString(r.adjusted_end_time),
+    extended_until: pickNullableString(r.extended_until),
+    extended_open: r.extended_open === true,
+    auto_closed_at: pickNullableString(r.auto_closed_at),
   }
 }
 
@@ -129,9 +141,49 @@ export async function fetchMyWorkTimesheet(
   }
 }
 
+/** One site of the worker's published day, in visiting order. */
+export interface WorkDaySite {
+  project_id: number
+  project_name: string | null
+  project_address: string | null
+  expected_start_time: string | null
+  expected_end_time: string | null
+  distance_km: string | null
+  /** The first site is confirmed by Start day; later sites by "Arrived". */
+  is_first: boolean
+  arrived_at: string | null
+  arrival_source: string | null
+  /** Meters between the arrival location and the site; null without location. */
+  arrival_distance_m: number | null
+}
+
 export interface WorkerDayStatus {
   today: string
   day_work: WorkerDayWork | null
+  shift: { start_time: string; end_time: string } | null
+  sites: WorkDaySite[]
+  attendance_available: boolean
+}
+
+export type WorkingLateMode = '1h' | '2h' | 'open' | 'cancel'
+
+export function mapWorkDaySite(raw: Record<string, unknown>): WorkDaySite {
+  return {
+    project_id: Number(raw.project_id) || 0,
+    project_name: pickNullableString(raw.project_name),
+    project_address: pickNullableString(raw.project_address),
+    expected_start_time: pickNullableString(raw.expected_start_time),
+    expected_end_time: pickNullableString(raw.expected_end_time),
+    distance_km: pickNullableString(raw.distance_km),
+    is_first: raw.is_first === true,
+    arrived_at: pickNullableString(raw.arrived_at),
+    arrival_source: pickNullableString(raw.arrival_source),
+    arrival_distance_m: pickNullableNumber(raw.arrival_distance_m),
+  }
+}
+
+function mapSites(raw: unknown): WorkDaySite[] {
+  return Array.isArray(raw) ? raw.filter(isRecord).map(mapWorkDaySite) : []
 }
 
 export async function fetchMyWorkDay(workDateYmd?: string): Promise<WorkerDayStatus> {
@@ -139,10 +191,39 @@ export async function fetchMyWorkDay(workDateYmd?: string): Promise<WorkerDaySta
     params: workDateYmd ? { work_date: workDateYmd } : {},
   })
   const data = readEnvelopeData<Record<string, unknown>>(response.data)
+  const shift = isRecord(data?.shift) ? data.shift : null
   return {
     today: String(data?.today ?? ''),
     day_work: mapDayWork(data?.day_work),
+    shift:
+      shift && shift.start_time && shift.end_time
+        ? { start_time: String(shift.start_time), end_time: String(shift.end_time) }
+        : null,
+    sites: mapSites(data?.sites),
+    attendance_available: data?.attendance_available === true,
   }
+}
+
+/** "Working late" for today: moves or pauses the End day reminders and the automatic close. */
+export async function setMyWorkingLate(mode: WorkingLateMode): Promise<WorkerDayWork> {
+  const response = await api.post('/api/v1/me/work-day/extend', { mode })
+  const data = readEnvelopeData<Record<string, unknown>>(response.data)
+  const dayWork = mapDayWork(data?.day_work)
+  if (!dayWork) throw new Error('Invalid work day response')
+  return dayWork
+}
+
+/** Arrival at another site of today's schedule; location is optional. */
+export async function arriveAtSite(
+  projectId: number,
+  position: { lat: number; lng: number } | null,
+): Promise<WorkDaySite[]> {
+  const response = await api.post('/api/v1/me/work-day/site-arrival', {
+    project_id: projectId,
+    ...(position ? { lat: position.lat, lng: position.lng } : {}),
+  })
+  const data = readEnvelopeData<Record<string, unknown>>(response.data)
+  return mapSites(data?.sites)
 }
 
 /** The on-site photo is required; location is optional and the API records the punch without it. */

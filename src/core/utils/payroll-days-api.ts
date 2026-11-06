@@ -17,12 +17,32 @@ export interface PayrollDay {
   payroll_note: string | null
   locked: boolean
   locked_at: string | null
+  /** Who set each adjusted time: attendance rules ("auto") or the PM ("pm"). */
+  start_source: PayrollTimeSource | null
+  end_source: PayrollTimeSource | null
+  /** late_start, early_leave, auto_closed, overtime, reviewed */
+  attendance_flags: string[]
+  scheduled_start_time: string | null
+  scheduled_end_time: string | null
+  extended_until: string | null
+  extended_open: boolean
+  auto_closed_at: string | null
 }
+
+export type PayrollTimeSource = 'auto' | 'pm'
 
 export interface PayrollDayInput {
   adjusted_start_time: string | null
   adjusted_end_time: string | null
   payroll_note: string | null
+  /** Set or clear the "left early" flag; omit to keep it. */
+  early_leave?: boolean
+  /** Accept the day as it is: clears open attendance issues. */
+  reviewed?: boolean
+}
+
+function pickSource(raw: unknown): PayrollTimeSource | null {
+  return raw === 'auto' || raw === 'pm' ? raw : null
 }
 
 function pickNullableString(raw: unknown): string | null {
@@ -31,7 +51,7 @@ function pickNullableString(raw: unknown): string | null {
   return s === '' ? null : s
 }
 
-function mapPayrollDay(raw: Record<string, unknown>): PayrollDay {
+export function mapPayrollDay(raw: Record<string, unknown>): PayrollDay {
   const hours = raw.hours == null || raw.hours === '' ? null : Number(raw.hours)
   return {
     user_id: Number(raw.user_id) || 0,
@@ -46,6 +66,14 @@ function mapPayrollDay(raw: Record<string, unknown>): PayrollDay {
     payroll_note: pickNullableString(raw.payroll_note),
     locked: raw.locked === true,
     locked_at: pickNullableString(raw.locked_at),
+    start_source: pickSource(raw.start_source),
+    end_source: pickSource(raw.end_source),
+    attendance_flags: Array.isArray(raw.attendance_flags) ? raw.attendance_flags.map(String) : [],
+    scheduled_start_time: pickNullableString(raw.scheduled_start_time),
+    scheduled_end_time: pickNullableString(raw.scheduled_end_time),
+    extended_until: pickNullableString(raw.extended_until),
+    extended_open: raw.extended_open === true,
+    auto_closed_at: pickNullableString(raw.auto_closed_at),
   }
 }
 

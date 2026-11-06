@@ -165,6 +165,18 @@ const router = createRouter({
       component: () => import('@/pages/schedule/TaskWorkPlanSheet.vue'),
     },
     {
+      path: '/schedule/attendance',
+      beforeEnter: (_to, _from, next) => {
+        const roleCode = useAuthStore().currentUser?.role_code
+        if (roleCode !== 'admin' && roleCode !== 'project_manager') {
+          next('/dashboard')
+          return
+        }
+        next()
+      },
+      component: () => import('@/pages/schedule/AttendancePage.vue'),
+    },
+    {
       path: '/clients',
       redirect: '/clients/pharma',
     },
