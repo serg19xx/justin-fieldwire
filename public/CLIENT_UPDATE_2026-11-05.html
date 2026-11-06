@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>FieldWire — Update of November 5, 2026</title>
+  <style>
+    :root { --text:#1a1a1a; --muted:#555; --border:#d4d4d8; --bg-alt:#f7f7f7; }
+    * { box-sizing:border-box; }
+    body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.55; color:var(--text); max-width:52rem; margin:0 auto; padding:1.5rem 1rem 3rem; font-size:15px; }
+    h1 { font-size:1.6rem; margin:0 0 0.35rem; line-height:1.25; }
+    .subtitle { color:var(--muted); margin:0 0 1.25rem; font-size:14px; }
+    h2 { font-size:1.2rem; margin:2rem 0 0.75rem; padding-bottom:0.3rem; border-bottom:2px solid var(--border); }
+    p { margin:0.5rem 0; }
+    ul,ol { margin:0.5rem 0; padding-left:1.35rem; }
+    li { margin:0.35rem 0; }
+    .summary { background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:0.85rem 1rem; margin:1rem 0 1.5rem; }
+    .note { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:0.75rem 1rem; margin:1rem 0; }
+    .step { background:var(--bg-alt); border-radius:8px; padding:0.8rem 1rem; margin:0.75rem 0; }
+    .example { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px; background:#fff; border:1px solid var(--border); border-radius:6px; padding:0.35rem 0.55rem; display:inline-block; margin:0.2rem 0; }
+    footer { margin-top:2.5rem; color:var(--muted); font-size:13px; border-top:1px solid var(--border); padding-top:0.75rem; }
+  </style>
+</head>
+<body>
+  <h1>FieldWire — group SMS and email fixed</h1>
+  <p class="subtitle">November 5, 2026. All changes are live.</p>
+
+  <div class="summary">
+    <strong>In short:</strong> group SMS and group email no longer time out, and the same message is never sent twice
+    to the same person. If a send is interrupted, just press Send again: it continues with the people who have not received it yet.
+  </div>
+
+  <h2>What happened</h2>
+  <ul>
+    <li>
+      The system tried to send the whole group in one go. After 15 seconds the page gave up and showed
+      <em>"timeout of 15000ms exceeded"</em>, and the server stopped in the middle of the list.
+    </li>
+    <li>
+      <strong>SMS (Nov 4, evening):</strong> each attempt reached about 75 people before stopping, and every new attempt
+      started again from the top of the list. 335 people received the text; about 100 of them received it 2 to 8 times.
+      9 numbers were rejected as invalid (missing digits or country code).
+    </li>
+    <li>
+      <strong>Email (Nov 5, 5:44 AM):</strong> 276 people received the email once, then the send stopped.
+      The rest of the selected clients did not get it.
+    </li>
+    <li>
+      You received the email yourself because <strong>justin.kearney@me.com</strong> is saved as the email of pharmacist
+      record #2 in your client list. This was not an error; that record was simply part of the selection.
+    </li>
+  </ul>
+
+  <h2>What we changed</h2>
+  <ul>
+    <li><strong>Sending in small batches.</strong> Large groups are now sent 25 at a time, with progress on screen, so the page no longer times out.</li>
+    <li><strong>No duplicates.</strong> The system remembers who received what for <strong>7 days</strong>:
+      <ul>
+        <li>SMS: the same text is not sent again to the same phone number.</li>
+        <li>Email: an email with the same subject is not sent again to the same address.</li>
+        <li>If two clients share a phone number or email, it is sent only once.</li>
+      </ul>
+    </li>
+    <li><strong>Yesterday's and today's sends are already recorded.</strong> The 335 phones and 276 email addresses above will not get the same SMS or email again.</li>
+    <li><strong>Each send finishes properly</strong> on the server, even if the connection drops.</li>
+  </ul>
+
+  <h2>How to use it</h2>
+  <div class="step">
+    <ol>
+      <li>Refresh the page once (<strong>Cmd + Shift + R</strong> on Mac, <strong>Ctrl + F5</strong> on Windows).</li>
+      <li>Select the clients and click <strong>Send SMS</strong> or <strong>Send email</strong> as before.</li>
+      <li>While sending you will see <span class="example">Sending 125 / 356… Keep this window open until it finishes.</span> Keep the window open until it closes by itself.</li>
+      <li>At the end you get a summary, for example <span class="example">SMS: 21 sent, 9 failed, 335 skipped (already received it)</span>.
+        "Failed" means no phone/email or an invalid one. "Skipped" means the person already got this message.</li>
+      <li>If the send stops for any reason, just press <strong>Send</strong> again. People who already received it are skipped automatically.</li>
+    </ol>
+  </div>
+
+  <h2>To finish the campaigns you started</h2>
+  <ul>
+    <li><strong>Email:</strong> select the same clients and send the email with <strong>exactly the same subject</strong>
+      ("Pharmacy Leasing Opportunity – Join a Growing Medical Hub"). Only the people who did not receive it will get it.</li>
+    <li><strong>SMS:</strong> almost everyone selected already received it. Sending exactly the same text to the same selection reaches only those who did not.</li>
+  </ul>
+
+  <div class="note">
+    <strong>Good to know:</strong>
+    <ul>
+      <li>To send a <em>new</em> message to the same people within 7 days, change the SMS text or the email subject.</li>
+      <li>Please fix the invalid phone numbers in the client cards (for example <em>647008687</em> is missing a digit).</li>
+      <li>If you do not want your own copy, remove or change the email on pharmacist record #2.</li>
+    </ul>
+  </div>
+
+  <footer>
+    FieldWire update — November 5, 2026. If anything does not look right, send a screenshot and we will check it the same day.
+  </footer>
+</body>
+</html>
