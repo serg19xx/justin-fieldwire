@@ -187,8 +187,16 @@ export const taskTemplatesApi = {
         categories.add(t.category)
       }
     })
-    return Array.from(categories).sort()
+    return Array.from(categories).sort(compareTaskCategories)
   },
+}
+
+/** Alphabetical order, with the catch-all "Other" category always last. */
+export function compareTaskCategories(a: string, b: string): number {
+  const isOtherA = a.trim().toLowerCase() === 'other'
+  const isOtherB = b.trim().toLowerCase() === 'other'
+  if (isOtherA !== isOtherB) return isOtherA ? 1 : -1
+  return a.localeCompare(b)
 }
 
 // Valid API task statuses (rich UI + legacy)

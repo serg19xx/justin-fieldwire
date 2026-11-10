@@ -149,7 +149,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import PageUserGuideLink from '@/components/PageUserGuideLink.vue'
-import { taskTemplatesApi } from '@/core/utils/task-templates-api'
+import { compareTaskCategories, taskTemplatesApi } from '@/core/utils/task-templates-api'
 import type { TaskTemplate } from '@/core/types/task'
 import TaskTemplateDialog from './TaskTemplateDialog.vue'
 
@@ -165,7 +165,7 @@ const categories = computed(() => {
   templates.value.forEach((t) => {
     if (t.category) set.add(t.category)
   })
-  return Array.from(set).sort()
+  return Array.from(set).sort(compareTaskCategories)
 })
 
 const filteredTemplates = computed(() => {

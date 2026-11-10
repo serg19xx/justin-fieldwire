@@ -30,7 +30,7 @@ import TaskTemplateDialog from '@/components/task-templates/TaskTemplateDialog.v
 import TaskFilterDialog from '@/components/tasks/TaskFilterDialog.vue'
 import TaskListSidebar from '@/components/tasks/TaskListSidebar.vue'
 import { useTaskFilters } from '@/composables/useTaskFilters'
-import { taskTemplatesApi } from '@/core/utils/task-templates-api'
+import { compareTaskCategories, taskTemplatesApi } from '@/core/utils/task-templates-api'
 import { formatTaskEstimate } from '@/core/utils/task-estimate'
 import {
   DEFAULT_TASKS_VIEW_MODE,
@@ -238,9 +238,9 @@ const availableTaskCategories = computed(() => {
   // Prefer categories present on loaded tasks (what the filter can match).
   // Fall back to template categories only until task.category is available from API.
   if (fromTasks.size > 0) {
-    return Array.from(fromTasks).sort((a, b) => a.localeCompare(b))
+    return Array.from(fromTasks).sort(compareTaskCategories)
   }
-  return [...templateCategories.value].sort((a, b) => a.localeCompare(b))
+  return [...templateCategories.value].sort(compareTaskCategories)
 })
 
 // Sync worker filter with new filter state (backward compatibility)

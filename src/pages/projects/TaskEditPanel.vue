@@ -924,7 +924,7 @@ import {
   isTaskForemanOverridden,
   resolveDefaultTaskForemanId,
 } from '@/core/utils/project-foreman'
-import { taskTemplatesApi } from '@/core/utils/task-templates-api'
+import { compareTaskCategories, taskTemplatesApi } from '@/core/utils/task-templates-api'
 import {
   listExternalContacts,
   type ExternalContact,
@@ -1190,7 +1190,7 @@ async function loadCategoryOptions(currentCategory?: string | null) {
     const set = new Set(fromTemplates)
     const trimmed = currentCategory?.trim()
     if (trimmed) set.add(trimmed)
-    categoryOptions.value = Array.from(set).sort((a, b) => a.localeCompare(b))
+    categoryOptions.value = Array.from(set).sort(compareTaskCategories)
   } catch {
     const trimmed = currentCategory?.trim()
     categoryOptions.value = trimmed ? [trimmed] : []
