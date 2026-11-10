@@ -83,9 +83,9 @@ function parseTSV(tsvContent: string): ParsedTask[] {
 }
 
 /**
- * Determine category based on task name
+ * Determine category based on task name; undefined when nothing matches (No category)
  */
-function determineCategory(taskName: string): string {
+function determineCategory(taskName: string): string | undefined {
   const name = taskName.toLowerCase()
 
   // Planning & Design
@@ -242,8 +242,7 @@ function determineCategory(taskName: string): string {
     return 'Cleaning'
   }
 
-  // Default
-  return 'Other'
+  return undefined
 }
 
 /**
@@ -319,7 +318,7 @@ export async function importTasksFromTSV(tsvContent: string): Promise<number> {
 
       const template: Omit<TaskTemplate, 'id' | 'created_at' | 'updated_at'> = {
         name: task.name,
-        category: task.category || 'Other',
+        category: task.category,
         duration_days: task.duration,
         // Set start_offset_days to null if duration is not set (user must provide during creation)
         // Otherwise use calculated offset
