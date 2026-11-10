@@ -3164,6 +3164,7 @@ async function handleTaskSave(taskData: (Partial<TaskCreateUpdate> | Partial<Tas
 
       // Optional fields
       if (taskData.address) createPayload.address = taskData.address
+      if (taskData.category !== undefined) createPayload.category = taskData.category
       if (taskData.estimated_minutes !== undefined) createPayload.estimated_minutes = taskData.estimated_minutes
       if (taskData.priority !== undefined) createPayload.priority = taskData.priority
       if (taskData.duration_days) createPayload.durationDays = taskData.duration_days
@@ -3286,6 +3287,7 @@ async function handleTaskSave(taskData: (Partial<TaskCreateUpdate> | Partial<Tas
 
       // Optional fields - only include if they exist
       if (taskData.address !== undefined) updatePayload.address = taskData.address
+      if (taskData.category !== undefined) updatePayload.category = taskData.category
       if (taskData.estimated_minutes !== undefined) updatePayload.estimated_minutes = taskData.estimated_minutes
       if (taskData.priority !== undefined) updatePayload.priority = taskData.priority
       if (taskData.duration_days !== undefined) updatePayload.duration_days = taskData.duration_days
