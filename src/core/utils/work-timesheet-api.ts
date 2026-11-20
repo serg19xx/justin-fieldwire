@@ -241,8 +241,9 @@ export async function checkInMyWorkDay(
     form.append('lat', String(position.lat))
     form.append('lng', String(position.lng))
   }
+  // Photo punch on mobile can exceed the default 15s API timeout (field 5G blips).
   const response = await api.post('/api/v1/me/work-day/check-in', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000,
   })
   const data = readEnvelopeData<Record<string, unknown>>(response.data)
   const dayWork = mapDayWork(data?.day_work)

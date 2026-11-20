@@ -140,7 +140,8 @@ import { formatWorkYmdLabel } from '@/core/utils/work-day'
 
 const emit = defineEmits<{ updated: [dayWork: WorkerDayWork] }>()
 
-const LOCATION_TIMEOUT_MS = 8000
+/** Keep GPS short on punch: it is optional and must not delay the photo upload. */
+const LOCATION_TIMEOUT_MS = 2500
 
 const WORKING_LATE_OPTIONS: ReadonlyArray<{ mode: WorkingLateMode; label: string }> = [
   { mode: '1h', label: '+1 hour' },
@@ -192,8 +193,22 @@ function siteName(site: WorkDaySite): string {
 }
 
 function readError(e: unknown, fallback: string): string {
-  const err = e as { response?: { data?: { message?: string } }; message?: string }
-  return err.response?.data?.message || err.message || fallback
+  const err = e as {
+    code?: string
+    response?: { data?: { message?: string } }
+    message?: string
+  }
+  if (typeof err.response?.data?.message === 'string' && err.response.data.message.trim() !== '') {
+    return err.response.data.message
+  }
+  const raw = (err.message || '').trim()
+  if (err.code === 'ECONNABORTED' || /timeout/i.test(raw)) {
+    return 'The connection was too slow. Check signal and tap Start day / End day again.'
+  }
+  if (err.code === 'ERR_NETWORK' || raw === 'Network Error') {
+    return 'No connection to the server. Check signal and try again.'
+  }
+  return raw || fallback
 }
 
 /** Best effort: a missing or denied location must not block the punch. */
