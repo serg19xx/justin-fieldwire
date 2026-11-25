@@ -662,9 +662,9 @@
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option :value="null">Select a folder...</option>
-            <option :value="1">/ Home</option>
+            <option v-if="getHomeFolderId() != null" :value="getHomeFolderId()">/ Home</option>
             <option
-              v-for="folder in getAllFoldersFlat().filter((f) => f.id !== 1)"
+              v-for="folder in getAllFoldersFlat().filter((f) => f.id !== getHomeFolderId())"
               :key="folder.id"
               :value="folder.id"
               :disabled="moveItems.some((item) => item.id === folder.id && item.type === 'folder')"
@@ -832,6 +832,18 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<Emits>()
+
+/** Per-project Home root (parent_id null). Never assume folder id 1 — each project has its own ids. */
+function getHomeFolder(): Folder | undefined {
+  return (
+    folders.value.find((f) => f.parent_id === null && (f.name || '').toLowerCase() === 'home') ||
+    folders.value.find((f) => f.parent_id === null)
+  )
+}
+
+function getHomeFolderId(): number | null {
+  return getHomeFolder()?.id ?? null
+}
 
 function canLoadPlanTreeFileViaSlotDocumentsApi(file: FileUpload): boolean {
   const eid = Number(file.schedule_entry_id)
@@ -1080,10 +1092,8 @@ const selectionIncludesLockedPlanFolder = computed(() => {
 })
 
 const rootFolders = computed(() => {
-  // Left panel shows the full hierarchical tree
-  // For the root level, show only the Home folder (ID=1) and its children
-  // This prevents showing "Home" as a separate item in the right panel
-  const homeFolder = folders.value.find((f) => f.id === 1)
+  // Left panel: Home and its children (Home id is per-project, not always 1)
+  const homeFolder = getHomeFolder()
   if (homeFolder) {
     if (props.allowedFolderNames && props.allowedFolderNames.length > 0) {
       const allowed = props.allowedFolderNames.map((n) => n.trim().toLowerCase())
@@ -1105,7 +1115,6 @@ const rootFolders = computed(() => {
     })
   }
 
-  // Fallback: show all root level folders if Home not found
   return folders.value.filter((f) => f.parent_id === null)
 })
 
@@ -1596,19 +1605,16 @@ async function loadFolderTree() {
 async function loadCurrentPath() {
   // Load content of current folder from tree structure (no API calls)
   if (currentPath.value === '/') {
-    // For root, automatically navigate to Home folder (ID=1) to show its content
-    const homeFolder = folders.value.find((f) => f.id === 1)
+    // Root view = contents of this project's Home folder (id varies by project)
+    const homeFolder = getHomeFolder()
     if (homeFolder) {
-      // Get files and subfolders from tree structure
       files.value = homeFolder.files || []
       subfolders.value = homeFolder.children || []
+      expandedFolders.value.add(homeFolder.id)
     } else {
       files.value = []
       subfolders.value = []
     }
-
-    // Auto-expand Home folder in the tree
-    expandedFolders.value.add(1)
   } else {
     // Extract folder ID from path like "/folder/4"
     const pathSegments = currentPath.value.split('/').filter(Boolean)
@@ -2675,9 +2681,8 @@ async function executePasteToFolder(destinationFolderId: number) {
 
 // Helper function to get current folder ID
 function getCurrentFolderId(): number {
-  // For root level, return 1 (Home folder)
   if (currentPath.value === '/') {
-    return 1
+    return getHomeFolderId() ?? 0
   }
 
   // Extract folder ID from current path (e.g., /folder/2)
@@ -2688,8 +2693,7 @@ function getCurrentFolderId(): number {
     }
   }
 
-  // Default to root folder
-  return 1
+  return getHomeFolderId() ?? 0
 }
 
 // Watch for path changes
