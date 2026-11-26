@@ -159,7 +159,7 @@
                     >
                       <p class="text-xs font-medium text-gray-700">Temporary access key</p>
                       <p class="text-xs text-gray-500">
-                        One key for this task. Give it to the contractor — they can share it with their crew.
+                        One key for this contractor on the project. They see all tasks assigned to them, plus Plans and Calendar. Share with their crew.
                       </p>
                       <div v-if="accessKeyDisplay" class="flex flex-wrap items-center gap-2">
                         <code class="px-2 py-1 bg-white border border-gray-200 rounded text-sm tracking-wider text-gray-900">

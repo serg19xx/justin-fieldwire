@@ -27,6 +27,21 @@
       </select>
     </div>
 
+    <!-- Subcontractor Filter -->
+    <div>
+      <label class="block text-xs font-medium text-gray-700 mb-1">Subcontractor</label>
+      <select
+        :value="filterState.contractorId === null ? '' : filterState.contractorId"
+        @change="handleContractorChange($event)"
+        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+      >
+        <option value="">All Subcontractors</option>
+        <option v-for="contractor in availableContractors" :key="contractor.id" :value="contractor.id">
+          {{ contractor.name }}{{ contractor.trade ? ` (${contractor.trade})` : '' }}
+        </option>
+      </select>
+    </div>
+
     <!-- Status Filter -->
     <div>
       <label class="block text-xs font-medium text-gray-700 mb-2">Task Status</label>
@@ -125,12 +140,14 @@ import type { TaskFilterState } from '@/composables/useTaskFilters'
 interface Props {
   filterState: TaskFilterState
   availableWorkers: Array<{ id: number; name: string; role: string }>
+  availableContractors?: Array<{ id: number; name: string; trade?: string | null }>
   availableCategories?: string[]
   clearFilters: () => void
   activeFiltersCount: number
 }
 
 const props = withDefaults(defineProps<Props>(), {
+  availableContractors: () => [],
   availableCategories: () => [],
 })
 
@@ -162,6 +179,11 @@ function handleWorkerChange(event: Event) {
   // Convert empty string to null, otherwise convert to number
   const workerId = value === '' ? null : Number(value)
   updateFilter('workerId', workerId)
+}
+
+function handleContractorChange(event: Event) {
+  const value = (event.target as HTMLSelectElement).value
+  updateFilter('contractorId', value === '' ? null : Number(value))
 }
 
 function handleCategoryChange(event: Event) {

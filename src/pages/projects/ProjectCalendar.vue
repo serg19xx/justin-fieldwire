@@ -243,6 +243,21 @@ const availableTaskCategories = computed(() => {
   return [...templateCategories.value].sort(compareTaskCategories)
 })
 
+const availableContractors = computed(() => {
+  const map = new Map<number, { id: number; name: string; trade?: string | null }>()
+  for (const task of tasks.value) {
+    const id = task.contractor_id != null ? Number(task.contractor_id) : 0
+    if (id <= 0 || map.has(id)) continue
+    const name = task.contractor?.name?.trim() || `Contractor #${id}`
+    map.set(id, {
+      id,
+      name,
+      trade: task.contractor?.trade ?? null,
+    })
+  }
+  return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name))
+})
+
 // Sync worker filter with new filter state (backward compatibility)
 watch(selectedWorkerId, (newValue) => {
   if (filterState.value.workerId !== newValue) {
@@ -4256,6 +4271,7 @@ defineExpose({
         :is-open="filterDialog.isOpen"
         :filter-state="filterState"
         :available-workers="allProjectWorkers"
+        :available-contractors="availableContractors"
         :available-categories="availableTaskCategories"
         :clear-filters="clearFilters"
         :active-filters-count="activeFiltersCount"

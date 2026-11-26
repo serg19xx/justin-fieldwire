@@ -5,6 +5,7 @@ import { isMilestone } from '@/core/types/task'
 export interface TaskFilterState {
   search: string
   workerId: number | null
+  contractorId: number | null
   statuses: TaskStatus[]
   startDate: string | null
   endDate: string | null
@@ -17,6 +18,7 @@ export function useTaskFilters(tasks: Ref<Task[]>) {
   const filterState = ref<TaskFilterState>({
     search: '',
     workerId: null,
+    contractorId: null,
     statuses: [],
     startDate: null,
     endDate: null,
@@ -52,6 +54,15 @@ export function useTaskFilters(tasks: Ref<Task[]>) {
         }
         return false
       })
+    }
+
+    // Contractor (subcontractor) filter
+    if (filterState.value.contractorId !== null) {
+      result = result.filter(
+        (task) =>
+          task.contractor_id != null &&
+          Number(task.contractor_id) === filterState.value.contractorId,
+      )
     }
 
     // Status filter
@@ -101,6 +112,7 @@ export function useTaskFilters(tasks: Ref<Task[]>) {
     filterState.value = {
       search: '',
       workerId: null,
+      contractorId: null,
       statuses: [],
       startDate: null,
       endDate: null,
@@ -114,6 +126,7 @@ export function useTaskFilters(tasks: Ref<Task[]>) {
     let count = 0
     if (filterState.value.search) count++
     if (filterState.value.workerId !== null) count++
+    if (filterState.value.contractorId !== null) count++
     if (filterState.value.statuses.length > 0) count++
     if (filterState.value.startDate) count++
     if (filterState.value.endDate) count++

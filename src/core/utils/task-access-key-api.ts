@@ -13,23 +13,48 @@ export interface TaskAccessKey {
   created_at?: string | null
 }
 
+export interface ContractorPortalTask {
+  id: number
+  project_id: number
+  project_name?: string | null
+  name: string
+  category?: string | null
+  address?: string | null
+  start_planned?: string | null
+  end_planned?: string | null
+  start_time?: string | null
+  end_time?: string | null
+  status?: string | null
+  progress_pct: number
+  notes?: string | null
+  milestone?: string | null
+}
+
 export interface ContractorPortalWorkspace {
-  task: {
+  project?: {
     id: number
-    project_id: number
-    project_name?: string | null
+    name?: string | null
+  } | null
+  task: ContractorPortalTask
+  tasks?: ContractorPortalTask[]
+  calendar?: Array<{
+    task_id: number
     name: string
-    category?: string | null
-    address?: string | null
+    status?: string | null
     start_planned?: string | null
     end_planned?: string | null
     start_time?: string | null
     end_time?: string | null
-    status?: string | null
-    progress_pct: number
-    notes?: string | null
-    milestone?: string | null
-  }
+    category?: string | null
+  }>
+  plans?: Array<{
+    id: number
+    original_name?: string | null
+    mime_type?: string | null
+    file_size?: number | null
+    folder_id?: number | null
+    folder_name?: string | null
+  }>
   contractor?: {
     id: number
     name: string
@@ -40,6 +65,7 @@ export interface ContractorPortalWorkspace {
   } | null
   field_photos: Array<{
     id: number
+    task_id?: number | null
     work_date?: string | null
     slot?: string | null
     original_name?: string | null
@@ -135,4 +161,9 @@ export async function fetchContractorWorkspace(): Promise<ContractorPortalWorksp
 
 export function contractorFieldPhotoDownloadUrl(photoId: number): string {
   return `/api/v1/contractor-portal/field-photos/${photoId}/download`
+}
+
+export function contractorPlanDownloadUrl(fileId: number, preview = false): string {
+  const q = preview ? '?action=preview' : ''
+  return `/api/v1/contractor-portal/plans/${fileId}/download${q}`
 }

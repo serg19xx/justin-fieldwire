@@ -32,6 +32,7 @@
         <TaskFilterPanel
           :filter-state="filterState"
           :available-workers="availableWorkers"
+          :available-contractors="availableContractors"
           :available-categories="availableCategories"
           :clear-filters="clearFilters"
           :active-filters-count="activeFiltersCount"
@@ -75,12 +76,14 @@ interface Props {
   isOpen: boolean
   filterState: TaskFilterState
   availableWorkers: Array<{ id: number; name: string; role: string }>
+  availableContractors?: Array<{ id: number; name: string; trade?: string | null }>
   availableCategories?: string[]
   clearFilters: () => void
   activeFiltersCount: number
 }
 
 withDefaults(defineProps<Props>(), {
+  availableContractors: () => [],
   availableCategories: () => [],
 })
 
