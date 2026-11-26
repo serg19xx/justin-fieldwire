@@ -13,6 +13,7 @@ const activeTab = ref<ExternalContactKind>('contractors')
 const rows = ref<ExternalContact[]>([])
 const isLoading = ref(false)
 const search = ref('')
+const tradeFilter = ref('')
 const errorMessage = ref('')
 const showForm = ref(false)
 const editingId = ref<number | null>(null)
@@ -29,6 +30,39 @@ const form = ref({
 const pageTitle = computed(() =>
   activeTab.value === 'contractors' ? 'Contractors' : 'Inspectors',
 )
+
+const tradeColumnLabel = computed(() =>
+  activeTab.value === 'contractors' ? 'Trade' : 'Specialty',
+)
+
+function contactTradeValue(row: ExternalContact): string {
+  const raw = activeTab.value === 'contractors' ? row.trade : row.specialty
+  return (raw || '').trim()
+}
+
+const tradeOptions = computed(() => {
+  const set = new Set<string>()
+  for (const row of rows.value) {
+    const value = contactTradeValue(row)
+    if (value) set.add(value)
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+})
+
+const displayedRows = computed(() => {
+  const selected = tradeFilter.value.trim().toLowerCase()
+  const filtered = selected
+    ? rows.value.filter((row) => contactTradeValue(row).toLowerCase() === selected)
+    : rows.value.slice()
+
+  return filtered.sort((a, b) => {
+    const tradeA = contactTradeValue(a)
+    const tradeB = contactTradeValue(b)
+    const byTrade = tradeA.localeCompare(tradeB, undefined, { sensitivity: 'base' })
+    if (byTrade !== 0) return byTrade
+    return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+  })
+})
 
 async function loadRows() {
   isLoading.value = true
@@ -115,6 +149,7 @@ async function removeContact(row: ExternalContact) {
 
 watch(activeTab, () => {
   showForm.value = false
+  tradeFilter.value = ''
   void loadRows()
 })
 
@@ -168,13 +203,23 @@ onMounted(() => {
       </button>
     </div>
 
-    <div class="mb-4">
+    <div class="mb-4 flex flex-col sm:flex-row gap-3">
       <input
         v-model="search"
         type="search"
         :placeholder="`Search ${pageTitle.toLowerCase()}...`"
         class="w-full sm:w-80 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900"
       />
+      <select
+        v-model="tradeFilter"
+        class="w-full sm:w-56 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white"
+        :aria-label="`Filter by ${tradeColumnLabel.toLowerCase()}`"
+      >
+        <option value="">All {{ tradeColumnLabel.toLowerCase() }}s</option>
+        <option v-for="option in tradeOptions" :key="option" :value="option">
+          {{ option }}
+        </option>
+      </select>
     </div>
 
     <p v-if="errorMessage" class="mb-3 text-sm text-red-600">{{ errorMessage }}</p>
@@ -191,7 +236,7 @@ onMounted(() => {
         <input
           v-model="form.tradeOrSpecialty"
           type="text"
-          :placeholder="activeTab === 'contractors' ? 'Trade' : 'Specialty'"
+          :placeholder="tradeColumnLabel"
           class="px-3 py-2 border border-gray-300 rounded-md text-sm"
         />
         <input v-model="form.notes" type="text" placeholder="Notes" class="px-3 py-2 border border-gray-300 rounded-md text-sm" />
@@ -205,29 +250,28 @@ onMounted(() => {
     <div class="bg-white border border-gray-200 rounded-lg overflow-hidden">
       <div v-if="isLoading" class="p-6 text-sm text-gray-500">Loading…</div>
       <div v-else-if="rows.length === 0" class="p-6 text-sm text-gray-500">No {{ pageTitle.toLowerCase() }} yet.</div>
+      <div v-else-if="displayedRows.length === 0" class="p-6 text-sm text-gray-500">
+        No contacts match this {{ tradeColumnLabel.toLowerCase() }}.
+      </div>
       <table v-else class="min-w-full text-sm">
         <thead class="bg-gray-50 text-left text-gray-600">
           <tr>
+            <th class="px-3 py-2 font-medium">{{ tradeColumnLabel }}</th>
             <th class="px-3 py-2 font-medium">Name</th>
             <th class="px-3 py-2 font-medium hidden sm:table-cell">Phone</th>
             <th class="px-3 py-2 font-medium hidden md:table-cell">Email</th>
-            <th class="px-3 py-2 font-medium hidden lg:table-cell">
-              {{ activeTab === 'contractors' ? 'Trade' : 'Specialty' }}
-            </th>
             <th class="px-3 py-2 font-medium text-right">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in rows" :key="row.id" class="border-t border-gray-100">
+          <tr v-for="row in displayedRows" :key="row.id" class="border-t border-gray-100">
+            <td class="px-3 py-2 text-gray-900">{{ contactTradeValue(row) || '—' }}</td>
             <td class="px-3 py-2 text-gray-900">
               <div class="font-medium">{{ row.name }}</div>
               <div v-if="row.company" class="text-xs text-gray-500">{{ row.company }}</div>
             </td>
             <td class="px-3 py-2 text-gray-700 hidden sm:table-cell">{{ row.phone || '—' }}</td>
             <td class="px-3 py-2 text-gray-700 hidden md:table-cell">{{ row.email || '—' }}</td>
-            <td class="px-3 py-2 text-gray-700 hidden lg:table-cell">
-              {{ (activeTab === 'contractors' ? row.trade : row.specialty) || '—' }}
-            </td>
             <td class="px-3 py-2 text-right whitespace-nowrap">
               <button type="button" class="text-blue-600 hover:underline mr-3" @click="openEdit(row)">Edit</button>
               <button type="button" class="text-red-600 hover:underline" @click="removeContact(row)">Deactivate</button>
